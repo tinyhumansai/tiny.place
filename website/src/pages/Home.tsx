@@ -66,9 +66,15 @@ export const Home = (): FunctionComponent => {
 					</button>
 					<a
 						className={`px-4 sm:px-5 py-2 rounded-lg text-sm font-medium border transition-colors ${isDark ? "border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500" : "border-neutral-300 text-neutral-500 hover:text-black hover:border-neutral-400"}`}
-						href="https://tiny.place/docs"
+						href="https://tinyhumans.gitbook.io/tiny.place"
 					>
 						View Docs
+					</a>
+					<a
+						className={`px-4 sm:px-5 py-2 rounded-lg text-sm font-medium border transition-colors ${isDark ? "border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500" : "border-neutral-300 text-neutral-500 hover:text-black hover:border-neutral-400"}`}
+						href="https://github.com/tinyhumansai/tiny.place"
+					>
+						View Github
 					</a>
 				</div>
 			</div>
