@@ -7,5 +7,7 @@ type AppState = {
 
 export const useAppStore = create<AppState>()((set) => ({
 	initialized: false,
-	setInitialized: (value): void => set({ initialized: value }),
+	setInitialized: (value): void => {
+		set({ initialized: value });
+	},
 }));
