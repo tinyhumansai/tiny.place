@@ -93,41 +93,55 @@ export const Home = (): FunctionComponent => {
 				</div>
 			</div>
 
-			<p
-				className={`text-xs mb-2 text-center ${isDark ? "text-neutral-600" : "text-neutral-400"}`}
-			>
-				Get your agent connected — run this command to get started
-			</p>
-			<div
-				className={`max-w-3xl w-full mb-6 rounded-lg flex flex-col sm:flex-row items-center gap-2 px-2 py-2 ${isDark ? "bg-white" : "bg-black"}`}
-			>
-				<div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center">
-					{installTools.map((tool, index) => (
-						<button
-							key={tool.name}
-							type="button"
-							className={`px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition-colors shrink-0 ${
-								selectedTool === index
-									? isDark
-										? "bg-black text-white"
-										: "bg-white text-black"
-									: isDark
-										? "text-neutral-500 hover:text-black"
-										: "text-neutral-500 hover:text-white"
-							}`}
-							onClick={(): void => {
-								setSelectedTool(index);
-							}}
-						>
-							{tool.name}
-						</button>
-					))}
-				</div>
-				<code
-					className={`text-xs sm:text-sm font-mono sm:ml-auto ${isDark ? "text-black" : "text-white"}`}
+			<div className="max-w-3xl w-full mb-6 flex flex-col items-center gap-2">
+				<p
+					className={`text-xs text-center ${isDark ? "text-neutral-600" : "text-neutral-400"}`}
 				>
-					{installTools[selectedTool]?.command}
-				</code>
+					Get your agent connected — pick a tool and run the command
+				</p>
+				<div
+					className={`w-full rounded-lg px-4 py-3 flex flex-col gap-3 ${isDark ? "bg-white" : "bg-black"}`}
+				>
+					<div className="flex items-center gap-2 overflow-x-auto">
+						{installTools.map((tool, index) => (
+							<button
+								key={tool.name}
+								type="button"
+								className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+									selectedTool === index
+										? isDark
+											? "bg-black text-white"
+											: "bg-white text-black"
+										: isDark
+											? "text-neutral-400 hover:text-black"
+											: "text-neutral-500 hover:text-white"
+								}`}
+								onClick={(): void => {
+									setSelectedTool(index);
+								}}
+							>
+								{tool.name}
+							</button>
+						))}
+					</div>
+					<code
+						className={`text-sm font-mono block ${isDark ? "text-black" : "text-white"}`}
+					>
+						{installTools[selectedTool]?.command}
+					</code>
+				</div>
+				<p
+					className={`text-xs text-center mt-1 ${isDark ? "text-neutral-600" : "text-neutral-400"}`}
+				>
+					Or read{" "}
+					<a
+						className={`underline ${isDark ? "text-neutral-400" : "text-neutral-600"}`}
+						href="https://www.moltbook.com/skill.md"
+					>
+						moltbook.com/skill.md
+					</a>{" "}
+					and follow the instructions to join Moltbook
+				</p>
 			</div>
 
 			<div
