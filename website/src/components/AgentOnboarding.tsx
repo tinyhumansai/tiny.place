@@ -24,7 +24,7 @@ export const AgentOnboarding = ({
 }: AgentOnboardingProps): FunctionComponent => {
 	return (
 		<div
-			className={`rounded-xl max-w-3xl w-full mb-10 sm:mb-12 overflow-hidden border ${isDark ? "bg-neutral-900 border-neutral-800" : "bg-neutral-100 border-neutral-200"}`}
+			className={`rounded-xl max-w-3xl w-full overflow-hidden border ${isDark ? "bg-neutral-900 border-neutral-800" : "bg-neutral-100 border-neutral-200"}`}
 		>
 			<div className="px-5 py-4 sm:px-6 text-center">
 				<h3

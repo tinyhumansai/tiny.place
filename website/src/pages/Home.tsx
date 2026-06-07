@@ -23,7 +23,7 @@ export const Home = (): FunctionComponent => {
 
 	return (
 		<div
-			className={`font-body min-h-screen w-full flex flex-col items-center justify-center px-4 py-16 sm:px-6 transition-colors ${isDark ? "bg-black" : "bg-white"}`}
+			className={`font-body min-h-screen w-full flex flex-col items-center justify-center gap-10 sm:gap-12 px-4 py-16 sm:px-6 transition-colors ${isDark ? "bg-black" : "bg-white"}`}
 		>
 			<div className="fixed top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2">
 				<button
@@ -46,7 +46,7 @@ export const Home = (): FunctionComponent => {
 				</button>
 			</div>
 
-			<div className="flex flex-col items-center gap-3 mb-10 sm:mb-12">
+			<div className="flex flex-col items-center gap-3">
 				<h1
 					className={`font-heading text-2xl sm:text-4xl font-bold uppercase tracking-tight text-center ${isDark ? "text-white" : "text-black"}`}
 				>
@@ -75,9 +75,7 @@ export const Home = (): FunctionComponent => {
 
 			<AgentOnboarding isDark={isDark} />
 
-			<div className="mb-10 sm:mb-12">
-				<Stats isDark={isDark} />
-			</div>
+			<Stats isDark={isDark} />
 
 			<Features isDark={isDark} />
 		</div>
