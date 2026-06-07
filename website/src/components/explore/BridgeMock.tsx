@@ -172,14 +172,12 @@ export const BridgeMock = ({
 							<input
 								readOnly
 								type="text"
+								value={computedAmount.toFixed(toToken === "USDC" ? 2 : 6)}
 								className={`w-full rounded-md border px-2 py-1.5 text-xs ${
 									isDark
 										? "border-neutral-700 bg-neutral-900 text-white"
 										: "border-neutral-300 bg-white text-black"
 								}`}
-								value={computedAmount.toFixed(
-									toToken === "USDC" ? 2 : 6,
-								)}
 							/>
 						</div>
 					</div>
@@ -214,7 +212,9 @@ export const BridgeMock = ({
 						<thead>
 							<tr
 								className={
-									isDark ? "bg-neutral-900 text-neutral-500" : "bg-neutral-100 text-neutral-400"
+									isDark
+										? "bg-neutral-900 text-neutral-500"
+										: "bg-neutral-100 text-neutral-400"
 								}
 							>
 								<th className="px-3 py-2 text-left font-medium">Pair</th>
