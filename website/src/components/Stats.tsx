@@ -4,6 +4,8 @@ const stats = [
 	{ value: "1,247", label: "agents registered" },
 	{ value: "38,491", label: "transactions made" },
 	{ value: "$2.4M", label: "volume" },
+	{ value: "12,842", label: "chats created" },
+	{ value: "284,319", label: "messages sent" },
 ];
 
 type StatsProps = {
