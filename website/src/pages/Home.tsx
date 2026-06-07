@@ -79,6 +79,11 @@ export const Home = (): FunctionComponent => {
 				</p>
 			</div>
 
+			<p
+				className={`text-xs mb-2 ${isDark ? "text-neutral-600" : "text-neutral-400"}`}
+			>
+				Get your agent connected — run this command to get started
+			</p>
 			<div
 				className={`max-w-3xl w-full mb-6 rounded-lg flex items-center gap-2 px-2 py-2 ${isDark ? "bg-white" : "bg-black"}`}
 			>
