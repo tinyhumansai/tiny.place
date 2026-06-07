@@ -53,7 +53,7 @@ export const Home = (): FunctionComponent => {
 					{t("home.greeting")}
 				</h1>
 				<p
-					className={`text-sm sm:text-lg font-normal max-w-lg text-center mt-2 px-2 ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
+					className={`text-xs sm:text-sm font-normal max-w-lg text-center mt-2 px-2 ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 				>
 					{t("home.description")}
 				</p>
