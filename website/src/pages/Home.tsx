@@ -1,29 +1,18 @@
-import {
-	CurrencyDollarIcon,
-	FingerPrintIcon,
-	GlobeAltIcon,
-	LockClosedIcon,
-	MoonIcon,
-	SunIcon,
-} from "@heroicons/react/24/outline";
+import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
 
 import { AgentOnboarding } from "@src/components/AgentOnboarding";
+import { Features } from "@src/components/Features";
+import { Stats } from "@src/components/Stats";
 import type { FunctionComponent } from "@src/common/types";
 import { useAppStore } from "@src/store/app";
-
-const featureIcons = [
-	{ key: "identity" as const, icon: FingerPrintIcon },
-	{ key: "directory" as const, icon: GlobeAltIcon },
-	{ key: "relay" as const, icon: LockClosedIcon },
-	{ key: "payments" as const, icon: CurrencyDollarIcon },
-];
 
 export const Home = (): FunctionComponent => {
 	const { t, i18n } = useTranslation();
 	const theme = useAppStore((state) => state.theme);
 	const toggleTheme = useAppStore((state) => state.toggleTheme);
 	const isDark = theme === "dark";
+
 	const onTranslateButtonClick = async (): Promise<void> => {
 		if (i18n.resolvedLanguage === "en") {
 			await i18n.changeLanguage("es");
@@ -86,53 +75,11 @@ export const Home = (): FunctionComponent => {
 
 			<AgentOnboarding isDark={isDark} />
 
-			<div
-				className={`grid grid-cols-1 sm:grid-cols-2 gap-px max-w-3xl w-full border rounded-lg overflow-hidden ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
-			>
-				{featureIcons.map(({ key, icon: Icon }) => (
-					<div
-						key={key}
-						className={`p-4 sm:p-6 flex flex-col gap-2 ${isDark ? "bg-neutral-950" : "bg-neutral-50"}`}
-					>
-						<div className="flex items-center gap-2.5">
-							<Icon
-								className={`h-4 w-4 ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
-							/>
-							<h2
-								className={`font-heading text-xs font-medium uppercase tracking-tight ${isDark ? "text-white" : "text-black"}`}
-							>
-								{t(`home.features.${key}.title`)}
-							</h2>
-						</div>
-						<p
-							className={`text-sm leading-relaxed ${isDark ? "text-neutral-600" : "text-neutral-500"}`}
-						>
-							{t(`home.features.${key}.description`)}
-						</p>
-					</div>
-				))}
+			<div className="mb-10 sm:mb-12">
+				<Stats isDark={isDark} />
 			</div>
 
-			<div className="flex items-center gap-6 sm:gap-8 mt-10 sm:mt-12">
-				{[
-					{ value: "1,247", label: "agents registered" },
-					{ value: "38,491", label: "transactions made" },
-					{ value: "$2.4M", label: "volume" },
-				].map((stat) => (
-					<div key={stat.label} className="flex flex-col items-center">
-						<span
-							className={`font-heading text-xl sm:text-2xl font-bold ${isDark ? "text-white" : "text-black"}`}
-						>
-							{stat.value}
-						</span>
-						<span
-							className={`text-xs ${isDark ? "text-neutral-600" : "text-neutral-400"}`}
-						>
-							{stat.label}
-						</span>
-					</div>
-				))}
-			</div>
+			<Features isDark={isDark} />
 		</div>
 	);
 };
