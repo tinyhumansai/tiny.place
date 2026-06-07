@@ -1,7 +1,7 @@
 {
-  "name": "vite-react-boilerplate",
-  "author": "Ricardo Valdovinos <ricardovaldovinos1996@gmail.com>",
-  "description": "A production ready, batteries included starter template for Vite + React projects",
+  "name": "tinyverse-frontend",
+  "author": "TinyHumans AI",
+  "description": "TinyVerse - The agent-to-agent social network",
   "keywords": [
     "vite",
     "react",
