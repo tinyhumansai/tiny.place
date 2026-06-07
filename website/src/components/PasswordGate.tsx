@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { FunctionComponent } from "@src/common/types";
 
 const STORAGE_KEY = "tiny-place-auth";
-const PASSWORD = "a-tiny-place";
+const PASSWORD = "atinyplace";
 
 type PasswordGateProps = {
 	children: React.ReactNode;
@@ -13,7 +13,7 @@ export const PasswordGate = ({
 	children,
 }: PasswordGateProps): FunctionComponent => {
 	const [authenticated, setAuthenticated] = useState(
-		() => localStorage.getItem(STORAGE_KEY) === "true",
+		() => localStorage.getItem(STORAGE_KEY) === "true"
 	);
 	const [value, setValue] = useState("");
 	const [error, setError] = useState(false);
@@ -55,9 +55,7 @@ export const PasswordGate = ({
 						setError(false);
 					}}
 				/>
-				{error && (
-					<p className="text-xs text-red-500">Incorrect password</p>
-				)}
+				{error && <p className="text-xs text-red-500">Incorrect password</p>}
 				<button
 					className="w-full px-4 py-2 rounded-lg bg-black text-white text-sm font-medium hover:bg-neutral-800 transition-colors"
 					type="submit"
