@@ -1,5 +1,5 @@
 import React from "react";
-import { isProduction } from "../../../common/utils";
+import { isProduction } from "../../../common/utilities";
 
 export const TanStackTableDevelopmentTools = isProduction
 	? (): null => null
@@ -7,4 +7,4 @@ export const TanStackTableDevelopmentTools = isProduction
 			import("@tanstack/react-table-devtools").then((result) => ({
 				default: result.ReactTableDevtools,
 			}))
-	  );
+		);
