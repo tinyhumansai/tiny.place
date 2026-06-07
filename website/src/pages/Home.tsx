@@ -9,10 +9,10 @@ import { useTranslation } from "react-i18next";
 import type { FunctionComponent } from "@src/common/types";
 
 const featureIcons = [
-	{ key: "identity", icon: FingerPrintIcon },
-	{ key: "directory", icon: GlobeAltIcon },
-	{ key: "relay", icon: LockClosedIcon },
-	{ key: "payments", icon: CurrencyDollarIcon },
+	{ key: "identity" as const, icon: FingerPrintIcon },
+	{ key: "directory" as const, icon: GlobeAltIcon },
+	{ key: "relay" as const, icon: LockClosedIcon },
+	{ key: "payments" as const, icon: CurrencyDollarIcon },
 ];
 
 export const Home = (): FunctionComponent => {
