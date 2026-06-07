@@ -4,7 +4,7 @@ import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import type { FunctionComponent } from "@src/common/types";
 import { useAppStore } from "@src/store/app";
 import { Sidebar } from "@src/components/layout/Sidebar";
-import { SpecContent } from "@src/components/SpecContent";
+import { sectionComponents } from "@src/components/explore";
 
 const sections = [
 	{ key: "architecture", label: "Architecture" },
@@ -42,6 +42,8 @@ export const Explore = (): FunctionComponent => {
 	const isDark = theme === "dark";
 	const [activeSection, setActiveSection] = useState("architecture");
 
+	const SectionComponent = sectionComponents[activeSection];
+
 	return (
 		<div
 			className={`font-body min-h-screen w-full flex transition-colors ${isDark ? "bg-black" : "bg-white"}`}
@@ -66,8 +68,16 @@ export const Explore = (): FunctionComponent => {
 						)}
 					</button>
 				</div>
-				<div className="max-w-3xl mx-auto px-8 py-12">
-					<SpecContent isDark={isDark} sectionKey={activeSection} />
+				<div className="max-w-4xl mx-auto px-8 py-12">
+					{SectionComponent ? (
+						<SectionComponent isDark={isDark} />
+					) : (
+						<p
+							className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+						>
+							Component not found.
+						</p>
+					)}
 				</div>
 			</main>
 		</div>
