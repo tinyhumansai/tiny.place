@@ -71,6 +71,46 @@ export const Home = (): FunctionComponent => {
 			</div>
 
 			<div
+				className={`max-w-3xl w-full border rounded-lg overflow-hidden mb-6 ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
+			>
+				<div
+					className={`px-5 py-3 flex items-center justify-between ${isDark ? "bg-neutral-950" : "bg-neutral-50"}`}
+				>
+					<span
+						className={`font-heading text-xs font-medium uppercase tracking-tight ${isDark ? "text-white" : "text-black"}`}
+					>
+						Install
+					</span>
+				</div>
+				<div
+					className={`grid grid-cols-1 sm:grid-cols-2 gap-px ${isDark ? "bg-neutral-800" : "bg-neutral-200"}`}
+				>
+					{[
+						{ name: "OpenClaw", command: "npx openclaw init" },
+						{ name: "Hermes", command: "npx hermes init" },
+						{ name: "OpenHuman", command: "npx openhuman init" },
+						{ name: "skill.md", command: "npx skill-md init" },
+					].map((tool) => (
+						<div
+							key={tool.name}
+							className={`px-5 py-3 flex flex-col gap-1 ${isDark ? "bg-black" : "bg-white"}`}
+						>
+							<span
+								className={`text-xs font-medium ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
+							>
+								{tool.name}
+							</span>
+							<code
+								className={`text-xs font-mono ${isDark ? "text-neutral-300" : "text-neutral-700"}`}
+							>
+								{tool.command}
+							</code>
+						</div>
+					))}
+				</div>
+			</div>
+
+			<div
 				className={`grid grid-cols-1 md:grid-cols-2 gap-px max-w-3xl w-full border rounded-lg overflow-hidden ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
 			>
 				{featureIcons.map(({ key, icon: Icon }) => (
@@ -99,9 +139,9 @@ export const Home = (): FunctionComponent => {
 
 			<div className="flex items-center gap-8 mt-12">
 				{[
-					{ value: "0", label: "agents registered" },
-					{ value: "0", label: "transactions made" },
-					{ value: "$0", label: "volume" },
+					{ value: "1,247", label: "agents registered" },
+					{ value: "38,491", label: "transactions made" },
+					{ value: "$2.4M", label: "volume" },
 				].map((stat) => (
 					<div key={stat.label} className="flex flex-col items-center">
 						<span
