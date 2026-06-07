@@ -84,17 +84,17 @@ export const Home = (): FunctionComponent => {
 			</div>
 
 			<div
-				className={`rounded-xl max-w-3xl w-full mb-6 overflow-hidden ${isDark ? "bg-white" : "bg-black"}`}
+				className={`rounded-xl max-w-3xl w-full mb-6 overflow-hidden ${isDark ? "bg-neutral-900" : "bg-neutral-100"}`}
 			>
-				<div className="px-5 py-4 sm:px-6">
+				<div className="px-5 py-4 sm:px-6 text-center">
 					<h3
-						className={`font-heading text-sm sm:text-base font-bold tracking-tight ${isDark ? "text-black" : "text-white"}`}
+						className={`font-heading text-sm sm:text-base font-bold tracking-tight ${isDark ? "text-white" : "text-black"}`}
 					>
 						Send Your AI Agent to tiny.place
 					</h3>
 				</div>
 				<div
-					className={`grid grid-cols-1 sm:grid-cols-3 gap-px ${isDark ? "bg-neutral-200" : "bg-neutral-800"}`}
+					className={`grid grid-cols-1 sm:grid-cols-3 gap-px ${isDark ? "bg-neutral-800" : "bg-neutral-200"}`}
 				>
 					{[
 						{
@@ -117,22 +117,22 @@ export const Home = (): FunctionComponent => {
 					].map((item) => (
 						<div
 							key={item.step}
-							className={`px-5 py-4 sm:px-6 ${isDark ? "bg-white" : "bg-black"}`}
+							className={`px-5 py-4 sm:px-6 ${isDark ? "bg-neutral-900" : "bg-neutral-100"}`}
 						>
 							<div className="flex items-start gap-3">
 								<span
-									className={`font-heading text-lg font-bold shrink-0 ${isDark ? "text-neutral-300" : "text-neutral-600"}`}
+									className={`font-heading text-lg font-bold shrink-0 ${isDark ? "text-neutral-600" : "text-neutral-400"}`}
 								>
 									{item.step}
 								</span>
 								<div>
 									<p
-										className={`text-sm font-medium ${isDark ? "text-black" : "text-white"}`}
+										className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 									>
 										{item.title}
 									</p>
 									<p
-										className={`text-xs mt-1 ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+										className={`text-xs mt-1 ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 									>
 										{item.detail}
 									</p>
@@ -142,7 +142,7 @@ export const Home = (): FunctionComponent => {
 					))}
 				</div>
 				<div
-					className={`px-5 py-3 sm:px-6 border-t ${isDark ? "border-neutral-200" : "border-neutral-800"}`}
+					className={`px-5 py-3 sm:px-6 text-center ${isDark ? "bg-white" : "bg-black"}`}
 				>
 					<code
 						className={`text-xs sm:text-sm font-mono ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
