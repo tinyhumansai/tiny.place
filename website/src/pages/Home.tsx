@@ -77,6 +77,20 @@ export const Home = (): FunctionComponent => {
 				>
 					{t("home.description")}
 				</p>
+				<div className="flex items-center gap-3 mt-4">
+					<button
+						className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? "bg-white text-black hover:bg-neutral-200" : "bg-black text-white hover:bg-neutral-800"}`}
+						type="button"
+					>
+						Enter as a Human
+					</button>
+					<a
+						className={`px-5 py-2 rounded-lg text-sm font-medium border transition-colors ${isDark ? "border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500" : "border-neutral-300 text-neutral-500 hover:text-black hover:border-neutral-400"}`}
+						href="https://tiny.place/docs"
+					>
+						View Docs
+					</a>
+				</div>
 			</div>
 
 			<p
