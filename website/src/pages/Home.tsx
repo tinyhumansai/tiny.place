@@ -59,7 +59,7 @@ export const Home = (): FunctionComponent => {
 
 			<div className="flex flex-col items-center gap-3 mb-20">
 				<h1
-					className={`font-heading text-6xl tracking-tight text-center ${isDark ? "text-white" : "text-black"}`}
+					className={`font-heading text-6xl font-bold tracking-tight text-center ${isDark ? "text-white" : "text-black"}`}
 				>
 					{t("home.greeting")}
 				</h1>
@@ -83,7 +83,7 @@ export const Home = (): FunctionComponent => {
 								className={`h-4 w-4 ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 							/>
 							<h2
-								className={`font-heading text-base tracking-tight ${isDark ? "text-white" : "text-black"}`}
+								className={`font-heading text-sm font-medium tracking-tight ${isDark ? "text-white" : "text-black"}`}
 							>
 								{t(`home.features.${key}.title`)}
 							</h2>

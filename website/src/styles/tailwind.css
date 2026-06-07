@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
 @theme {
-	--font-heading: "Unica One", sans-serif;
+	--font-heading: "Google Sans Flex", sans-serif;
 	--font-body: "Inter", sans-serif;
 }
