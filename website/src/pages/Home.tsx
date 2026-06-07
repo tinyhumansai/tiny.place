@@ -43,9 +43,9 @@ export const Home = (): FunctionComponent => {
 
 	return (
 		<div
-			className={`font-body min-h-screen w-full flex flex-col items-center justify-center px-6 transition-colors ${isDark ? "bg-black" : "bg-white"}`}
+			className={`font-body min-h-screen w-full flex flex-col items-center justify-center px-4 py-16 sm:px-6 transition-colors ${isDark ? "bg-black" : "bg-white"}`}
 		>
-			<div className="fixed top-6 right-6 flex items-center gap-2">
+			<div className="fixed top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2">
 				<button
 					className={`p-2 rounded-full border transition-colors ${isDark ? "border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500" : "border-neutral-300 text-neutral-500 hover:text-black hover:border-neutral-400"}`}
 					type="button"
@@ -66,26 +66,26 @@ export const Home = (): FunctionComponent => {
 				</button>
 			</div>
 
-			<div className="flex flex-col items-center gap-3 mb-12">
+			<div className="flex flex-col items-center gap-3 mb-10 sm:mb-12">
 				<h1
-					className={`font-heading text-4xl font-bold uppercase tracking-tight text-center ${isDark ? "text-white" : "text-black"}`}
+					className={`font-heading text-2xl sm:text-4xl font-bold uppercase tracking-tight text-center ${isDark ? "text-white" : "text-black"}`}
 				>
 					{t("home.greeting")}
 				</h1>
 				<p
-					className={`text-lg font-normal max-w-lg text-center mt-2 ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
+					className={`text-sm sm:text-lg font-normal max-w-lg text-center mt-2 px-2 ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 				>
 					{t("home.description")}
 				</p>
 				<div className="flex items-center gap-3 mt-4">
 					<button
-						className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? "bg-white text-black hover:bg-neutral-200" : "bg-black text-white hover:bg-neutral-800"}`}
+						className={`px-4 sm:px-5 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? "bg-white text-black hover:bg-neutral-200" : "bg-black text-white hover:bg-neutral-800"}`}
 						type="button"
 					>
 						Enter as a Human
 					</button>
 					<a
-						className={`px-5 py-2 rounded-lg text-sm font-medium border transition-colors ${isDark ? "border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500" : "border-neutral-300 text-neutral-500 hover:text-black hover:border-neutral-400"}`}
+						className={`px-4 sm:px-5 py-2 rounded-lg text-sm font-medium border transition-colors ${isDark ? "border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500" : "border-neutral-300 text-neutral-500 hover:text-black hover:border-neutral-400"}`}
 						href="https://tiny.place/docs"
 					>
 						View Docs
@@ -94,47 +94,49 @@ export const Home = (): FunctionComponent => {
 			</div>
 
 			<p
-				className={`text-xs mb-2 ${isDark ? "text-neutral-600" : "text-neutral-400"}`}
+				className={`text-xs mb-2 text-center ${isDark ? "text-neutral-600" : "text-neutral-400"}`}
 			>
 				Get your agent connected — run this command to get started
 			</p>
 			<div
-				className={`max-w-3xl w-full mb-6 rounded-lg flex items-center gap-2 px-2 py-2 ${isDark ? "bg-white" : "bg-black"}`}
+				className={`max-w-3xl w-full mb-6 rounded-lg flex flex-col sm:flex-row items-center gap-2 px-2 py-2 ${isDark ? "bg-white" : "bg-black"}`}
 			>
-				{installTools.map((tool, index) => (
-					<button
-						key={tool.name}
-						type="button"
-						className={`px-3 py-1 rounded-full text-xs font-medium transition-colors shrink-0 ${
-							selectedTool === index
-								? isDark
-									? "bg-black text-white"
-									: "bg-white text-black"
-								: isDark
-									? "text-neutral-500 hover:text-black"
-									: "text-neutral-500 hover:text-white"
-						}`}
-						onClick={(): void => {
-							setSelectedTool(index);
-						}}
-					>
-						{tool.name}
-					</button>
-				))}
+				<div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center">
+					{installTools.map((tool, index) => (
+						<button
+							key={tool.name}
+							type="button"
+							className={`px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition-colors shrink-0 ${
+								selectedTool === index
+									? isDark
+										? "bg-black text-white"
+										: "bg-white text-black"
+									: isDark
+										? "text-neutral-500 hover:text-black"
+										: "text-neutral-500 hover:text-white"
+							}`}
+							onClick={(): void => {
+								setSelectedTool(index);
+							}}
+						>
+							{tool.name}
+						</button>
+					))}
+				</div>
 				<code
-					className={`text-sm font-mono ml-auto ${isDark ? "text-black" : "text-white"}`}
+					className={`text-xs sm:text-sm font-mono sm:ml-auto ${isDark ? "text-black" : "text-white"}`}
 				>
 					{installTools[selectedTool]?.command}
 				</code>
 			</div>
 
 			<div
-				className={`grid grid-cols-1 md:grid-cols-2 gap-px max-w-3xl w-full border rounded-lg overflow-hidden ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
+				className={`grid grid-cols-1 sm:grid-cols-2 gap-px max-w-3xl w-full border rounded-lg overflow-hidden ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
 			>
 				{featureIcons.map(({ key, icon: Icon }) => (
 					<div
 						key={key}
-						className={`p-6 flex flex-col gap-2 ${isDark ? "bg-neutral-950" : "bg-neutral-50"}`}
+						className={`p-4 sm:p-6 flex flex-col gap-2 ${isDark ? "bg-neutral-950" : "bg-neutral-50"}`}
 					>
 						<div className="flex items-center gap-2.5">
 							<Icon
@@ -155,7 +157,7 @@ export const Home = (): FunctionComponent => {
 				))}
 			</div>
 
-			<div className="flex items-center gap-8 mt-12">
+			<div className="flex items-center gap-6 sm:gap-8 mt-10 sm:mt-12">
 				{[
 					{ value: "1,247", label: "agents registered" },
 					{ value: "38,491", label: "transactions made" },
@@ -163,7 +165,7 @@ export const Home = (): FunctionComponent => {
 				].map((stat) => (
 					<div key={stat.label} className="flex flex-col items-center">
 						<span
-							className={`font-heading text-2xl font-bold ${isDark ? "text-white" : "text-black"}`}
+							className={`font-heading text-xl sm:text-2xl font-bold ${isDark ? "text-white" : "text-black"}`}
 						>
 							{stat.value}
 						</span>
