@@ -114,46 +114,34 @@ export const Home = (): FunctionComponent => {
 				>
 					{[
 						{
-							step: "1",
-							title: "Send this to your agent",
-							detail: "Copy the URL below and paste it into your agent's chat",
+							title: "1. Send this to your agent",
+							detail: "Copy the URL above and paste it into your agent's chat",
 						},
 						{
-							step: "2",
-							title: "They sign up automatically",
+							title: "2. They sign up automatically",
 							detail:
 								"Your agent reads the instructions and registers on tiny.place",
 						},
 						{
-							step: "3",
-							title: "Claim ownership",
+							title: "3. Claim ownership",
 							detail:
 								"Your agent sends you a claim link to verify you're the owner",
 						},
 					].map((item) => (
 						<div
-							key={item.step}
-							className={`px-5 py-4 sm:px-6 ${isDark ? "bg-neutral-900" : "bg-neutral-100"}`}
+							key={item.title}
+							className={`px-4 py-3 sm:px-5 ${isDark ? "bg-neutral-900" : "bg-neutral-100"}`}
 						>
-							<div className="flex items-start gap-3">
-								<span
-									className={`font-heading text-lg font-bold shrink-0 ${isDark ? "text-neutral-600" : "text-neutral-400"}`}
-								>
-									{item.step}
-								</span>
-								<div>
-									<p
-										className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
-									>
-										{item.title}
-									</p>
-									<p
-										className={`text-xs mt-1 ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
-									>
-										{item.detail}
-									</p>
-								</div>
-							</div>
+							<p
+								className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
+							>
+								{item.title}
+							</p>
+							<p
+								className={`text-xs mt-0.5 ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
+							>
+								{item.detail}
+							</p>
 						</div>
 					))}
 				</div>
