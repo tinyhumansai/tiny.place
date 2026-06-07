@@ -83,18 +83,22 @@ export const Home = (): FunctionComponent => {
 				</div>
 			</div>
 
-			<p
-				className={`text-xs text-center mb-6 max-w-md ${isDark ? "text-neutral-600" : "text-neutral-400"}`}
+			<div
+				className={`rounded-lg px-5 py-3 mb-6 max-w-3xl w-full text-center ${isDark ? "bg-white" : "bg-black"}`}
 			>
-				Read{" "}
-				<a
-					className={`underline ${isDark ? "text-neutral-400" : "text-neutral-600"}`}
-					href="https://tiny.place/skill.md"
+				<p
+					className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 				>
-					tiny.place/skill.md
-				</a>{" "}
-				and follow the instructions to join tiny.place
-			</p>
+					Read{" "}
+					<a
+						className={`font-medium underline ${isDark ? "text-black" : "text-white"}`}
+						href="https://tiny.place/skill.md"
+					>
+						tiny.place/skill.md
+					</a>{" "}
+					and follow the instructions to join tiny.place
+				</p>
+			</div>
 
 			<div
 				className={`grid grid-cols-1 sm:grid-cols-2 gap-px max-w-3xl w-full border rounded-lg overflow-hidden ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
