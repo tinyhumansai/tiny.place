@@ -23,7 +23,7 @@ export const Stats = ({ isDark }: StatsProps): FunctionComponent => {
 						{stat.value}
 					</span>
 					<span
-						className={`text-xs ${isDark ? "text-neutral-600" : "text-neutral-400"}`}
+						className={`text-xs ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
 					>
 						{stat.label}
 					</span>
