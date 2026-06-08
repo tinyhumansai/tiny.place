@@ -96,6 +96,7 @@ export function Room(): FunctionComponent {
 	const [avatarList, setAvatarList] = useState<
 		Array<{ id: number; name: string; figure: string }>
 	>([]);
+	const [populateCount, setPopulateCount] = useState(5);
 
 	useEffect(() => {
 		const engine = new GameEngine();
@@ -178,6 +179,51 @@ export function Room(): FunctionComponent {
 		[avatarX, avatarY, avatarDirection]
 	);
 
+	const handlePopulate = useCallback(
+		(count: number) => {
+			const engine = engineRef.current;
+			if (!engine?.currentModel) return;
+
+			const validTiles = engine.currentModel.getValidTiles();
+			const newAvatars: Array<{ id: number; name: string; figure: string }> =
+				[];
+
+			for (let index = 0; index < count; index++) {
+				const id = nextAvatarId++;
+				const figure = generateRandomFigure();
+				const name = `Avatar ${id}`;
+				const tile =
+					validTiles[Math.floor(Math.random() * validTiles.length)]!;
+				const direction = (Math.floor(Math.random() * 8)) as Direction;
+
+				void engine
+					.addAvatar(id, name, figure, tile.x, tile.y, 0, direction)
+					.then(() => {
+						engine.enableAutonomy(id);
+					});
+
+				newAvatars.push({ id, name, figure });
+			}
+
+			setAvatarList((previous) => [...previous, ...newAvatars]);
+		},
+		[]
+	);
+
+	const handleClearRoom = useCallback(() => {
+		const engine = engineRef.current;
+		if (!engine) return;
+
+		for (const avatar of avatarList) {
+			engine.removeAvatar(avatar.id);
+		}
+		setAvatarList([]);
+
+		for (const [id] of engine.furniture) {
+			engine.removeFurniture(id);
+		}
+	}, [avatarList]);
+
 	const handleCenterCamera = useCallback(() => {
 		engineRef.current?.centerCamera();
 	}, []);
@@ -241,6 +287,66 @@ export function Room(): FunctionComponent {
 						Center Camera
 					</button>
 					<p className="mt-1 text-xs text-gray-500">Drag the room to pan</p>
+				</section>
+
+				{/* Populate Room */}
+				<section className="mb-6">
+					<h3 className="mb-2 font-semibold text-gray-300">Populate Room</h3>
+					<div className="flex flex-col gap-2">
+						<div className="flex items-end gap-2">
+							<label className="flex-1 text-xs text-gray-400">
+								Count
+								<input
+									className="mt-1 w-full rounded bg-gray-700 px-2 py-1 text-gray-200"
+									max={50}
+									min={1}
+									type="number"
+									value={populateCount}
+									onChange={(event) => {
+										setPopulateCount(
+											Math.max(1, Math.min(50, Number(event.target.value)))
+										);
+									}}
+								/>
+							</label>
+						</div>
+						<button
+							className="w-full rounded bg-indigo-700 px-3 py-2 font-semibold text-white hover:bg-indigo-600"
+							disabled={loading}
+							type="button"
+							onClick={() => {
+								handlePopulate(populateCount);
+							}}
+						>
+							Spawn {populateCount} Random Avatars
+						</button>
+						<button
+							className="w-full rounded bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600"
+							disabled={loading}
+							type="button"
+							onClick={() => {
+								const engine = engineRef.current;
+								if (!engine?.currentModel) return;
+								for (const [id] of engine.furniture) {
+									engine.removeFurniture(id);
+								}
+								engine.placeRandomFurniture(
+									Math.floor(
+										engine.currentModel.getValidTiles().length / 8
+									)
+								);
+							}}
+						>
+							Re-roll Furniture
+						</button>
+						<button
+							className="w-full rounded bg-red-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+							type="button"
+							onClick={handleClearRoom}
+						>
+							Clear All
+						</button>
+					</div>
 				</section>
 
 				{/* Avatar Controls */}
