@@ -6,6 +6,7 @@ import {
 	createDefaultRoom,
 	createLShapedRoom,
 	createMultiLevelRoom,
+	createRandomRoom,
 } from "@src/engine/RoomModel";
 
 const DEFAULT_FIGURE =
@@ -62,6 +63,11 @@ const ROOM_PRESETS = [
 	{ label: "Default 8x8", factory: createDefaultRoom },
 	{ label: "L-Shaped", factory: createLShapedRoom },
 	{ label: "Multi-Level", factory: createMultiLevelRoom },
+	{
+		label: "Random",
+		factory: (): ReturnType<typeof createRandomRoom> =>
+			createRandomRoom(Math.floor(Math.random() * 0xffffffff)),
+	},
 ] as const;
 
 const DIRECTIONS: Array<{ label: string; value: Direction }> = [
@@ -101,7 +107,9 @@ export function Room(): FunctionComponent {
 				if (canvasRef.current && engineRef.current === engine) {
 					engine.mount(canvasRef.current);
 					engine.loadRoom(createDefaultRoom());
-					engine.placeRandomFurniture(6);
+					engine.placeRandomFurniture(
+						Math.floor(engine.currentModel!.getValidTiles().length / 8)
+					);
 					setLoading(false);
 				}
 			})

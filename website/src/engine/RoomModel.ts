@@ -148,3 +148,92 @@ export function createMultiLevelRoom(): RoomModel {
 	];
 	return new RoomModel(10, 10, 5, 1, heightMap);
 }
+
+function seededRandom(seed: number): () => number {
+	let state = seed;
+	return (): number => {
+		state = (state * 1664525 + 1013904223) & 0xffffffff;
+		return (state >>> 0) / 0xffffffff;
+	};
+}
+
+export function createRandomRoom(seed: number): RoomModel {
+	const random = seededRandom(seed);
+
+	const width = Math.floor(random() * 8) + 12;
+	const height = Math.floor(random() * 8) + 12;
+	const maxX = width + 2;
+	const maxY = height + 2;
+
+	const heightMap: Array<Array<number>> = [];
+	for (let x = 0; x < maxX; x++) {
+		heightMap.push(new Array<number>(maxY).fill(0));
+	}
+
+	for (let x = 1; x <= width; x++) {
+		for (let y = 1; y <= height; y++) {
+			heightMap[x]![y] = 1;
+		}
+	}
+
+	const cutCount = Math.floor(random() * 3) + 1;
+	for (let index = 0; index < cutCount; index++) {
+		const cutW = Math.floor(random() * 4) + 2;
+		const cutH = Math.floor(random() * 4) + 2;
+
+		const corner = Math.floor(random() * 4);
+		for (let x = 0; x < cutW; x++) {
+			for (let y = 0; y < cutH; y++) {
+				let tileX: number;
+				let tileY: number;
+				switch (corner) {
+					case 0:
+						tileX = 1 + x;
+						tileY = 1 + y;
+						break;
+					case 1:
+						tileX = width - x;
+						tileY = 1 + y;
+						break;
+					case 2:
+						tileX = 1 + x;
+						tileY = height - y;
+						break;
+					default:
+						tileX = width - x;
+						tileY = height - y;
+						break;
+				}
+				if (tileX >= 1 && tileX <= width && tileY >= 1 && tileY <= height) {
+					heightMap[tileX]![tileY] = 0;
+				}
+			}
+		}
+	}
+
+	if (random() < 0.5) {
+		const elevX = Math.floor(random() * (width - 4)) + 2;
+		const elevY = Math.floor(random() * (height - 4)) + 2;
+		const elevW = Math.floor(random() * 4) + 3;
+		const elevH = Math.floor(random() * 4) + 3;
+		for (let x = elevX; x < elevX + elevW && x <= width; x++) {
+			for (let y = elevY; y < elevY + elevH && y <= height; y++) {
+				if (heightMap[x]![y]! > 0) {
+					heightMap[x]![y] = 2;
+				}
+			}
+		}
+	}
+
+	let doorX = 1;
+	let doorY = 1;
+	for (let x = 1; x <= width; x++) {
+		if (heightMap[x]![1]! > 0) {
+			doorX = x;
+			doorY = 1;
+			break;
+		}
+	}
+
+	return new RoomModel(maxX, maxY, doorX, doorY, heightMap);
+}

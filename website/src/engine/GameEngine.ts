@@ -524,7 +524,7 @@ export default class GameEngine {
 			);
 		}
 
-		await Promise.all(promises);
+		await Promise.allSettled(promises);
 	}
 
 	public async loadBodyTexture(
