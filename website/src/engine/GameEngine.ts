@@ -10,6 +10,10 @@ import {
 import type RoomModel from "./RoomModel";
 import RoomImager from "./imagers/RoomImager";
 import AvatarImager from "./imagers/AvatarImager";
+import FurniImager, {
+	type LoadedFurniture,
+	type RoomItemDescription,
+} from "./imagers/FurniImager";
 import AvatarInfo, { type Direction } from "./imagers/AvatarInfo";
 import {
 	ROOM_TILE_HEIGHT,
@@ -25,6 +29,7 @@ import {
 	PRIORITY_DOOR_FLOOR,
 	PRIORITY_PLAYER,
 	PRIORITY_PLAYER_SHADOW,
+	PRIORITY_ROOM_ITEM,
 	PRIORITY_MULTIPLIER,
 	COMPARABLE_X_Y,
 	COMPARABLE_Z,
@@ -38,7 +43,48 @@ const IDLE_MAX_MS = 5000;
 const ROOM_USER_SPRITE_OFFSET_X = 3;
 const ROOM_USER_SPRITE_OFFSET_Y = -85;
 
-type AvatarAction = "idle" | "walking" | "waving";
+type AvatarAction = "idle" | "walking" | "waving" | "sitting";
+
+type FurniDirection = 0 | 2 | 4 | 6;
+
+const FURNI_DRAW_OFFSET_X = 32;
+const FURNI_DRAW_OFFSET_Y = 16;
+const FURNI_FRAME_SPEED = 500;
+
+const SITTABLE_ITEMS = [
+	18, 26, 30, 34, 36, 38, 39, 55,
+];
+
+const DECORATIVE_ITEMS = [
+	13, 25, 40, 47, 54, 57,
+];
+
+const TABLE_ITEMS = [
+	17, 20, 21, 22, 23,
+];
+
+const ALL_PLACEABLE_ITEMS = [
+	...SITTABLE_ITEMS,
+	...DECORATIVE_ITEMS,
+	...TABLE_ITEMS,
+];
+
+export interface RoomFurniture {
+	id: number;
+	itemId: number;
+	x: number;
+	y: number;
+	z: number;
+	direction: FurniDirection;
+	state: number;
+	frame: number;
+	frameCounter: number;
+	sprite: Sprite;
+	loaded: boolean;
+	furniData: LoadedFurniture | null;
+	itemDescription: RoomItemDescription | null;
+	occupiedTiles: Array<{ x: number; y: number }>;
+}
 
 function randomBetween(min: number, max: number): number {
 	return min + Math.random() * (max - min);
@@ -72,6 +118,8 @@ export interface RoomAvatar {
 	targetZ: number;
 	idleTimer: number;
 	waveTimer: number;
+	sitTimer: number;
+	sittingOnFurni: number | null;
 	autonomy: boolean;
 }
 
@@ -98,8 +146,10 @@ export default class GameEngine {
 	public roomContainer: Container;
 	public roomImager: RoomImager;
 	public avatarImager: AvatarImager;
+	public furniImager: FurniImager;
 	public currentModel: RoomModel | null;
 	public avatars: Map<number, RoomAvatar>;
+	public furniture: Map<number, RoomFurniture>;
 	public selectedTileTexture: Texture | null;
 	public shadowTileTexture: Texture | null;
 	public selectedTileSprite: Sprite | null;
@@ -124,8 +174,10 @@ export default class GameEngine {
 
 		this.roomImager = new RoomImager();
 		this.avatarImager = new AvatarImager();
+		this.furniImager = new FurniImager();
 		this.currentModel = null;
 		this.avatars = new Map();
+		this.furniture = new Map();
 		this.selectedTileTexture = null;
 		this.shadowTileTexture = null;
 		this.selectedTileSprite = null;
@@ -141,7 +193,10 @@ export default class GameEngine {
 	}
 
 	public async initialize(): Promise<void> {
-		await this.avatarImager.initialize();
+		await Promise.all([
+			this.avatarImager.initialize(),
+			this.furniImager.initialize(),
+		]);
 
 		this.roomImager.initialize();
 
@@ -247,6 +302,7 @@ export default class GameEngine {
 	public clearRoom(): void {
 		this.roomContainer.removeChildren();
 		this.avatars.clear();
+		this.furniture.clear();
 		this.currentModel = null;
 	}
 
@@ -427,6 +483,8 @@ export default class GameEngine {
 			targetZ: effectiveZ,
 			idleTimer: 0,
 			waveTimer: 0,
+			sitTimer: 0,
+			sittingOnFurni: null,
 			autonomy: false,
 		};
 
@@ -522,7 +580,11 @@ export default class GameEngine {
 		let headGesture: string;
 		let headFrame = 0;
 
-		if (avatar.action === "walking") {
+		if (avatar.action === "sitting") {
+			const sitDirection = this._nearestEvenDirection(avatar.direction);
+			bodyKey = `${sitDirection}_sit_0`;
+			headGesture = avatar.frame % 40 < 2 ? "eyb" : "std";
+		} else if (avatar.action === "walking") {
 			const walkFrame = avatar.frame % 4;
 			bodyKey = `${avatar.direction}_wlk_${walkFrame}`;
 			headGesture = "std";
@@ -646,6 +708,20 @@ export default class GameEngine {
 
 	private beginNextWalkStep(avatar: RoomAvatar): void {
 		if (avatar.path.length === 0) {
+			if (avatar.sittingOnFurni !== null) {
+				const furni = this.furniture.get(avatar.sittingOnFurni);
+				if (furni) {
+					avatar.action = "sitting";
+					avatar.direction = this._nearestEvenDirection(
+						this.directionTowardFurni(avatar.x, avatar.y, furni.x, furni.y)
+					);
+					avatar.sitTimer = randomBetween(3000, 8000);
+					this.updateAvatarSpritePosition(avatar);
+					this.updateAvatarTexture(avatar);
+					return;
+				}
+				avatar.sittingOnFurni = null;
+			}
 			avatar.action = "idle";
 			avatar.idleTimer = randomBetween(IDLE_MIN_MS, IDLE_MAX_MS);
 			return;
@@ -703,8 +779,234 @@ export default class GameEngine {
 		avatar.container.zIndex = calculateZIndex(sortX, sortY, avatar.z, PRIORITY_PLAYER);
 	}
 
+	private _nearestEvenDirection(direction: Direction): Direction {
+		return (Math.round(direction / 2) * 2) % 8 as Direction;
+	}
+
+	public async addFurniture(
+		id: number,
+		itemId: number,
+		x: number,
+		y: number,
+		direction: FurniDirection
+	): Promise<void> {
+		if (!this.currentModel) return;
+
+		const tileHeight = this.currentModel.isValidTile(x, y)
+			? this.currentModel.getTile(x, y) - 1
+			: 0;
+
+		const sprite = new Sprite();
+		const furni: RoomFurniture = {
+			id,
+			itemId,
+			x,
+			y,
+			z: tileHeight,
+			direction,
+			state: 0,
+			frame: 0,
+			frameCounter: 0,
+			sprite,
+			loaded: false,
+			furniData: null,
+			itemDescription: null,
+			occupiedTiles: [],
+		};
+
+		this.furniture.set(id, furni);
+		this.roomContainer.addChild(sprite);
+		this.updateFurniSpritePosition(furni);
+
+		try {
+			const loadedFurni = await this.furniImager.loadFurniture(itemId);
+			if (this._destroyed) return;
+			furni.furniData = loadedFurni;
+			furni.itemDescription = loadedFurni.itemData;
+			furni.loaded = true;
+			furni.occupiedTiles = this._calculateOccupiedTiles(furni);
+			this.updateFurniTexture(furni);
+			this.updateFurniSpritePosition(furni);
+		} catch (error) {
+			console.warn(`Failed to load furniture ${itemId}:`, error);
+		}
+	}
+
+	private _calculateOccupiedTiles(
+		furni: RoomFurniture
+	): Array<{ x: number; y: number }> {
+		const tiles: Array<{ x: number; y: number }> = [];
+		if (!furni.itemDescription) return [{ x: furni.x, y: furni.y }];
+
+		const description = furni.itemDescription;
+		const xDim =
+			furni.direction === 2 || furni.direction === 6
+				? description.ydim
+				: description.xdim;
+		const yDim =
+			furni.direction === 2 || furni.direction === 6
+				? description.xdim
+				: description.ydim;
+
+		for (let dx = 0; dx < xDim; dx++) {
+			for (let dy = 0; dy < yDim; dy++) {
+				tiles.push({ x: furni.x + dx, y: furni.y + dy });
+			}
+		}
+		return tiles;
+	}
+
+	public isTileOccupiedByFurni(
+		x: number,
+		y: number
+	): RoomFurniture | null {
+		for (const furni of this.furniture.values()) {
+			for (const tile of furni.occupiedTiles) {
+				if (tile.x === x && tile.y === y) return furni;
+			}
+		}
+		return null;
+	}
+
+	private updateFurniTexture(furni: RoomFurniture): void {
+		if (!furni.loaded || !furni.furniData) return;
+
+		const direction = furni.furniData.directions.includes(furni.direction)
+			? furni.direction
+			: furni.furniData.directions[0] ?? 0;
+
+		const textureKey = `${direction}_${furni.state}_${furni.frame}`;
+		const fallbackKey = `${direction}_0_0`;
+		const furniTexture =
+			furni.furniData.textures[textureKey] ??
+			furni.furniData.textures[fallbackKey];
+
+		if (furniTexture) {
+			furni.sprite.texture = Texture.from(furniTexture.canvas);
+		}
+	}
+
+	private updateFurniSpritePosition(furni: RoomFurniture): void {
+		const localPosition = tileToLocal(furni.x, furni.y, furni.z);
+		furni.sprite.x = localPosition.x + FURNI_DRAW_OFFSET_X;
+		furni.sprite.y = localPosition.y + FURNI_DRAW_OFFSET_Y;
+
+		if (furni.loaded && furni.furniData) {
+			const direction = furni.furniData.directions.includes(furni.direction)
+				? furni.direction
+				: furni.furniData.directions[0] ?? 0;
+			const textureKey = `${direction}_${furni.state}_${furni.frame}`;
+			const fallbackKey = `${direction}_0_0`;
+			const furniTexture =
+				furni.furniData.textures[textureKey] ??
+				furni.furniData.textures[fallbackKey];
+
+			if (furniTexture) {
+				furni.sprite.x = localPosition.x + FURNI_DRAW_OFFSET_X + furniTexture.offsetX;
+				furni.sprite.y = localPosition.y + FURNI_DRAW_OFFSET_Y + furniTexture.offsetY;
+			}
+		}
+
+		furni.sprite.zIndex = calculateZIndex(
+			furni.x,
+			furni.y,
+			furni.z,
+			PRIORITY_ROOM_ITEM
+		);
+	}
+
+	public removeFurniture(id: number): void {
+		const furni = this.furniture.get(id);
+		if (furni) {
+			this.roomContainer.removeChild(furni.sprite);
+			this.furniture.delete(id);
+		}
+	}
+
+	public placeRandomFurniture(count: number): void {
+		if (!this.currentModel) return;
+
+		const validTiles = this.currentModel.getValidTiles();
+		const placed: Set<string> = new Set();
+		let furniId = 1000;
+
+		for (
+			let index = 0;
+			index < count && placed.size < validTiles.length;
+			index++
+		) {
+			const itemId =
+				ALL_PLACEABLE_ITEMS[
+					Math.floor(Math.random() * ALL_PLACEABLE_ITEMS.length)
+				]!;
+
+			for (let attempt = 0; attempt < 20; attempt++) {
+				const tile =
+					validTiles[Math.floor(Math.random() * validTiles.length)]!;
+				const key = `${tile.x},${tile.y}`;
+
+				if (placed.has(key)) continue;
+				if (
+					tile.x === this.currentModel.doorX &&
+					tile.y === this.currentModel.doorY
+				)
+					continue;
+
+				const directions: Array<FurniDirection> = [0, 2, 4, 6];
+				const direction =
+					directions[Math.floor(Math.random() * directions.length)]!;
+
+				placed.add(key);
+				void this.addFurniture(furniId++, itemId, tile.x, tile.y, direction);
+				break;
+			}
+		}
+	}
+
+	private findSittableFurniture(): Array<RoomFurniture> {
+		const sittable: Array<RoomFurniture> = [];
+		for (const furni of this.furniture.values()) {
+			if (
+				furni.loaded &&
+				furni.itemDescription &&
+				furni.itemDescription.cansiton === 1
+			) {
+				sittable.push(furni);
+			}
+		}
+		return sittable;
+	}
+
+	private isFurniOccupiedByAvatar(furni: RoomFurniture): boolean {
+		for (const avatar of this.avatars.values()) {
+			if (avatar.sittingOnFurni === furni.id) return true;
+		}
+		return false;
+	}
+
+	private directionTowardFurni(
+		avatarX: number,
+		avatarY: number,
+		furniX: number,
+		furniY: number
+	): Direction {
+		const dx = Math.sign(furniX - avatarX);
+		const dy = Math.sign(furniY - avatarY);
+		return this.directionFromDelta(dx, dy);
+	}
+
 	private updateAutonomy(avatar: RoomAvatar, deltaMs: number): void {
 		if (!avatar.autonomy || !this.currentModel) return;
+
+		if (avatar.action === "sitting") {
+			avatar.sitTimer -= deltaMs;
+			if (avatar.sitTimer <= 0) {
+				avatar.action = "idle";
+				avatar.sittingOnFurni = null;
+				avatar.idleTimer = randomBetween(IDLE_MIN_MS, IDLE_MAX_MS);
+			}
+			return;
+		}
 
 		if (avatar.action === "waving") {
 			avatar.waveTimer -= deltaMs;
@@ -721,12 +1023,41 @@ export default class GameEngine {
 		if (avatar.idleTimer > 0) return;
 
 		const roll = Math.random();
-		if (roll < 0.2) {
+
+		if (roll < 0.3) {
+			const sittable = this.findSittableFurniture();
+			const available = sittable.filter(
+				(f) => !this.isFurniOccupiedByAvatar(f)
+			);
+			if (available.length > 0) {
+				const target =
+					available[Math.floor(Math.random() * available.length)]!;
+				const sitTile = target.occupiedTiles[0] ?? {
+					x: target.x,
+					y: target.y,
+				};
+				const path = this.currentModel.findPath(
+					avatar.x,
+					avatar.y,
+					sitTile.x,
+					sitTile.y
+				);
+				if (path && path.length > 0 && path.length <= 15) {
+					avatar.path = path;
+					avatar.action = "walking";
+					avatar.sittingOnFurni = target.id;
+					this.beginNextWalkStep(avatar);
+					return;
+				}
+			}
+		}
+
+		if (roll < 0.4) {
 			avatar.action = "waving";
 			avatar.waveTimer = 1500;
 			return;
 		}
-		if (roll < 0.35) {
+		if (roll < 0.5) {
 			const newDirection = Math.floor(Math.random() * 8) as Direction;
 			avatar.direction = newDirection;
 			avatar.idleTimer = randomBetween(IDLE_MIN_MS, IDLE_MAX_MS);
@@ -760,6 +1091,18 @@ export default class GameEngine {
 	public gameLoop = (delta: number): void => {
 		if (this._destroyed) return;
 		const deltaMs = delta * (1 / 60) * 1000;
+
+		for (const furni of this.furniture.values()) {
+			if (!furni.loaded || !furni.furniData) continue;
+			if (furni.furniData.stateCount <= 1) continue;
+			furni.frameCounter += deltaMs;
+			if (furni.frameCounter >= FURNI_FRAME_SPEED) {
+				furni.frame++;
+				furni.frameCounter = 0;
+				this.updateFurniTexture(furni);
+			}
+		}
+
 		for (const avatar of this.avatars.values()) {
 			avatar.frameCounter += deltaMs;
 			if (avatar.frameCounter >= FRAME_SPEED) {

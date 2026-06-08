@@ -54,6 +54,7 @@ export function Room(): FunctionComponent {
 				if (canvasRef.current && engineRef.current === engine) {
 					engine.mount(canvasRef.current);
 					engine.loadRoom(createDefaultRoom());
+					engine.placeRandomFurniture(6);
 					setLoading(false);
 				}
 			})
@@ -88,6 +89,7 @@ export function Room(): FunctionComponent {
 			if (!preset) return;
 			const model = preset.factory();
 			engineRef.current.loadRoom(model);
+			engineRef.current.placeRandomFurniture(6);
 		}
 	}, []);
 
