@@ -1,6 +1,8 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
+pub mod x402;
+
 declare_id!("EscrowX402111111111111111111111111111111111111");
 
 #[program]
@@ -121,6 +123,18 @@ pub mod escrow {
             amount: escrow.amount,
         });
         Ok(())
+    }
+
+    pub fn init_nonce(ctx: Context<x402::InitNonce>) -> Result<()> {
+        x402::handle_init_nonce(ctx)
+    }
+
+    pub fn settle(ctx: Context<x402::Settle>, payload: x402::PaymentPayload) -> Result<()> {
+        x402::handle_settle(ctx, payload)
+    }
+
+    pub fn settle_to_escrow(ctx: Context<x402::SettleToEscrow>, payload: x402::PaymentPayload) -> Result<()> {
+        x402::handle_settle_to_escrow(ctx, payload)
     }
 
     pub fn refund(ctx: Context<Refund>) -> Result<()> {
@@ -326,4 +340,10 @@ pub enum EscrowError {
     InvalidState,
     #[msg("Unauthorized caller")]
     Unauthorized,
+    #[msg("Payment has expired")]
+    Expired,
+    #[msg("Nonce already used")]
+    NonceUsed,
+    #[msg("Amount mismatch")]
+    InvalidAmount,
 }
