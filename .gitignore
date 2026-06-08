@@ -32,3 +32,6 @@ storybook-static
 
 # tests
 /coverage/
+
+# Local sprite symlink (debug only)
+website/public/sprites
