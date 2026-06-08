@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { FunctionComponent } from "@src/common/types";
 import GameEngine from "@src/engine/GameEngine";
@@ -74,7 +73,7 @@ export function Room(): FunctionComponent {
 		};
 		window.addEventListener("resize", handleResize);
 
-		return () => {
+		return (): void => {
 			window.removeEventListener("resize", handleResize);
 			engine.destroy();
 			engineRef.current = null;
@@ -96,15 +95,12 @@ export function Room(): FunctionComponent {
 		if (!engineRef.current) return;
 		const id = nextAvatarId++;
 		const name = `Avatar ${id}`;
-		engineRef.current.addAvatar(
-			id,
-			name,
-			avatarFigure,
-			avatarX,
-			avatarY,
-			0,
-			avatarDirection
-		);
+		const engine = engineRef.current;
+		void engine
+			.addAvatar(id, name, avatarFigure, avatarX, avatarY, 0, avatarDirection)
+			.then(() => {
+				engine.enableAutonomy(id);
+			});
 		setAvatarList((previous) => [
 			...previous,
 			{ id, name, figure: avatarFigure },
@@ -160,14 +156,16 @@ export function Room(): FunctionComponent {
 					<div className="flex flex-col gap-1">
 						{ROOM_PRESETS.map((preset, index) => (
 							<button
+								key={preset.label}
+								type="button"
 								className={`rounded px-3 py-1.5 text-left transition-colors ${
 									selectedRoom === index
 										? "bg-blue-600 text-white"
 										: "bg-gray-700 text-gray-300 hover:bg-gray-600"
 								}`}
-								key={preset.label}
-								onClick={() => handleRoomChange(index)}
-								type="button"
+								onClick={() => {
+									handleRoomChange(index);
+								}}
 							>
 								{preset.label}
 							</button>
@@ -180,8 +178,8 @@ export function Room(): FunctionComponent {
 					<h3 className="mb-2 font-semibold text-gray-300">Camera</h3>
 					<button
 						className="w-full rounded bg-gray-700 px-3 py-1.5 text-gray-300 hover:bg-gray-600"
-						onClick={handleCenterCamera}
 						type="button"
+						onClick={handleCenterCamera}
 					>
 						Center Camera
 					</button>
@@ -196,9 +194,11 @@ export function Room(): FunctionComponent {
 							Figure String
 							<textarea
 								className="mt-1 w-full rounded bg-gray-700 px-2 py-1 text-xs text-gray-200 font-mono"
-								onChange={(event) => setAvatarFigure(event.target.value)}
 								rows={2}
 								value={avatarFigure}
+								onChange={(event) => {
+									setAvatarFigure(event.target.value);
+								}}
 							/>
 						</label>
 						<div className="flex gap-2">
@@ -208,9 +208,11 @@ export function Room(): FunctionComponent {
 									className="mt-1 w-full rounded bg-gray-700 px-2 py-1 text-gray-200"
 									max={20}
 									min={0}
-									onChange={(event) => setAvatarX(Number(event.target.value))}
 									type="number"
 									value={avatarX}
+									onChange={(event) => {
+										setAvatarX(Number(event.target.value));
+									}}
 								/>
 							</label>
 							<label className="flex-1 text-xs text-gray-400">
@@ -219,9 +221,11 @@ export function Room(): FunctionComponent {
 									className="mt-1 w-full rounded bg-gray-700 px-2 py-1 text-gray-200"
 									max={20}
 									min={0}
-									onChange={(event) => setAvatarY(Number(event.target.value))}
 									type="number"
 									value={avatarY}
+									onChange={(event) => {
+										setAvatarY(Number(event.target.value));
+									}}
 								/>
 							</label>
 						</div>
@@ -230,14 +234,16 @@ export function Room(): FunctionComponent {
 							<div className="mt-1 grid grid-cols-4 gap-1">
 								{DIRECTIONS.map((direction) => (
 									<button
+										key={direction.value}
+										type="button"
 										className={`rounded px-2 py-1 text-xs ${
 											avatarDirection === direction.value
 												? "bg-blue-600 text-white"
 												: "bg-gray-700 text-gray-300 hover:bg-gray-600"
 										}`}
-										key={direction.value}
-										onClick={() => setAvatarDirection(direction.value)}
-										type="button"
+										onClick={() => {
+											setAvatarDirection(direction.value);
+										}}
 									>
 										{direction.label}
 									</button>
@@ -247,8 +253,8 @@ export function Room(): FunctionComponent {
 						<button
 							className="mt-1 w-full rounded bg-green-700 px-3 py-2 font-semibold text-white hover:bg-green-600"
 							disabled={loading}
-							onClick={handleAddAvatar}
 							type="button"
+							onClick={handleAddAvatar}
 						>
 							Add Avatar
 						</button>
@@ -264,22 +270,26 @@ export function Room(): FunctionComponent {
 						<div className="flex flex-col gap-2">
 							{avatarList.map((avatar) => (
 								<div
-									className="flex items-center justify-between rounded bg-gray-700 px-3 py-2"
 									key={avatar.id}
+									className="flex items-center justify-between rounded bg-gray-700 px-3 py-2"
 								>
 									<span className="text-xs text-gray-300">{avatar.name}</span>
 									<div className="flex gap-1">
 										<button
 											className="rounded bg-blue-600 px-2 py-0.5 text-xs text-white hover:bg-blue-500"
-											onClick={() => handleMoveAvatar(avatar.id)}
 											type="button"
+											onClick={() => {
+												handleMoveAvatar(avatar.id);
+											}}
 										>
 											Move
 										</button>
 										<button
 											className="rounded bg-red-700 px-2 py-0.5 text-xs text-white hover:bg-red-600"
-											onClick={() => handleRemoveAvatar(avatar.id)}
 											type="button"
+											onClick={() => {
+												handleRemoveAvatar(avatar.id);
+											}}
 										>
 											Remove
 										</button>

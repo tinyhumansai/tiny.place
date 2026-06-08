@@ -1,18 +1,16 @@
-/* eslint-disable */
-// @ts-nocheck — ported from bobba_client engine (TS 3.6), strict index checks deferred
 import {
 	Application,
 	Container,
+	type Renderer,
 	Sprite,
 	Texture,
 	Point,
 	Assets,
 } from "pixi.js";
-import RoomModel from "./RoomModel";
+import type RoomModel from "./RoomModel";
 import RoomImager from "./imagers/RoomImager";
 import AvatarImager from "./imagers/AvatarImager";
-import AvatarInfo from "./imagers/AvatarInfo";
-import type { Direction } from "./imagers/AvatarInfo";
+import AvatarInfo, { type Direction } from "./imagers/AvatarInfo";
 import {
 	ROOM_TILE_HEIGHT,
 	ROOM_TILE_WIDTH,
@@ -34,8 +32,17 @@ import {
 
 const CAMERA_CENTERED_OFFSET_Y = 150;
 const FRAME_SPEED = 100;
+const WALK_STEP_DURATION = 400;
+const IDLE_MIN_MS = 1500;
+const IDLE_MAX_MS = 5000;
 const ROOM_USER_SPRITE_OFFSET_X = 3;
 const ROOM_USER_SPRITE_OFFSET_Y = -85;
+
+type AvatarAction = "idle" | "walking" | "waving";
+
+function randomBetween(min: number, max: number): number {
+	return min + Math.random() * (max - min);
+}
 
 export interface RoomAvatar {
 	id: number;
@@ -54,6 +61,18 @@ export interface RoomAvatar {
 	loaded: boolean;
 	frame: number;
 	frameCounter: number;
+	action: AvatarAction;
+	path: Array<{ x: number; y: number }>;
+	walkProgress: number;
+	previousX: number;
+	previousY: number;
+	previousZ: number;
+	targetX: number;
+	targetY: number;
+	targetZ: number;
+	idleTimer: number;
+	waveTimer: number;
+	autonomy: boolean;
 }
 
 function calculateZIndex(
@@ -75,29 +94,29 @@ function tileToLocal(x: number, y: number, z: number): Point {
 }
 
 export default class GameEngine {
-	app: Application;
-	roomContainer: Container;
-	roomImager: RoomImager;
-	avatarImager: AvatarImager;
-	currentModel: RoomModel | null;
-	avatars: Map<number, RoomAvatar>;
-	selectedTileTexture: Texture | null;
-	shadowTileTexture: Texture | null;
-	selectedTileSprite: Sprite | null;
-	isMouseDragging: boolean;
-	lastMouseX: number;
-	lastMouseY: number;
-	maxHeight: number;
+	public app: Application;
+	public roomContainer: Container;
+	public roomImager: RoomImager;
+	public avatarImager: AvatarImager;
+	public currentModel: RoomModel | null;
+	public avatars: Map<number, RoomAvatar>;
+	public selectedTileTexture: Texture | null;
+	public shadowTileTexture: Texture | null;
+	public selectedTileSprite: Sprite | null;
+	public isMouseDragging: boolean;
+	public lastMouseX: number;
+	public lastMouseY: number;
+	public maxHeight: number;
 	private _destroyed: boolean;
 
-	constructor() {
+	public constructor() {
 		this.app = new Application({
 			antialias: false,
 			backgroundAlpha: 0,
 			resolution: 1,
 			resizeTo: undefined,
 		});
-		(this.app.renderer as any).background.color = 0x1a1a2e;
+		(this.app.renderer as Renderer).background.color = 0x1a1a2e;
 
 		this.roomContainer = new Container();
 		this.roomContainer.sortableChildren = true;
@@ -116,10 +135,12 @@ export default class GameEngine {
 		this.maxHeight = 1;
 		this._destroyed = false;
 
-		this.app.ticker.add((delta) => this.gameLoop(delta));
+		this.app.ticker.add((delta) => {
+			this.gameLoop(delta);
+		});
 	}
 
-	async initialize(): Promise<void> {
+	public async initialize(): Promise<void> {
 		await this.avatarImager.initialize();
 
 		this.roomImager.initialize();
@@ -136,18 +157,18 @@ export default class GameEngine {
 		}
 	}
 
-	mount(container: HTMLElement): void {
+	public mount(container: HTMLElement): void {
 		container.appendChild(this.app.view as unknown as HTMLElement);
 		this.resize(container.clientWidth, container.clientHeight);
 		this.setupInteractions();
 	}
 
-	resize(width: number, height: number): void {
+	public resize(width: number, height: number): void {
 		this.app.renderer.resize(width, height);
 		this.centerCamera();
 	}
 
-	setupInteractions(): void {
+	public setupInteractions(): void {
 		const view = this.app.view as unknown as HTMLElement;
 
 		view.addEventListener("mousedown", () => {
@@ -168,21 +189,23 @@ export default class GameEngine {
 		});
 
 		view.addEventListener("touchstart", (event: TouchEvent) => {
-			if (event.touches.length === 1) {
-				this.lastMouseX = event.touches[0].clientX;
-				this.lastMouseY = event.touches[0].clientY;
+			const firstTouch = event.touches[0];
+			if (event.touches.length === 1 && firstTouch) {
+				this.lastMouseX = firstTouch.clientX;
+				this.lastMouseY = firstTouch.clientY;
 				this.isMouseDragging = true;
 			}
 		});
 		view.addEventListener("touchmove", (event: TouchEvent) => {
 			event.preventDefault();
-			if (event.touches.length === 1 && this.isMouseDragging) {
-				const diffX = Math.round(this.lastMouseX - event.touches[0].clientX);
-				const diffY = Math.round(this.lastMouseY - event.touches[0].clientY);
+			const firstTouch = event.touches[0];
+			if (event.touches.length === 1 && this.isMouseDragging && firstTouch) {
+				const diffX = Math.round(this.lastMouseX - firstTouch.clientX);
+				const diffY = Math.round(this.lastMouseY - firstTouch.clientY);
 				this.roomContainer.x -= diffX;
 				this.roomContainer.y -= diffY;
-				this.lastMouseX = event.touches[0].clientX;
-				this.lastMouseY = event.touches[0].clientY;
+				this.lastMouseX = firstTouch.clientX;
+				this.lastMouseY = firstTouch.clientY;
 			}
 		});
 		view.addEventListener("touchend", () => {
@@ -190,7 +213,7 @@ export default class GameEngine {
 		});
 	}
 
-	centerCamera(): void {
+	public centerCamera(): void {
 		if (this.currentModel == null) return;
 		const model = this.currentModel;
 		const doorCoords = tileToLocal(model.doorX, model.doorY, 0);
@@ -203,14 +226,14 @@ export default class GameEngine {
 		);
 	}
 
-	loadRoom(model: RoomModel): void {
+	public loadRoom(model: RoomModel): void {
 		this.clearRoom();
 		this.currentModel = model;
 
 		let maxHeight = 1;
-		for (let i = 0; i < model.maxX; i++) {
-			for (let j = 0; j < model.maxY; j++) {
-				const tile = model.getTile(i, j);
+		for (let index = 0; index < model.maxX; index++) {
+			for (let index_ = 0; index_ < model.maxY; index_++) {
+				const tile = model.getTile(index, index_);
 				if (tile > maxHeight) maxHeight = tile;
 			}
 		}
@@ -221,41 +244,50 @@ export default class GameEngine {
 		this.centerCamera();
 	}
 
-	clearRoom(): void {
+	public clearRoom(): void {
 		this.roomContainer.removeChildren();
 		this.avatars.clear();
 		this.currentModel = null;
 	}
 
-	renderWalls(model: RoomModel, maxHeight: number): void {
+	public renderWalls(model: RoomModel, maxHeight: number): void {
 		let minY = model.maxX;
 
-		for (let i = 0; i < model.maxX; i++) {
-			for (let j = 0; j < model.maxY; j++) {
-				const tile = model.getTile(i, j);
-				if ((model.doorX !== i || model.doorY !== j) && tile > 0 && j <= minY) {
-					if (minY > j) minY = j;
+		for (let index = 0; index < model.maxX; index++) {
+			for (let index_ = 0; index_ < model.maxY; index_++) {
+				const tile = model.getTile(index, index_);
+				if (
+					(model.doorX !== index || model.doorY !== index_) &&
+					tile > 0 &&
+					index_ <= minY
+				) {
+					if (minY > index_) minY = index_;
 					const wallTexture = this.roomImager.generateRoomWallR(
 						maxHeight - tile
 					);
 					const wallSprite = new Sprite(wallTexture);
-					const localPosition = tileToLocal(i, j + 1, maxHeight - 1);
+					const localPosition = tileToLocal(index, index_ + 1, maxHeight - 1);
 					wallSprite.x = localPosition.x + ROOM_WALL_R_OFFSET_X;
 					wallSprite.y = localPosition.y + ROOM_WALL_R_OFFSET_Y + 4;
-					wallSprite.zIndex = calculateZIndex(i, j + 1, 0, PRIORITY_WALL);
+					wallSprite.zIndex = calculateZIndex(
+						index,
+						index_ + 1,
+						0,
+						PRIORITY_WALL
+					);
 					this.roomContainer.addChild(wallSprite);
 				}
 			}
 		}
 
-		for (let j = 0; j < model.maxY; j++) {
-			for (let i = 0; i < model.maxX; i++) {
-				const tile = model.getTile(i, j);
-				if ((model.doorX !== i || model.doorY !== j) && tile > 0) {
+		for (let index = 0; index < model.maxY; index++) {
+			for (let index_ = 0; index_ < model.maxX; index_++) {
+				const tile = model.getTile(index_, index);
+				if ((model.doorX !== index_ || model.doorY !== index) && tile > 0) {
 					let wallTexture: Texture;
-					if (j === model.doorY) {
+					if (index === model.doorY) {
 						wallTexture = this.roomImager.generateRoomDoorL();
-					} else if (j === model.doorY - 1) {
+					} else if (index === model.doorY - 1) {
 						wallTexture = this.roomImager.generateRoomDoorBeforeL(
 							maxHeight - tile
 						);
@@ -263,10 +295,10 @@ export default class GameEngine {
 						wallTexture = this.roomImager.generateRoomWallL(maxHeight - tile);
 					}
 					const wallSprite = new Sprite(wallTexture);
-					const localPosition = tileToLocal(i, j, maxHeight - 1);
+					const localPosition = tileToLocal(index_, index, maxHeight - 1);
 					wallSprite.x = localPosition.x + ROOM_WALL_L_OFFSET_X;
 					wallSprite.y = localPosition.y + ROOM_WALL_L_OFFSET_Y + 4;
-					wallSprite.zIndex = calculateZIndex(i, j, 0, PRIORITY_WALL);
+					wallSprite.zIndex = calculateZIndex(index_, index, 0, PRIORITY_WALL);
 					this.roomContainer.addChild(wallSprite);
 					break;
 				}
@@ -274,44 +306,47 @@ export default class GameEngine {
 		}
 	}
 
-	renderFloor(model: RoomModel): void {
+	public renderFloor(model: RoomModel): void {
 		const { roomTileTexture, roomStairLTexture, roomStairRTexture } =
 			this.roomImager;
 		if (!roomTileTexture) return;
 
-		for (let i = 0; i < model.maxX; i++) {
-			for (let j = 0; j < model.maxY; j++) {
-				const tile = model.getTile(i, j);
+		for (let index = 0; index < model.maxX; index++) {
+			for (let index_ = 0; index_ < model.maxY; index_++) {
+				const tile = model.getTile(index, index_);
 				if (tile > 0) {
 					let texture = roomTileTexture;
 
-					if (model.isValidTile(i + 1, j) && model.getTile(i + 1, j) < tile) {
+					if (
+						model.isValidTile(index + 1, index_) &&
+						model.getTile(index + 1, index_) < tile
+					) {
 						if (roomStairLTexture) texture = roomStairLTexture;
 					} else if (
-						model.isValidTile(i - 1, j) &&
-						model.getTile(i - 1, j) > tile
+						model.isValidTile(index - 1, index_) &&
+						model.getTile(index - 1, index_) > tile
 					) {
 						continue;
 					} else if (
-						model.isValidTile(i, j - 1) &&
-						model.getTile(i, j - 1) > tile
+						model.isValidTile(index, index_ - 1) &&
+						model.getTile(index, index_ - 1) > tile
 					) {
 						continue;
 					} else if (
-						model.isValidTile(i, j + 1) &&
-						model.getTile(i, j + 1) < tile
+						model.isValidTile(index, index_ + 1) &&
+						model.getTile(index, index_ + 1) < tile
 					) {
 						if (roomStairRTexture) {
 							texture = roomStairRTexture;
 							const floorSprite = new Sprite(texture);
-							const localPosition = tileToLocal(i, j, tile - 1);
+							const localPosition = tileToLocal(index, index_, tile - 1);
 							floorSprite.x = localPosition.x - 34;
 							floorSprite.y = localPosition.y;
 							floorSprite.zIndex = calculateZIndex(
-								i,
-								j,
+								index,
+								index_,
 								0,
-								model.doorX === i && model.doorY === j
+								model.doorX === index && model.doorY === index_
 									? PRIORITY_DOOR_FLOOR
 									: PRIORITY_FLOOR
 							);
@@ -321,14 +356,14 @@ export default class GameEngine {
 					}
 
 					const floorSprite = new Sprite(texture);
-					const localPosition = tileToLocal(i, j, tile - 1);
+					const localPosition = tileToLocal(index, index_, tile - 1);
 					floorSprite.x = localPosition.x;
 					floorSprite.y = localPosition.y;
 					floorSprite.zIndex = calculateZIndex(
-						i,
-						j,
+						index,
+						index_,
 						0,
-						model.doorX === i && model.doorY === j
+						model.doorX === index && model.doorY === index_
 							? PRIORITY_DOOR_FLOOR
 							: PRIORITY_FLOOR
 					);
@@ -338,7 +373,7 @@ export default class GameEngine {
 		}
 	}
 
-	async addAvatar(
+	public async addAvatar(
 		id: number,
 		name: string,
 		figure: string,
@@ -381,6 +416,18 @@ export default class GameEngine {
 			loaded: false,
 			frame: 0,
 			frameCounter: 0,
+			action: "idle",
+			path: [],
+			walkProgress: 0,
+			previousX: x,
+			previousY: y,
+			previousZ: effectiveZ,
+			targetX: x,
+			targetY: y,
+			targetZ: effectiveZ,
+			idleTimer: 0,
+			waveTimer: 0,
+			autonomy: false,
 		};
 
 		this.avatars.set(id, avatar);
@@ -396,7 +443,7 @@ export default class GameEngine {
 		this.updateAvatarTexture(avatar);
 	}
 
-	async loadAvatarTextures(avatar: RoomAvatar): Promise<void> {
+	public async loadAvatarTextures(avatar: RoomAvatar): Promise<void> {
 		const directions: Array<Direction> = [0, 1, 2, 3, 4, 5, 6, 7];
 		const promises: Array<Promise<void>> = [];
 
@@ -404,23 +451,25 @@ export default class GameEngine {
 			promises.push(this.loadBodyTexture(avatar, direction, ["std"], 0));
 			promises.push(this.loadHeadTexture(avatar, direction, "std", 0));
 			promises.push(this.loadHeadTexture(avatar, direction, "eyb", 0));
-			for (let j = 0; j <= 3; j++) {
-				promises.push(this.loadBodyTexture(avatar, direction, ["wlk"], j));
+			for (let index = 0; index <= 3; index++) {
+				promises.push(this.loadBodyTexture(avatar, direction, ["wlk"], index));
 			}
-			for (let j = 0; j <= 1; j++) {
-				promises.push(this.loadBodyTexture(avatar, direction, ["wav"], j));
-				promises.push(this.loadHeadTexture(avatar, direction, "spk", j));
+			for (let index = 0; index <= 1; index++) {
+				promises.push(this.loadBodyTexture(avatar, direction, ["wav"], index));
+				promises.push(this.loadHeadTexture(avatar, direction, "spk", index));
 			}
 		}
 
-		for (let i = 0; i <= 7; i += 2) {
-			promises.push(this.loadBodyTexture(avatar, i as Direction, ["sit"], 0));
+		for (let index = 0; index <= 7; index += 2) {
+			promises.push(
+				this.loadBodyTexture(avatar, index as Direction, ["sit"], 0)
+			);
 		}
 
 		await Promise.all(promises);
 	}
 
-	async loadBodyTexture(
+	public async loadBodyTexture(
 		avatar: RoomAvatar,
 		direction: Direction,
 		action: Array<string>,
@@ -437,12 +486,13 @@ export default class GameEngine {
 			true,
 			"n"
 		);
+		const { bodyTextures } = avatar;
 		const image = await this.avatarImager.generateGeneric(info, false);
 		const key = `${direction}_${action.join("-")}_${frame}`;
-		avatar.bodyTextures[key] = Texture.from(image);
+		bodyTextures[key] = Texture.from(image);
 	}
 
-	async loadHeadTexture(
+	public async loadHeadTexture(
 		avatar: RoomAvatar,
 		direction: Direction,
 		gesture: string,
@@ -459,31 +509,47 @@ export default class GameEngine {
 			false,
 			"n"
 		);
+		const { headTextures } = avatar;
 		const image = await this.avatarImager.generateGeneric(info, false);
 		const key = `${direction}_${gesture}_${frame}`;
-		avatar.headTextures[key] = Texture.from(image);
+		headTextures[key] = Texture.from(image);
 	}
 
-	updateAvatarTexture(avatar: RoomAvatar): void {
+	public updateAvatarTexture(avatar: RoomAvatar): void {
 		if (!avatar.loaded) return;
 
-		const bodyKey = `${avatar.direction}_std_0`;
-		const headKey = `${avatar.direction}_std_0`;
+		let bodyKey: string;
+		let headGesture: string;
+		let headFrame = 0;
 
-		const gesture = avatar.frame % 40 < 2 ? "eyb" : "std";
-		const headGestureKey = `${avatar.direction}_${gesture}_0`;
+		if (avatar.action === "walking") {
+			const walkFrame = avatar.frame % 4;
+			bodyKey = `${avatar.direction}_wlk_${walkFrame}`;
+			headGesture = "std";
+		} else if (avatar.action === "waving") {
+			const waveFrame = avatar.frame % 2;
+			bodyKey = `${avatar.direction}_wav_${waveFrame}`;
+			headGesture = "spk";
+			headFrame = avatar.frame % 2;
+		} else {
+			bodyKey = `${avatar.direction}_std_0`;
+			headGesture = avatar.frame % 40 < 2 ? "eyb" : "std";
+		}
+
+		const headKey = `${avatar.direction}_${headGesture}_${headFrame}`;
+		const headFallback = `${avatar.direction}_std_0`;
 
 		if (avatar.bodyTextures[bodyKey]) {
 			avatar.bodySprite.texture = avatar.bodyTextures[bodyKey];
 		}
-		if (avatar.headTextures[headGestureKey]) {
-			avatar.headSprite.texture = avatar.headTextures[headGestureKey];
-		} else if (avatar.headTextures[headKey]) {
+		if (avatar.headTextures[headKey]) {
 			avatar.headSprite.texture = avatar.headTextures[headKey];
+		} else if (avatar.headTextures[headFallback]) {
+			avatar.headSprite.texture = avatar.headTextures[headFallback];
 		}
 	}
 
-	updateAvatarSpritePosition(avatar: RoomAvatar): void {
+	public updateAvatarSpritePosition(avatar: RoomAvatar): void {
 		const localPosition = tileToLocal(avatar.x, avatar.y, avatar.z);
 		const offsetX =
 			avatar.direction === 6 || avatar.direction === 5 || avatar.direction === 4
@@ -512,7 +578,7 @@ export default class GameEngine {
 		);
 	}
 
-	removeAvatar(id: number): void {
+	public removeAvatar(id: number): void {
 		const avatar = this.avatars.get(id);
 		if (avatar) {
 			this.roomContainer.removeChild(avatar.container);
@@ -521,7 +587,12 @@ export default class GameEngine {
 		}
 	}
 
-	moveAvatar(id: number, x: number, y: number, direction: Direction): void {
+	public moveAvatar(
+		id: number,
+		x: number,
+		y: number,
+		direction: Direction
+	): void {
 		const avatar = this.avatars.get(id);
 		if (avatar && this.currentModel) {
 			avatar.x = x;
@@ -535,7 +606,7 @@ export default class GameEngine {
 		}
 	}
 
-	setAvatarDirection(id: number, direction: Direction): void {
+	public setAvatarDirection(id: number, direction: Direction): void {
 		const avatar = this.avatars.get(id);
 		if (avatar) {
 			avatar.direction = direction;
@@ -544,7 +615,149 @@ export default class GameEngine {
 		}
 	}
 
-	gameLoop = (delta: number): void => {
+	public enableAutonomy(id: number): void {
+		const avatar = this.avatars.get(id);
+		if (avatar) {
+			avatar.autonomy = true;
+			avatar.idleTimer = randomBetween(IDLE_MIN_MS, IDLE_MAX_MS);
+		}
+	}
+
+	public disableAutonomy(id: number): void {
+		const avatar = this.avatars.get(id);
+		if (avatar) {
+			avatar.autonomy = false;
+			avatar.action = "idle";
+			avatar.path = [];
+		}
+	}
+
+	private directionFromDelta(dx: number, dy: number): Direction {
+		if (dx === 0 && dy === -1) return 0;
+		if (dx === 1 && dy === -1) return 1;
+		if (dx === 1 && dy === 0) return 2;
+		if (dx === 1 && dy === 1) return 3;
+		if (dx === 0 && dy === 1) return 4;
+		if (dx === -1 && dy === 1) return 5;
+		if (dx === -1 && dy === 0) return 6;
+		if (dx === -1 && dy === -1) return 7;
+		return 2;
+	}
+
+	private beginNextWalkStep(avatar: RoomAvatar): void {
+		if (avatar.path.length === 0) {
+			avatar.action = "idle";
+			avatar.idleTimer = randomBetween(IDLE_MIN_MS, IDLE_MAX_MS);
+			return;
+		}
+
+		const next = avatar.path.shift()!;
+		avatar.previousX = avatar.x;
+		avatar.previousY = avatar.y;
+		avatar.previousZ = avatar.z;
+		avatar.targetX = next.x;
+		avatar.targetY = next.y;
+		avatar.targetZ = this.currentModel
+			? this.currentModel.getTile(next.x, next.y) - 1
+			: 0;
+		avatar.walkProgress = 0;
+
+		const dx = Math.sign(next.x - avatar.previousX);
+		const dy = Math.sign(next.y - avatar.previousY);
+		avatar.direction = this.directionFromDelta(dx, dy);
+	}
+
+	private updateWalking(avatar: RoomAvatar, deltaMs: number): void {
+		avatar.walkProgress += deltaMs / WALK_STEP_DURATION;
+
+		if (avatar.walkProgress >= 1) {
+			avatar.x = avatar.targetX;
+			avatar.y = avatar.targetY;
+			avatar.z = avatar.targetZ;
+			this.updateAvatarSpritePosition(avatar);
+			this.beginNextWalkStep(avatar);
+			return;
+		}
+
+		const t = avatar.walkProgress;
+		const visualX = avatar.previousX + (avatar.targetX - avatar.previousX) * t;
+		const visualY = avatar.previousY + (avatar.targetY - avatar.previousY) * t;
+		const visualZ = avatar.previousZ + (avatar.targetZ - avatar.previousZ) * t;
+
+		const localPosition = tileToLocal(visualX, visualY, visualZ);
+		const offsetX =
+			avatar.direction === 6 || avatar.direction === 5 || avatar.direction === 4
+				? ROOM_USER_SPRITE_OFFSET_X
+				: 0;
+		avatar.container.x = Math.round(localPosition.x + offsetX);
+		avatar.container.y = Math.round(
+			localPosition.y + ROOM_USER_SPRITE_OFFSET_Y
+		);
+
+		avatar.shadowSprite.x = localPosition.x;
+		avatar.shadowSprite.y = localPosition.y;
+
+		const sortX = Math.round(visualX);
+		const sortY = Math.round(visualY);
+		avatar.shadowSprite.zIndex = calculateZIndex(sortX, sortY, 0, PRIORITY_PLAYER_SHADOW);
+		avatar.container.zIndex = calculateZIndex(sortX, sortY, avatar.z, PRIORITY_PLAYER);
+	}
+
+	private updateAutonomy(avatar: RoomAvatar, deltaMs: number): void {
+		if (!avatar.autonomy || !this.currentModel) return;
+
+		if (avatar.action === "waving") {
+			avatar.waveTimer -= deltaMs;
+			if (avatar.waveTimer <= 0) {
+				avatar.action = "idle";
+				avatar.idleTimer = randomBetween(IDLE_MIN_MS, IDLE_MAX_MS);
+			}
+			return;
+		}
+
+		if (avatar.action !== "idle") return;
+
+		avatar.idleTimer -= deltaMs;
+		if (avatar.idleTimer > 0) return;
+
+		const roll = Math.random();
+		if (roll < 0.2) {
+			avatar.action = "waving";
+			avatar.waveTimer = 1500;
+			return;
+		}
+		if (roll < 0.35) {
+			const newDirection = Math.floor(Math.random() * 8) as Direction;
+			avatar.direction = newDirection;
+			avatar.idleTimer = randomBetween(IDLE_MIN_MS, IDLE_MAX_MS);
+			return;
+		}
+
+		const tiles = this.currentModel.getValidTiles();
+		if (tiles.length === 0) return;
+
+		for (let attempt = 0; attempt < 10; attempt++) {
+			const target = tiles[Math.floor(Math.random() * tiles.length)]!;
+			if (target.x === avatar.x && target.y === avatar.y) continue;
+
+			const path = this.currentModel.findPath(
+				avatar.x,
+				avatar.y,
+				target.x,
+				target.y
+			);
+			if (path && path.length > 0 && path.length <= 12) {
+				avatar.path = path;
+				avatar.action = "walking";
+				this.beginNextWalkStep(avatar);
+				return;
+			}
+		}
+
+		avatar.idleTimer = randomBetween(IDLE_MIN_MS, IDLE_MAX_MS);
+	}
+
+	public gameLoop = (delta: number): void => {
 		if (this._destroyed) return;
 		const deltaMs = delta * (1 / 60) * 1000;
 		for (const avatar of this.avatars.values()) {
@@ -554,10 +767,16 @@ export default class GameEngine {
 				avatar.frameCounter = 0;
 				this.updateAvatarTexture(avatar);
 			}
+
+			if (avatar.action === "walking") {
+				this.updateWalking(avatar, deltaMs);
+			}
+
+			this.updateAutonomy(avatar, deltaMs);
 		}
 	};
 
-	destroy(): void {
+	public destroy(): void {
 		this._destroyed = true;
 		this.app.destroy(true, { children: true, texture: true });
 	}
