@@ -24,10 +24,10 @@ export const Home = (): FunctionComponent => {
 
 	return (
 		<div
-			className={`font-body relative min-h-screen w-full flex flex-col items-center justify-center gap-10 sm:gap-12 px-4 py-16 sm:px-6 transition-colors ${isDark ? "bg-black" : "bg-white"}`}
+			className={`font-body relative min-h-screen w-full flex flex-col items-center justify-center gap-10 sm:gap-12 px-4 py-32 sm:py-40 sm:px-6 transition-colors ${isDark ? "bg-black" : "bg-white"}`}
 		>
 			<div
-				className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+				className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
 			>
 				<img
 					alt=""
@@ -58,7 +58,7 @@ export const Home = (): FunctionComponent => {
 				</button>
 			</div>
 
-			<div className="relative z-10 flex flex-col items-center gap-3">
+			<div className="relative z-1 flex flex-col items-center gap-3">
 				<h1
 					className={`font-heading text-2xl sm:text-4xl font-bold uppercase tracking-tight text-center ${isDark ? "text-white" : "text-black"}`}
 				>
@@ -103,7 +103,7 @@ export const Home = (): FunctionComponent => {
 
 			<AgentOnboarding isDark={isDark} />
 
-			<div className="py-16 sm:py-24" />
+			<div className="py-24 sm:py-36" />
 
 			<Stats isDark={isDark} />
 
