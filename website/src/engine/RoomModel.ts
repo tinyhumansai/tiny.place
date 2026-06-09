@@ -69,7 +69,11 @@ export default class RoomModel {
 		];
 
 		const visited = new Set<string>();
-		const queue: Array<{ x: number; y: number; path: Array<{ x: number; y: number }> }> = [];
+		const queue: Array<{
+			x: number;
+			y: number;
+			path: Array<{ x: number; y: number }>;
+		}> = [];
 		const startKey = `${startX},${startY}`;
 		visited.add(startKey);
 		queue.push({ x: startX, y: startY, path: [] });
@@ -84,11 +88,7 @@ export default class RoomModel {
 
 				if (visited.has(key) || !this.isValidTile(nx, ny)) continue;
 
-				if (
-					blockedTiles?.has(key) &&
-					!(nx === endX && ny === endY)
-				)
-					continue;
+				if (blockedTiles?.has(key) && !(nx === endX && ny === endY)) continue;
 
 				const heightDifference = Math.abs(
 					this.getTile(nx, ny) - this.getTile(current.x, current.y)

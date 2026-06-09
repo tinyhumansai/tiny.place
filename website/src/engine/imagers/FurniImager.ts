@@ -52,7 +52,10 @@ interface AtlasFrame {
 interface FurniOffset {
 	assets: Record<string, FurniOffsetAsset>;
 	visualization: { 1: FurniVisualization; 64: FurniVisualization };
-	logic: { dimensions: { x: number; y: number; z: number }; directions: Array<number> };
+	logic: {
+		dimensions: { x: number; y: number; z: number };
+		directions: Array<number>;
+	};
 	index: { type: string; visualization: string; logic: string };
 	atlas: { frames: Record<string, AtlasFrame>; meta: unknown };
 }
@@ -205,9 +208,7 @@ export default class FurniImager {
 		return sprites;
 	}
 
-	private _getMaxFrames(
-		visualization: FurniVisualization
-	): number {
+	private _getMaxFrames(visualization: FurniVisualization): number {
 		if (!visualization.animations) return 0;
 		let max = 0;
 		for (const animation of Object.values(visualization.animations)) {
@@ -363,9 +364,7 @@ export default class FurniImager {
 			}
 
 			const layerName =
-				layerIndex === -1
-					? "sd"
-					: String.fromCharCode(97 + layerIndex);
+				layerIndex === -1 ? "sd" : String.fromCharCode(97 + layerIndex);
 			const resourceName = `${itemName}_64_${layerName}_${direction}_${layerFrame}`;
 			const spriteName = `${resourceName}.png`;
 
@@ -393,9 +392,7 @@ export default class FurniImager {
 		return chunks;
 	}
 
-	private _flipImage(
-		image: HTMLCanvasElement
-	): HTMLCanvasElement | null {
+	private _flipImage(image: HTMLCanvasElement): HTMLCanvasElement | null {
 		const canvas = document.createElement("canvas");
 		const context = canvas.getContext("2d");
 		if (!context) return null;
@@ -428,9 +425,7 @@ export default class FurniImager {
 
 		for (let index = 0; index < imageData.data.length; index += 4) {
 			if (imageData.data[index + 3]! !== 0) {
-				imageData.data[index] = Math.round(
-					(r * imageData.data[index]!) / 255
-				);
+				imageData.data[index] = Math.round((r * imageData.data[index]!) / 255);
 				imageData.data[index + 1] = Math.round(
 					(g * imageData.data[index + 1]!) / 255
 				);

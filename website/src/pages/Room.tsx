@@ -12,26 +12,46 @@ import {
 const DEFAULT_FIGURE =
 	"hd-190-10.lg-3023-1408.ch-215-91.hr-893-45.ha-1003-1408";
 
-const FIGURE_PARTS: Record<string, { ids: Array<number>; palette: Array<number> }> = {
+const FIGURE_PARTS: Record<
+	string,
+	{ ids: Array<number>; palette: Array<number> }
+> = {
 	hd: {
 		ids: [180, 185, 190, 195, 200, 205, 600, 605, 610, 615, 620, 625],
 		palette: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
 	},
 	hr: {
-		ids: [100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 177, 828, 829, 890, 891, 893],
+		ids: [
+			100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170,
+			175, 177, 828, 829, 890, 891, 893,
+		],
 		palette: [31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45],
 	},
 	ch: {
-		ids: [210, 215, 220, 225, 230, 235, 240, 245, 250, 255, 265, 630, 635, 640, 645, 650, 655, 660, 665, 670],
-		palette: [62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91],
+		ids: [
+			210, 215, 220, 225, 230, 235, 240, 245, 250, 255, 265, 630, 635, 640, 645,
+			650, 655, 660, 665, 670,
+		],
+		palette: [
+			62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 80, 81, 82, 83,
+			84, 85, 86, 87, 88, 89, 90, 91,
+		],
 	},
 	lg: {
-		ids: [270, 275, 280, 281, 285, 695, 696, 700, 705, 710, 715, 720, 3006, 3023],
-		palette: [62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 1408],
+		ids: [
+			270, 275, 280, 281, 285, 695, 696, 700, 705, 710, 715, 720, 3006, 3023,
+		],
+		palette: [
+			62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 80, 81, 82, 83, 84, 85, 86, 87,
+			88, 89, 90, 91, 1408,
+		],
 	},
 	ha: {
 		ids: [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1012, 1013, 1014],
-		palette: [62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 1408],
+		palette: [
+			62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 80, 81, 82, 83, 84, 85, 86, 87,
+			88, 89, 90, 91, 1408,
+		],
 	},
 };
 
@@ -46,13 +66,17 @@ function generateRandomFigure(): string {
 
 	for (const type of required) {
 		const config = FIGURE_PARTS[type]!;
-		parts.push(`${type}-${pickRandom(config.ids)}-${pickRandom(config.palette)}`);
+		parts.push(
+			`${type}-${pickRandom(config.ids)}-${pickRandom(config.palette)}`
+		);
 	}
 
 	if (Math.random() < 0.4) {
 		for (const type of optional) {
 			const config = FIGURE_PARTS[type]!;
-			parts.push(`${type}-${pickRandom(config.ids)}-${pickRandom(config.palette)}`);
+			parts.push(
+				`${type}-${pickRandom(config.ids)}-${pickRandom(config.palette)}`
+			);
 		}
 	}
 
@@ -181,47 +205,40 @@ export function Room(): FunctionComponent {
 		[avatarX, avatarY, avatarDirection]
 	);
 
-	const handlePopulate = useCallback(
-		(count: number) => {
-			const engine = engineRef.current;
-			if (!engine?.currentModel) return;
+	const handlePopulate = useCallback((count: number) => {
+		const engine = engineRef.current;
+		if (!engine?.currentModel) return;
 
-			const validTiles = engine.currentModel.getValidTiles();
-			const blocked = new Set<string>();
-			for (const [, furni] of engine.furniture) {
-				for (const tile of furni.occupiedTiles) {
-					blocked.add(`${tile.x},${tile.y}`);
-				}
+		const validTiles = engine.currentModel.getValidTiles();
+		const blocked = new Set<string>();
+		for (const [, furni] of engine.furniture) {
+			for (const tile of furni.occupiedTiles) {
+				blocked.add(`${tile.x},${tile.y}`);
 			}
-			const freeTiles = validTiles.filter(
-				(t) => !blocked.has(`${t.x},${t.y}`)
-			);
-			const spawnTiles = freeTiles.length > 0 ? freeTiles : validTiles;
+		}
+		const freeTiles = validTiles.filter((t) => !blocked.has(`${t.x},${t.y}`));
+		const spawnTiles = freeTiles.length > 0 ? freeTiles : validTiles;
 
-			const newAvatars: Array<{ id: number; name: string; figure: string }> =
-				[];
+		const newAvatars: Array<{ id: number; name: string; figure: string }> = [];
 
-			for (let index = 0; index < count; index++) {
-				const id = nextAvatarId++;
-				const figure = generateRandomFigure();
-				const name = `Avatar ${id}`;
-				const tile =
-					spawnTiles[Math.floor(Math.random() * spawnTiles.length)]!;
-				const direction = (Math.floor(Math.random() * 8)) as Direction;
+		for (let index = 0; index < count; index++) {
+			const id = nextAvatarId++;
+			const figure = generateRandomFigure();
+			const name = `Avatar ${id}`;
+			const tile = spawnTiles[Math.floor(Math.random() * spawnTiles.length)]!;
+			const direction = Math.floor(Math.random() * 8) as Direction;
 
-				void engine
-					.addAvatar(id, name, figure, tile.x, tile.y, 0, direction)
-					.then(() => {
-						engine.enableAutonomy(id);
-					});
+			void engine
+				.addAvatar(id, name, figure, tile.x, tile.y, 0, direction)
+				.then(() => {
+					engine.enableAutonomy(id);
+				});
 
-				newAvatars.push({ id, name, figure });
-			}
+			newAvatars.push({ id, name, figure });
+		}
 
-			setAvatarList((previous) => [...previous, ...newAvatars]);
-		},
-		[]
-	);
+		setAvatarList((previous) => [...previous, ...newAvatars]);
+	}, []);
 
 	const handleClearRoom = useCallback(() => {
 		const engine = engineRef.current;
@@ -344,9 +361,7 @@ export function Room(): FunctionComponent {
 									engine.removeFurniture(id);
 								}
 								engine.placeRandomFurniture(
-									Math.floor(
-										engine.currentModel.getValidTiles().length / 8
-									)
+									Math.floor(engine.currentModel.getValidTiles().length / 8)
 								);
 							}}
 						>
