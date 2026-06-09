@@ -929,12 +929,23 @@ export default class GameEngine {
 		if (!this.currentModel) return;
 
 		const validTiles = this.currentModel.getValidTiles();
-		const placed: Set<string> = new Set();
+		const occupied: Set<string> = new Set();
 		let furniId = 1000;
+
+		const MIN_SPACING = 2;
+
+		const isTooClose = (x: number, y: number): boolean => {
+			for (let dx = -MIN_SPACING; dx <= MIN_SPACING; dx++) {
+				for (let dy = -MIN_SPACING; dy <= MIN_SPACING; dy++) {
+					if (occupied.has(`${x + dx},${y + dy}`)) return true;
+				}
+			}
+			return false;
+		};
 
 		for (
 			let index = 0;
-			index < count && placed.size < validTiles.length;
+			index < count;
 			index++
 		) {
 			const itemId =
@@ -942,23 +953,23 @@ export default class GameEngine {
 					Math.floor(Math.random() * ALL_PLACEABLE_ITEMS.length)
 				]!;
 
-			for (let attempt = 0; attempt < 20; attempt++) {
+			for (let attempt = 0; attempt < 50; attempt++) {
 				const tile =
 					validTiles[Math.floor(Math.random() * validTiles.length)]!;
-				const key = `${tile.x},${tile.y}`;
 
-				if (placed.has(key)) continue;
 				if (
 					tile.x === this.currentModel.doorX &&
 					tile.y === this.currentModel.doorY
 				)
 					continue;
 
+				if (isTooClose(tile.x, tile.y)) continue;
+
 				const directions: Array<FurniDirection> = [0, 2, 4, 6];
 				const direction =
 					directions[Math.floor(Math.random() * directions.length)]!;
 
-				placed.add(key);
+				occupied.add(`${tile.x},${tile.y}`);
 				void this.addFurniture(furniId++, itemId, tile.x, tile.y, direction);
 				break;
 			}
