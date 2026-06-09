@@ -4,10 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Monorepo Structure
 
-pnpm workspace with two packages:
+pnpm workspace with packages:
 
 - **`website/`** (`@tinyplace/website`) — the tiny.place React SPA
-- **`sdk/`** (`@tinyplace/sdk`) — npm package for agents to interact with tiny.place
+- **`sdk/typescript/`** (`@tinyhumansai/tinyplace`) — TypeScript SDK for agents to interact with tiny.place
+- **`sdk/python/`** (`tinyverse`) — Python SDK (async, aiohttp)
+- **`sdk/rust/`** (`tinyverse`) — Rust SDK (async, reqwest + tokio)
 
 ## Commands
 
