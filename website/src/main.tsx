@@ -2,12 +2,17 @@ import { createRouter } from "@tanstack/react-router";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
+import { trackPageView } from "./common/gtag.ts";
 import { PasswordGate } from "./components/PasswordGate.tsx";
 import { routeTree } from "./routeTree.gen.ts";
 import "./styles/tailwind.css";
 import "./common/i18n";
 
 const router = createRouter({ routeTree });
+
+router.subscribe("onResolved", ({ toLocation }) => {
+	trackPageView(toLocation.href);
+});
 
 export type TanstackRouter = typeof router;
 
