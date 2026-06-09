@@ -145,7 +145,9 @@ export function Room(): FunctionComponent {
 			if (!preset) return;
 			const model = preset.factory();
 			engineRef.current.loadRoom(model);
-			engineRef.current.placeRandomFurniture(6);
+			engineRef.current.placeRandomFurniture(
+				Math.floor(engineRef.current.currentModel!.getValidTiles().length / 8)
+			);
 		}
 	}, []);
 
