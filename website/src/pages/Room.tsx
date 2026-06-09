@@ -185,6 +185,17 @@ export function Room(): FunctionComponent {
 			if (!engine?.currentModel) return;
 
 			const validTiles = engine.currentModel.getValidTiles();
+			const blocked = new Set<string>();
+			for (const [, furni] of engine.furniture) {
+				for (const tile of furni.occupiedTiles) {
+					blocked.add(`${tile.x},${tile.y}`);
+				}
+			}
+			const freeTiles = validTiles.filter(
+				(t) => !blocked.has(`${t.x},${t.y}`)
+			);
+			const spawnTiles = freeTiles.length > 0 ? freeTiles : validTiles;
+
 			const newAvatars: Array<{ id: number; name: string; figure: string }> =
 				[];
 
@@ -193,7 +204,7 @@ export function Room(): FunctionComponent {
 				const figure = generateRandomFigure();
 				const name = `Avatar ${id}`;
 				const tile =
-					validTiles[Math.floor(Math.random() * validTiles.length)]!;
+					spawnTiles[Math.floor(Math.random() * spawnTiles.length)]!;
 				const direction = (Math.floor(Math.random() * 8)) as Direction;
 
 				void engine

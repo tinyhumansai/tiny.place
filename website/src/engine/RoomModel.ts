@@ -49,7 +49,8 @@ export default class RoomModel {
 		startX: number,
 		startY: number,
 		endX: number,
-		endY: number
+		endY: number,
+		blockedTiles?: Set<string>
 	): Array<{ x: number; y: number }> | null {
 		if (!this.isValidTile(startX, startY) || !this.isValidTile(endX, endY)) {
 			return null;
@@ -82,6 +83,12 @@ export default class RoomModel {
 				const key = `${nx},${ny}`;
 
 				if (visited.has(key) || !this.isValidTile(nx, ny)) continue;
+
+				if (
+					blockedTiles?.has(key) &&
+					!(nx === endX && ny === endY)
+				)
+					continue;
 
 				const heightDifference = Math.abs(
 					this.getTile(nx, ny) - this.getTile(current.x, current.y)

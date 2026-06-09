@@ -984,6 +984,47 @@ export default class GameEngine {
 		return false;
 	}
 
+	private getBlockedTiles(): Set<string> {
+		const blocked = new Set<string>();
+		for (const furni of this.furniture.values()) {
+			for (const tile of furni.occupiedTiles) {
+				blocked.add(`${tile.x},${tile.y}`);
+			}
+		}
+		return blocked;
+	}
+
+	private findAdjacentTile(
+		furni: RoomFurniture
+	): { x: number; y: number } | null {
+		if (!this.currentModel) return null;
+		const blocked = this.getBlockedTiles();
+		const cardinals = [
+			[0, -1],
+			[1, 0],
+			[0, 1],
+			[-1, 0],
+		];
+		const candidates: Array<{ x: number; y: number }> = [];
+
+		for (const tile of furni.occupiedTiles) {
+			for (const [dx, dy] of cardinals) {
+				const nx = tile.x + dx!;
+				const ny = tile.y + dy!;
+				const key = `${nx},${ny}`;
+				if (
+					this.currentModel.isValidTile(nx, ny) &&
+					!blocked.has(key)
+				) {
+					candidates.push({ x: nx, y: ny });
+				}
+			}
+		}
+
+		if (candidates.length === 0) return null;
+		return candidates[Math.floor(Math.random() * candidates.length)]!;
+	}
+
 	private directionTowardFurni(
 		avatarX: number,
 		avatarY: number,
@@ -1022,6 +1063,7 @@ export default class GameEngine {
 		avatar.idleTimer -= deltaMs;
 		if (avatar.idleTimer > 0) return;
 
+		const blocked = this.getBlockedTiles();
 		const roll = Math.random();
 
 		if (roll < 0.3) {
@@ -1032,22 +1074,22 @@ export default class GameEngine {
 			if (available.length > 0) {
 				const target =
 					available[Math.floor(Math.random() * available.length)]!;
-				const sitTile = target.occupiedTiles[0] ?? {
-					x: target.x,
-					y: target.y,
-				};
-				const path = this.currentModel.findPath(
-					avatar.x,
-					avatar.y,
-					sitTile.x,
-					sitTile.y
-				);
-				if (path && path.length > 0 && path.length <= 15) {
-					avatar.path = path;
-					avatar.action = "walking";
-					avatar.sittingOnFurni = target.id;
-					this.beginNextWalkStep(avatar);
-					return;
+				const adjacentTile = this.findAdjacentTile(target);
+				if (adjacentTile) {
+					const path = this.currentModel.findPath(
+						avatar.x,
+						avatar.y,
+						adjacentTile.x,
+						adjacentTile.y,
+						blocked
+					);
+					if (path && path.length > 0 && path.length <= 15) {
+						avatar.path = path;
+						avatar.action = "walking";
+						avatar.sittingOnFurni = target.id;
+						this.beginNextWalkStep(avatar);
+						return;
+					}
 				}
 			}
 		}
@@ -1070,12 +1112,14 @@ export default class GameEngine {
 		for (let attempt = 0; attempt < 10; attempt++) {
 			const target = tiles[Math.floor(Math.random() * tiles.length)]!;
 			if (target.x === avatar.x && target.y === avatar.y) continue;
+			if (blocked.has(`${target.x},${target.y}`)) continue;
 
 			const path = this.currentModel.findPath(
 				avatar.x,
 				avatar.y,
 				target.x,
-				target.y
+				target.y,
+				blocked
 			);
 			if (path && path.length > 0 && path.length <= 12) {
 				avatar.path = path;
