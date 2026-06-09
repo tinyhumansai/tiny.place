@@ -120,6 +120,7 @@ export interface RoomAvatar {
 	waveTimer: number;
 	sitTimer: number;
 	sittingOnFurni: number | null;
+	seatZ: number;
 	autonomy: boolean;
 }
 
@@ -485,6 +486,7 @@ export default class GameEngine {
 			waveTimer: 0,
 			sitTimer: 0,
 			sittingOnFurni: null,
+			seatZ: 0,
 			autonomy: false,
 		};
 
@@ -612,7 +614,7 @@ export default class GameEngine {
 	}
 
 	public updateAvatarSpritePosition(avatar: RoomAvatar): void {
-		const localPosition = tileToLocal(avatar.x, avatar.y, avatar.z);
+		const localPosition = tileToLocal(avatar.x, avatar.y, avatar.z + avatar.seatZ);
 		const offsetX =
 			avatar.direction === 6 || avatar.direction === 5 || avatar.direction === 4
 				? ROOM_USER_SPRITE_OFFSET_X
@@ -713,6 +715,9 @@ export default class GameEngine {
 				if (furni) {
 					avatar.action = "sitting";
 					avatar.direction = this._furniSitDirection(furni);
+					avatar.seatZ = furni.furniData
+						? furni.furniData.seatHeight - 1
+						: 0;
 					avatar.sitTimer = randomBetween(3000, 8000);
 					this.updateAvatarSpritePosition(avatar);
 					this.updateAvatarTexture(avatar);
@@ -726,6 +731,7 @@ export default class GameEngine {
 		}
 
 		const next = avatar.path.shift()!;
+		avatar.seatZ = 0;
 		avatar.previousX = avatar.x;
 		avatar.previousY = avatar.y;
 		avatar.previousZ = avatar.z;
@@ -1022,7 +1028,9 @@ export default class GameEngine {
 			if (avatar.sitTimer <= 0) {
 				avatar.action = "idle";
 				avatar.sittingOnFurni = null;
+				avatar.seatZ = 0;
 				avatar.idleTimer = randomBetween(IDLE_MIN_MS, IDLE_MAX_MS);
+				this.updateAvatarSpritePosition(avatar);
 			}
 			return;
 		}

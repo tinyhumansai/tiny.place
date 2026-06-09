@@ -94,6 +94,7 @@ export interface LoadedFurniture {
 	textures: Record<string, FurniTexture>;
 	directions: Array<FurniDirection>;
 	stateCount: number;
+	seatHeight: number;
 }
 
 export default class FurniImager {
@@ -179,7 +180,9 @@ export default class FurniImager {
 			}
 		}
 
-		return { itemId, itemData, textures, directions, stateCount };
+		const seatHeight = offset.logic.dimensions.z ?? 0;
+
+		return { itemId, itemData, textures, directions, stateCount, seatHeight };
 	}
 
 	private _extractSprites(
