@@ -928,7 +928,14 @@ export default class GameEngine {
 	public placeRandomFurniture(count: number): void {
 		if (!this.currentModel) return;
 
-		const validTiles = this.currentModel.getValidTiles();
+		const model = this.currentModel;
+		const interiorTiles = model.getValidTiles().filter(
+			(t) =>
+				model.isValidTile(t.x - 1, t.y) &&
+				model.isValidTile(t.x + 1, t.y) &&
+				model.isValidTile(t.x, t.y - 1) &&
+				model.isValidTile(t.x, t.y + 1)
+		);
 		const occupied: Set<string> = new Set();
 		let furniId = 1000;
 
@@ -955,7 +962,7 @@ export default class GameEngine {
 
 			for (let attempt = 0; attempt < 50; attempt++) {
 				const tile =
-					validTiles[Math.floor(Math.random() * validTiles.length)]!;
+					interiorTiles[Math.floor(Math.random() * interiorTiles.length)]!;
 
 				if (
 					tile.x === this.currentModel.doorX &&
