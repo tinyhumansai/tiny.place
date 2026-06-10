@@ -7,8 +7,21 @@ export { TinyVerseError } from "./http.js";
 export { TinyVerseWebSocket } from "./websocket.js";
 export type { TinyVerseWebSocketOptions, WebSocketEventHandler } from "./websocket.js";
 
-export type { SigningKey, AuthHeaders } from "./auth.js";
-export { buildAuthHeader, signRequest } from "./auth.js";
+export type { SigningKey, AuthHeaders, DirectoryWriteHeaders } from "./auth.js";
+export { buildAuthHeader, signRequest, signDirectoryWrite, signCanonicalPayload } from "./auth.js";
+
+export type { KeyPair } from "./crypto.js";
+export {
+  generateKeyPair,
+  publicKeyToHex,
+  publicKeyToBase64,
+  deriveCryptoId,
+  sha256Hex,
+  canonicalPayload,
+  createSigningKey,
+} from "./crypto.js";
+
+export type { RegisterRequest } from "./api/registry.js";
 
 export { RegistryApi } from "./api/registry.js";
 export { KeysApi } from "./api/keys.js";

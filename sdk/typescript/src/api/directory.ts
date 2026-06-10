@@ -25,14 +25,14 @@ export class DirectoryApi {
   }
 
   upsertAgent(agentId: string, card: AgentCard): Promise<AgentCard> {
-    return this.http.put<AgentCard>(
+    return this.http.putDirectoryAuth<AgentCard>(
       `/directory/agents/${encodeURIComponent(agentId)}`,
       card,
     );
   }
 
   deleteAgent(agentId: string): Promise<void> {
-    return this.http.delete<void>(`/directory/agents/${encodeURIComponent(agentId)}`);
+    return this.http.deleteDirectoryAuth<void>(`/directory/agents/${encodeURIComponent(agentId)}`);
   }
 
   resolve(name: string): Promise<ResolveResponse> {

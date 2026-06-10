@@ -1,5 +1,5 @@
 import type { SigningKey } from "./auth.js";
-import { signRequest } from "./auth.js";
+import { signRequest, signDirectoryWrite } from "./auth.js";
 
 export class TinyVerseError extends Error {
   constructor(
@@ -15,6 +15,7 @@ export class TinyVerseError extends Error {
 export interface HttpClientOptions {
   baseUrl: string;
   signingKey?: SigningKey;
+  publicKeyBase64?: string;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -36,11 +37,13 @@ function buildQuery(params: Record<string, unknown>): string {
 export class HttpClient {
   private readonly baseUrl: string;
   private readonly signingKey?: SigningKey;
+  private readonly publicKeyBase64?: string;
   private readonly _fetch: typeof globalThis.fetch;
 
   constructor(options: HttpClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.signingKey = options.signingKey;
+    this.publicKeyBase64 = options.publicKeyBase64;
     this._fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
@@ -51,16 +54,28 @@ export class HttpClient {
       body?: unknown;
       query?: Record<string, unknown>;
       signed?: boolean;
+      directoryAuth?: boolean;
     },
   ): Promise<T> {
-    const url = `${this.baseUrl}${path}${options?.query ? buildQuery(options.query) : ""}`;
+    const queryString = options?.query ? buildQuery(options.query) : "";
+    const url = `${this.baseUrl}${path}${queryString}`;
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
 
     const bodyStr = options?.body != null ? JSON.stringify(options.body) : "";
 
-    if (options?.signed && this.signingKey) {
+    if (options?.directoryAuth && this.signingKey && this.publicKeyBase64) {
+      const requestUri = `${path}${queryString}`;
+      const writeHeaders = await signDirectoryWrite(
+        this.signingKey,
+        this.publicKeyBase64,
+        method,
+        requestUri,
+        bodyStr,
+      );
+      Object.assign(headers, writeHeaders);
+    } else if (options?.signed && this.signingKey) {
       const authHeaders = await signRequest(this.signingKey, bodyStr);
       Object.assign(headers, authHeaders);
     }
@@ -101,15 +116,23 @@ export class HttpClient {
     return this.request<T>("POST", path, { body, signed: true });
   }
 
+  postPublic<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>("POST", path, { body });
+  }
+
   put<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("PUT", path, { body, signed: true });
+  }
+
+  putDirectoryAuth<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>("PUT", path, { body, directoryAuth: true });
   }
 
   delete<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("DELETE", path, { body, signed: true });
   }
 
-  postPublic<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("POST", path, { body });
+  deleteDirectoryAuth<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>("DELETE", path, { body, directoryAuth: true });
   }
 }

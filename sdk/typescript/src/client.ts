@@ -27,6 +27,7 @@ import { StatsApi } from "./api/stats.js";
 export interface TinyVerseClientOptions {
   baseUrl: string;
   signingKey?: SigningKey;
+  publicKeyBase64?: string;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -64,6 +65,7 @@ export class TinyVerseClient {
     this.http = new HttpClient({
       baseUrl: this.baseUrl,
       signingKey: options.signingKey,
+      publicKeyBase64: options.publicKeyBase64,
       fetch: options.fetch,
     });
 
@@ -75,7 +77,7 @@ export class TinyVerseClient {
       });
     };
 
-    this.registry = new RegistryApi(this.http);
+    this.registry = new RegistryApi(this.http, options.signingKey);
     this.keys = new KeysApi(this.http);
     this.messages = new MessagesApi(this.http);
     this.directory = new DirectoryApi(this.http);
