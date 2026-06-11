@@ -28,6 +28,13 @@ importers:
         version: 0.4.0
 
   sdk/typescript:
+    dependencies:
+      '@noble/curves':
+        specifier: ^2.2.0
+        version: 2.2.0
+      '@noble/hashes':
+        specifier: ^2.2.0
+        version: 2.2.0
     devDependencies:
       '@types/node':
         specifier: ^24.13.1
@@ -37,7 +44,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: 4.0.15
-        version: 4.0.15(@types/node@24.13.1)(jiti@2.7.0)(jsdom@27.4.0)(lightningcss@1.32.0)
+        version: 4.0.15(@types/node@24.13.1)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.2.0))(lightningcss@1.32.0)
 
   website:
     dependencies:
@@ -185,7 +192,7 @@ importers:
         version: 4.3.1(@swc/helpers@0.5.23)(vite@7.2.6(@types/node@24.13.1)(jiti@2.7.0)(lightningcss@1.32.0))
       '@vitest/coverage-v8':
         specifier: 4.0.15
-        version: 4.0.15(vitest@4.0.15(@types/node@24.13.1)(jiti@2.7.0)(jsdom@27.4.0)(lightningcss@1.32.0))
+        version: 4.0.15(vitest@4.0.15(@types/node@24.13.1)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.2.0))(lightningcss@1.32.0))
       autoprefixer:
         specifier: ^10.4.22
         version: 10.5.0(postcss@8.5.15)
@@ -221,7 +228,7 @@ importers:
         version: 16.5.0
       jsdom:
         specifier: ^27.2.0
-        version: 27.4.0
+        version: 27.4.0(@noble/hashes@2.2.0)
       prettier:
         specifier: ^3.7.4
         version: 3.8.3
@@ -248,7 +255,7 @@ importers:
         version: 3.4.0(vite@7.2.6(@types/node@24.13.1)(jiti@2.7.0)(lightningcss@1.32.0))
       vitest:
         specifier: 4.0.15
-        version: 4.0.15(@types/node@24.13.1)(jiti@2.7.0)(jsdom@27.4.0)(lightningcss@1.32.0)
+        version: 4.0.15(@types/node@24.13.1)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.2.0))(lightningcss@1.32.0)
 
 packages:
 
@@ -1104,6 +1111,14 @@ packages:
     resolution: {integrity: sha512-KfmMdidbYzhiUCki1FG4X4nHEFT4loK8G5bMBnmCl9U+S78W+gvkfrgD2Aoqp/Q9yKQvr3Y8UcZKSFZnn3HgjQ==}
     peerDependencies:
       react: ^16.14 || ^17.0 || ^18.0 || ^19.0
+
+  '@noble/curves@2.2.0':
+    resolution: {integrity: sha512-T/BoHgFXirb0ENSPBquzX0rcjXeM6Lo892a2jlYJkqk83LqZx0l1Of7DzlKJ6jkpvMrkHSnAcgb5JegL8SeIkQ==}
+    engines: {node: '>= 20.19.0'}
+
+  '@noble/hashes@2.2.0':
+    resolution: {integrity: sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg==}
+    engines: {node: '>= 20.19.0'}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -5960,7 +5975,9 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
-  '@exodus/bytes@1.15.1': {}
+  '@exodus/bytes@1.15.1(@noble/hashes@2.2.0)':
+    optionalDependencies:
+      '@noble/hashes': 2.2.0
 
   '@faker-js/faker@10.4.0': {}
 
@@ -6289,6 +6306,12 @@ snapshots:
       react: 19.2.7
     transitivePeerDependencies:
       - react-dom
+
+  '@noble/curves@2.2.0':
+    dependencies:
+      '@noble/hashes': 2.2.0
+
+  '@noble/hashes@2.2.0': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -7415,7 +7438,7 @@ snapshots:
     transitivePeerDependencies:
       - '@swc/helpers'
 
-  '@vitest/coverage-v8@4.0.15(vitest@4.0.15(@types/node@24.13.1)(jiti@2.7.0)(jsdom@27.4.0)(lightningcss@1.32.0))':
+  '@vitest/coverage-v8@4.0.15(vitest@4.0.15(@types/node@24.13.1)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.2.0))(lightningcss@1.32.0))':
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
       '@vitest/utils': 4.0.15
@@ -7428,7 +7451,7 @@ snapshots:
       obug: 2.1.2
       std-env: 3.10.0
       tinyrainbow: 3.1.0
-      vitest: 4.0.15(@types/node@24.13.1)(jiti@2.7.0)(jsdom@27.4.0)(lightningcss@1.32.0)
+      vitest: 4.0.15(@types/node@24.13.1)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.2.0))(lightningcss@1.32.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -8838,9 +8861,9 @@ snapshots:
     dependencies:
       parse-passwd: 1.0.0
 
-  html-encoding-sniffer@6.0.0:
+  html-encoding-sniffer@6.0.0(@noble/hashes@2.2.0):
     dependencies:
-      '@exodus/bytes': 1.15.1
+      '@exodus/bytes': 1.15.1(@noble/hashes@2.2.0)
     transitivePeerDependencies:
       - '@noble/hashes'
 
@@ -9157,15 +9180,15 @@ snapshots:
     dependencies:
       argparse: 2.0.1
 
-  jsdom@27.4.0:
+  jsdom@27.4.0(@noble/hashes@2.2.0):
     dependencies:
       '@acemir/cssom': 0.9.31
       '@asamuzakjp/dom-selector': 6.8.1
-      '@exodus/bytes': 1.15.1
+      '@exodus/bytes': 1.15.1(@noble/hashes@2.2.0)
       cssstyle: 5.3.7
       data-urls: 6.0.1
       decimal.js: 10.6.0
-      html-encoding-sniffer: 6.0.0
+      html-encoding-sniffer: 6.0.0(@noble/hashes@2.2.0)
       http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.6
       is-potential-custom-element-name: 1.0.1
@@ -10677,7 +10700,7 @@ snapshots:
       jiti: 2.7.0
       lightningcss: 1.32.0
 
-  vitest@4.0.15(@types/node@24.13.1)(jiti@2.7.0)(jsdom@27.4.0)(lightningcss@1.32.0):
+  vitest@4.0.15(@types/node@24.13.1)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.2.0))(lightningcss@1.32.0):
     dependencies:
       '@vitest/expect': 4.0.15
       '@vitest/mocker': 4.0.15(vite@7.2.6(@types/node@24.13.1)(jiti@2.7.0)(lightningcss@1.32.0))
@@ -10701,7 +10724,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 24.13.1
-      jsdom: 27.4.0
+      jsdom: 27.4.0(@noble/hashes@2.2.0)
     transitivePeerDependencies:
       - jiti
       - less

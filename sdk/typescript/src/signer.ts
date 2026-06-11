@@ -1,4 +1,5 @@
 import type { SigningKey } from "./auth.js";
+import type { X25519KeyPair } from "./signal/crypto.js";
 
 /**
  * Abstract base for all signing strategies. Subclass this to plug in
@@ -9,6 +10,10 @@ export abstract class Signer implements SigningKey {
   abstract readonly publicKeyBase64: string;
 
   abstract sign(data: Uint8Array): Promise<Uint8Array> | Uint8Array;
+
+  // Derive X25519 key pair for Signal Protocol key agreement.
+  // Ed25519 identity keys are converted to X25519 for ECDH.
+  abstract getX25519KeyPair(): Promise<X25519KeyPair>;
 
   toSigningKey(): SigningKey {
     return this;

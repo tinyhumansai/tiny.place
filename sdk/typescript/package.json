@@ -22,5 +22,9 @@
     "@types/node": "^24.13.1",
     "typescript": "^5.9.3",
     "vitest": "4.0.15"
+  },
+  "dependencies": {
+    "@noble/curves": "^2.2.0",
+    "@noble/hashes": "^2.2.0"
   }
 }

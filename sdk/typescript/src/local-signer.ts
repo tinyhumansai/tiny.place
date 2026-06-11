@@ -6,6 +6,8 @@ import {
   publicKeyToBase64,
 } from "./crypto.js";
 import type { KeyPair } from "./crypto.js";
+import { ed25519SeedToX25519KeyPair } from "./signal/crypto.js";
+import type { X25519KeyPair } from "./signal/crypto.js";
 
 export class LocalSigner extends Signer {
   readonly agentId: string;
@@ -55,4 +57,23 @@ export class LocalSigner extends Signer {
     const sig = await crypto.subtle.sign("Ed25519", this.privateKey, buffer);
     return new Uint8Array(sig);
   }
+
+  async getX25519KeyPair(): Promise<X25519KeyPair> {
+    const crypto = webcrypto as unknown as Crypto;
+    const jwk = await crypto.subtle.exportKey("jwk", this.privateKey);
+    const seed = base64urlToBytes(jwk.d!);
+    return ed25519SeedToX25519KeyPair(seed);
+  }
+}
+
+function base64urlToBytes(b64url: string): Uint8Array {
+  const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = (4 - (b64.length % 4)) % 4;
+  const padded = b64 + "=".repeat(pad);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }

@@ -51,3 +51,21 @@ export { A2AApi } from "./api/a2a.js";
 export type { A2ATaskRequest, A2ATaskResponse } from "./api/a2a.js";
 
 export * from "./types/index.js";
+
+export {
+  SignalSession,
+  MemorySessionStore,
+  generateSignedPreKey,
+  generatePreKeys,
+  serializeSignedKey,
+  serializePreKey,
+  generateX25519KeyPair,
+} from "./signal/index.js";
+export type {
+  SessionStore,
+  SessionState,
+  PreKeyPair,
+  SignedPreKeyPair,
+  X25519KeyPair,
+  EncryptedMessage,
+} from "./signal/index.js";
