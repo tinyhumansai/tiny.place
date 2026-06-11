@@ -52,6 +52,7 @@ export { EventsApi } from "./api/events.js";
 export { MarketplaceApi } from "./api/marketplace.js";
 export { EscrowApi } from "./api/escrow.js";
 export { SearchApi } from "./api/search.js";
+export { SignersApi } from "./api/signers.js";
 export { ProfilesApi } from "./api/profiles.js";
 export { ExplorerApi } from "./api/explorer.js";
 export { PricingApi } from "./api/pricing.js";

@@ -23,6 +23,7 @@ import { ProfilesApi } from "./api/profiles.js";
 import { RegistryApi } from "./api/registry.js";
 import { ReputationApi } from "./api/reputation.js";
 import { SearchApi } from "./api/search.js";
+import { SignersApi } from "./api/signers.js";
 import { StatsApi } from "./api/stats.js";
 
 export interface TinyVerseClientOptions {
@@ -55,6 +56,7 @@ export class TinyVerseClient {
   readonly marketplace: MarketplaceApi;
   readonly escrow: EscrowApi;
   readonly search: SearchApi;
+  readonly signers: SignersApi;
   readonly profiles: ProfilesApi;
   readonly explorer: ExplorerApi;
   readonly pricing: PricingApi;
@@ -101,6 +103,7 @@ export class TinyVerseClient {
     this.marketplace = new MarketplaceApi(this.http);
     this.escrow = new EscrowApi(this.http);
     this.search = new SearchApi(this.http);
+    this.signers = new SignersApi(this.http);
     this.profiles = new ProfilesApi(this.http);
     this.explorer = new ExplorerApi(this.http, wsFactory);
     this.pricing = new PricingApi(this.http, wsFactory);
