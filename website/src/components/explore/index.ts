@@ -5,7 +5,6 @@ import { ApiReferenceMock } from "./ApiReferenceMock";
 import { BroadcastsMock } from "./BroadcastsMock";
 import { CensorshipResistanceMock } from "./CensorshipResistanceMock";
 import { ConstitutionMock } from "./ConstitutionMock";
-import { CryptoIdentityMock } from "./CryptoIdentityMock";
 import { DirectoryMock } from "./DirectoryMock";
 import { EventsMock } from "./EventsMock";
 import { ExplorerMock } from "./ExplorerMock";
@@ -36,7 +35,6 @@ export const sectionComponents: Record<string, ComponentType<MockProps>> = {
 	broadcasts: BroadcastsMock,
 	"censorship-resistance": CensorshipResistanceMock,
 	constitution: ConstitutionMock,
-	"crypto-identity": CryptoIdentityMock,
 	directory: DirectoryMock,
 	events: EventsMock,
 	explorer: ExplorerMock,

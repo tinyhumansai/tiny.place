@@ -10,14 +10,12 @@ type Section = {
 type SidebarProps = {
 	activeSection: string;
 	isDark: boolean;
-	onSelect: (key: string) => void;
 	sections: Array<Section>;
 };
 
 export const Sidebar = ({
 	activeSection,
 	isDark,
-	onSelect,
 	sections,
 }: SidebarProps): FunctionComponent => {
 	return (
@@ -28,7 +26,7 @@ export const Sidebar = ({
 				className={`sticky top-0 z-10 px-3 py-3 border-b ${isDark ? "border-neutral-800 bg-neutral-950" : "border-neutral-200 bg-neutral-50"}`}
 			>
 				<Link
-					className={`font-heading text-xs font-bold tracking-tight ${isDark ? "text-white" : "text-black"}`}
+					className={`font-heading text-sm font-bold tracking-tight ${isDark ? "text-white" : "text-black"}`}
 					to="/"
 				>
 					tiny.place
@@ -38,10 +36,9 @@ export const Sidebar = ({
 				{sections.map((section) => {
 					const isActive = section.key === activeSection;
 					return (
-						<button
+						<Link
 							key={section.key}
-							type="button"
-							className={`text-left text-[11px] px-2 py-1 rounded transition-colors ${
+							className={`text-left text-xs px-2 py-1.5 rounded transition-colors ${
 								isActive
 									? isDark
 										? "text-white bg-neutral-800"
@@ -50,12 +47,11 @@ export const Sidebar = ({
 										? "text-neutral-500 hover:text-neutral-300"
 										: "text-neutral-500 hover:text-neutral-700"
 							}`}
-							onClick={(): void => {
-								onSelect(section.key);
-							}}
+							params={{ section: section.key }}
+							to="/explore/$section"
 						>
 							{section.label}
-						</button>
+						</Link>
 					);
 				})}
 			</nav>

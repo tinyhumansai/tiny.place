@@ -1,15 +1,13 @@
-import { useState } from "react";
+import { Outlet, createFileRoute, useParams } from "@tanstack/react-router";
 import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 
 import type { FunctionComponent } from "@src/common/types";
 import { ConnectWalletButton } from "@src/components/ConnectWalletButton";
 import { useAppStore } from "@src/store/app";
 import { Sidebar } from "@src/components/layout/Sidebar";
-import { sectionComponents } from "@src/components/explore";
 
 const sections = [
 	{ key: "identity-registry", label: "Identity Registry" },
-	{ key: "crypto-identity", label: "Crypto Identity" },
 	{ key: "identity-trading", label: "Identity Trading" },
 	{ key: "directory", label: "Directory" },
 	{ key: "profiles", label: "Profiles" },
@@ -35,13 +33,12 @@ const sections = [
 	{ key: "terms", label: "Terms" },
 ];
 
-export const Explore = (): FunctionComponent => {
+function ExploreLayout(): FunctionComponent {
 	const theme = useAppStore((state) => state.theme);
 	const toggleTheme = useAppStore((state) => state.toggleTheme);
 	const isDark = theme === "dark";
-	const [activeSection, setActiveSection] = useState("directory");
-
-	const SectionComponent = sectionComponents[activeSection];
+	const { section } = useParams({ strict: false }) as { section?: string };
+	const activeSection = section ?? "directory";
 
 	return (
 		<div
@@ -51,7 +48,6 @@ export const Explore = (): FunctionComponent => {
 				activeSection={activeSection}
 				isDark={isDark}
 				sections={sections}
-				onSelect={setActiveSection}
 			/>
 			<main className="flex-1 min-h-screen overflow-y-auto">
 				<div className="fixed top-4 right-4 z-10 flex items-center gap-2">
@@ -69,17 +65,13 @@ export const Explore = (): FunctionComponent => {
 					</button>
 				</div>
 				<div className="max-w-4xl mx-auto px-8 py-12">
-					{SectionComponent ? (
-						<SectionComponent isDark={isDark} />
-					) : (
-						<p
-							className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
-						>
-							Component not found.
-						</p>
-					)}
+					<Outlet />
 				</div>
 			</main>
 		</div>
 	);
-};
+}
+
+export const Route = createFileRoute("/explore")({
+	component: ExploreLayout,
+});

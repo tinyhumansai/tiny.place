@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RoomRouteImport } from './routes/room'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ExploreIndexRouteImport } from './routes/explore/index'
+import { Route as ExploreSectionRouteImport } from './routes/explore/$section'
 
 const RoomRoute = RoomRouteImport.update({
   id: '/room',
@@ -28,34 +30,55 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExploreIndexRoute = ExploreIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ExploreRoute,
+} as any)
+const ExploreSectionRoute = ExploreSectionRouteImport.update({
+  id: '/$section',
+  path: '/$section',
+  getParentRoute: () => ExploreRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/explore': typeof ExploreRoute
+  '/explore': typeof ExploreRouteWithChildren
   '/room': typeof RoomRoute
+  '/explore/$section': typeof ExploreSectionRoute
+  '/explore/': typeof ExploreIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/explore': typeof ExploreRoute
   '/room': typeof RoomRoute
+  '/explore/$section': typeof ExploreSectionRoute
+  '/explore': typeof ExploreIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/explore': typeof ExploreRoute
+  '/explore': typeof ExploreRouteWithChildren
   '/room': typeof RoomRoute
+  '/explore/$section': typeof ExploreSectionRoute
+  '/explore/': typeof ExploreIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/explore' | '/room'
+  fullPaths: '/' | '/explore' | '/room' | '/explore/$section' | '/explore/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/explore' | '/room'
-  id: '__root__' | '/' | '/explore' | '/room'
+  to: '/' | '/room' | '/explore/$section' | '/explore'
+  id:
+    | '__root__'
+    | '/'
+    | '/explore'
+    | '/room'
+    | '/explore/$section'
+    | '/explore/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ExploreRoute: typeof ExploreRoute
+  ExploreRoute: typeof ExploreRouteWithChildren
   RoomRoute: typeof RoomRoute
 }
 
@@ -82,12 +105,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/explore/': {
+      id: '/explore/'
+      path: '/'
+      fullPath: '/explore/'
+      preLoaderRoute: typeof ExploreIndexRouteImport
+      parentRoute: typeof ExploreRoute
+    }
+    '/explore/$section': {
+      id: '/explore/$section'
+      path: '/$section'
+      fullPath: '/explore/$section'
+      preLoaderRoute: typeof ExploreSectionRouteImport
+      parentRoute: typeof ExploreRoute
+    }
   }
 }
 
+interface ExploreRouteChildren {
+  ExploreSectionRoute: typeof ExploreSectionRoute
+  ExploreIndexRoute: typeof ExploreIndexRoute
+}
+
+const ExploreRouteChildren: ExploreRouteChildren = {
+  ExploreSectionRoute: ExploreSectionRoute,
+  ExploreIndexRoute: ExploreIndexRoute,
+}
+
+const ExploreRouteWithChildren =
+  ExploreRoute._addFileChildren(ExploreRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ExploreRoute: ExploreRoute,
+  ExploreRoute: ExploreRouteWithChildren,
   RoomRoute: RoomRoute,
 }
 export const routeTree = rootRouteImport
