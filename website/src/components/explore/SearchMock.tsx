@@ -1,56 +1,13 @@
 import { useState } from "react";
 
+import type { SearchResult as ApiSearchResult } from "@tinyhumansai/tinyplace";
+
 import type { FunctionComponent } from "@src/common/types";
+import { useSearch } from "@src/hooks/use-search";
 
 type FilterType = "Agents" | "Groups" | "Products" | "Events";
 
-type SearchResult = {
-	title: string;
-	description: string;
-	resultType: FilterType;
-	relevance: number;
-};
-
 const filters: Array<FilterType> = ["Agents", "Groups", "Products", "Events"];
-
-const results: Array<SearchResult> = [
-	{
-		title: "@atlas",
-		description: "Autonomous mapping and spatial data analysis agent",
-		resultType: "Agents",
-		relevance: 98,
-	},
-	{
-		title: "@meridian",
-		description: "Financial modeling and market data analysis",
-		resultType: "Agents",
-		relevance: 92,
-	},
-	{
-		title: "Data Science Collective",
-		description: "Community of agents specializing in data pipelines",
-		resultType: "Groups",
-		relevance: 87,
-	},
-	{
-		title: "Analytics Guild",
-		description: "Collaborative group for statistical analysis projects",
-		resultType: "Groups",
-		relevance: 81,
-	},
-	{
-		title: "DataLens Pro",
-		description: "Real-time data visualization and dashboard toolkit",
-		resultType: "Products",
-		relevance: 76,
-	},
-	{
-		title: "Analysis Summit 2026",
-		description: "Annual conference on autonomous data analysis techniques",
-		resultType: "Events",
-		relevance: 70,
-	},
-];
 
 const typeColors: Record<FilterType, string> = {
 	Agents: "bg-blue-600",
@@ -66,6 +23,33 @@ const typeInitials: Record<FilterType, string> = {
 	Events: "EV",
 };
 
+const typeMapping: Record<string, FilterType> = {
+	agent: "Agents",
+	group: "Groups",
+	product: "Products",
+	event: "Events",
+};
+
+type MappedResult = {
+	title: string;
+	description: string;
+	resultType: FilterType;
+	relevance: number;
+};
+
+function mapResult(result: ApiSearchResult): MappedResult | undefined {
+	const resultType = typeMapping[result.type];
+	if (!resultType) {
+		return undefined;
+	}
+	return {
+		title: result.name ?? result.title ?? result.username ?? result.id ?? "",
+		description: result.description ?? "",
+		resultType,
+		relevance: result.score,
+	};
+}
+
 type SearchMockProperties = {
 	isDark: boolean;
 };
@@ -73,21 +57,27 @@ type SearchMockProperties = {
 export const SearchMock = ({
 	isDark,
 }: SearchMockProperties): FunctionComponent => {
-	const [query, setQuery] = useState("data analysis");
+	const [query, setQuery] = useState("");
 	const [activeFilters, setActiveFilters] = useState<Array<FilterType>>([]);
+
+	const { data, isLoading, isError, error } = useSearch(query);
 
 	const toggleFilter = (filter: FilterType): void => {
 		setActiveFilters((previous) =>
 			previous.includes(filter)
 				? previous.filter((f) => f !== filter)
-				: [...previous, filter]
+				: [...previous, filter],
 		);
 	};
 
+	const mappedResults: Array<MappedResult> = (data?.results ?? [])
+		.map(mapResult)
+		.filter((result): result is MappedResult => result !== undefined);
+
 	const filteredResults =
 		activeFilters.length === 0
-			? results
-			: results.filter((r) => activeFilters.includes(r.resultType));
+			? mappedResults
+			: mappedResults.filter((r) => activeFilters.includes(r.resultType));
 
 	return (
 		<div className="space-y-3">
@@ -126,49 +116,83 @@ export const SearchMock = ({
 				))}
 			</div>
 
-			<p
-				className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
-			>
-				{filteredResults.length} results for &ldquo;{query}&rdquo;
-			</p>
+			{query.length === 0 && (
+				<p
+					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+				>
+					Type a query to search
+				</p>
+			)}
 
-			<div className="space-y-2">
-				{filteredResults.map((result) => (
-					<div
-						key={result.title}
-						className={`flex items-center gap-3 rounded-lg border p-3 ${
-							isDark
-								? "border-neutral-800 bg-neutral-950"
-								: "border-neutral-200 bg-neutral-50"
-						}`}
+			{query.length > 0 && isLoading && (
+				<p
+					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+				>
+					Searching...
+				</p>
+			)}
+
+			{query.length > 0 && isError && (
+				<p className="text-xs text-red-500">
+					Search failed: {error instanceof Error ? error.message : "Unknown error"}
+				</p>
+			)}
+
+			{query.length > 0 && !isLoading && !isError && (
+				<>
+					<p
+						className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 					>
-						<div
-							className={`${typeColors[result.resultType]} flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-medium text-white`}
+						{filteredResults.length} results for &ldquo;{query}&rdquo;
+					</p>
+
+					{filteredResults.length === 0 && (
+						<p
+							className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 						>
-							{typeInitials[result.resultType]}
-						</div>
-						<div className="min-w-0 flex-1">
-							<div className="flex items-center justify-between">
-								<span
-									className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
-								>
-									{result.title}
-								</span>
-								<span
-									className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
-								>
-									{result.relevance}%
-								</span>
-							</div>
-							<p
-								className={`mt-0.5 truncate text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+							No results found
+						</p>
+					)}
+
+					<div className="space-y-2">
+						{filteredResults.map((result, index) => (
+							<div
+								key={`${result.resultType}-${result.title}-${String(index)}`}
+								className={`flex items-center gap-3 rounded-lg border p-3 ${
+									isDark
+										? "border-neutral-800 bg-neutral-950"
+										: "border-neutral-200 bg-neutral-50"
+								}`}
 							>
-								{result.description}
-							</p>
-						</div>
+								<div
+									className={`${typeColors[result.resultType]} flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-medium text-white`}
+								>
+									{typeInitials[result.resultType]}
+								</div>
+								<div className="min-w-0 flex-1">
+									<div className="flex items-center justify-between">
+										<span
+											className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
+										>
+											{result.title}
+										</span>
+										<span
+											className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+										>
+											{result.relevance}%
+										</span>
+									</div>
+									<p
+										className={`mt-0.5 truncate text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+									>
+										{result.description}
+									</p>
+								</div>
+							</div>
+						))}
 					</div>
-				))}
-			</div>
+				</>
+			)}
 		</div>
 	);
 };

@@ -1,101 +1,150 @@
 import { useState } from "react";
 
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+
+import type { GroupMetadata } from "@tinyhumansai/tinyplace";
+
 import type { FunctionComponent } from "@src/common/types";
+import { useGroups } from "@src/hooks/use-groups";
 
-interface GroupMember {
-	name: string;
-	role: string;
-}
-
-interface Group {
-	name: string;
-	memberCount: number;
-	description: string;
-	lastActivity: string;
-	members: Array<GroupMember>;
-}
-
-const groups: Array<Group> = [
-	{
-		name: "#research-dao",
-		memberCount: 24,
-		description: "Collaborative research and knowledge sharing",
-		lastActivity: "5m ago",
-		members: [
-			{ name: "@atlas", role: "Admin" },
-			{ name: "@nova", role: "Moderator" },
-			{ name: "@cipher", role: "Member" },
-			{ name: "@echo", role: "Member" },
-		],
-	},
-	{
-		name: "#trading-floor",
-		memberCount: 89,
-		description: "Real-time market signals and trade coordination",
-		lastActivity: "1m ago",
-		members: [
-			{ name: "@pulse", role: "Admin" },
-			{ name: "@atlas", role: "Member" },
-			{ name: "@nova", role: "Member" },
-		],
-	},
-	{
-		name: "#dev-tools",
-		memberCount: 42,
-		description: "Building and sharing developer utilities",
-		lastActivity: "30m ago",
-		members: [
-			{ name: "@cipher", role: "Admin" },
-			{ name: "@echo", role: "Moderator" },
-			{ name: "@pulse", role: "Member" },
-		],
-	},
-	{
-		name: "#data-guild",
-		memberCount: 31,
-		description: "Data pipeline and analytics coordination",
-		lastActivity: "2h ago",
-		members: [
-			{ name: "@echo", role: "Admin" },
-			{ name: "@nova", role: "Member" },
-			{ name: "@atlas", role: "Member" },
-		],
-	},
-	{
-		name: "#security-ops",
-		memberCount: 16,
-		description: "Security audits and vulnerability tracking",
-		lastActivity: "4h ago",
-		members: [
-			{ name: "@cipher", role: "Admin" },
-			{ name: "@pulse", role: "Moderator" },
-		],
-	},
-	{
-		name: "#ai-lab",
-		memberCount: 57,
-		description: "Model training and inference experiments",
-		lastActivity: "15m ago",
-		members: [
-			{ name: "@nova", role: "Admin" },
-			{ name: "@atlas", role: "Moderator" },
-			{ name: "@cipher", role: "Member" },
-			{ name: "@echo", role: "Member" },
-			{ name: "@pulse", role: "Member" },
-		],
-	},
-];
+dayjs.extend(relativeTime);
 
 export const GroupsMock = ({
 	isDark,
 }: {
 	isDark: boolean;
 }): FunctionComponent => {
-	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+	const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+	const { data, isLoading, isError, error } = useGroups();
 
+	const groups: Array<GroupMetadata> = data?.groups ?? [];
 	const activeGroup = groups.find(
-		(group): boolean => group.name === selectedGroup
+		(group): boolean => group.groupId === selectedGroupId,
 	);
+
+	const renderLoading = (): React.ReactElement => (
+		<div className="flex flex-1 items-center justify-center p-6">
+			<span
+				className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+			>
+				Loading groups...
+			</span>
+		</div>
+	);
+
+	const renderError = (): React.ReactElement => (
+		<div className="flex flex-1 items-center justify-center p-6">
+			<span className="text-xs text-red-500">
+				{error instanceof Error ? error.message : "Failed to load groups"}
+			</span>
+		</div>
+	);
+
+	const renderEmpty = (): React.ReactElement => (
+		<div className="flex flex-1 items-center justify-center p-6">
+			<span
+				className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+			>
+				No groups found
+			</span>
+		</div>
+	);
+
+	const renderGroupDetail = (group: GroupMetadata): React.ReactElement => (
+		<div className="space-y-2">
+			<p
+				className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+			>
+				{group.description ?? ""}
+			</p>
+			<p
+				className={`text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
+			>
+				{group.memberCount} members
+			</p>
+			<p
+				className={`text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
+			>
+				Policy: {group.membershipPolicy}
+			</p>
+			{group.tags && group.tags.length > 0 && (
+				<div className="mt-3 flex flex-wrap gap-1">
+					{group.tags.map(
+						(tag): React.ReactElement => (
+							<span
+								key={tag}
+								className={`rounded-full px-2 py-0.5 text-[10px] ${isDark ? "bg-neutral-800 text-neutral-400" : "bg-neutral-200 text-neutral-600"}`}
+							>
+								{tag}
+							</span>
+						),
+					)}
+				</div>
+			)}
+		</div>
+	);
+
+	const renderGroupList = (): React.ReactElement => (
+		<div className="grid grid-cols-2 gap-2">
+			{groups.map(
+				(group): React.ReactElement => (
+					<button
+						key={group.groupId}
+						className={`rounded-lg border p-3 text-left ${isDark ? "border-neutral-800 hover:border-neutral-700" : "border-neutral-200 hover:border-neutral-300"}`}
+						type="button"
+						onClick={(): void => {
+							setSelectedGroupId(group.groupId);
+						}}
+					>
+						<div className="flex items-center justify-between">
+							<span
+								className={`text-xs font-medium ${isDark ? "text-white" : "text-black"}`}
+							>
+								{group.name}
+							</span>
+							<span className="rounded-full bg-green-500/10 px-1.5 py-0.5 text-[8px] text-green-500">
+								Encrypted
+							</span>
+						</div>
+						<p
+							className={`mt-1 text-[10px] ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+						>
+							{group.description ?? ""}
+						</p>
+						<div className="mt-2 flex items-center justify-between">
+							<span
+								className={`text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
+							>
+								{group.memberCount} members
+							</span>
+							<span
+								className={`text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
+							>
+								{dayjs(group.createdAt).fromNow()}
+							</span>
+						</div>
+					</button>
+				),
+			)}
+		</div>
+	);
+
+	const renderContent = (): React.ReactElement => {
+		if (isLoading) {
+			return renderLoading();
+		}
+		if (isError) {
+			return renderError();
+		}
+		if (groups.length === 0) {
+			return renderEmpty();
+		}
+		if (activeGroup) {
+			return renderGroupDetail(activeGroup);
+		}
+		return renderGroupList();
+	};
 
 	return (
 		<div
@@ -114,7 +163,7 @@ export const GroupsMock = ({
 						className={`text-[10px] ${isDark ? "text-neutral-500 hover:text-neutral-300" : "text-neutral-400 hover:text-neutral-600"}`}
 						type="button"
 						onClick={(): void => {
-							setSelectedGroup(null);
+							setSelectedGroupId(null);
 						}}
 					>
 						Back
@@ -122,98 +171,7 @@ export const GroupsMock = ({
 				)}
 			</div>
 
-			<div className="flex-1 overflow-y-auto p-3">
-				{activeGroup ? (
-					<div className="space-y-2">
-						<p
-							className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
-						>
-							{activeGroup.description}
-						</p>
-						<p
-							className={`text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
-						>
-							{activeGroup.memberCount} members
-						</p>
-						<div className="mt-3 space-y-1">
-							<p
-								className={`text-[10px] font-medium ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
-							>
-								Members
-							</p>
-							{activeGroup.members.map(
-								(member): React.ReactElement => (
-									<div
-										key={member.name}
-										className="flex items-center justify-between py-1.5"
-									>
-										<div className="flex items-center gap-2">
-											<div
-												className={`flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-medium ${isDark ? "bg-neutral-800 text-neutral-400" : "bg-neutral-200 text-neutral-600"}`}
-											>
-												{member.name.slice(1, 3).toUpperCase()}
-											</div>
-											<span
-												className={`text-xs ${isDark ? "text-white" : "text-black"}`}
-											>
-												{member.name}
-											</span>
-										</div>
-										<span
-											className={`text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
-										>
-											{member.role}
-										</span>
-									</div>
-								)
-							)}
-						</div>
-					</div>
-				) : (
-					<div className="grid grid-cols-2 gap-2">
-						{groups.map(
-							(group): React.ReactElement => (
-								<button
-									key={group.name}
-									className={`rounded-lg border p-3 text-left ${isDark ? "border-neutral-800 hover:border-neutral-700" : "border-neutral-200 hover:border-neutral-300"}`}
-									type="button"
-									onClick={(): void => {
-										setSelectedGroup(group.name);
-									}}
-								>
-									<div className="flex items-center justify-between">
-										<span
-											className={`text-xs font-medium ${isDark ? "text-white" : "text-black"}`}
-										>
-											{group.name}
-										</span>
-										<span className="rounded-full bg-green-500/10 px-1.5 py-0.5 text-[8px] text-green-500">
-											Encrypted
-										</span>
-									</div>
-									<p
-										className={`mt-1 text-[10px] ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
-									>
-										{group.description}
-									</p>
-									<div className="mt-2 flex items-center justify-between">
-										<span
-											className={`text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
-										>
-											{group.memberCount} members
-										</span>
-										<span
-											className={`text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
-										>
-											{group.lastActivity}
-										</span>
-									</div>
-								</button>
-							)
-						)}
-					</div>
-				)}
-			</div>
+			<div className="flex-1 overflow-y-auto p-3">{renderContent()}</div>
 		</div>
 	);
 };

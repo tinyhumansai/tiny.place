@@ -1,91 +1,53 @@
 import { useState } from "react";
 
+import type { InboxItem, InboxType } from "@tinyhumansai/tinyplace";
+
 import type { FunctionComponent } from "@src/common/types";
-
-type NotificationType = "task" | "payment" | "invite" | "system";
-
-interface Notification {
-	type: NotificationType;
-	title: string;
-	description: string;
-	timestamp: string;
-	actions?: Array<string>;
-}
-
-const notifications: Array<Notification> = [
-	{
-		type: "task",
-		title: "New task request from @atlas",
-		description: "Review the governance proposal draft before Friday",
-		timestamp: "2m ago",
-		actions: ["View"],
-	},
-	{
-		type: "payment",
-		title: "Payment received: 25 USDC",
-		description: "From @cipher for encryption module audit",
-		timestamp: "15m ago",
-		actions: ["View"],
-	},
-	{
-		type: "invite",
-		title: "Invited to #research-dao",
-		description: "Nova invited you to join the research working group",
-		timestamp: "1h ago",
-		actions: ["Accept", "Decline"],
-	},
-	{
-		type: "system",
-		title: "Agent verification complete",
-		description: "Your identity has been verified on-chain",
-		timestamp: "2h ago",
-	},
-	{
-		type: "payment",
-		title: "Payment sent: 10 USDC",
-		description: "To @echo for data analysis task",
-		timestamp: "3h ago",
-		actions: ["View"],
-	},
-	{
-		type: "invite",
-		title: "Invited to #ai-lab",
-		description: "Pulse invited you to collaborate on model training",
-		timestamp: "5h ago",
-		actions: ["Accept", "Decline"],
-	},
-	{
-		type: "task",
-		title: "Task completed by @nova",
-		description: "Staging deployment finished successfully",
-		timestamp: "6h ago",
-		actions: ["View"],
-	},
-	{
-		type: "system",
-		title: "Weekly reputation update",
-		description: "Your trust score increased by 12 points",
-		timestamp: "1d ago",
-	},
-];
+import { useInbox } from "@src/hooks/use-inbox";
 
 const filterOptions = ["All", "Tasks", "Payments", "Invites"] as const;
 
 type Filter = (typeof filterOptions)[number];
 
-const typeColorMap: Record<NotificationType, string> = {
-	task: "bg-blue-500",
-	payment: "bg-green-500",
-	invite: "bg-purple-500",
-	system: "bg-yellow-500",
+const typeColorMap: Record<InboxType, string> = {
+	TASK_REQUEST: "bg-blue-500",
+	TASK_UPDATE: "bg-blue-400",
+	PAYMENT_RECEIVED: "bg-green-500",
+	PAYMENT_REQUIRED: "bg-green-400",
+	GROUP_INVITE: "bg-purple-500",
+	GROUP_MESSAGE: "bg-purple-400",
+	IDENTITY_TRANSFER: "bg-orange-500",
+	OFFER_RECEIVED: "bg-teal-500",
+	SUBSCRIPTION_EVENT: "bg-indigo-500",
+	SYSTEM: "bg-yellow-500",
 };
 
-const filterTypeMap: Record<Filter, NotificationType | null> = {
+const filterTypeMap: Record<Filter, Array<InboxType> | null> = {
 	All: null,
-	Tasks: "task",
-	Payments: "payment",
-	Invites: "invite",
+	Tasks: ["TASK_REQUEST", "TASK_UPDATE"],
+	Payments: ["PAYMENT_RECEIVED", "PAYMENT_REQUIRED"],
+	Invites: ["GROUP_INVITE"],
 };
+
+function formatTimestamp(timestamp: string): string {
+	const date = new Date(timestamp);
+	const now = new Date();
+	const diffMs = now.getTime() - date.getTime();
+	const diffMinutes = Math.floor(diffMs / 60_000);
+	const diffHours = Math.floor(diffMs / 3_600_000);
+	const diffDays = Math.floor(diffMs / 86_400_000);
+
+	if (diffMinutes < 1) return "just now";
+	if (diffMinutes < 60) return `${diffMinutes}m ago`;
+	if (diffHours < 24) return `${diffHours}h ago`;
+	return `${diffDays}d ago`;
+}
+
+function matchesFilter(item: InboxItem, filter: Filter): boolean {
+	const allowedTypes = filterTypeMap[filter];
+	if (allowedTypes === null) return true;
+	return allowedTypes.includes(item.type);
+}
 
 export const InboxMock = ({
 	isDark,
@@ -93,13 +55,47 @@ export const InboxMock = ({
 	isDark: boolean;
 }): FunctionComponent => {
 	const [activeFilter, setActiveFilter] = useState<Filter>("All");
+	const { data, isLoading, isError, error } = useInbox();
 
-	const filteredNotifications = notifications.filter(
-		(notification): boolean => {
-			const mappedType = filterTypeMap[activeFilter];
-			if (mappedType === null) return true;
-			return notification.type === mappedType;
-		}
+	const isAuthError =
+		isError &&
+		error !== null &&
+		"status" in error &&
+		(error as { status: number }).status === 401;
+
+	if (isAuthError) {
+		return (
+			<div
+				className={`flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border ${isDark ? "border-neutral-800 bg-neutral-950" : "border-neutral-200 bg-neutral-50"}`}
+			>
+				<p
+					className={`text-sm ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
+				>
+					Connect your wallet to view your inbox
+				</p>
+			</div>
+		);
+	}
+
+	if (isError) {
+		return (
+			<div
+				className={`flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border ${isDark ? "border-neutral-800 bg-neutral-950" : "border-neutral-200 bg-neutral-50"}`}
+			>
+				<p
+					className={`text-sm ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
+				>
+					Failed to load inbox
+				</p>
+			</div>
+		);
+	}
+
+	const items = data?.items ?? [];
+	const unreadCount = data?.unreadCount ?? 0;
+
+	const filteredItems = items.filter((item): boolean =>
+		matchesFilter(item, activeFilter),
 	);
 
 	return (
@@ -113,6 +109,11 @@ export const InboxMock = ({
 					className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 				>
 					Inbox
+					{unreadCount > 0 && (
+						<span className="ml-2 inline-flex items-center justify-center rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+							{unreadCount}
+						</span>
+					)}
 				</span>
 				<div className="flex gap-1">
 					{filterOptions.map(
@@ -133,41 +134,67 @@ export const InboxMock = ({
 							>
 								{filter}
 							</button>
-						)
+						),
 					)}
 				</div>
 			</div>
 
 			<div className="flex-1 overflow-y-auto">
-				{filteredNotifications.map(
-					(notification, index): React.ReactElement => (
+				{isLoading && (
+					<div className="flex items-center justify-center py-8">
+						<p
+							className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+						>
+							Loading...
+						</p>
+					</div>
+				)}
+
+				{!isLoading && filteredItems.length === 0 && (
+					<div className="flex items-center justify-center py-8">
+						<p
+							className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+						>
+							No items in your inbox
+						</p>
+					</div>
+				)}
+
+				{filteredItems.map(
+					(item): React.ReactElement => (
 						<div
-							key={index}
-							className={`flex items-start gap-3 border-b px-4 py-3 ${isDark ? "border-neutral-800/50" : "border-neutral-200/50"}`}
+							key={item.itemId}
+							className={`flex items-start gap-3 border-b px-4 py-3 ${isDark ? "border-neutral-800/50" : "border-neutral-200/50"} ${
+								item.status === "unread"
+									? isDark
+										? "bg-neutral-900/50"
+										: "bg-blue-50/50"
+									: ""
+							}`}
 						>
 							<div
-								className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${typeColorMap[notification.type]}`}
+								className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${typeColorMap[item.type]}`}
 							/>
 							<div className="min-w-0 flex-1">
 								<p
 									className={`text-xs font-medium ${isDark ? "text-white" : "text-black"}`}
 								>
-									{notification.title}
+									{item.subject}
 								</p>
 								<p
 									className={`text-[10px] ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 								>
-									{notification.description}
+									{item.summary ?? ""}
 								</p>
 								<p
 									className={`mt-1 text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
 								>
-									{notification.timestamp}
+									{formatTimestamp(item.timestamp)}
 								</p>
 							</div>
-							{notification.actions && (
+							{item.actions && item.actions.length > 0 && (
 								<div className="flex shrink-0 gap-1">
-									{notification.actions.map(
+									{item.actions.map(
 										(action): React.ReactElement => (
 											<button
 												key={action}
@@ -182,12 +209,12 @@ export const InboxMock = ({
 											>
 												{action}
 											</button>
-										)
+										),
 									)}
 								</div>
 							)}
 						</div>
-					)
+					),
 				)}
 			</div>
 		</div>

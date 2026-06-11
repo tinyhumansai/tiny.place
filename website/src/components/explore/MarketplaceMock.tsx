@@ -1,72 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+
+import type { Product } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
-
-type Product = {
-	name: string;
-	seller: string;
-	price: number;
-	category: "Services" | "Data" | "Tools";
-	rating: number;
-	description: string;
-};
-
-const products: Array<Product> = [
-	{
-		name: "Market Analysis Report",
-		seller: "@meridian",
-		price: 25,
-		category: "Data",
-		rating: 4.8,
-		description: "Weekly deep-dive into on-chain metrics and market trends.",
-	},
-	{
-		name: "Smart Contract Audit",
-		seller: "@cipher",
-		price: 150,
-		category: "Services",
-		rating: 4.9,
-		description:
-			"Comprehensive security audit for Solidity contracts up to 500 LOC.",
-	},
-	{
-		name: "Data Pipeline Setup",
-		seller: "@flux",
-		price: 80,
-		category: "Tools",
-		rating: 4.6,
-		description:
-			"Custom real-time data streaming pipeline with webhook integration.",
-	},
-	{
-		name: "NLP Model Fine-tuning",
-		seller: "@nova",
-		price: 120,
-		category: "Services",
-		rating: 4.5,
-		description: "Fine-tune language models on your domain-specific dataset.",
-	},
-	{
-		name: "Portfolio Rebalancing",
-		seller: "@drift",
-		price: 35,
-		category: "Tools",
-		rating: 4.4,
-		description:
-			"Automated portfolio rebalancing strategy based on risk parameters.",
-	},
-	{
-		name: "Security Scan",
-		seller: "@cipher",
-		price: 45,
-		category: "Services",
-		rating: 4.7,
-		description:
-			"Automated vulnerability scanning for deployed smart contracts.",
-	},
-];
-
-const categories = ["All", "Services", "Data", "Tools"] as const;
+import { useProducts } from "@src/hooks/use-marketplace";
 
 type MarketplaceMockProperties = {
 	isDark: boolean;
@@ -75,18 +12,63 @@ type MarketplaceMockProperties = {
 export const MarketplaceMock = ({
 	isDark,
 }: MarketplaceMockProperties): FunctionComponent => {
-	const [activeCategory, setActiveCategory] =
-		useState<(typeof categories)[number]>("All");
+	const { data, isLoading, isError, error } = useProducts();
+	const [activeCategory, setActiveCategory] = useState<string>("All");
+
+	const products = data?.products ?? [];
+
+	const categories = useMemo((): Array<string> => {
+		const unique = new Set(products.map((product: Product): string => product.category));
+		return ["All", ...Array.from(unique).sort()];
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [data?.products]);
 
 	const filtered =
 		activeCategory === "All"
 			? products
-			: products.filter((product) => product.category === activeCategory);
+			: products.filter(
+					(product: Product): boolean => product.category === activeCategory,
+				);
+
+	if (isLoading) {
+		return (
+			<div className="flex items-center justify-center py-12">
+				<span
+					className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+				>
+					Loading products...
+				</span>
+			</div>
+		);
+	}
+
+	if (isError) {
+		return (
+			<div className="flex items-center justify-center py-12">
+				<span className="text-sm text-red-500">
+					Failed to load products
+					{error instanceof Error ? `: ${error.message}` : ""}
+				</span>
+			</div>
+		);
+	}
+
+	if (products.length === 0) {
+		return (
+			<div className="flex items-center justify-center py-12">
+				<span
+					className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+				>
+					No products available
+				</span>
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex flex-col gap-3">
 			<div className="flex gap-1">
-				{categories.map((category) => (
+				{categories.map((category: string): React.ReactElement => (
 					<button
 						key={category}
 						type="button"
@@ -108,9 +90,9 @@ export const MarketplaceMock = ({
 				))}
 			</div>
 			<div className="grid grid-cols-2 gap-3">
-				{filtered.map((product) => (
+				{filtered.map((product: Product): React.ReactElement => (
 					<div
-						key={product.name}
+						key={product.productId}
 						className={`rounded-lg border p-3 ${
 							isDark
 								? "border-neutral-800 bg-neutral-950"
@@ -146,14 +128,14 @@ export const MarketplaceMock = ({
 									{product.seller}
 								</span>
 								<span className="text-xs text-amber-500">
-									★ {product.rating}
+									{product.rating > 0 ? `★ ${product.rating}` : ""}
 								</span>
 							</div>
 							<div className="flex items-center gap-2">
 								<span
 									className={`text-xs font-medium ${isDark ? "text-white" : "text-black"}`}
 								>
-									{product.price} USDC
+									{product.price.amount} {product.price.asset}
 								</span>
 								<button
 									className="rounded-md bg-blue-600 px-2 py-0.5 text-xs font-medium text-white transition-colors hover:bg-blue-500"

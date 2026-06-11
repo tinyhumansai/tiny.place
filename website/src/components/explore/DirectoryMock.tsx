@@ -1,91 +1,47 @@
 import { useState } from "react";
 
+import type { AgentCard } from "@tinyhumansai/tinyplace";
+
 import type { FunctionComponent } from "@src/common/types";
+import { useAgents } from "@src/hooks/use-directory";
 
-type Agent = {
-	handle: string;
-	initials: string;
-	color: string;
-	bio: string;
-	skills: Array<string>;
-	rating: number;
-	isOnline: boolean;
-};
-
-const agents: Array<Agent> = [
-	{
-		handle: "@atlas",
-		initials: "AT",
-		color: "bg-blue-600",
-		bio: "Autonomous mapping and spatial reasoning agent",
-		skills: ["data-analysis", "geospatial", "research"],
-		rating: 4.8,
-		isOnline: true,
-	},
-	{
-		handle: "@cipher",
-		initials: "CI",
-		color: "bg-purple-600",
-		bio: "Cryptographic protocol specialist",
-		skills: ["smart-contracts", "security", "encryption"],
-		rating: 4.9,
-		isOnline: true,
-	},
-	{
-		handle: "@nova",
-		initials: "NO",
-		color: "bg-pink-600",
-		bio: "Creative content generation and synthesis",
-		skills: ["nlp", "content", "summarization"],
-		rating: 4.5,
-		isOnline: false,
-	},
-	{
-		handle: "@meridian",
-		initials: "ME",
-		color: "bg-emerald-600",
-		bio: "Financial modeling and market analysis",
-		skills: ["trading", "forecasting"],
-		rating: 4.7,
-		isOnline: true,
-	},
-	{
-		handle: "@echo",
-		initials: "EC",
-		color: "bg-amber-600",
-		bio: "Signal processing and pattern detection",
-		skills: ["data-analysis", "anomaly-detection"],
-		rating: 4.3,
-		isOnline: false,
-	},
-	{
-		handle: "@flux",
-		initials: "FL",
-		color: "bg-cyan-600",
-		bio: "Real-time data streaming and event processing",
-		skills: ["streaming", "smart-contracts", "nlp"],
-		rating: 4.6,
-		isOnline: true,
-	},
-	{
-		handle: "@drift",
-		initials: "DR",
-		color: "bg-rose-600",
-		bio: "Stochastic modeling and simulation",
-		skills: ["research", "simulation"],
-		rating: 4.4,
-		isOnline: false,
-	},
-	{
-		handle: "@sage",
-		initials: "SA",
-		color: "bg-violet-600",
-		bio: "Knowledge graph construction and reasoning",
-		skills: ["research", "nlp", "knowledge-graphs"],
-		rating: 4.9,
-		isOnline: true,
-	},
+const AVATAR_COLORS: Array<string> = [
+	"bg-blue-600",
+	"bg-purple-600",
+	"bg-pink-600",
+	"bg-emerald-600",
+	"bg-amber-600",
+	"bg-cyan-600",
+	"bg-rose-600",
+	"bg-violet-600",
+	"bg-indigo-600",
+	"bg-teal-600",
 ];
+
+function getColor(agentId: string): string {
+	let total = 0;
+	for (let index = 0; index < agentId.length; index++) {
+		total += agentId.charCodeAt(index);
+	}
+	return AVATAR_COLORS[total % AVATAR_COLORS.length] ?? "bg-blue-600";
+}
+
+function getDisplayName(agent: AgentCard): string {
+	return agent.username ?? agent.name ?? agent.agentId.slice(0, 8);
+}
+
+function getHandle(agent: AgentCard): string {
+	return "@" + getDisplayName(agent);
+}
+
+function getInitials(agent: AgentCard): string {
+	const displayName = getDisplayName(agent);
+	return displayName.slice(0, 2).toUpperCase();
+}
+
+function getSkills(agent: AgentCard): Array<string> {
+	return agent.skills ?? agent.tags ?? [];
+}
 
 type DirectoryMockProperties = {
 	isDark: boolean;
@@ -95,79 +51,161 @@ export const DirectoryMock = ({
 	isDark,
 }: DirectoryMockProperties): FunctionComponent => {
 	const [selectedHandle, setSelectedHandle] = useState<string | null>(null);
+	const { data, isLoading, error } = useAgents();
 
 	const handleSelect = (handle: string): void => {
 		setSelectedHandle(selectedHandle === handle ? null : handle);
 	};
 
-	return (
-		<div className="grid grid-cols-2 gap-3">
-			{agents.map((agent) => (
-				<button
-					key={agent.handle}
-					type="button"
-					className={`rounded-lg border p-3 text-left transition-colors ${
-						isDark
-							? `border-neutral-800 bg-neutral-950 ${
-									selectedHandle === agent.handle
-										? "border-blue-500"
-										: "hover:border-neutral-700"
-								}`
-							: `border-neutral-200 bg-neutral-50 ${
-									selectedHandle === agent.handle
-										? "border-blue-500"
-										: "hover:border-neutral-300"
-								}`
-					}`}
-					onClick={() => {
-						handleSelect(agent.handle);
-					}}
-				>
-					<div className="flex items-start gap-2.5">
-						<div className="relative flex-shrink-0">
+	if (isLoading) {
+		return (
+			<div className="grid grid-cols-2 gap-3">
+				{Array.from({ length: 6 }).map((_, index) => (
+					<div
+						key={index}
+						className={`animate-pulse rounded-lg border p-3 ${
+							isDark
+								? "border-neutral-800 bg-neutral-950"
+								: "border-neutral-200 bg-neutral-50"
+						}`}
+					>
+						<div className="flex items-start gap-2.5">
 							<div
-								className={`${agent.color} flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium text-white`}
-							>
-								{agent.initials}
-							</div>
-							<div
-								className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 ${
-									isDark ? "border-neutral-950" : "border-neutral-50"
-								} ${agent.isOnline ? "bg-green-500" : "bg-neutral-400"}`}
+								className={`h-8 w-8 flex-shrink-0 rounded-full ${
+									isDark ? "bg-neutral-800" : "bg-neutral-300"
+								}`}
 							/>
-						</div>
-						<div className="min-w-0 flex-1">
-							<div className="flex items-center justify-between">
-								<span
-									className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
-								>
-									{agent.handle}
-								</span>
-								<span className="text-xs text-amber-500">★ {agent.rating}</span>
-							</div>
-							<p
-								className={`mt-0.5 truncate text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
-							>
-								{agent.bio}
-							</p>
-							<div className="mt-1.5 flex flex-wrap gap-1">
-								{agent.skills.map((skill) => (
-									<span
-										key={skill}
-										className={`rounded-full px-1.5 py-0.5 text-xs ${
-											isDark
-												? "bg-neutral-800 text-neutral-400"
-												: "bg-neutral-200 text-neutral-500"
+							<div className="min-w-0 flex-1 space-y-2">
+								<div
+									className={`h-4 w-20 rounded ${
+										isDark ? "bg-neutral-800" : "bg-neutral-300"
+									}`}
+								/>
+								<div
+									className={`h-3 w-full rounded ${
+										isDark ? "bg-neutral-800" : "bg-neutral-300"
+									}`}
+								/>
+								<div className="flex gap-1">
+									<div
+										className={`h-4 w-12 rounded-full ${
+											isDark ? "bg-neutral-800" : "bg-neutral-300"
 										}`}
-									>
-										{skill}
-									</span>
-								))}
+									/>
+									<div
+										className={`h-4 w-14 rounded-full ${
+											isDark ? "bg-neutral-800" : "bg-neutral-300"
+										}`}
+									/>
+								</div>
 							</div>
 						</div>
 					</div>
-				</button>
-			))}
+				))}
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div
+				className={`rounded-lg border p-6 text-center ${
+					isDark
+						? "border-red-900 bg-red-950 text-red-400"
+						: "border-red-200 bg-red-50 text-red-600"
+				}`}
+			>
+				<p className="text-sm font-medium">Failed to load agents</p>
+				<p className="mt-1 text-xs opacity-75">
+					{error instanceof Error ? error.message : "An unknown error occurred"}
+				</p>
+			</div>
+		);
+	}
+
+	const agents = data?.agents ?? [];
+
+	if (agents.length === 0) {
+		return (
+			<div
+				className={`rounded-lg border p-6 text-center ${
+					isDark
+						? "border-neutral-800 bg-neutral-950 text-neutral-500"
+						: "border-neutral-200 bg-neutral-50 text-neutral-400"
+				}`}
+			>
+				<p className="text-sm">No agents found</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className="grid grid-cols-2 gap-3">
+			{agents.map((agent) => {
+				const handle = getHandle(agent);
+				const skills = getSkills(agent);
+
+				return (
+					<button
+						key={agent.agentId}
+						type="button"
+						className={`rounded-lg border p-3 text-left transition-colors ${
+							isDark
+								? `border-neutral-800 bg-neutral-950 ${
+										selectedHandle === handle
+											? "border-blue-500"
+											: "hover:border-neutral-700"
+									}`
+								: `border-neutral-200 bg-neutral-50 ${
+										selectedHandle === handle
+											? "border-blue-500"
+											: "hover:border-neutral-300"
+									}`
+						}`}
+						onClick={() => {
+							handleSelect(handle);
+						}}
+					>
+						<div className="flex items-start gap-2.5">
+							<div className="flex-shrink-0">
+								<div
+									className={`${getColor(agent.agentId)} flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium text-white`}
+								>
+									{getInitials(agent)}
+								</div>
+							</div>
+							<div className="min-w-0 flex-1">
+								<span
+									className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
+								>
+									{handle}
+								</span>
+								<p
+									className={`mt-0.5 truncate text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+								>
+									{agent.description ?? ""}
+								</p>
+								{skills.length > 0 && (
+									<div className="mt-1.5 flex flex-wrap gap-1">
+										{skills.map((skill) => (
+											<span
+												key={skill}
+												className={`rounded-full px-1.5 py-0.5 text-xs ${
+													isDark
+														? "bg-neutral-800 text-neutral-400"
+														: "bg-neutral-200 text-neutral-500"
+												}`}
+											>
+												{skill}
+											</span>
+										))}
+									</div>
+								)}
+							</div>
+						</div>
+					</button>
+				);
+			})}
 		</div>
 	);
 };

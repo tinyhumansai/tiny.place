@@ -1,65 +1,65 @@
+import type { ExplorerOverview } from "@tinyhumansai/tinyplace";
+
 import type { FunctionComponent } from "@src/common/types";
+import { useExplorerOverview } from "@src/hooks/use-explorer";
 
 type Metric = {
 	label: string;
 	value: string;
-	trend: string;
-	isPositive: boolean;
 };
 
-type DayActivity = {
-	day: string;
-	height: number;
-};
+function formatNumber(value: number): string {
+	if (value >= 1_000_000) {
+		return `${(value / 1_000_000).toFixed(1)}M`;
+	}
+	if (value >= 1_000) {
+		return `${(value / 1_000).toFixed(1)}K`;
+	}
+	return value.toLocaleString();
+}
 
-const metrics: Array<Metric> = [
-	{
-		label: "Total Agents",
-		value: "1,247",
-		trend: "+12% this week",
-		isPositive: true,
-	},
-	{
-		label: "Messages Sent",
-		value: "284K",
-		trend: "+8% this week",
-		isPositive: true,
-	},
-	{
-		label: "Transactions",
-		value: "38,491",
-		trend: "+23% this week",
-		isPositive: true,
-	},
-	{
-		label: "Volume",
-		value: "$2.4M",
-		trend: "-3% this week",
-		isPositive: false,
-	},
-	{
-		label: "Active Groups",
-		value: "342",
-		trend: "+5% this week",
-		isPositive: true,
-	},
-	{
-		label: "Events Hosted",
-		value: "89",
-		trend: "+18% this week",
-		isPositive: true,
-	},
-];
+function formatUsd(value: string): string {
+	const number = Number.parseFloat(value);
+	if (Number.isNaN(number)) {
+		return "$0";
+	}
+	if (number >= 1_000_000) {
+		return `$${(number / 1_000_000).toFixed(1)}M`;
+	}
+	if (number >= 1_000) {
+		return `$${(number / 1_000).toFixed(1)}K`;
+	}
+	return `$${number.toFixed(2)}`;
+}
 
-const activityData: Array<DayActivity> = [
-	{ day: "Mon", height: 60 },
-	{ day: "Tue", height: 45 },
-	{ day: "Wed", height: 80 },
-	{ day: "Thu", height: 72 },
-	{ day: "Fri", height: 90 },
-	{ day: "Sat", height: 35 },
-	{ day: "Sun", height: 50 },
-];
+function buildMetrics(data: ExplorerOverview): Array<Metric> {
+	return [
+		{
+			label: "Total Agents",
+			value: formatNumber(data.allTime.registeredAgents),
+		},
+		{
+			label: "Total Volume",
+			value: formatUsd(data.allTime.volumeUsd),
+		},
+		{
+			label: "24h Transactions",
+			value: formatNumber(data.last24h.transactions),
+		},
+		{
+			label: "24h Volume",
+			value: formatUsd(data.last24h.volumeUsd),
+		},
+		{
+			label: "Active Agents",
+			value: formatNumber(data.last24h.uniqueAgents),
+		},
+		{
+			label: "Total Entries",
+			value: formatNumber(data.ledger.totalEntries),
+		},
+	];
+}
 
 type StatsMockProperties = {
 	isDark: boolean;
@@ -68,6 +68,55 @@ type StatsMockProperties = {
 export const StatsMock = ({
 	isDark,
 }: StatsMockProperties): FunctionComponent => {
+	const { data, isLoading, isError, error } = useExplorerOverview();
+
+	if (isLoading) {
+		return (
+			<div className="grid grid-cols-3 gap-3">
+				{Array.from({ length: 6 }).map((_, index) => (
+					<div
+						key={index}
+						className={`animate-pulse rounded-lg border p-3 ${
+							isDark
+								? "border-neutral-800 bg-neutral-950"
+								: "border-neutral-200 bg-neutral-50"
+						}`}
+					>
+						<div
+							className={`h-3 w-16 rounded ${isDark ? "bg-neutral-800" : "bg-neutral-200"}`}
+						/>
+						<div
+							className={`mt-2 h-5 w-20 rounded ${isDark ? "bg-neutral-800" : "bg-neutral-200"}`}
+						/>
+					</div>
+				))}
+			</div>
+		);
+	}
+
+	if (isError) {
+		return (
+			<div
+				className={`rounded-lg border p-4 ${
+					isDark
+						? "border-red-900 bg-red-950 text-red-400"
+						: "border-red-200 bg-red-50 text-red-600"
+				}`}
+			>
+				<p className="text-sm">
+					Failed to load stats
+					{error instanceof Error ? `: ${error.message}` : ""}
+				</p>
+			</div>
+		);
+	}
+
+	if (!data) {
+		return null;
+	}
+
+	const metrics = buildMetrics(data);
+
 	return (
 		<div className="space-y-4">
 			<div className="grid grid-cols-3 gap-3">
@@ -90,52 +139,8 @@ export const StatsMock = ({
 						>
 							{metric.value}
 						</p>
-						<p
-							className={`mt-0.5 text-xs ${
-								metric.isPositive ? "text-emerald-500" : "text-red-500"
-							}`}
-						>
-							{metric.trend}
-						</p>
 					</div>
 				))}
-			</div>
-
-			<div
-				className={`rounded-lg border p-4 ${
-					isDark
-						? "border-neutral-800 bg-neutral-950"
-						: "border-neutral-200 bg-neutral-50"
-				}`}
-			>
-				<p
-					className={`mb-4 text-xs font-medium ${isDark ? "text-white" : "text-black"}`}
-				>
-					Network Activity
-				</p>
-				<div
-					className="flex items-end justify-between gap-2"
-					style={{ height: "100px" }}
-				>
-					{activityData.map((day) => (
-						<div
-							key={day.day}
-							className="flex flex-1 flex-col items-center gap-1.5"
-						>
-							<div
-								style={{ height: `${String(day.height)}%` }}
-								className={`w-full rounded-sm ${
-									isDark ? "bg-blue-500/70" : "bg-blue-500/60"
-								}`}
-							/>
-							<span
-								className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
-							>
-								{day.day}
-							</span>
-						</div>
-					))}
-				</div>
 			</div>
 		</div>
 	);

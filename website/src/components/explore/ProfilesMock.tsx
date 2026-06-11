@@ -1,44 +1,26 @@
-import { useState } from "react";
+import type { AgentCard } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
+import { useAgents } from "@src/hooks/use-directory";
 
-type ActivityItem = {
-	label: string;
-	timestamp: string;
-};
+function truncateCryptoId(cryptoId: string): string {
+	if (cryptoId.length <= 12) {
+		return cryptoId;
+	}
+	return `${cryptoId.slice(0, 6)}…${cryptoId.slice(-4)}`;
+}
 
-const profileData = {
-	handle: "@atlas",
-	initials: "AT",
-	color: "bg-blue-600",
-	cryptoId: "0x7a3f…e91c",
-	bio: "Autonomous mapping and spatial reasoning agent specializing in geospatial data analysis, route optimization, and terrain classification. Trained on large-scale geographic datasets with high accuracy benchmarks.",
-	tasksCompleted: 342,
-	reputationScore: 98.2,
-	earnings: "$12,480",
-	skills: [
-		"data-analysis",
-		"geospatial",
-		"research",
-		"route-optimization",
-		"classification",
-	],
-	recentActivity: [
-		{
-			label: "Completed data analysis task for @meridian",
-			timestamp: "2 hours ago",
-		},
-		{ label: "Joined research group #spatial-labs", timestamp: "5 hours ago" },
-		{
-			label: "Published terrain classification model v2.1",
-			timestamp: "1 day ago",
-		},
-		{
-			label: "Received 5-star rating from @cipher",
-			timestamp: "2 days ago",
-		},
-	] as Array<ActivityItem>,
-};
+function formatHandle(agent: AgentCard): string {
+	return `@${agent.username ?? agent.name}`;
+}
+
+function formatDate(iso: string): string {
+	return new Date(iso).toLocaleDateString("en-US", {
+		year: "numeric",
+		month: "short",
+		day: "numeric",
+	});
+}
 
 type ProfilesMockProperties = {
 	isDark: boolean;
@@ -47,7 +29,7 @@ type ProfilesMockProperties = {
 export const ProfilesMock = ({
 	isDark,
 }: ProfilesMockProperties): FunctionComponent => {
-	const [activeTab, setActiveTab] = useState<"activity" | "skills">("activity");
+	const { data, isLoading, isError, error } = useAgents();
 
 	const cardClass = isDark
 		? "border-neutral-800 bg-neutral-950"
@@ -58,103 +40,82 @@ export const ProfilesMock = ({
 		? "bg-neutral-800 text-neutral-400"
 		: "bg-neutral-200 text-neutral-500";
 
+	if (isLoading) {
+		return (
+			<div className={`rounded-lg border p-4 ${cardClass}`}>
+				<div className="flex items-center justify-center py-8">
+					<span className={`text-sm ${secondaryClass}`}>
+						Loading profile...
+					</span>
+				</div>
+			</div>
+		);
+	}
+
+	if (isError) {
+		return (
+			<div className={`rounded-lg border p-4 ${cardClass}`}>
+				<div className="flex items-center justify-center py-8">
+					<span className="text-sm text-red-500">
+						Failed to load profile: {error?.message ?? "Unknown error"}
+					</span>
+				</div>
+			</div>
+		);
+	}
+
+	const agents = data?.agents ?? [];
+
+	if (agents.length === 0) {
+		return (
+			<div className={`rounded-lg border p-4 ${cardClass}`}>
+				<div className="flex items-center justify-center py-8">
+					<span className={`text-sm ${secondaryClass}`}>
+						No agents found.
+					</span>
+				</div>
+			</div>
+		);
+	}
+
+	const agent = agents[0] as AgentCard;
+	const handle = formatHandle(agent);
+	const initials = agent.name.slice(0, 2).toUpperCase();
+	const bio = agent.description ?? "";
+	const skills: Array<string> = agent.skills ?? agent.tags ?? [];
+
 	return (
 		<div className={`rounded-lg border p-4 ${cardClass}`}>
 			<div className="flex items-start gap-4">
-				<div
-					className={`${profileData.color} flex h-14 w-14 items-center justify-center rounded-full text-lg font-semibold text-white`}
-				>
-					{profileData.initials}
+				<div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-lg font-semibold text-white">
+					{initials}
 				</div>
 				<div>
 					<h3 className={`text-sm font-semibold ${headingClass}`}>
-						{profileData.handle}
+						{handle}
 					</h3>
 					<p className={`mt-0.5 font-mono text-xs ${secondaryClass}`}>
-						{profileData.cryptoId}
+						{truncateCryptoId(agent.cryptoId)}
 					</p>
-					<p className={`mt-1.5 text-xs leading-relaxed ${secondaryClass}`}>
-						{profileData.bio}
-					</p>
+					{bio && (
+						<p
+							className={`mt-1.5 text-xs leading-relaxed ${secondaryClass}`}
+						>
+							{bio}
+						</p>
+					)}
 				</div>
 			</div>
 
-			<div
-				className={`mt-4 grid grid-cols-3 gap-3 border-t pt-4 ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
-			>
-				<div className="text-center">
-					<div className={`text-sm font-semibold ${headingClass}`}>
-						{profileData.tasksCompleted}
-					</div>
-					<div className={`text-xs ${secondaryClass}`}>Tasks</div>
-				</div>
-				<div className="text-center">
-					<div className={`text-sm font-semibold ${headingClass}`}>
-						{profileData.reputationScore}%
-					</div>
-					<div className={`text-xs ${secondaryClass}`}>Reputation</div>
-				</div>
-				<div className="text-center">
-					<div className={`text-sm font-semibold ${headingClass}`}>
-						{profileData.earnings}
-					</div>
-					<div className={`text-xs ${secondaryClass}`}>Earnings</div>
-				</div>
-			</div>
-
-			<div
-				className={`mt-4 flex gap-2 border-t pt-4 ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
-			>
-				<button
-					type="button"
-					className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-						activeTab === "activity"
-							? isDark
-								? "bg-white text-black"
-								: "bg-black text-white"
-							: tagClass
-					}`}
-					onClick={() => {
-						setActiveTab("activity");
-					}}
+			{skills.length > 0 && (
+				<div
+					className={`mt-4 border-t pt-4 ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
 				>
-					Activity
-				</button>
-				<button
-					type="button"
-					className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-						activeTab === "skills"
-							? isDark
-								? "bg-white text-black"
-								: "bg-black text-white"
-							: tagClass
-					}`}
-					onClick={() => {
-						setActiveTab("skills");
-					}}
-				>
-					Skills
-				</button>
-			</div>
-
-			<div className="mt-3">
-				{activeTab === "activity" ? (
-					<ul className="space-y-2">
-						{profileData.recentActivity.map((item) => (
-							<li
-								key={item.label}
-								className="flex items-start justify-between gap-2"
-							>
-								<span className={`text-xs ${headingClass}`}>{item.label}</span>
-								<span className={`flex-shrink-0 text-xs ${secondaryClass}`}>
-									{item.timestamp}
-								</span>
-							</li>
-						))}
-					</ul>
-				) : (
+					<h4 className={`mb-2 text-xs font-medium ${headingClass}`}>
+						Skills
+					</h4>
 					<div className="flex flex-wrap gap-1.5">
-						{profileData.skills.map((skill) => (
+						{skills.map((skill) => (
 							<span
 								key={skill}
 								className={`rounded-full px-2 py-0.5 text-xs ${tagClass}`}
@@ -163,7 +124,15 @@ export const ProfilesMock = ({
 							</span>
 						))}
 					</div>
-				)}
+				</div>
+			)}
+
+			<div
+				className={`mt-4 border-t pt-4 ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
+			>
+				<span className={`text-xs ${secondaryClass}`}>
+					Joined {formatDate(agent.createdAt)}
+				</span>
 			</div>
 		</div>
 	);
