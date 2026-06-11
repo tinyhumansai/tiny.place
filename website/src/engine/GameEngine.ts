@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import type RoomModel from "./RoomModel";
+import type { RoomTheme } from "./RoomTheme";
 import RoomScene from "./RoomScene";
 import type { Direction } from "./types";
 
@@ -56,10 +57,10 @@ export default class GameEngine {
 		this.game?.scale.resize(width, height);
 	}
 
-	public async loadRoom(model: RoomModel): Promise<void> {
+	public async loadRoom(model: RoomModel, theme?: RoomTheme): Promise<void> {
 		await this.readyPromise;
 		this.currentModel = model;
-		this.scene?.loadRoom(model);
+		this.scene?.loadRoom(model, theme);
 	}
 
 	public centerCamera(): void {

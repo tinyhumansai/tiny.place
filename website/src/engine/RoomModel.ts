@@ -1,3 +1,12 @@
+import {
+	type RoomTheme,
+	CHAT_THEME,
+	POKER_THEME,
+	COURT_THEME,
+	MARKETPLACE_THEME,
+	LEADERBOARD_THEME,
+} from "./RoomTheme";
+
 export default class RoomModel {
 	public maxX: number;
 	public maxY: number;
@@ -170,6 +179,7 @@ export type RoomPreset = {
 	description: string;
 	capacity: number;
 	color: string;
+	theme?: RoomTheme;
 	factory: () => RoomModel;
 };
 
@@ -267,6 +277,7 @@ export const ROOM_TYPE_PRESETS: Array<RoomPreset> = [
 		description: "Open conversation space for 1-on-1 or groups up to 500",
 		capacity: 500,
 		color: "#3b82f6",
+		theme: CHAT_THEME,
 		factory: createChatRoom,
 	},
 	{
@@ -275,6 +286,7 @@ export const ROOM_TYPE_PRESETS: Array<RoomPreset> = [
 		description: "Oval table with raised center for card games",
 		capacity: 10,
 		color: "#10b981",
+		theme: POKER_THEME,
 		factory: createPokerRoom,
 	},
 	{
@@ -283,6 +295,7 @@ export const ROOM_TYPE_PRESETS: Array<RoomPreset> = [
 		description: "Raised judge bench, partitioned areas for dispute resolution",
 		capacity: 50,
 		color: "#8b5cf6",
+		theme: COURT_THEME,
 		factory: createCourtRoom,
 	},
 	{
@@ -291,6 +304,7 @@ export const ROOM_TYPE_PRESETS: Array<RoomPreset> = [
 		description: "Market stalls with walkways for browsing and trading",
 		capacity: 200,
 		color: "#f59e0b",
+		theme: MARKETPLACE_THEME,
 		factory: createMarketplaceRoom,
 	},
 	{
@@ -299,6 +313,7 @@ export const ROOM_TYPE_PRESETS: Array<RoomPreset> = [
 		description: "Podium-style room with tiered platforms for rankings",
 		capacity: 100,
 		color: "#ef4444",
+		theme: LEADERBOARD_THEME,
 		factory: createLeaderboardRoom,
 	},
 ];

@@ -5,6 +5,7 @@ import type { FunctionComponent } from "@src/common/types";
 import GameEngine from "@src/engine/GameEngine";
 import type { Direction } from "@src/engine/types";
 import { randomAppearance } from "@src/engine/SvgAvatarRenderer";
+import type { RoomTheme } from "@src/engine/RoomTheme";
 import {
 	createDefaultRoom,
 	createLShapedRoom,
@@ -21,7 +22,7 @@ function generateRandomFigure(): string {
 	return appearanceToFigure(randomAppearance());
 }
 
-const ROOM_PRESETS = [
+const ROOM_PRESETS: Array<{ label: string; theme?: RoomTheme; factory: () => ReturnType<typeof createDefaultRoom> }> = [
 	{ label: "Default 8x8", factory: createDefaultRoom },
 	{ label: "L-Shaped", factory: createLShapedRoom },
 	{ label: "Multi-Level", factory: createMultiLevelRoom },
@@ -32,9 +33,10 @@ const ROOM_PRESETS = [
 	},
 	...ROOM_TYPE_PRESETS.map((preset) => ({
 		label: preset.label,
+		theme: preset.theme,
 		factory: preset.factory,
 	})),
-] as const;
+];
 
 const DIRECTIONS: Array<{ label: string; value: Direction }> = [
 	{ label: "N", value: 0 },
@@ -107,7 +109,7 @@ export function Room(): FunctionComponent {
 			const preset = ROOM_PRESETS[index];
 			if (!preset) return;
 			const model = preset.factory();
-			void engineRef.current.loadRoom(model);
+			void engineRef.current.loadRoom(model, preset.theme);
 		}
 	}, []);
 

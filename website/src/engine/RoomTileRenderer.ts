@@ -1,3 +1,5 @@
+import { type RoomTheme, DEFAULT_THEME } from "./RoomTheme";
+
 function flipCanvas(source: HTMLCanvasElement): HTMLCanvasElement | null {
 	const canvas = document.createElement("canvas");
 	const context = canvas.getContext("2d");
@@ -30,7 +32,7 @@ function drawDiamond(
 	context.fill();
 }
 
-function generateFloorTile(thickness: number): HTMLCanvasElement {
+function generateFloorTile(thickness: number, theme: RoomTheme): HTMLCanvasElement {
 	const canvas = document.createElement("canvas");
 	const context = canvas.getContext("2d");
 	canvas.width = 64;
@@ -49,7 +51,7 @@ function generateFloorTile(thickness: number): HTMLCanvasElement {
 			{ x: startX + tileW / 2, y: startY + tileH / 2 },
 		];
 
-		drawDiamond(context, points, "rgba(142,142,94,127)", "#989865");
+		drawDiamond(context, points, theme.floor.topStroke, theme.floor.top);
 
 		if (thickness > 0) {
 			drawDiamond(
@@ -60,8 +62,8 @@ function generateFloorTile(thickness: number): HTMLCanvasElement {
 					{ x: points[2]!.x - 0.5, y: points[2]!.y + thickness },
 					{ x: points[2]!.x - 0.5, y: points[2]!.y },
 				],
-				"#7A7A51",
-				"#838357"
+				theme.floor.leftStroke,
+				theme.floor.leftSide
 			);
 			drawDiamond(
 				context,
@@ -71,15 +73,15 @@ function generateFloorTile(thickness: number): HTMLCanvasElement {
 					{ x: points[2]!.x + 0.5, y: points[2]!.y + thickness },
 					{ x: points[2]!.x + 0.5, y: points[2]!.y },
 				],
-				"#676744",
-				"#6F6F49"
+				theme.floor.rightStroke,
+				theme.floor.rightSide
 			);
 		}
 	}
 	return canvas;
 }
 
-function generateWallL(height: number): HTMLCanvasElement {
+function generateWallL(height: number, theme: RoomTheme): HTMLCanvasElement {
 	const canvas = document.createElement("canvas");
 	const context = canvas.getContext("2d");
 	canvas.width = 40;
@@ -92,7 +94,7 @@ function generateWallL(height: number): HTMLCanvasElement {
 			{ x: 8, y: 20 },
 			{ x: 40, y: 4 },
 		];
-		drawDiamond(context, points, "#70727a", "#70727a");
+		drawDiamond(context, points, theme.wall.top, theme.wall.top);
 
 		if (height > 0) {
 			drawDiamond(
@@ -103,8 +105,8 @@ function generateWallL(height: number): HTMLCanvasElement {
 					{ x: points[2]!.x - 0.5, y: points[2]!.y + height },
 					{ x: points[2]!.x - 0.5, y: points[2]!.y },
 				],
-				"#bbbecd",
-				"#bbbecd"
+				theme.wall.leftFace,
+				theme.wall.leftFace
 			);
 			drawDiamond(
 				context,
@@ -114,15 +116,15 @@ function generateWallL(height: number): HTMLCanvasElement {
 					{ x: points[2]!.x, y: points[2]!.y + height },
 					{ x: points[2]!.x, y: points[2]!.y },
 				],
-				"#90929e",
-				"#90929e"
+				theme.wall.rightFace,
+				theme.wall.rightFace
 			);
 		}
 	}
 	return canvas;
 }
 
-function generateWallR(height: number): HTMLCanvasElement {
+function generateWallR(height: number, theme: RoomTheme): HTMLCanvasElement {
 	const canvas = document.createElement("canvas");
 	const context = canvas.getContext("2d");
 	canvas.width = 40;
@@ -135,7 +137,7 @@ function generateWallR(height: number): HTMLCanvasElement {
 			{ x: 32, y: 20 },
 			{ x: 0, y: 4 },
 		];
-		drawDiamond(context, points, "#70727a", "#70727a");
+		drawDiamond(context, points, theme.wall.top, theme.wall.top);
 
 		if (height > 0) {
 			drawDiamond(
@@ -146,8 +148,8 @@ function generateWallR(height: number): HTMLCanvasElement {
 					{ x: points[2]!.x - 0.5, y: points[2]!.y + height },
 					{ x: points[2]!.x - 0.5, y: points[2]!.y },
 				],
-				"#90929e",
-				"#90929e"
+				theme.wall.rightFace,
+				theme.wall.rightFace
 			);
 			drawDiamond(
 				context,
@@ -157,15 +159,15 @@ function generateWallR(height: number): HTMLCanvasElement {
 					{ x: points[2]!.x, y: points[2]!.y + height },
 					{ x: points[2]!.x, y: points[2]!.y },
 				],
-				"#b6b9c8",
-				"#b6b9c8"
+				theme.wall.rightFaceAlt,
+				theme.wall.rightFaceAlt
 			);
 		}
 	}
 	return canvas;
 }
 
-function generateWallBeforeDoorL(height: number): HTMLCanvasElement {
+function generateWallBeforeDoorL(height: number, theme: RoomTheme): HTMLCanvasElement {
 	const canvas = document.createElement("canvas");
 	const context = canvas.getContext("2d");
 	canvas.width = 40;
@@ -178,7 +180,7 @@ function generateWallBeforeDoorL(height: number): HTMLCanvasElement {
 			{ x: 8, y: 20 },
 			{ x: 40, y: 4 },
 		];
-		drawDiamond(context, points, "#6f717a", "#70727a");
+		drawDiamond(context, points, theme.wall.top, theme.wall.top);
 
 		if (height > 0) {
 			drawDiamond(
@@ -189,8 +191,8 @@ function generateWallBeforeDoorL(height: number): HTMLCanvasElement {
 					{ x: points[2]!.x, y: points[2]!.y + height },
 					{ x: points[2]!.x, y: points[2]!.y },
 				],
-				"#90929e",
-				"#90929e"
+				theme.wall.rightFace,
+				theme.wall.rightFace
 			);
 		}
 	}
@@ -317,79 +319,97 @@ function generateStair(
 	return canvas;
 }
 
-function generateStairL(): HTMLCanvasElement {
+function generateStairL(theme: RoomTheme): HTMLCanvasElement {
 	return generateStair(
-		"rgba(142,142,94,127)",
-		"#989865",
-		"#7A7A51",
-		"#838357",
-		"#676744",
-		"#6F6F49",
+		theme.floor.topStroke,
+		theme.floor.top,
+		theme.floor.leftStroke,
+		theme.floor.leftSide,
+		theme.floor.rightStroke,
+		theme.floor.rightSide,
 		false
 	);
 }
 
-function generateStairR(): HTMLCanvasElement | null {
+function generateStairR(theme: RoomTheme): HTMLCanvasElement | null {
 	return flipCanvas(
 		generateStair(
-			"rgba(142,142,94,127)",
-			"#989865",
-			"#676744",
-			"#6F6F49",
-			"#7A7A51",
-			"#838357",
+			theme.floor.topStroke,
+			theme.floor.top,
+			theme.floor.rightStroke,
+			theme.floor.rightSide,
+			theme.floor.leftStroke,
+			theme.floor.leftSide,
 			true
 		)
 	);
 }
 
 export default class RoomTileRenderer {
-	public initialize(scene: Phaser.Scene): void {
-		if (!scene.textures.exists("room_tile")) {
-			scene.textures.addCanvas("room_tile", generateFloorTile(7));
+	private currentThemeId: string = "";
+
+	public initialize(scene: Phaser.Scene, theme: RoomTheme = DEFAULT_THEME): void {
+		this.currentThemeId = theme.id;
+
+		const tileKey = `room_tile_${theme.id}`;
+		if (!scene.textures.exists(tileKey)) {
+			scene.textures.addCanvas(tileKey, generateFloorTile(7, theme));
 		}
 
-		const stairL = generateStairL();
-		if (!scene.textures.exists("room_stair_l")) {
-			scene.textures.addCanvas("room_stair_l", stairL);
+		const stairLKey = `room_stair_l_${theme.id}`;
+		if (!scene.textures.exists(stairLKey)) {
+			scene.textures.addCanvas(stairLKey, generateStairL(theme));
 		}
 
-		const stairR = generateStairR();
-		if (stairR && !scene.textures.exists("room_stair_r")) {
-			scene.textures.addCanvas("room_stair_r", stairR);
+		const stairRKey = `room_stair_r_${theme.id}`;
+		const stairR = generateStairR(theme);
+		if (stairR && !scene.textures.exists(stairRKey)) {
+			scene.textures.addCanvas(stairRKey, stairR);
 		}
 	}
 
-	public getWallLKey(scene: Phaser.Scene, z: number): string {
-		const key = `room_wall_l_${z}`;
+	public getFloorTileKey(): string {
+		return `room_tile_${this.currentThemeId}`;
+	}
+
+	public getStairLKey(): string {
+		return `room_stair_l_${this.currentThemeId}`;
+	}
+
+	public getStairRKey(): string {
+		return `room_stair_r_${this.currentThemeId}`;
+	}
+
+	public getWallLKey(scene: Phaser.Scene, z: number, theme: RoomTheme = DEFAULT_THEME): string {
+		const key = `room_wall_l_${theme.id}_${z}`;
 		if (!scene.textures.exists(key)) {
-			scene.textures.addCanvas(key, generateWallL(122 + z * 32));
+			scene.textures.addCanvas(key, generateWallL(122 + z * 32, theme));
 		}
 		return key;
 	}
 
-	public getWallRKey(scene: Phaser.Scene, z: number): string {
-		const key = `room_wall_r_${z}`;
+	public getWallRKey(scene: Phaser.Scene, z: number, theme: RoomTheme = DEFAULT_THEME): string {
+		const key = `room_wall_r_${theme.id}_${z}`;
 		if (!scene.textures.exists(key)) {
-			scene.textures.addCanvas(key, generateWallR(122 + z * 32));
+			scene.textures.addCanvas(key, generateWallR(122 + z * 32, theme));
 		}
 		return key;
 	}
 
-	public getDoorLKey(scene: Phaser.Scene): string {
-		const key = "room_door_l";
+	public getDoorLKey(scene: Phaser.Scene, theme: RoomTheme = DEFAULT_THEME): string {
+		const key = `room_door_l_${theme.id}`;
 		if (!scene.textures.exists(key)) {
-			scene.textures.addCanvas(key, generateWallL(28));
+			scene.textures.addCanvas(key, generateWallL(28, theme));
 		}
 		return key;
 	}
 
-	public getDoorBeforeLKey(scene: Phaser.Scene, z: number): string {
-		const key = `room_door_before_l_${z}`;
+	public getDoorBeforeLKey(scene: Phaser.Scene, z: number, theme: RoomTheme = DEFAULT_THEME): string {
+		const key = `room_door_before_l_${theme.id}_${z}`;
 		if (!scene.textures.exists(key)) {
 			scene.textures.addCanvas(
 				key,
-				generateWallBeforeDoorL(122 + z * 32)
+				generateWallBeforeDoorL(122 + z * 32, theme)
 			);
 		}
 		return key;

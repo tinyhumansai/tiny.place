@@ -1,5 +1,6 @@
 import type RoomModel from "./RoomModel";
 import RoomTileRenderer from "./RoomTileRenderer";
+import { type RoomTheme, DEFAULT_THEME } from "./RoomTheme";
 import {
 	generateAllTextures,
 	getTextureKey,
@@ -103,6 +104,7 @@ export default class RoomScene extends Phaser.Scene {
 	private readonly tileRenderer: RoomTileRenderer;
 	public currentModel: RoomModel | null;
 	private readonly avatars: Map<number, RoomAvatarState>;
+	private currentTheme: RoomTheme;
 	private isDragging: boolean;
 	private lastPointerX: number;
 	private lastPointerY: number;
@@ -111,6 +113,7 @@ export default class RoomScene extends Phaser.Scene {
 		super({ key: "RoomScene" });
 		this.tileRenderer = new RoomTileRenderer();
 		this.currentModel = null;
+		this.currentTheme = DEFAULT_THEME;
 		this.avatars = new Map();
 		this.isDragging = false;
 		this.lastPointerX = 0;
@@ -118,8 +121,6 @@ export default class RoomScene extends Phaser.Scene {
 	}
 
 	public create(): void {
-		this.tileRenderer.initialize(this);
-
 		try {
 			this.load.image("shadow_tile", "assets/shadow_tile.png");
 			this.load.start();
@@ -183,9 +184,13 @@ export default class RoomScene extends Phaser.Scene {
 		);
 	}
 
-	public loadRoom(model: RoomModel): void {
+	public loadRoom(model: RoomModel, theme: RoomTheme = DEFAULT_THEME): void {
 		this.clearRoom();
 		this.currentModel = model;
+		this.currentTheme = theme;
+
+		this.tileRenderer.initialize(this, theme);
+		this.cameras.main.setBackgroundColor(theme.backgroundColor);
 
 		let maxHeight = 1;
 		for (let x = 0; x < model.maxX; x++) {
@@ -210,6 +215,7 @@ export default class RoomScene extends Phaser.Scene {
 	}
 
 	private renderWalls(model: RoomModel, maxHeight: number): void {
+		const theme = this.currentTheme;
 		let minY = model.maxX;
 
 		for (let x = 0; x < model.maxX; x++) {
@@ -221,7 +227,7 @@ export default class RoomScene extends Phaser.Scene {
 					y <= minY
 				) {
 					if (minY > y) minY = y;
-					const key = this.tileRenderer.getWallRKey(this, maxHeight - tile);
+					const key = this.tileRenderer.getWallRKey(this, maxHeight - tile, theme);
 					const local = tileToLocal(x, y + 1, maxHeight - 1);
 					const wall = this.add.image(
 						local.x + ROOM_WALL_R_OFFSET_X,
@@ -240,14 +246,15 @@ export default class RoomScene extends Phaser.Scene {
 				if ((model.doorX !== x || model.doorY !== y) && tile > 0) {
 					let key: string;
 					if (y === model.doorY) {
-						key = this.tileRenderer.getDoorLKey(this);
+						key = this.tileRenderer.getDoorLKey(this, theme);
 					} else if (y === model.doorY - 1) {
 						key = this.tileRenderer.getDoorBeforeLKey(
 							this,
-							maxHeight - tile
+							maxHeight - tile,
+							theme
 						);
 					} else {
-						key = this.tileRenderer.getWallLKey(this, maxHeight - tile);
+						key = this.tileRenderer.getWallLKey(this, maxHeight - tile, theme);
 					}
 					const local = tileToLocal(x, y, maxHeight - 1);
 					const wall = this.add.image(
@@ -264,18 +271,22 @@ export default class RoomScene extends Phaser.Scene {
 	}
 
 	private renderFloor(model: RoomModel): void {
+		const floorKey = this.tileRenderer.getFloorTileKey();
+		const stairLKey = this.tileRenderer.getStairLKey();
+		const stairRKey = this.tileRenderer.getStairRKey();
+
 		for (let x = 0; x < model.maxX; x++) {
 			for (let y = 0; y < model.maxY; y++) {
 				const tile = model.getTile(x, y);
 				if (tile <= 0) continue;
 
-				let textureKey = "room_tile";
+				let textureKey = floorKey;
 
 				if (
 					model.isValidTile(x + 1, y) &&
 					model.getTile(x + 1, y) < tile
 				) {
-					textureKey = "room_stair_l";
+					textureKey = stairLKey;
 				} else if (
 					model.isValidTile(x - 1, y) &&
 					model.getTile(x - 1, y) > tile
@@ -290,12 +301,12 @@ export default class RoomScene extends Phaser.Scene {
 					model.isValidTile(x, y + 1) &&
 					model.getTile(x, y + 1) < tile
 				) {
-					if (this.textures.exists("room_stair_r")) {
+					if (this.textures.exists(stairRKey)) {
 						const local = tileToLocal(x, y, tile - 1);
 						const stair = this.add.image(
 							local.x - 34,
 							local.y,
-							"room_stair_r"
+							stairRKey
 						);
 						stair.setOrigin(0, 0);
 						stair.setDepth(
