@@ -5,8 +5,6 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 
 import {
 	generateNonce,
-	publicKeyToBase64,
-	publicKeyToHex,
 	signX402Authorization,
 	type AvailabilityResponse,
 } from "@tinyhumansai/tinyplace";
@@ -26,21 +24,20 @@ function getAnnualFee(name: string): string {
 	const label = name.replace(/^@/, "");
 	switch (label.length) {
 		case 1:
-			return "2000000000";
+			return "2000";
 		case 2:
-			return "1000000000";
+			return "1000";
 		case 3:
-			return "500000000";
+			return "500";
 		case 4:
-			return "100000000";
+			return "100";
 		default:
-			return "5000000";
+			return "5";
 	}
 }
 
-function formatUsdc(amount: string): string {
-	const dollars = Number(amount) / 1_000_000;
-	return `${dollars.toLocaleString()} USDC`;
+function formatFee(amount: string): string {
+	return `${Number(amount).toLocaleString()} USDC`;
 }
 
 type DomainRegistrationProperties = {
@@ -76,25 +73,22 @@ export const DomainRegistration = ({
 			}
 
 			const amount = getAnnualFee(selectedName);
+			const nonce = generateNonce("reg");
 
 			const payment = await signX402Authorization(signer, {
 				scheme: "exact",
-				network: "eip155:8453",
-				asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+				network: "base",
+				asset: "USDC",
 				amount,
 				from: agentId,
-				to: "",
-				nonce: generateNonce("reg"),
+				to: "tinyplace-registry",
+				nonce,
 				expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
 				metadata: {
 					domain: "tiny.place",
-					publicKey: publicKeyToHex(
-						new Uint8Array(
-							atob(signer.publicKeyBase64)
-								.split("")
-								.map((c) => c.charCodeAt(0)),
-						),
-					),
+					publicKey: signer.publicKeyBase64,
+					identity: selectedName,
+					purpose: "registration",
 				},
 			});
 
@@ -102,13 +96,7 @@ export const DomainRegistration = ({
 				username: selectedName,
 				bio,
 				cryptoId: agentId,
-				publicKey: publicKeyToBase64(
-					new Uint8Array(
-						atob(signer.publicKeyBase64)
-							.split("")
-							.map((c) => c.charCodeAt(0)),
-					),
-				),
+				publicKey: signer.publicKeyBase64,
 				payment: {
 					scheme: payment.scheme,
 					network: payment.network,
@@ -119,14 +107,11 @@ export const DomainRegistration = ({
 					nonce: payment.nonce,
 					expiresAt: payment.expiresAt,
 					signature: payment.signature,
-					...(payment.metadata
-						? Object.fromEntries(
-								Object.entries(payment.metadata).map(([key, value]) => [
-									`metadata.${key}`,
-									value,
-								]),
-							)
-						: {}),
+					"metadata.domain": "tiny.place",
+					"metadata.publicKey": signer.publicKeyBase64,
+					"metadata.identity": selectedName,
+					"metadata.purpose": "registration",
+					verifiedId: payment.nonce,
 				},
 			});
 		},
@@ -193,7 +178,7 @@ export const DomainRegistration = ({
 								Register {selectedName}
 							</h3>
 							<p className={`mt-0.5 text-xs ${secondaryClass}`}>
-								Annual fee: {formatUsdc(getAnnualFee(selectedName))}
+								Annual fee: {formatFee(getAnnualFee(selectedName))}
 							</p>
 						</div>
 						<button
@@ -243,7 +228,7 @@ export const DomainRegistration = ({
 				>
 					{registerMutation.isPending
 						? "Signing & Registering..."
-						: `Pay ${formatUsdc(getAnnualFee(selectedName))} & Register`}
+						: `Pay ${formatFee(getAnnualFee(selectedName))} & Register`}
 				</button>
 
 				{registerMutation.isError && (
@@ -301,7 +286,7 @@ export const DomainRegistration = ({
 										Available
 									</span>
 									<span className={`ml-2 text-xs ${secondaryClass}`}>
-										{formatUsdc(getAnnualFee(searchName))}/year
+										{formatFee(getAnnualFee(searchName))}/year
 									</span>
 								</div>
 								<button
