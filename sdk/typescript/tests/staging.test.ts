@@ -2,18 +2,15 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   TinyVerseClient,
   TinyVerseError,
-  generateKeyPair,
+  LocalSigner,
   publicKeyToHex,
-  publicKeyToBase64,
-  deriveCryptoId,
-  createSigningKey,
 } from "../src/index.js";
-import type { SigningKey, KeyPair } from "../src/index.js";
+import type { Signer } from "../src/index.js";
 
 const BASE_URL = "https://staging-api.tiny.place";
 
-function makeClient(signingKey?: SigningKey, publicKeyBase64?: string): TinyVerseClient {
-  return new TinyVerseClient({ baseUrl: BASE_URL, signingKey, publicKeyBase64 });
+function makeClient(signer?: Signer): TinyVerseClient {
+  return new TinyVerseClient({ baseUrl: BASE_URL, signer });
 }
 
 describe("staging: unauthenticated endpoints", () => {
@@ -89,23 +86,19 @@ describe("staging: unauthenticated endpoints", () => {
 });
 
 describe("staging: authenticated flows", () => {
-  let keyPair: KeyPair;
+  let signer: LocalSigner;
   let cryptoId: string;
   let publicKeyHex: string;
   let publicKeyB64: string;
-  let signingKey: SigningKey;
   let client: TinyVerseClient;
 
   beforeAll(async () => {
-    keyPair = await generateKeyPair();
-    publicKeyHex = publicKeyToHex(keyPair.publicKey);
-    publicKeyB64 = publicKeyToBase64(keyPair.publicKey);
-    cryptoId = deriveCryptoId(keyPair.publicKey);
-    signingKey = createSigningKey(cryptoId, keyPair.privateKey);
-    client = makeClient(signingKey, publicKeyB64);
+    signer = await LocalSigner.generate();
+    cryptoId = signer.agentId;
+    publicKeyB64 = signer.publicKeyBase64;
+    publicKeyHex = publicKeyToHex(signer.publicKey);
+    client = makeClient(signer);
 
-    // Create an agent card that persists across all authenticated tests.
-    // The directory write auth uses this to verify signatures.
     await client.directory.upsertAgent(cryptoId, {
       agentId: cryptoId,
       name: "sdk-test-agent",

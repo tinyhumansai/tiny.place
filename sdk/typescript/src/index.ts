@@ -10,6 +10,9 @@ export type { TinyVerseWebSocketOptions, WebSocketEventHandler } from "./websock
 export type { SigningKey, AuthHeaders, DirectoryWriteHeaders } from "./auth.js";
 export { buildAuthHeader, signRequest, signDirectoryWrite, signCanonicalPayload } from "./auth.js";
 
+export { Signer } from "./signer.js";
+export { LocalSigner } from "./local-signer.js";
+
 export type { KeyPair } from "./crypto.js";
 export {
   generateKeyPair,

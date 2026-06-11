@@ -1,0 +1,58 @@
+import { webcrypto } from "node:crypto";
+import { Signer } from "./signer.js";
+import {
+  generateKeyPair,
+  deriveCryptoId,
+  publicKeyToBase64,
+} from "./crypto.js";
+import type { KeyPair } from "./crypto.js";
+
+export class LocalSigner extends Signer {
+  readonly agentId: string;
+  readonly publicKeyBase64: string;
+  readonly publicKey: Uint8Array;
+
+  private readonly privateKey: CryptoKey;
+
+  private constructor(keyPair: KeyPair) {
+    super();
+    this.publicKey = keyPair.publicKey;
+    this.privateKey = keyPair.privateKey;
+    this.agentId = deriveCryptoId(keyPair.publicKey);
+    this.publicKeyBase64 = publicKeyToBase64(keyPair.publicKey);
+  }
+
+  static async generate(): Promise<LocalSigner> {
+    const keyPair = await generateKeyPair();
+    return new LocalSigner(keyPair);
+  }
+
+  static async fromPrivateKey(privateKey: CryptoKey): Promise<LocalSigner> {
+    const crypto = webcrypto as unknown as Crypto;
+    const jwk = await crypto.subtle.exportKey("jwk", privateKey);
+    const publicOnlyJwk = { ...jwk, d: undefined, key_ops: ["verify"] };
+    const publicCryptoKey = await crypto.subtle.importKey(
+      "jwk",
+      publicOnlyJwk,
+      { name: "Ed25519" },
+      true,
+      ["verify"],
+    );
+    const publicKeyRaw = new Uint8Array(
+      await crypto.subtle.exportKey("raw", publicCryptoKey),
+    );
+    return new LocalSigner({ publicKey: publicKeyRaw, privateKey });
+  }
+
+  static fromKeyPair(keyPair: KeyPair): LocalSigner {
+    return new LocalSigner(keyPair);
+  }
+
+  async sign(data: Uint8Array): Promise<Uint8Array> {
+    const crypto = webcrypto as unknown as Crypto;
+    const buffer = new ArrayBuffer(data.byteLength);
+    new Uint8Array(buffer).set(data);
+    const sig = await crypto.subtle.sign("Ed25519", this.privateKey, buffer);
+    return new Uint8Array(sig);
+  }
+}

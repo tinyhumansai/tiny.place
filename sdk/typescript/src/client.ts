@@ -1,4 +1,5 @@
 import type { SigningKey } from "./auth.js";
+import { Signer } from "./signer.js";
 import { HttpClient } from "./http.js";
 import { TinyVerseWebSocket } from "./websocket.js";
 import { A2AApi } from "./api/a2a.js";
@@ -26,7 +27,10 @@ import { StatsApi } from "./api/stats.js";
 
 export interface TinyVerseClientOptions {
   baseUrl: string;
+  signer?: Signer;
+  /** @deprecated Use `signer` instead. */
   signingKey?: SigningKey;
+  /** @deprecated Use `signer` instead. */
   publicKeyBase64?: string;
   fetch?: typeof globalThis.fetch;
 }
@@ -61,11 +65,16 @@ export class TinyVerseClient {
 
   constructor(options: TinyVerseClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
-    this.signingKey = options.signingKey;
+
+    const signingKey = options.signer ?? options.signingKey;
+    const publicKeyBase64 =
+      options.signer?.publicKeyBase64 ?? options.publicKeyBase64;
+
+    this.signingKey = signingKey;
     this.http = new HttpClient({
       baseUrl: this.baseUrl,
-      signingKey: options.signingKey,
-      publicKeyBase64: options.publicKeyBase64,
+      signingKey,
+      publicKeyBase64,
       fetch: options.fetch,
     });
 
@@ -77,7 +86,7 @@ export class TinyVerseClient {
       });
     };
 
-    this.registry = new RegistryApi(this.http, options.signingKey);
+    this.registry = new RegistryApi(this.http, signingKey);
     this.keys = new KeysApi(this.http);
     this.messages = new MessagesApi(this.http);
     this.directory = new DirectoryApi(this.http);
