@@ -5,20 +5,39 @@ function darkenHex(hex: string, factor: number): string {
 	return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
+interface IsoDiamond {
+	tl: { x: number; y: number };
+	topRight: { x: number; y: number };
+	br: { x: number; y: number };
+	bl: { x: number; y: number };
+}
+
+function isoDiamond(cx: number, topY: number, diamondWidth: number): IsoDiamond {
+	const halfW = diamondWidth / 2;
+	return {
+		tl: { x: cx, y: topY },
+		topRight: { x: cx + halfW, y: topY + halfW / 2 },
+		br: { x: cx, y: topY + halfW },
+		bl: { x: cx - halfW, y: topY + halfW / 2 },
+	};
+}
+
+function diamondPoints(diamond: IsoDiamond): string {
+	return `${diamond.tl.x},${diamond.tl.y} ${diamond.topRight.x},${diamond.topRight.y} ${diamond.br.x},${diamond.br.y} ${diamond.bl.x},${diamond.bl.y}`;
+}
+
 export function generatePokerTableSvg(): string {
-	const w = 260;
-	const h = 150;
-	const cx = w / 2;
-	const tableW = 200;
-	const tableH = 100;
+	const diamondW = 180;
 	const depth = 12;
-	const topY = 30;
+	const topY = 10;
+	const halfW = diamondW / 2;
+	const diamondH = halfW;
+	const w = diamondW + 20;
+	const h = topY + diamondH + depth + 20;
+	const cx = w / 2;
 	const rimW = 8;
 
-	const tl = { x: cx, y: topY };
-	const tr = { x: cx + tableW / 2, y: topY + tableH / 4 };
-	const br = { x: cx, y: topY + tableH / 2 };
-	const bl = { x: cx - tableW / 2, y: topY + tableH / 4 };
+	const outer = isoDiamond(cx, topY, diamondW);
 
 	const parts: Array<string> = [];
 	parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`);
@@ -31,84 +50,67 @@ export function generatePokerTableSvg(): string {
 	const legW = 5;
 	const legH = 18;
 	const legColor = "#3d2517";
-	parts.push(`<rect x="${bl.x + 15}" y="${bl.y + depth - 2}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
-	parts.push(`<rect x="${br.x - 10}" y="${br.y + depth - 2}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
-	parts.push(`<rect x="${tr.x - 20}" y="${tr.y + depth - 2}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
+	parts.push(`<rect x="${outer.bl.x + 15}" y="${outer.bl.y + depth - 2}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
+	parts.push(`<rect x="${outer.br.x - 10}" y="${outer.br.y + depth - 2}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
+	parts.push(`<rect x="${outer.topRight.x - 20}" y="${outer.topRight.y + depth - 2}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
 
-	const depthLeft = `${bl.x},${bl.y} ${bl.x},${bl.y + depth} ${br.x},${br.y + depth} ${br.x},${br.y}`;
-	parts.push(`<polygon points="${depthLeft}" fill="#3d2517"/>`);
-	const depthRight = `${br.x},${br.y} ${br.x},${br.y + depth} ${tr.x},${tr.y + depth} ${tr.x},${tr.y}`;
-	parts.push(`<polygon points="${depthRight}" fill="#2e1a0f"/>`);
+	parts.push(`<polygon points="${outer.bl.x},${outer.bl.y} ${outer.bl.x},${outer.bl.y + depth} ${outer.br.x},${outer.br.y + depth} ${outer.br.x},${outer.br.y}" fill="#3d2517"/>`);
+	parts.push(`<polygon points="${outer.br.x},${outer.br.y} ${outer.br.x},${outer.br.y + depth} ${outer.topRight.x},${outer.topRight.y + depth} ${outer.topRight.x},${outer.topRight.y}" fill="#2e1a0f"/>`);
 
-	const rim = `${tl.x},${tl.y} ${tr.x},${tr.y} ${br.x},${br.y} ${bl.x},${bl.y}`;
-	parts.push(`<polygon points="${rim}" fill="#5c3a22" stroke="#4a2e1a" stroke-width="1"/>`);
+	parts.push(`<polygon points="${diamondPoints(outer)}" fill="#5c3a22" stroke="#4a2e1a" stroke-width="1"/>`);
 
-	const itl = { x: cx, y: topY + rimW / 2 };
-	const itr = { x: cx + tableW / 2 - rimW, y: topY + tableH / 4 };
-	const ibr = { x: cx, y: topY + tableH / 2 - rimW / 2 };
-	const ibl = { x: cx - tableW / 2 + rimW, y: topY + tableH / 4 };
-	const felt = `${itl.x},${itl.y} ${itr.x},${itr.y} ${ibr.x},${ibr.y} ${ibl.x},${ibl.y}`;
-	parts.push(`<polygon points="${felt}" fill="#1a5c3a"/>`);
-	parts.push(`<polygon points="${felt}" fill="url(#feltGrad)"/>`);
+	const inner = isoDiamond(cx, topY + rimW / 2, diamondW - rimW * 2);
+	parts.push(`<polygon points="${diamondPoints(inner)}" fill="#1a5c3a"/>`);
+	parts.push(`<polygon points="${diamondPoints(inner)}" fill="url(#feltGrad)"/>`);
 
-	const mcx = cx;
-	const mcy = topY + tableH / 4;
-	parts.push(`<ellipse cx="${mcx}" cy="${mcy}" rx="25" ry="12" fill="none" stroke="#1a4a30" stroke-width="1.5" opacity="0.5"/>`);
+	const mcy = topY + diamondH / 2;
+	parts.push(`<ellipse cx="${cx}" cy="${mcy}" rx="20" ry="10" fill="none" stroke="#1a4a30" stroke-width="1.5" opacity="0.5"/>`);
 
 	parts.push("</svg>");
 	return parts.join("");
 }
 
 export function generateChairSvg(color: string = "#5c3a22"): string {
-	const w = 36;
-	const h = 48;
+	const seatDiamondW = 26;
+	const halfW = seatDiamondW / 2;
+	const seatDepth = 4;
+	const legH = 14;
+	const backH = 14;
+	const topY = backH + 2;
+	const w = seatDiamondW + 12;
+	const h = topY + halfW + seatDepth + legH + 2;
+	const cx = w / 2;
 	const darker = darkenHex(color, 0.7);
+
+	const seat = isoDiamond(cx, topY, seatDiamondW);
 
 	const parts: Array<string> = [];
 	parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`);
 
-	const seatY = 22;
-	const seatW = 28;
-	const seatH = 14;
-	const seatDepth = 4;
-	const cx = w / 2;
-
-	const stl = { x: cx, y: seatY };
-	const sTopRight = { x: cx + seatW / 2, y: seatY + seatH / 4 };
-	const sbr = { x: cx, y: seatY + seatH / 2 };
-	const sbl = { x: cx - seatW / 2, y: seatY + seatH / 4 };
-
 	const legW = 3;
-	const legH = 14;
-	parts.push(`<rect x="${sbl.x + 2}" y="${sbl.y + seatDepth}" width="${legW}" height="${legH}" rx="1" fill="${darker}"/>`);
-	parts.push(`<rect x="${sbr.x - 2}" y="${sbr.y + seatDepth}" width="${legW}" height="${legH}" rx="1" fill="${darker}"/>`);
-	parts.push(`<rect x="${sTopRight.x - 5}" y="${sTopRight.y + seatDepth}" width="${legW}" height="${legH}" rx="1" fill="${darker}"/>`);
-	parts.push(`<rect x="${stl.x - 2}" y="${stl.y + seatDepth - 2}" width="${legW}" height="${legH}" rx="1" fill="${darker}"/>`);
+	parts.push(`<rect x="${seat.bl.x + 2}" y="${seat.bl.y + seatDepth}" width="${legW}" height="${legH}" rx="1" fill="${darker}"/>`);
+	parts.push(`<rect x="${seat.br.x - 2}" y="${seat.br.y + seatDepth}" width="${legW}" height="${legH}" rx="1" fill="${darker}"/>`);
+	parts.push(`<rect x="${seat.topRight.x - 4}" y="${seat.topRight.y + seatDepth}" width="${legW}" height="${legH}" rx="1" fill="${darker}"/>`);
+	parts.push(`<rect x="${seat.tl.x - 2}" y="${seat.tl.y + seatDepth - 2}" width="${legW}" height="${legH}" rx="1" fill="${darker}"/>`);
 
-	const dl = `${sbl.x},${sbl.y} ${sbl.x},${sbl.y + seatDepth} ${sbr.x},${sbr.y + seatDepth} ${sbr.x},${sbr.y}`;
-	parts.push(`<polygon points="${dl}" fill="${darker}"/>`);
-	const dr = `${sbr.x},${sbr.y} ${sbr.x},${sbr.y + seatDepth} ${sTopRight.x},${sTopRight.y + seatDepth} ${sTopRight.x},${sTopRight.y}`;
-	parts.push(`<polygon points="${dr}" fill="${darkenHex(color, 0.6)}"/>`);
+	parts.push(`<polygon points="${seat.bl.x},${seat.bl.y} ${seat.bl.x},${seat.bl.y + seatDepth} ${seat.br.x},${seat.br.y + seatDepth} ${seat.br.x},${seat.br.y}" fill="${darker}"/>`);
+	parts.push(`<polygon points="${seat.br.x},${seat.br.y} ${seat.br.x},${seat.br.y + seatDepth} ${seat.topRight.x},${seat.topRight.y + seatDepth} ${seat.topRight.x},${seat.topRight.y}" fill="${darkenHex(color, 0.6)}"/>`);
 
-	const seat = `${stl.x},${stl.y} ${sTopRight.x},${sTopRight.y} ${sbr.x},${sbr.y} ${sbl.x},${sbl.y}`;
-	parts.push(`<polygon points="${seat}" fill="${color}"/>`);
+	parts.push(`<polygon points="${diamondPoints(seat)}" fill="${color}"/>`);
 
-	const pad = `${stl.x},${stl.y + 1} ${sTopRight.x - 2},${sTopRight.y + 1} ${sbr.x},${sbr.y - 1} ${sbl.x + 2},${sbl.y - 1}`;
-	parts.push(`<polygon points="${pad}" fill="#8b4444" opacity="0.6"/>`);
+	const padInset = 3;
+	const pad = isoDiamond(cx, topY + padInset / 2, seatDiamondW - padInset * 2);
+	parts.push(`<polygon points="${diamondPoints(pad)}" fill="#8b4444" opacity="0.6"/>`);
 
-	const backH = 14;
-	const backY = seatY - backH;
-	const backW = seatW - 4;
+	const backW = seatDiamondW - 4;
+	const backY = topY - backH;
 	const btl = { x: cx, y: backY };
-	const btr = { x: cx + backW / 2, y: backY + 3 };
-	const bbr = { x: cx + backW / 2 - 1, y: seatY + 1 };
-	const bbl = { x: cx - backW / 2 + 1, y: seatY - 2 };
+	const bTopRight = { x: cx + backW / 2, y: backY + backW / 4 };
+	const bbr = { x: cx + backW / 2 - 1, y: topY + 1 };
+	const bbl = { x: cx - backW / 2 + 1, y: topY - 2 };
 
-	const backLeft = `${bbl.x},${bbl.y} ${bbl.x},${bbl.y + seatDepth} ${btl.x - 1},${btl.y + seatDepth} ${btl.x - 1},${btl.y}`;
-	parts.push(`<polygon points="${backLeft}" fill="${darker}" opacity="0.4"/>`);
-
-	const back = `${btl.x},${btl.y} ${btr.x},${btr.y} ${bbr.x},${bbr.y} ${bbl.x},${bbl.y}`;
-	parts.push(`<polygon points="${back}" fill="${color}" stroke="${darker}" stroke-width="0.5"/>`);
+	parts.push(`<polygon points="${bbl.x},${bbl.y} ${bbl.x},${bbl.y + seatDepth} ${btl.x - 1},${btl.y + seatDepth} ${btl.x - 1},${btl.y}" fill="${darker}" opacity="0.4"/>`);
+	parts.push(`<polygon points="${btl.x},${btl.y} ${bTopRight.x},${bTopRight.y} ${bbr.x},${bbr.y} ${bbl.x},${bbl.y}" fill="${color}" stroke="${darker}" stroke-width="0.5"/>`);
 
 	parts.push("</svg>");
 	return parts.join("");
@@ -162,95 +164,71 @@ export function generateCardFaceDownSvg(): string {
 }
 
 export function generateJudgeBenchSvg(): string {
-	const w = 220;
-	const h = 130;
-	const cx = w / 2;
-	const benchW = 180;
-	const benchH = 70;
+	const diamondW = 160;
+	const halfW = diamondW / 2;
 	const depth = 20;
-	const topY = 20;
+	const topY = 10;
+	const w = diamondW + 20;
+	const h = topY + halfW + depth + 10;
+	const cx = w / 2;
 
-	const tl = { x: cx, y: topY };
-	const topRight = { x: cx + benchW / 2, y: topY + benchH / 4 };
-	const br = { x: cx, y: topY + benchH / 2 };
-	const bl = { x: cx - benchW / 2, y: topY + benchH / 4 };
+	const outer = isoDiamond(cx, topY, diamondW);
 
 	const parts: Array<string> = [];
 	parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`);
 
-	const depthLeft = `${bl.x},${bl.y} ${bl.x},${bl.y + depth} ${br.x},${br.y + depth} ${br.x},${br.y}`;
-	parts.push(`<polygon points="${depthLeft}" fill="#4a3020"/>`);
-	const depthRight = `${br.x},${br.y} ${br.x},${br.y + depth} ${topRight.x},${topRight.y + depth} ${topRight.x},${topRight.y}`;
-	parts.push(`<polygon points="${depthRight}" fill="#3a2418"/>`);
+	parts.push(`<polygon points="${outer.bl.x},${outer.bl.y} ${outer.bl.x},${outer.bl.y + depth} ${outer.br.x},${outer.br.y + depth} ${outer.br.x},${outer.br.y}" fill="#4a3020"/>`);
+	parts.push(`<polygon points="${outer.br.x},${outer.br.y} ${outer.br.x},${outer.br.y + depth} ${outer.topRight.x},${outer.topRight.y + depth} ${outer.topRight.x},${outer.topRight.y}" fill="#3a2418"/>`);
 
-	const top = `${tl.x},${tl.y} ${topRight.x},${topRight.y} ${br.x},${br.y} ${bl.x},${bl.y}`;
-	parts.push(`<polygon points="${top}" fill="#5c3a22" stroke="#4a2e1a" stroke-width="1"/>`);
+	parts.push(`<polygon points="${diamondPoints(outer)}" fill="#5c3a22" stroke="#4a2e1a" stroke-width="1"/>`);
 
-	const panelInset = 12;
-	const ptl = { x: cx, y: topY + panelInset / 2 };
-	const ptr = { x: cx + benchW / 2 - panelInset, y: topY + benchH / 4 };
-	const pbr = { x: cx, y: topY + benchH / 2 - panelInset / 2 };
-	const pbl = { x: cx - benchW / 2 + panelInset, y: topY + benchH / 4 };
-	const panel = `${ptl.x},${ptl.y} ${ptr.x},${ptr.y} ${pbr.x},${pbr.y} ${pbl.x},${pbl.y}`;
-	parts.push(`<polygon points="${panel}" fill="#6b4530" stroke="#5a3828" stroke-width="0.5"/>`);
+	const inner = isoDiamond(cx, topY + 6, diamondW - 24);
+	parts.push(`<polygon points="${diamondPoints(inner)}" fill="#6b4530" stroke="#5a3828" stroke-width="0.5"/>`);
 
-	const emblemY = topY + benchH / 4 - 2;
-	parts.push(`<ellipse cx="${cx}" cy="${emblemY}" rx="12" ry="6" fill="#c9a84c" opacity="0.6"/>`);
+	const emblemY = topY + halfW / 2;
+	parts.push(`<ellipse cx="${cx}" cy="${emblemY}" rx="10" ry="5" fill="#c9a84c" opacity="0.6"/>`);
 
 	parts.push("</svg>");
 	return parts.join("");
 }
 
 export function generateWitnessStandSvg(): string {
-	const w = 80;
-	const h = 80;
-	const cx = w / 2;
-	const standW = 60;
-	const standH = 30;
+	const diamondW = 56;
+	const halfW = diamondW / 2;
 	const depth = 16;
-	const topY = 18;
+	const topY = 12;
+	const w = diamondW + 16;
+	const h = topY + halfW + depth + 8;
+	const cx = w / 2;
 
-	const tl = { x: cx, y: topY };
-	const topRight = { x: cx + standW / 2, y: topY + standH / 4 };
-	const br = { x: cx, y: topY + standH / 2 };
-	const bl = { x: cx - standW / 2, y: topY + standH / 4 };
+	const outer = isoDiamond(cx, topY, diamondW);
 
 	const parts: Array<string> = [];
 	parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`);
 
-	const depthLeft = `${bl.x},${bl.y} ${bl.x},${bl.y + depth} ${br.x},${br.y + depth} ${br.x},${br.y}`;
-	parts.push(`<polygon points="${depthLeft}" fill="#4a3020"/>`);
-	const depthRight = `${br.x},${br.y} ${br.x},${br.y + depth} ${topRight.x},${topRight.y + depth} ${topRight.x},${topRight.y}`;
-	parts.push(`<polygon points="${depthRight}" fill="#3a2418"/>`);
+	parts.push(`<polygon points="${outer.bl.x},${outer.bl.y} ${outer.bl.x},${outer.bl.y + depth} ${outer.br.x},${outer.br.y + depth} ${outer.br.x},${outer.br.y}" fill="#4a3020"/>`);
+	parts.push(`<polygon points="${outer.br.x},${outer.br.y} ${outer.br.x},${outer.br.y + depth} ${outer.topRight.x},${outer.topRight.y + depth} ${outer.topRight.x},${outer.topRight.y}" fill="#3a2418"/>`);
 
-	const top = `${tl.x},${tl.y} ${topRight.x},${topRight.y} ${br.x},${br.y} ${bl.x},${bl.y}`;
-	parts.push(`<polygon points="${top}" fill="#5c3a22" stroke="#4a2e1a" stroke-width="1"/>`);
+	parts.push(`<polygon points="${diamondPoints(outer)}" fill="#5c3a22" stroke="#4a2e1a" stroke-width="1"/>`);
 
 	const railH = 8;
 	const railY = topY - railH;
-	const rtl = { x: cx, y: railY };
-	const rtr = { x: cx + standW / 2 - 4, y: railY + standH / 4 - 1 };
-	const rbr = { x: cx + standW / 2 - 4, y: railY + standH / 4 - 1 + railH };
-	const rbl = { x: cx, y: railY + railH };
-	parts.push(`<polygon points="${rtl.x},${rtl.y} ${rtr.x},${rtr.y} ${rbr.x},${rbr.y} ${rbl.x},${rbl.y}" fill="#6b4530" stroke="#5a3828" stroke-width="0.5"/>`);
+	parts.push(`<polygon points="${cx},${railY} ${cx + diamondW / 2 - 4},${railY + diamondW / 4 - 2} ${cx + diamondW / 2 - 4},${railY + diamondW / 4 - 2 + railH} ${cx},${railY + railH}" fill="#6b4530" stroke="#5a3828" stroke-width="0.5"/>`);
 
 	parts.push("</svg>");
 	return parts.join("");
 }
 
 export function generateCourtTableSvg(): string {
-	const w = 140;
-	const h = 90;
-	const cx = w / 2;
-	const tableW = 120;
-	const tableH = 50;
+	const diamondW = 100;
+	const halfW = diamondW / 2;
 	const depth = 10;
-	const topY = 20;
+	const topY = 10;
+	const w = diamondW + 16;
+	const h = topY + halfW + depth + 18;
+	const cx = w / 2;
 
-	const tl = { x: cx, y: topY };
-	const topRight = { x: cx + tableW / 2, y: topY + tableH / 4 };
-	const br = { x: cx, y: topY + tableH / 2 };
-	const bl = { x: cx - tableW / 2, y: topY + tableH / 4 };
+	const outer = isoDiamond(cx, topY, diamondW);
 
 	const parts: Array<string> = [];
 	parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`);
@@ -258,35 +236,29 @@ export function generateCourtTableSvg(): string {
 	const legW = 4;
 	const legH = 16;
 	const legColor = "#3d2517";
-	parts.push(`<rect x="${bl.x + 8}" y="${bl.y + depth - 2}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
-	parts.push(`<rect x="${br.x - 6}" y="${br.y + depth - 2}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
-	parts.push(`<rect x="${topRight.x - 12}" y="${topRight.y + depth - 2}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
+	parts.push(`<rect x="${outer.bl.x + 8}" y="${outer.bl.y + depth - 2}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
+	parts.push(`<rect x="${outer.br.x - 6}" y="${outer.br.y + depth - 2}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
+	parts.push(`<rect x="${outer.topRight.x - 12}" y="${outer.topRight.y + depth - 2}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
 
-	const depthLeft = `${bl.x},${bl.y} ${bl.x},${bl.y + depth} ${br.x},${br.y + depth} ${br.x},${br.y}`;
-	parts.push(`<polygon points="${depthLeft}" fill="#4a3020"/>`);
-	const depthRight = `${br.x},${br.y} ${br.x},${br.y + depth} ${topRight.x},${topRight.y + depth} ${topRight.x},${topRight.y}`;
-	parts.push(`<polygon points="${depthRight}" fill="#3a2418"/>`);
+	parts.push(`<polygon points="${outer.bl.x},${outer.bl.y} ${outer.bl.x},${outer.bl.y + depth} ${outer.br.x},${outer.br.y + depth} ${outer.br.x},${outer.br.y}" fill="#4a3020"/>`);
+	parts.push(`<polygon points="${outer.br.x},${outer.br.y} ${outer.br.x},${outer.br.y + depth} ${outer.topRight.x},${outer.topRight.y + depth} ${outer.topRight.x},${outer.topRight.y}" fill="#3a2418"/>`);
 
-	const top = `${tl.x},${tl.y} ${topRight.x},${topRight.y} ${br.x},${br.y} ${bl.x},${bl.y}`;
-	parts.push(`<polygon points="${top}" fill="#5c3a22" stroke="#4a2e1a" stroke-width="1"/>`);
+	parts.push(`<polygon points="${diamondPoints(outer)}" fill="#5c3a22" stroke="#4a2e1a" stroke-width="1"/>`);
 
 	parts.push("</svg>");
 	return parts.join("");
 }
 
 export function generateGalleryBenchSvg(): string {
-	const w = 120;
-	const h = 50;
-	const cx = w / 2;
-	const benchW = 100;
-	const benchH = 24;
+	const diamondW = 90;
+	const halfW = diamondW / 2;
 	const depth = 5;
-	const topY = 16;
+	const topY = 6;
+	const w = diamondW + 12;
+	const h = topY + halfW + depth + 14;
+	const cx = w / 2;
 
-	const tl = { x: cx, y: topY };
-	const topRight = { x: cx + benchW / 2, y: topY + benchH / 4 };
-	const br = { x: cx, y: topY + benchH / 2 };
-	const bl = { x: cx - benchW / 2, y: topY + benchH / 4 };
+	const outer = isoDiamond(cx, topY, diamondW);
 
 	const parts: Array<string> = [];
 	parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`);
@@ -294,18 +266,15 @@ export function generateGalleryBenchSvg(): string {
 	const legW = 3;
 	const legH = 12;
 	const legColor = "#3d2517";
-	parts.push(`<rect x="${bl.x + 6}" y="${bl.y + depth}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
-	parts.push(`<rect x="${br.x - 4}" y="${br.y + depth}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
-	parts.push(`<rect x="${topRight.x - 10}" y="${topRight.y + depth}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
-	parts.push(`<rect x="${tl.x - 2}" y="${tl.y + depth - 2}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
+	parts.push(`<rect x="${outer.bl.x + 6}" y="${outer.bl.y + depth}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
+	parts.push(`<rect x="${outer.br.x - 4}" y="${outer.br.y + depth}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
+	parts.push(`<rect x="${outer.topRight.x - 10}" y="${outer.topRight.y + depth}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
+	parts.push(`<rect x="${outer.tl.x - 2}" y="${outer.tl.y + depth - 2}" width="${legW}" height="${legH}" rx="1" fill="${legColor}"/>`);
 
-	const depthLeft = `${bl.x},${bl.y} ${bl.x},${bl.y + depth} ${br.x},${br.y + depth} ${br.x},${br.y}`;
-	parts.push(`<polygon points="${depthLeft}" fill="#4a3020"/>`);
-	const depthRight = `${br.x},${br.y} ${br.x},${br.y + depth} ${topRight.x},${topRight.y + depth} ${topRight.x},${topRight.y}`;
-	parts.push(`<polygon points="${depthRight}" fill="#3a2418"/>`);
+	parts.push(`<polygon points="${outer.bl.x},${outer.bl.y} ${outer.bl.x},${outer.bl.y + depth} ${outer.br.x},${outer.br.y + depth} ${outer.br.x},${outer.br.y}" fill="#4a3020"/>`);
+	parts.push(`<polygon points="${outer.br.x},${outer.br.y} ${outer.br.x},${outer.br.y + depth} ${outer.topRight.x},${outer.topRight.y + depth} ${outer.topRight.x},${outer.topRight.y}" fill="#3a2418"/>`);
 
-	const top = `${tl.x},${tl.y} ${topRight.x},${topRight.y} ${br.x},${br.y} ${bl.x},${bl.y}`;
-	parts.push(`<polygon points="${top}" fill="#6b4530" stroke="#5a3828" stroke-width="0.5"/>`);
+	parts.push(`<polygon points="${diamondPoints(outer)}" fill="#6b4530" stroke="#5a3828" stroke-width="0.5"/>`);
 
 	parts.push("</svg>");
 	return parts.join("");
@@ -319,9 +288,7 @@ export function generateGavelSvg(): string {
 	parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`);
 
 	parts.push(`<line x1="8" y1="16" x2="24" y2="8" stroke="#5c3a22" stroke-width="2.5" stroke-linecap="round"/>`);
-
 	parts.push(`<rect x="4" y="12" width="10" height="6" rx="2" fill="#3d2517" transform="rotate(-25, 9, 15)"/>`);
-
 	parts.push(`<ellipse cx="20" cy="18" rx="6" ry="3" fill="#4a3020" opacity="0.6"/>`);
 
 	parts.push("</svg>");

@@ -17,14 +17,14 @@ import {
 const ITEM_DEFINITIONS: Record<string, FurnitureItemDefinition> = {
 	poker_table: {
 		key: "poker_table",
-		svgWidth: 260,
-		svgHeight: 150,
+		svgWidth: 200,
+		svgHeight: 132,
 		generateSvg: generatePokerTableSvg,
 	},
 	chair: {
 		key: "chair",
-		svgWidth: 36,
-		svgHeight: 48,
+		svgWidth: 38,
+		svgHeight: 47,
 		generateSvg: (): string => generateChairSvg(),
 	},
 	chip_stack_red: {
@@ -65,26 +65,26 @@ const ITEM_DEFINITIONS: Record<string, FurnitureItemDefinition> = {
 	},
 	judge_bench: {
 		key: "judge_bench",
-		svgWidth: 220,
-		svgHeight: 130,
+		svgWidth: 180,
+		svgHeight: 120,
 		generateSvg: generateJudgeBenchSvg,
 	},
 	witness_stand: {
 		key: "witness_stand",
-		svgWidth: 80,
-		svgHeight: 80,
+		svgWidth: 72,
+		svgHeight: 64,
 		generateSvg: generateWitnessStandSvg,
 	},
 	court_table: {
 		key: "court_table",
-		svgWidth: 140,
-		svgHeight: 90,
+		svgWidth: 116,
+		svgHeight: 78,
 		generateSvg: generateCourtTableSvg,
 	},
 	gallery_bench: {
 		key: "gallery_bench",
-		svgWidth: 120,
-		svgHeight: 50,
+		svgWidth: 102,
+		svgHeight: 70,
 		generateSvg: generateGalleryBenchSvg,
 	},
 	gavel: {
