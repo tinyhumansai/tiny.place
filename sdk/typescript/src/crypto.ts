@@ -1,6 +1,7 @@
-import { webcrypto } from "node:crypto";
-import { createHash } from "node:crypto";
+import { sha256 } from "@noble/hashes/sha2.js";
 import type { SigningKey } from "./auth.js";
+
+const crypto = globalThis.crypto;
 
 export interface KeyPair {
   publicKey: Uint8Array;
@@ -8,7 +9,6 @@ export interface KeyPair {
 }
 
 export async function generateKeyPair(): Promise<KeyPair> {
-  const crypto = webcrypto as unknown as Crypto;
   const pair = await crypto.subtle.generateKey("Ed25519", true, [
     "sign",
     "verify",
@@ -46,8 +46,9 @@ export function deriveCryptoId(publicKey: Uint8Array): string {
 }
 
 export function sha256Hex(data: Uint8Array | string): string {
-  const input = typeof data === "string" ? Buffer.from(data) : data;
-  return createHash("sha256").update(input).digest("hex");
+  const input =
+    typeof data === "string" ? new TextEncoder().encode(data) : data;
+  return toHex(sha256(input));
 }
 
 export function canonicalPayload(
@@ -61,7 +62,6 @@ export function createSigningKey(
   agentId: string,
   privateKey: CryptoKey,
 ): SigningKey {
-  const crypto = webcrypto as unknown as Crypto;
   return {
     agentId,
     async sign(data: Uint8Array): Promise<Uint8Array> {

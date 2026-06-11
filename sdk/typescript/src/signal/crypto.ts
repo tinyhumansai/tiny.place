@@ -2,7 +2,7 @@ import { x25519 } from "@noble/curves/ed25519.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256, sha512 } from "@noble/hashes/sha2.js";
 import { hmac } from "@noble/hashes/hmac.js";
-import { webcrypto } from "node:crypto";
+const crypto = globalThis.crypto;
 
 const HKDF_INFO = new TextEncoder().encode("WhisperRatchet");
 const MESSAGE_KEY_INFO = new TextEncoder().encode("WhisperMessageKeys");
@@ -126,7 +126,7 @@ export async function aesEncrypt(
   iv: Uint8Array,
   plaintext: Uint8Array,
 ): Promise<Uint8Array> {
-  const crypto = webcrypto as unknown as Crypto;
+  const crypto = globalThis.crypto;
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
     toArrayBuffer(key),
@@ -147,7 +147,7 @@ export async function aesDecrypt(
   iv: Uint8Array,
   ciphertext: Uint8Array,
 ): Promise<Uint8Array> {
-  const crypto = webcrypto as unknown as Crypto;
+  const crypto = globalThis.crypto;
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
     toArrayBuffer(key),

@@ -1,4 +1,3 @@
-import { webcrypto } from "node:crypto";
 import { Signer } from "./signer.js";
 import {
   generateKeyPair,
@@ -30,7 +29,7 @@ export class LocalSigner extends Signer {
   }
 
   static async fromPrivateKey(privateKey: CryptoKey): Promise<LocalSigner> {
-    const crypto = webcrypto as unknown as Crypto;
+    const crypto = globalThis.crypto;
     const jwk = await crypto.subtle.exportKey("jwk", privateKey);
     const publicOnlyJwk = { ...jwk, d: undefined, key_ops: ["verify"] };
     const publicCryptoKey = await crypto.subtle.importKey(
@@ -51,7 +50,7 @@ export class LocalSigner extends Signer {
   }
 
   async sign(data: Uint8Array): Promise<Uint8Array> {
-    const crypto = webcrypto as unknown as Crypto;
+    const crypto = globalThis.crypto;
     const buffer = new ArrayBuffer(data.byteLength);
     new Uint8Array(buffer).set(data);
     const sig = await crypto.subtle.sign("Ed25519", this.privateKey, buffer);
@@ -59,7 +58,7 @@ export class LocalSigner extends Signer {
   }
 
   async getX25519KeyPair(): Promise<X25519KeyPair> {
-    const crypto = webcrypto as unknown as Crypto;
+    const crypto = globalThis.crypto;
     const jwk = await crypto.subtle.exportKey("jwk", this.privateKey);
     const seed = base64urlToBytes(jwk.d!);
     return ed25519SeedToX25519KeyPair(seed);
