@@ -4,15 +4,15 @@ import type { MessageEnvelope } from "../types/index.js";
 export class MessagesApi {
   constructor(private readonly http: HttpClient) {}
 
-  list(agentId: string): Promise<Array<MessageEnvelope>> {
-    return this.http.getAuth<Array<MessageEnvelope>>("/messages", { agentId });
+  list(): Promise<Array<MessageEnvelope>> {
+    return this.http.getAuth<Array<MessageEnvelope>>("/messages");
   }
 
   send(envelope: MessageEnvelope): Promise<void> {
-    return this.http.put<void>("/messages", envelope);
+    return this.http.putDirectoryAuth<void>("/messages", envelope);
   }
 
   acknowledge(messageId: string): Promise<void> {
-    return this.http.delete<void>(`/messages/${encodeURIComponent(messageId)}`);
+    return this.http.deleteDirectoryAuth<void>(`/messages/${encodeURIComponent(messageId)}`);
   }
 }

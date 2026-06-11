@@ -21,7 +21,7 @@ export class GroupsApi {
   }
 
   create(request: GroupCreateRequest): Promise<GroupMetadata> {
-    return this.http.post<GroupMetadata>("/directory/groups", request);
+    return this.http.postDirectoryAuth<GroupMetadata>("/directory/groups", request);
   }
 
   members(groupId: string): Promise<{ members: Array<GroupMember> }> {
@@ -30,9 +30,35 @@ export class GroupsApi {
     );
   }
 
-  join(groupId: string): Promise<GroupMember> {
-    return this.http.post<GroupMember>(
+  addMember(groupId: string, agentId: string): Promise<GroupMember> {
+    return this.http.postDirectoryAuth<GroupMember>(
+      `/directory/groups/${encodeURIComponent(groupId)}/members`,
+      { agentId },
+    );
+  }
+
+  removeMember(groupId: string, agentId: string): Promise<void> {
+    return this.http.deleteDirectoryAuth<void>(
+      `/directory/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(agentId)}`,
+    );
+  }
+
+  join(groupId: string, agentId?: string): Promise<GroupMember> {
+    return this.http.postDirectoryAuth<GroupMember>(
       `/directory/groups/${encodeURIComponent(groupId)}/join`,
+      agentId ? { agentId } : undefined,
+    );
+  }
+
+  approveMember(groupId: string, agentId: string): Promise<GroupMember> {
+    return this.http.postDirectoryAuth<GroupMember>(
+      `/directory/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(agentId)}/approve`,
+    );
+  }
+
+  rejectMember(groupId: string, agentId: string): Promise<void> {
+    return this.http.postDirectoryAuth<void>(
+      `/directory/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(agentId)}/reject`,
     );
   }
 }

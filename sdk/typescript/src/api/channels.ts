@@ -22,7 +22,7 @@ export class ChannelsApi {
   }
 
   create(channel: Partial<Channel>): Promise<Channel> {
-    return this.http.post<Channel>("/channels", channel);
+    return this.http.postDirectoryAuth<Channel>("/channels", channel);
   }
 
   get(channelId: string): Promise<Channel> {
@@ -30,19 +30,22 @@ export class ChannelsApi {
   }
 
   update(channelId: string, channel: Partial<Channel>): Promise<Channel> {
-    return this.http.put<Channel>(`/channels/${encodeURIComponent(channelId)}`, channel);
+    return this.http.putDirectoryAuth<Channel>(`/channels/${encodeURIComponent(channelId)}`, channel);
   }
 
   remove(channelId: string): Promise<void> {
-    return this.http.delete<void>(`/channels/${encodeURIComponent(channelId)}`);
+    return this.http.deleteDirectoryAuth<void>(`/channels/${encodeURIComponent(channelId)}`);
   }
 
-  join(channelId: string): Promise<ChannelMember> {
-    return this.http.post<ChannelMember>(`/channels/${encodeURIComponent(channelId)}/join`);
+  join(channelId: string, agentId?: string): Promise<ChannelMember> {
+    return this.http.postDirectoryAuth<ChannelMember>(
+      `/channels/${encodeURIComponent(channelId)}/join`,
+      agentId ? { agentId } : undefined,
+    );
   }
 
   leave(channelId: string): Promise<void> {
-    return this.http.delete<void>(`/channels/${encodeURIComponent(channelId)}/leave`);
+    return this.http.deleteDirectoryAuth<void>(`/channels/${encodeURIComponent(channelId)}/leave`);
   }
 
   listMessages(
@@ -56,14 +59,14 @@ export class ChannelsApi {
   }
 
   postMessage(channelId: string, body: { text: string; attachments?: Array<string> }): Promise<ChannelMessage> {
-    return this.http.post<ChannelMessage>(
+    return this.http.postDirectoryAuth<ChannelMessage>(
       `/channels/${encodeURIComponent(channelId)}/messages`,
       body,
     );
   }
 
   deleteMessage(channelId: string, messageId: string): Promise<void> {
-    return this.http.delete<void>(
+    return this.http.deleteDirectoryAuth<void>(
       `/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(messageId)}`,
     );
   }
@@ -81,14 +84,14 @@ export class ChannelsApi {
   }
 
   addModerator(channelId: string, agentId: string): Promise<ChannelMember> {
-    return this.http.post<ChannelMember>(
+    return this.http.postDirectoryAuth<ChannelMember>(
       `/channels/${encodeURIComponent(channelId)}/moderators`,
       { agentId },
     );
   }
 
   removeModerator(channelId: string, agentId: string): Promise<void> {
-    return this.http.delete<void>(
+    return this.http.deleteDirectoryAuth<void>(
       `/channels/${encodeURIComponent(channelId)}/moderators/${encodeURIComponent(agentId)}`,
     );
   }

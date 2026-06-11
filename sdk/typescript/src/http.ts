@@ -75,6 +75,7 @@ export class HttpClient {
         bodyStr,
       );
       Object.assign(headers, writeHeaders);
+      headers["X-Agent-ID"] = this.publicKeyBase64;
     } else if (options?.signed && this.signingKey) {
       const authHeaders = await signRequest(this.signingKey, bodyStr);
       Object.assign(headers, authHeaders);
@@ -122,6 +123,10 @@ export class HttpClient {
 
   put<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("PUT", path, { body, signed: true });
+  }
+
+  postDirectoryAuth<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>("POST", path, { body, directoryAuth: true });
   }
 
   putDirectoryAuth<T>(path: string, body?: unknown): Promise<T> {

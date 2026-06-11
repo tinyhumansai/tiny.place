@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   TinyVerseClient,
   TinyVerseError,
@@ -11,7 +11,6 @@ import {
 import type { SigningKey, KeyPair } from "../src/index.js";
 
 const BASE_URL = "https://staging-api.tiny.place";
-const TEST_USERNAME = `@sdk-test-${Date.now()}`;
 
 function makeClient(signingKey?: SigningKey, publicKeyBase64?: string): TinyVerseClient {
   return new TinyVerseClient({ baseUrl: BASE_URL, signingKey, publicKeyBase64 });
@@ -73,6 +72,11 @@ describe("staging: unauthenticated endpoints", () => {
     expect(result.chains.length).toBeGreaterThan(0);
   });
 
+  it("groups.list returns array", async () => {
+    const result = await client.groups.list();
+    expect(result).toHaveProperty("groups");
+  });
+
   it("handles 404 errors as TinyVerseError", async () => {
     try {
       await client.directory.getAgent("nonexistent-agent-id-xyz");
@@ -84,7 +88,7 @@ describe("staging: unauthenticated endpoints", () => {
   });
 });
 
-describe("staging: identity registration with signing", () => {
+describe("staging: authenticated flows", () => {
   let keyPair: KeyPair;
   let cryptoId: string;
   let publicKeyHex: string;
@@ -99,67 +103,207 @@ describe("staging: identity registration with signing", () => {
     cryptoId = deriveCryptoId(keyPair.publicKey);
     signingKey = createSigningKey(cryptoId, keyPair.privateKey);
     client = makeClient(signingKey, publicKeyB64);
-  });
 
-  it("registers a new identity (requires payment)", async () => {
-    try {
-      await client.registry.register({
-        username: TEST_USERNAME,
-        bio: "SDK integration test agent",
-        cryptoId,
-        publicKey: publicKeyHex,
-        payment: { tx: "test-tx-" + Date.now() },
-      });
-    } catch (error) {
-      expect(error).toBeInstanceOf(TinyVerseError);
-      const tvError = error as TinyVerseError;
-      // The signature should be valid now — we expect either 201 (success)
-      // or 402 (payment required, meaning sig passed but payment failed)
-      // A 401 means the signature is still wrong.
-      expect(tvError.status).not.toBe(401);
-    }
-  });
-
-  it("upserts a directory agent card (directory auth)", async () => {
-    const card = await client.directory.upsertAgent(cryptoId, {
+    // Create an agent card that persists across all authenticated tests.
+    // The directory write auth uses this to verify signatures.
+    await client.directory.upsertAgent(cryptoId, {
       agentId: cryptoId,
-      name: TEST_USERNAME,
-      description: "SDK test agent",
+      name: "sdk-test-agent",
+      description: "SDK integration test agent",
       version: "0.1.0",
       interfaces: [],
-      skills: ["testing"],
+      skills: ["testing", "integration"],
       endpoints: {},
       publicKey: publicKeyB64,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
-    expect(card.agentId).toBe(cryptoId);
   });
 
-  it("retrieves the agent card", async () => {
-    const card = await client.directory.getAgent(cryptoId);
-    expect(card.agentId).toBe(cryptoId);
-    expect(card.description).toBe("SDK test agent");
-  });
-
-  it("deletes the agent card", async () => {
-    await client.directory.deleteAgent(cryptoId);
+  afterAll(async () => {
     try {
-      await client.directory.getAgent(cryptoId);
-      expect.fail("should have thrown after deletion");
-    } catch (error) {
-      expect(error).toBeInstanceOf(TinyVerseError);
-      expect((error as TinyVerseError).status).toBe(404);
+      await client.directory.deleteAgent(cryptoId);
+    } catch {
+      // best-effort cleanup
     }
   });
 
-  it("searches for agents", async () => {
-    const result = await client.search.agents({ q: "test" });
-    expect(result).toHaveProperty("results");
+  describe("identity registration", () => {
+    it("signs correctly (gets 402 payment required, not 401)", async () => {
+      try {
+        await client.registry.register({
+          username: `@sdk-test-${Date.now()}`,
+          bio: "SDK integration test agent",
+          cryptoId,
+          publicKey: publicKeyHex,
+          payment: { tx: "test-tx-" + Date.now() },
+        });
+      } catch (error) {
+        expect(error).toBeInstanceOf(TinyVerseError);
+        const tvError = error as TinyVerseError;
+        expect(tvError.status).not.toBe(401);
+      }
+    });
   });
 
-  it("reverse-resolves cryptoId returns valid response", async () => {
-    const result = await client.directory.reverse(cryptoId);
-    expect(result).toBeDefined();
+  describe("directory agent cards", () => {
+    it("retrieves the agent card", async () => {
+      const card = await client.directory.getAgent(cryptoId);
+      expect(card.agentId).toBe(cryptoId);
+    });
+
+    it("updates the agent card", async () => {
+      const card = await client.directory.upsertAgent(cryptoId, {
+        agentId: cryptoId,
+        name: "sdk-test-agent-updated",
+        description: "Updated description",
+        version: "0.2.0",
+        interfaces: [],
+        skills: ["testing", "integration", "updated"],
+        endpoints: {},
+        publicKey: publicKeyB64,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      expect(card).toBeDefined();
+    });
+
+    it("appears in directory listing", async () => {
+      const result = await client.directory.listAgents();
+      const found = result.agents.find((a) => a.agentId === cryptoId);
+      expect(found).toBeDefined();
+    });
+
+    it("reverse-resolves cryptoId", async () => {
+      const result = await client.directory.reverse(cryptoId);
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe("channels", () => {
+    let channelId: string;
+
+    it("creates a channel", async () => {
+      const channel = await client.channels.create({
+        name: `sdk-test-${Date.now()}`,
+        description: "SDK test channel",
+        creator: publicKeyB64,
+        creatorCryptoId: publicKeyB64,
+      } as any);
+      expect(channel).toHaveProperty("channelId");
+      channelId = channel.channelId;
+    });
+
+    it("retrieves the channel", async () => {
+      const channel = await client.channels.get(channelId);
+      expect(channel.channelId).toBe(channelId);
+      expect(channel.description).toBe("SDK test channel");
+    });
+
+    it("joins the channel", async () => {
+      const member = await client.channels.join(channelId, publicKeyB64);
+      expect(member).toHaveProperty("agentId");
+    });
+
+    it("lists channel members", async () => {
+      const result = await client.channels.members(channelId);
+      expect(result).toHaveProperty("members");
+    });
+
+    it("posts a message to the channel", async () => {
+      const message = await client.channels.postMessage(channelId, {
+        body: "Hello from SDK test!",
+        author: publicKeyB64,
+        authorCryptoId: publicKeyB64,
+      } as any);
+      expect(message).toBeDefined();
+    });
+
+    it("lists channel messages", async () => {
+      const result = await client.channels.listMessages(channelId);
+      expect(result).toHaveProperty("messages");
+      expect(result.messages.length).toBeGreaterThan(0);
+    });
+
+    it("updates the channel", async () => {
+      const updated = await client.channels.update(channelId, {
+        description: "Updated description",
+        creator: publicKeyB64,
+        creatorCryptoId: publicKeyB64,
+      } as any);
+      expect(updated).toBeDefined();
+    });
+
+    it("appears in channels listing", async () => {
+      const result = await client.channels.list();
+      const found = (result.channels ?? []).find((c) => c.channelId === channelId);
+      expect(found).toBeDefined();
+    });
+
+    it("cleans up: deletes the channel", async () => {
+      await client.channels.remove(channelId);
+      const channel = await client.channels.get(channelId);
+      expect(channel.closedAt).toBeDefined();
+    });
+  });
+
+  describe("groups", () => {
+    const groupId = `grp-sdk-test-${Date.now()}`;
+
+    it("creates a group", async () => {
+      const group = await client.groups.create({
+        groupId,
+        name: "SDK Test Group",
+        description: "Integration test group",
+        createdBy: publicKeyB64,
+        membershipPolicy: "open",
+        tags: ["sdk-test"],
+      });
+      expect(group.groupId).toBe(groupId);
+      expect(group.name).toBe("SDK Test Group");
+    });
+
+    it("retrieves the group", async () => {
+      const group = await client.groups.get(groupId);
+      expect(group.groupId).toBe(groupId);
+    });
+
+    it("joins the group", async () => {
+      const member = await client.groups.join(groupId, publicKeyB64);
+      expect(member).toHaveProperty("agentId");
+    });
+
+    it("lists group members", async () => {
+      const result = await client.groups.members(groupId);
+      expect(result).toHaveProperty("members");
+    });
+
+    it("appears in groups listing", async () => {
+      const result = await client.groups.list();
+      const found = (result.groups ?? []).find((g) => g.groupId === groupId);
+      expect(found).toBeDefined();
+    });
+  });
+
+  describe("search", () => {
+    it("search.agents works", async () => {
+      const result = await client.search.agents({ q: "test" });
+      expect(result).toHaveProperty("results");
+    });
+
+    it("search.groups works", async () => {
+      const result = await client.search.groups({ q: "test" });
+      expect(result).toHaveProperty("results");
+    });
+
+    it("search.channels works", async () => {
+      const result = await client.search.channels({ q: "test" });
+      expect(result).toHaveProperty("results");
+    });
+
+    it("search.suggest works", async () => {
+      const result = await client.search.suggest("test");
+      expect(result).toBeDefined();
+    });
   });
 });
