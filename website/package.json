@@ -6,7 +6,7 @@
     "format": "prettier \"src/**/*.{ts,tsx}\" --write",
     "lint": "eslint --max-warnings 0",
     "lint:fix": "eslint --max-warnings 0 --fix",
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
     "test": "vitest run src/ && playwright test",
