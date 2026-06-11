@@ -33,8 +33,8 @@ function getAnnualFee(name: string): string {
 }
 
 function formatUsdc(amount: string): string {
-	const num = Number(amount) / 1_000_000;
-	return `${num.toLocaleString()} USDC`;
+	const dollars = Number(amount) / 1_000_000;
+	return `${dollars.toLocaleString()} USDC`;
 }
 
 type DomainRegistrationProperties = {
@@ -142,13 +142,13 @@ export const DomainRegistration = ({
 				</p>
 				<button
 					className={`mt-4 rounded-md px-4 py-2 text-sm font-medium transition-colors ${buttonClass}`}
+					type="button"
 					onClick={(): void => {
 						setRegistrationComplete(false);
 						setSelectedName(null);
 						setSearchInput("");
 						setBio("");
 					}}
-					type="button"
 				>
 					Register Another
 				</button>
@@ -171,10 +171,10 @@ export const DomainRegistration = ({
 						</div>
 						<button
 							className={`text-xs ${secondaryClass} hover:underline`}
+							type="button"
 							onClick={(): void => {
 								setSelectedName(null);
 							}}
-							type="button"
 						>
 							Change
 						</button>
@@ -186,12 +186,12 @@ export const DomainRegistration = ({
 						Bio
 						<textarea
 							className={`mt-1 w-full rounded-md border px-3 py-2 text-sm ${inputClass}`}
-							onChange={(event): void => {
-								setBio(event.target.value);
-							}}
 							placeholder="Describe your agent's purpose and capabilities..."
 							rows={3}
 							value={bio}
+							onChange={(event): void => {
+								setBio(event.target.value);
+							}}
 						/>
 					</label>
 				</div>
@@ -209,16 +209,16 @@ export const DomainRegistration = ({
 				)}
 
 				<button
+					disabled={!sessionSigner || bio.length === 0 || registerMutation.isPending}
+					type="button"
 					className={`w-full rounded-md px-4 py-2.5 text-sm font-medium transition-colors ${
 						sessionSigner && bio.length > 0 && !registerMutation.isPending
 							? buttonClass
 							: disabledButtonClass
 					}`}
-					disabled={!sessionSigner || bio.length === 0 || registerMutation.isPending}
 					onClick={(): void => {
 						registerMutation.mutate();
 					}}
-					type="button"
 				>
 					{registerMutation.isPending
 						? "Registering..."
@@ -245,23 +245,23 @@ export const DomainRegistration = ({
 				<div className="flex gap-2">
 					<input
 						className={`flex-1 rounded-md border px-3 py-2 text-sm ${inputClass}`}
+						placeholder="Search for a name..."
+						type="text"
+						value={searchInput}
 						onChange={(event): void => {
 							setSearchInput(event.target.value);
 						}}
 						onKeyDown={(event): void => {
 							if (event.key === "Enter") handleSearch();
 						}}
-						placeholder="Search for a name..."
-						type="text"
-						value={searchInput}
 					/>
 					<button
+						disabled={searchInput.length === 0}
+						type="button"
 						className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
 							searchInput.length > 0 ? buttonClass : disabledButtonClass
 						}`}
-						disabled={searchInput.length === 0}
 						onClick={handleSearch}
-						type="button"
 					>
 						Check
 					</button>
@@ -285,10 +285,10 @@ export const DomainRegistration = ({
 								</div>
 								<button
 									className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${buttonClass}`}
+									type="button"
 									onClick={(): void => {
 										setSelectedName(searchName);
 									}}
-									type="button"
 								>
 									Register
 								</button>
@@ -317,8 +317,8 @@ export const DomainRegistration = ({
 				<div className="space-y-1">
 					{PRICING_TIERS.map((tier) => (
 						<div
-							className={`flex items-center justify-between text-xs ${secondaryClass}`}
 							key={tier.label}
+							className={`flex items-center justify-between text-xs ${secondaryClass}`}
 						>
 							<span>
 								{tier.label}{" "}
