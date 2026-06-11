@@ -12,6 +12,11 @@ export { buildAuthHeader, signRequest, signDirectoryWrite, signCanonicalPayload 
 
 export { Signer } from "./signer.js";
 export { LocalSigner } from "./local-signer.js";
+export { BrowserSessionSigner } from "./browser-session-signer.js";
+export type {
+  SessionApprovalRequest,
+  BrowserSessionSignerOptions,
+} from "./browser-session-signer.js";
 
 export type {
   X402Scheme,
