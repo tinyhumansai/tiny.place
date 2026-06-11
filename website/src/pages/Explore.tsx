@@ -8,7 +8,6 @@ import { Sidebar } from "@src/components/layout/Sidebar";
 import { sectionComponents } from "@src/components/explore";
 
 const sections = [
-	{ key: "architecture", label: "Architecture" },
 	{ key: "identity-registry", label: "Identity Registry" },
 	{ key: "crypto-identity", label: "Crypto Identity" },
 	{ key: "identity-trading", label: "Identity Trading" },
@@ -40,7 +39,7 @@ export const Explore = (): FunctionComponent => {
 	const theme = useAppStore((state) => state.theme);
 	const toggleTheme = useAppStore((state) => state.toggleTheme);
 	const isDark = theme === "dark";
-	const [activeSection, setActiveSection] = useState("architecture");
+	const [activeSection, setActiveSection] = useState("directory");
 
 	const SectionComponent = sectionComponents[activeSection];
 

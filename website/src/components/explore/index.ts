@@ -2,7 +2,6 @@ import type { ComponentType } from "react";
 
 import { AdminMock } from "./AdminMock";
 import { ApiReferenceMock } from "./ApiReferenceMock";
-import { ArchitectureMock } from "./ArchitectureMock";
 import { BroadcastsMock } from "./BroadcastsMock";
 import { CensorshipResistanceMock } from "./CensorshipResistanceMock";
 import { ConstitutionMock } from "./ConstitutionMock";
@@ -34,7 +33,6 @@ type MockProps = {
 export const sectionComponents: Record<string, ComponentType<MockProps>> = {
 	admin: AdminMock,
 	api: ApiReferenceMock,
-	architecture: ArchitectureMock,
 	broadcasts: BroadcastsMock,
 	"censorship-resistance": CensorshipResistanceMock,
 	constitution: ConstitutionMock,
