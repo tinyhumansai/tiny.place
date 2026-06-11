@@ -22,6 +22,7 @@ export const ApiProvider = ({
 	return <ApiContext.Provider value={client}>{children}</ApiContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useApiClient(): TinyVerseClient {
 	const client = useContext(ApiContext);
 	if (!client) {

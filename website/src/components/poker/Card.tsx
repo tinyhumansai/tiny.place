@@ -58,14 +58,14 @@ export const Card = ({
 		return (
 			<div
 				className={`flex h-16 w-11 items-center justify-center rounded-md border-2 sm:h-20 sm:w-14 ${
-					isDark
-						? "border-blue-700 bg-blue-900"
-						: "border-blue-400 bg-blue-600"
+					isDark ? "border-blue-700 bg-blue-900" : "border-blue-400 bg-blue-600"
 				}`}
 			>
 				<div
 					className={`h-10 w-7 rounded-sm border sm:h-14 sm:w-9 ${
-						isDark ? "border-blue-600 bg-blue-800" : "border-blue-300 bg-blue-500"
+						isDark
+							? "border-blue-600 bg-blue-800"
+							: "border-blue-300 bg-blue-500"
 					}`}
 				/>
 			</div>
@@ -85,9 +85,7 @@ export const Card = ({
 			<div className={`self-start text-xs font-bold sm:text-sm ${color}`}>
 				{rank}
 			</div>
-			<div className={`text-lg sm:text-2xl ${color}`}>
-				{suitSymbols[suit]}
-			</div>
+			<div className={`text-lg sm:text-2xl ${color}`}>{suitSymbols[suit]}</div>
 			<div
 				className={`rotate-180 self-end text-xs font-bold sm:text-sm ${color}`}
 			>

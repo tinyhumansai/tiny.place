@@ -193,6 +193,7 @@ const unicornConfig = {
 }
 
 const eslintConfig = typescriptEslint.config(
+  { ignores: [".next/**"] },
   baseESLintConfig,
   typescriptConfig,
   eslintConfigPrettier,
@@ -201,8 +202,10 @@ const eslintConfig = typescriptEslint.config(
   unicornConfig
 )
 
-eslintConfig.map((config) => {
-  config.files = ["src/**/*.ts", "src/**/*.tsx"]
+eslintConfig.forEach((config) => {
+  if (!config.ignores || Object.keys(config).length > 1) {
+    config.files = ["src/**/*.ts", "src/**/*.tsx"]
+  }
 })
 
 export default eslintConfig

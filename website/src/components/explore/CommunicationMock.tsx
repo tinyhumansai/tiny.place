@@ -20,10 +20,7 @@ const tabLabels: Record<Tab, string> = {
 	inbox: "Inbox",
 };
 
-const tabComponents: Record<
-	Tab,
-	React.ComponentType<{ isDark: boolean }>
-> = {
+const tabComponents: Record<Tab, React.ComponentType<{ isDark: boolean }>> = {
 	dms: MessagingMock,
 	groups: GroupsMock,
 	broadcasts: BroadcastsMock,
@@ -46,6 +43,8 @@ export const CommunicationMock = ({
 			<div className="flex gap-1">
 				{tabs.map((tab) => (
 					<button
+						key={tab}
+						type="button"
 						className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
 							activeTab === tab
 								? isDark
@@ -55,11 +54,9 @@ export const CommunicationMock = ({
 									? "text-neutral-500 hover:text-neutral-300"
 									: "text-neutral-400 hover:text-neutral-600"
 						}`}
-						key={tab}
 						onClick={(): void => {
 							setActiveTab(tab);
 						}}
-						type="button"
 					>
 						{tabLabels[tab]}
 					</button>

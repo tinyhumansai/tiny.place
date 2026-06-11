@@ -4,8 +4,7 @@ import { useState } from "react";
 
 import type { FunctionComponent } from "@src/common/types";
 
-import type { Rank, Suit } from "./Card";
-import { Card } from "./Card";
+import { Card, type Rank, type Suit } from "./Card";
 
 type MockCard = {
 	rank: Rank;
@@ -133,27 +132,20 @@ const ALL_PLAYERS: Array<MockPlayer> = [
 
 const PHASES = ["Pre-flop", "Flop", "Turn", "River", "Showdown"] as const;
 
-const actionBadgeColor = (
-	action: string,
-	isDark: boolean,
-): string => {
+const actionBadgeColor = (action: string, isDark: boolean): string => {
 	switch (action) {
 		case "Fold":
 			return isDark
 				? "bg-neutral-700 text-neutral-400"
 				: "bg-neutral-200 text-neutral-500";
 		case "All-in":
-			return isDark
-				? "bg-red-500/20 text-red-400"
-				: "bg-red-100 text-red-600";
+			return isDark ? "bg-red-500/20 text-red-400" : "bg-red-100 text-red-600";
 		case "Raise":
 			return isDark
 				? "bg-amber-500/20 text-amber-400"
 				: "bg-amber-100 text-amber-700";
 		default:
-			return isDark
-				? "bg-sky-500/20 text-sky-400"
-				: "bg-sky-100 text-sky-700";
+			return isDark ? "bg-sky-500/20 text-sky-400" : "bg-sky-100 text-sky-700";
 	}
 };
 
@@ -235,7 +227,7 @@ export const PokerTable = ({
 	const positions = seatPositions[playerCount] ?? seatPositions[6] ?? [];
 	const visibleCommunityCards = Math.min(
 		phase === 0 ? 0 : phase === 1 ? 3 : phase === 2 ? 4 : 5,
-		COMMUNITY_CARDS.length,
+		COMMUNITY_CARDS.length
 	);
 
 	return (
@@ -255,22 +247,22 @@ export const PokerTable = ({
 						Players
 					</span>
 					<select
+						value={playerCount}
 						className={`rounded-lg border px-2 py-1 text-sm ${
 							isDark
 								? "border-neutral-700 bg-neutral-800 text-white"
 								: "border-neutral-300 bg-neutral-50 text-black"
 						}`}
-						onChange={(event): void =>
-							setPlayerCount(Number(event.target.value))
-						}
-						value={playerCount}
+						onChange={(event): void => {
+							setPlayerCount(Number(event.target.value));
+						}}
 					>
 						{Array.from({ length: 8 }, (_, index) => index + 2).map(
 							(number) => (
 								<option key={number} value={number}>
 									{String(number)}
 								</option>
-							),
+							)
 						)}
 					</select>
 				</div>
@@ -284,6 +276,8 @@ export const PokerTable = ({
 					<div className="flex gap-1">
 						{PHASES.map((phaseName, index) => (
 							<button
+								key={phaseName}
+								type="button"
 								className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
 									index === phase
 										? isDark
@@ -293,9 +287,9 @@ export const PokerTable = ({
 											? "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
 											: "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
 								}`}
-								key={phaseName}
-								onClick={(): void => setPhase(index)}
-								type="button"
+								onClick={(): void => {
+									setPhase(index);
+								}}
 							>
 								{phaseName}
 							</button>
@@ -316,10 +310,10 @@ export const PokerTable = ({
 				>
 					{/* Rail */}
 					<div
+						style={{ zIndex: -1 }}
 						className={`absolute -inset-2 rounded-full border-8 ${
 							isDark ? "border-neutral-800" : "border-amber-900"
 						}`}
-						style={{ zIndex: -1 }}
 					/>
 
 					{/* Community cards */}
@@ -328,19 +322,19 @@ export const PokerTable = ({
 							{COMMUNITY_CARDS.slice(0, visibleCommunityCards).map(
 								(card, index) => (
 									<Card
-										isDark={isDark}
 										key={`${card.rank}-${card.suit}-${String(index)}`}
+										isDark={isDark}
 										rank={card.rank}
 										suit={card.suit}
 									/>
-								),
+								)
 							)}
 							{Array.from({
 								length: 5 - visibleCommunityCards,
 							}).map((_, index) => (
 								<div
-									className="h-16 w-11 rounded-md border border-dashed opacity-20 sm:h-20 sm:w-14"
 									key={`empty-${String(index)}`}
+									className="h-16 w-11 rounded-md border border-dashed opacity-20 sm:h-20 sm:w-14"
 									style={{
 										borderColor: isDark ? "#6ee7b1" : "#a7f3d0",
 									}}
@@ -363,8 +357,8 @@ export const PokerTable = ({
 				{/* Player seats */}
 				{players.map((player, index) => (
 					<div
-						className={`absolute z-10 flex w-28 flex-col items-center gap-1 sm:w-32 ${positions[index] ?? ""}`}
 						key={player.name}
+						className={`absolute z-10 flex w-28 flex-col items-center gap-1 sm:w-32 ${positions[index] ?? ""}`}
 					>
 						{/* Cards */}
 						<div className="flex gap-0.5">
@@ -428,67 +422,67 @@ export const PokerTable = ({
 				}`}
 			>
 				<button
+					type="button"
 					className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
 						isDark
 							? "bg-neutral-700 text-neutral-300 hover:bg-neutral-600"
 							: "bg-neutral-200 text-neutral-600 hover:bg-neutral-300"
 					}`}
-					type="button"
 				>
 					Fold
 				</button>
 				<button
+					type="button"
 					className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
 						isDark
 							? "bg-sky-600 text-white hover:bg-sky-500"
 							: "bg-sky-500 text-white hover:bg-sky-400"
 					}`}
-					type="button"
 				>
 					Check
 				</button>
 				<button
+					type="button"
 					className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
 						isDark
 							? "bg-emerald-600 text-white hover:bg-emerald-500"
 							: "bg-emerald-500 text-white hover:bg-emerald-400"
 					}`}
-					type="button"
 				>
 					Call $200
 				</button>
 				<div className="flex items-center gap-2">
 					<input
-						className={`h-1.5 w-24 cursor-pointer appearance-none rounded-full sm:w-32 ${
-							isDark ? "bg-neutral-700" : "bg-neutral-300"
-						}`}
 						max={5000}
 						min={50}
-						onChange={(event): void =>
-							setBetAmount(Number(event.target.value))
-						}
 						step={50}
 						type="range"
 						value={betAmount}
+						className={`h-1.5 w-24 cursor-pointer appearance-none rounded-full sm:w-32 ${
+							isDark ? "bg-neutral-700" : "bg-neutral-300"
+						}`}
+						onChange={(event): void => {
+							setBetAmount(Number(event.target.value));
+						}}
 					/>
 					<button
+						type="button"
 						className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
 							isDark
 								? "bg-amber-600 text-white hover:bg-amber-500"
 								: "bg-amber-500 text-white hover:bg-amber-400"
 						}`}
-						type="button"
 					>
 						Raise ${betAmount}
 					</button>
 				</div>
 				<button
+					type="button"
 					className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
 						isDark
 							? "bg-red-600 text-white hover:bg-red-500"
 							: "bg-red-500 text-white hover:bg-red-400"
 					}`}
-					type="button"
 				>
 					All-in
 				</button>

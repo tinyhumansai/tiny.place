@@ -84,8 +84,7 @@ export function usePostChannelMessage(
 		mutationFn: (body: {
 			text: string;
 			attachments?: Array<string>;
-		}): Promise<ChannelMessage> =>
-			client.channels.postMessage(channelId, body),
+		}): Promise<ChannelMessage> => client.channels.postMessage(channelId, body),
 		onSuccess: (): void => {
 			void queryClient.invalidateQueries({
 				queryKey: queryKeys.channels.messages(channelId),

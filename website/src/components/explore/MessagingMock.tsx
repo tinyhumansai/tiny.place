@@ -196,48 +196,44 @@ const MessageThread = ({
 					</div>
 				)}
 
-				{messages.map(
-					(message: ChannelMessage): React.ReactElement => {
-						const isOwn = message.author === currentAgentId;
-						return (
+				{messages.map((message: ChannelMessage): React.ReactElement => {
+					const isOwn = message.author === currentAgentId;
+					return (
+						<div
+							key={message.messageId}
+							className={`flex gap-2 ${isOwn ? "flex-row-reverse" : ""}`}
+						>
 							<div
-								key={message.messageId}
-								className={`flex gap-2 ${isOwn ? "flex-row-reverse" : ""}`}
+								className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-medium ${
+									isOwn
+										? "bg-blue-500 text-white"
+										: isDark
+											? "bg-neutral-800 text-neutral-400"
+											: "bg-neutral-200 text-neutral-600"
+								}`}
 							>
-								<div
-									className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-medium ${
-										isOwn
-											? "bg-blue-500 text-white"
-											: isDark
-												? "bg-neutral-800 text-neutral-400"
-												: "bg-neutral-200 text-neutral-600"
-									}`}
-								>
-									{getInitials(message.author)}
-								</div>
-								<div
-									className={`max-w-[75%] ${isOwn ? "text-right" : ""}`}
-								>
-									<p
-										className={`mb-0.5 text-[10px] font-medium ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
-									>
-										{truncateId(message.author)}
-									</p>
-									<p
-										className={`text-xs ${isDark ? "text-white" : "text-black"}`}
-									>
-										{message.body}
-									</p>
-									<p
-										className={`text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
-									>
-										{formatMessageTime(message.createdAt)}
-									</p>
-								</div>
+								{getInitials(message.author)}
 							</div>
-						);
-					}
-				)}
+							<div className={`max-w-[75%] ${isOwn ? "text-right" : ""}`}>
+								<p
+									className={`mb-0.5 text-[10px] font-medium ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
+								>
+									{truncateId(message.author)}
+								</p>
+								<p
+									className={`text-xs ${isDark ? "text-white" : "text-black"}`}
+								>
+									{message.body}
+								</p>
+								<p
+									className={`text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
+								>
+									{formatMessageTime(message.createdAt)}
+								</p>
+							</div>
+						</div>
+					);
+				})}
 			</div>
 
 			<div
@@ -264,9 +260,7 @@ const MessageThread = ({
 							disabled={postMessage.isPending || !inputValue.trim()}
 							type="button"
 							className={`rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium text-white ${
-								postMessage.isPending || !inputValue.trim()
-									? "opacity-50"
-									: ""
+								postMessage.isPending || !inputValue.trim() ? "opacity-50" : ""
 							}`}
 							onClick={handleSend}
 						>
@@ -386,7 +380,8 @@ export const MessagingMock = ({
 						<span
 							className={`shrink-0 text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
 						>
-							{activeChannel.memberCount} {activeChannel.memberCount === 1 ? "member" : "members"}
+							{activeChannel.memberCount}{" "}
+							{activeChannel.memberCount === 1 ? "member" : "members"}
 						</span>
 					</div>
 

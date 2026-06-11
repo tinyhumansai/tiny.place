@@ -42,6 +42,8 @@ export const Sidebar = ({
 					const Icon = section.icon;
 					return (
 						<Link
+							key={section.key}
+							href={`/explore/${section.key}`}
 							className={`flex items-center gap-2 text-left text-xs px-2 py-1.5 rounded transition-colors ${
 								isActive
 									? isDark
@@ -51,8 +53,6 @@ export const Sidebar = ({
 										? "text-neutral-500 hover:text-neutral-300"
 										: "text-neutral-500 hover:text-neutral-700"
 							}`}
-							href={`/explore/${section.key}`}
-							key={section.key}
 						>
 							{Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}
 							{section.label}
