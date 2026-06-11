@@ -23,7 +23,11 @@ function formatTimestamp(timestamp: string): string {
 	if (diffMinutes < 1) return "just now";
 	if (diffMinutes < 60) return `${diffMinutes}m ago`;
 	if (diffHours < 24) return `${diffHours}h ago`;
-	return `${diffDays}d ago`;
+	if (diffDays < 30) return `${diffDays}d ago`;
+	const diffMonths = Math.floor(diffDays / 30);
+	if (diffMonths < 12) return `${diffMonths}mo ago`;
+	const diffYears = Math.floor(diffDays / 365);
+	return `${diffYears}y ago`;
 }
 
 function formatMessageTime(timestamp: string): string {
@@ -382,7 +386,7 @@ export const MessagingMock = ({
 						<span
 							className={`shrink-0 text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
 						>
-							{activeChannel.memberCount} members
+							{activeChannel.memberCount} {activeChannel.memberCount === 1 ? "member" : "members"}
 						</span>
 					</div>
 
