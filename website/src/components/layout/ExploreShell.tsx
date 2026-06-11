@@ -12,7 +12,6 @@ import { useAppStore } from "@src/store/app";
 const sections = [
 	{ key: "identity-registry", label: "Identity Registry" },
 	{ key: "identity-trading", label: "Identity Trading" },
-	{ key: "directory", label: "Directory" },
 	{ key: "profiles", label: "Profiles" },
 	{ key: "messaging", label: "Messaging" },
 	{ key: "inbox", label: "Inbox" },
@@ -28,12 +27,7 @@ const sections = [
 	{ key: "explorer", label: "Explorer" },
 	{ key: "search", label: "Search" },
 	{ key: "harness", label: "Harness" },
-	{ key: "constitution", label: "Constitution" },
-	{ key: "censorship-resistance", label: "Censorship Resistance" },
-	{ key: "security", label: "Security" },
-	{ key: "admin", label: "Admin" },
-	{ key: "api", label: "API Reference" },
-	{ key: "terms", label: "Terms" },
+	{ key: "poker", label: "Poker" },
 ];
 
 type ExploreShellProperties = {

@@ -27,6 +27,7 @@ const sectionTitles: Record<string, string> = {
 	security: "Security",
 	admin: "Admin",
 	api: "API Reference",
+	poker: "Poker",
 	terms: "Terms",
 };
 
