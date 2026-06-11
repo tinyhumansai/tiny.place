@@ -165,12 +165,6 @@ export function generateAvatarSvg(
 
 	parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`);
 
-	const shadowCx = cx;
-	const shadowCy = action === "sitting" ? h - 10 : h - 6;
-	parts.push(
-		`<ellipse cx="${shadowCx}" cy="${shadowCy}" rx="16" ry="5" fill="rgba(0,0,0,0.15)"/>`
-	);
-
 	const leftLegX = cx - legGap - legW / 2 + legOffsets.leftX;
 	const rightLegX = cx + legGap - legW / 2 + legOffsets.rightX;
 	const leftLegY = legY + legOffsets.leftY;
