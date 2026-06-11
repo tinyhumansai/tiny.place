@@ -2,6 +2,7 @@ import { renderSvgToCanvas } from "../SvgAvatarRenderer";
 import type { FurnitureItemDefinition } from "./types";
 import {
 	generatePokerTableSvg,
+	generateChairSvg,
 	generateChipStackSvg,
 	generateCardFaceDownSvg,
 	generateDealerChipSvg,
@@ -11,9 +12,15 @@ import {
 const ITEM_DEFINITIONS: Record<string, FurnitureItemDefinition> = {
 	poker_table: {
 		key: "poker_table",
-		svgWidth: 256,
-		svgHeight: 140,
+		svgWidth: 260,
+		svgHeight: 150,
 		generateSvg: generatePokerTableSvg,
+	},
+	chair: {
+		key: "chair",
+		svgWidth: 36,
+		svgHeight: 48,
+		generateSvg: (): string => generateChairSvg(),
 	},
 	chip_stack_red: {
 		key: "chip_stack_red",
