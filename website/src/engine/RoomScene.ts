@@ -1,6 +1,7 @@
 import type RoomModel from "./RoomModel";
 import RoomTileRenderer from "./RoomTileRenderer";
 import { type RoomTheme, DEFAULT_THEME } from "./RoomTheme";
+import { FurnitureRenderer, FURNITURE_LAYOUTS } from "./furniture";
 import {
 	generateAllTextures,
 	getTextureKey,
@@ -19,6 +20,7 @@ import {
 	PRIORITY_DOOR_FLOOR,
 	PRIORITY_PLAYER,
 	PRIORITY_PLAYER_SHADOW,
+	PRIORITY_ROOM_ITEM,
 	PRIORITY_MULTIPLIER,
 	COMPARABLE_X_Y,
 	COMPARABLE_Z,
@@ -102,6 +104,8 @@ function directionFromDelta(dx: number, dy: number): Direction {
 
 export default class RoomScene extends Phaser.Scene {
 	private readonly tileRenderer: RoomTileRenderer;
+	private readonly furnitureRenderer: FurnitureRenderer;
+	private furnitureSprites: Array<Phaser.GameObjects.Image>;
 	public currentModel: RoomModel | null;
 	private readonly avatars: Map<number, RoomAvatarState>;
 	private currentTheme: RoomTheme;
@@ -112,6 +116,8 @@ export default class RoomScene extends Phaser.Scene {
 	public constructor() {
 		super({ key: "RoomScene" });
 		this.tileRenderer = new RoomTileRenderer();
+		this.furnitureRenderer = new FurnitureRenderer();
+		this.furnitureSprites = [];
 		this.currentModel = null;
 		this.currentTheme = DEFAULT_THEME;
 		this.avatars = new Map();
@@ -202,6 +208,7 @@ export default class RoomScene extends Phaser.Scene {
 
 		this.renderWalls(model, maxHeight);
 		this.renderFloor(model);
+		void this.renderFurniture(theme);
 		this.centerCamera();
 	}
 
@@ -211,6 +218,7 @@ export default class RoomScene extends Phaser.Scene {
 			this.removeAvatarTextures(avatar);
 		}
 		this.avatars.clear();
+		this.furnitureSprites = [];
 		this.currentModel = null;
 	}
 
@@ -337,6 +345,36 @@ export default class RoomScene extends Phaser.Scene {
 					)
 				);
 			}
+		}
+	}
+
+	private async renderFurniture(theme: RoomTheme): Promise<void> {
+		const layout = FURNITURE_LAYOUTS[theme.id];
+		if (!layout) return;
+
+		const itemTypes = [...new Set(layout.items.map((item) => item.itemType))];
+		await this.furnitureRenderer.initializeForRoom(this, itemTypes);
+
+		for (const item of layout.items) {
+			const textureKey = this.furnitureRenderer.getTextureKey(item.itemType);
+			if (!this.textures.exists(textureKey)) continue;
+
+			const local = tileToLocal(item.tileX, item.tileY, item.tileZ - 1);
+			const sprite = this.add.image(
+				local.x + (item.offsetX ?? 0),
+				local.y + (item.offsetY ?? 0),
+				textureKey
+			);
+			sprite.setOrigin(0.5, 0.5);
+			sprite.setDepth(
+				calculateZIndex(
+					Math.floor(item.tileX),
+					Math.floor(item.tileY),
+					item.tileZ,
+					PRIORITY_ROOM_ITEM
+				)
+			);
+			this.furnitureSprites.push(sprite);
 		}
 	}
 
