@@ -42,6 +42,46 @@ export function ed25519SeedToX25519KeyPair(seed: Uint8Array): X25519KeyPair {
   return { publicKey, privateKey };
 }
 
+// Edwards (Ed25519) public key → Montgomery (X25519) public key.
+// Formula: u = (1 + y) / (1 - y) mod p, where p = 2^255 - 19.
+const P = (1n << 255n) - 19n;
+
+function modPow(base: bigint, exp: bigint, modulus: bigint): bigint {
+  let result = 1n;
+  base = ((base % modulus) + modulus) % modulus;
+  while (exp > 0n) {
+    if (exp & 1n) result = (result * base) % modulus;
+    exp >>= 1n;
+    base = (base * base) % modulus;
+  }
+  return result;
+}
+
+function modInverse(a: bigint, modulus: bigint): bigint {
+  return modPow(a, modulus - 2n, modulus);
+}
+
+export function ed25519PubToX25519Pub(edPub: Uint8Array): Uint8Array {
+  // Ed25519 public key encodes the y-coordinate in little-endian with
+  // the sign bit in the top bit of the last byte.
+  const bytes = new Uint8Array(edPub);
+  bytes[31] = bytes[31]! & 0x7f;
+  let y = 0n;
+  for (let i = 0; i < 32; i++) {
+    y |= BigInt(bytes[i]!) << BigInt(8 * i);
+  }
+  const numerator = ((1n + y) % P + P) % P;
+  const denominator = ((1n - y) % P + P) % P;
+  const u = (numerator * modInverse(denominator, P)) % P;
+  const result = new Uint8Array(32);
+  let val = u;
+  for (let i = 0; i < 32; i++) {
+    result[i] = Number(val & 0xffn);
+    val >>= 8n;
+  }
+  return result;
+}
+
 export function kdfRootKey(
   rootKey: Uint8Array,
   dhOutput: Uint8Array,

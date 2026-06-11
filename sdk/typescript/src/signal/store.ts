@@ -15,6 +15,7 @@ export interface SessionState {
 export interface PreKeyPair {
   keyId: string;
   keyPair: X25519KeyPair;
+  signature: Uint8Array;
 }
 
 export interface SignedPreKeyPair {

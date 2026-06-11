@@ -35,7 +35,7 @@ export class SignalSession {
     let oneTimePreKeyId: string | undefined;
 
     if (!session && recipientBundle) {
-      const bundle = parseKeyBundle(recipientBundle);
+      const bundle = parseKeyBundle(recipientBundle, recipientIdentityKey);
       const identityKeyPair = await this.store.getIdentityX25519KeyPair();
       const result = x3dhInitiate(identityKeyPair, bundle);
       session = result.session;
@@ -138,9 +138,12 @@ export class SignalSession {
   }
 }
 
-function parseKeyBundle(bundle: KeyBundle): X3DHBundle {
+function parseKeyBundle(
+  bundle: KeyBundle,
+  recipientX25519IdentityKey: Uint8Array,
+): X3DHBundle {
   const result: X3DHBundle = {
-    identityKey: fromBase64(bundle.identityKey),
+    identityKey: recipientX25519IdentityKey,
     signedPreKeyId: bundle.signedPreKey.keyId,
     signedPreKey: fromBase64(bundle.signedPreKey.publicKey),
   };

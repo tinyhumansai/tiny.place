@@ -8,6 +8,7 @@ import {
   encrypt,
   decrypt,
   ed25519SeedToX25519KeyPair,
+  ed25519PubToX25519Pub,
   toBase64,
   fromBase64,
 } from "../src/signal/crypto.js";
@@ -251,7 +252,8 @@ describe("SignalSession with MemorySessionStore", () => {
       keyPair: bobSignedPreKey,
       signature: bobSignedPreKeyPair.signature,
     });
-    await bobStore.storePreKey({ keyId: "opk_1", keyPair: bobOneTimePreKey });
+    const dummySig = await signer.sign(bobOneTimePreKey.publicKey);
+    await bobStore.storePreKey({ keyId: "opk_1", keyPair: bobOneTimePreKey, signature: dummySig });
 
     const aliceSignal = new SignalSession(aliceStore, aliceIdentity.publicKey);
     const bobSignal = new SignalSession(bobStore, bobIdentity.publicKey);
@@ -316,6 +318,13 @@ describe("LocalSigner X25519 derivation", () => {
     const shared2 = x25519SharedSecret(kp2.privateKey, kp1.publicKey);
     expect(toBase64(shared1)).toBe(toBase64(shared2));
   });
+
+  it("ed25519PubToX25519Pub matches seed-derived public key", async () => {
+    const signer = await LocalSigner.generate();
+    const fromSeed = await signer.getX25519KeyPair();
+    const fromPub = ed25519PubToX25519Pub(signer.publicKey);
+    expect(toBase64(fromSeed.publicKey)).toBe(toBase64(fromPub));
+  });
 });
 
 describe("key generation helpers", () => {
@@ -331,12 +340,14 @@ describe("key generation helpers", () => {
     expect(typeof serialized.signature).toBe("string");
   });
 
-  it("generates batch of pre-keys", () => {
-    const preKeys = generatePreKeys(1, 10);
+  it("generates batch of pre-keys", async () => {
+    const signer = await LocalSigner.generate();
+    const preKeys = await generatePreKeys(signer, 1, 10);
     expect(preKeys.length).toBe(10);
     expect(preKeys[0]!.keyId).toBe("pk_1");
     expect(preKeys[9]!.keyId).toBe("pk_10");
     const serialized = serializePreKey(preKeys[0]!);
     expect(typeof serialized.publicKey).toBe("string");
+    expect(typeof serialized.signature).toBe("string");
   });
 });

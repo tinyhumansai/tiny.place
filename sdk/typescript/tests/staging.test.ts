@@ -4,8 +4,15 @@ import {
   TinyVerseError,
   LocalSigner,
   publicKeyToHex,
+  SignalSession,
+  MemorySessionStore,
+  generateSignedPreKey,
+  generatePreKeys,
+  serializeSignedKey,
+  serializePreKey,
 } from "../src/index.js";
 import type { Signer } from "../src/index.js";
+import { toBase64, ed25519PubToX25519Pub } from "../src/signal/crypto.js";
 
 const BASE_URL = "https://staging-api.tiny.place";
 
@@ -462,10 +469,12 @@ describe("staging: authenticated flows", () => {
     });
   });
 
-  describe("relay messages", () => {
+  describe("relay messages (Signal encrypted)", () => {
     let secondSigner: LocalSigner;
     let secondClient: TinyVerseClient;
     let secondPubKeyB64: string;
+    let aliceSignal: SignalSession;
+    let bobSignal: SignalSession;
 
     beforeAll(async () => {
       secondSigner = await LocalSigner.generate();
@@ -484,6 +493,32 @@ describe("staging: authenticated flows", () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
+
+      const aliceX25519 = await signer.getX25519KeyPair();
+      const bobX25519 = await secondSigner.getX25519KeyPair();
+
+      const aliceStore = new MemorySessionStore(aliceX25519);
+      const bobStore = new MemorySessionStore(bobX25519);
+
+      const bobSignedPreKey = await generateSignedPreKey(secondSigner, "spk_1");
+      const bobPreKeys = await generatePreKeys(secondSigner, 1, 5);
+
+      await bobStore.storeSignedPreKey(bobSignedPreKey);
+      for (const pk of bobPreKeys) {
+        await bobStore.storePreKey(pk);
+      }
+
+      await secondClient.keys.rotateSignedPreKey(secondPubKeyB64, {
+        identityKey: secondPubKeyB64,
+        signedPreKey: serializeSignedKey(bobSignedPreKey),
+      });
+      await secondClient.keys.uploadPreKeys(secondPubKeyB64, {
+        identityKey: secondPubKeyB64,
+        preKeys: bobPreKeys.map(serializePreKey),
+      });
+
+      aliceSignal = new SignalSession(aliceStore, aliceX25519.publicKey);
+      bobSignal = new SignalSession(bobStore, bobX25519.publicKey);
     });
 
     afterAll(async () => {
@@ -494,29 +529,53 @@ describe("staging: authenticated flows", () => {
       }
     });
 
-    it("sends a message envelope", async () => {
-      const bodyBytes = new TextEncoder().encode("hello from SDK test");
-      const bodyB64 = btoa(String.fromCharCode(...bodyBytes));
+    it("uploads key bundle to the relay", async () => {
+      const bundle = await secondClient.keys.getBundle(secondPubKeyB64);
+      expect(bundle.identityKey).toBeDefined();
+      expect(bundle.signedPreKey).toBeDefined();
+    });
+
+    it("sends a Signal-encrypted PREKEY_BUNDLE message", async () => {
+      const bundle = await client.keys.getBundle(secondPubKeyB64);
+      const bobX25519Pub = ed25519PubToX25519Pub(secondSigner.publicKey);
+
+      const encrypted = await aliceSignal.encrypt(
+        secondPubKeyB64,
+        bobX25519Pub,
+        new TextEncoder().encode("hello from SDK signal test!"),
+        bundle,
+      );
+      expect(encrypted.type).toBe("PREKEY_BUNDLE");
+
       const envelope = await client.messages.send({
-        id: `msg-sdk-test-${Date.now()}`,
+        id: `msg-signal-${Date.now()}`,
         from: publicKeyB64,
         to: secondPubKeyB64,
-        body: bodyB64,
-        type: "CIPHERTEXT",
+        body: encrypted.body,
+        type: encrypted.type,
         deviceId: 1,
+        signal: encrypted.signal,
       } as any);
       expect(envelope).toBeDefined();
     });
 
-    it("recipient lists their messages", async () => {
+    it("recipient fetches and decrypts the message", async () => {
       const result = await secondClient.messages.list(secondPubKeyB64);
-      expect(result).toHaveProperty("messages");
       expect(result.messages.length).toBeGreaterThan(0);
+
+      const envelope = result.messages[0]!;
+      const aliceX25519Pub = ed25519PubToX25519Pub(signer.publicKey);
+      const decrypted = await bobSignal.decrypt(
+        publicKeyB64,
+        aliceX25519Pub,
+        envelope,
+      );
+      expect(new TextDecoder().decode(decrypted)).toBe("hello from SDK signal test!");
     });
 
-    it("recipient acknowledges a message", async () => {
+    it("recipient acknowledges the message", async () => {
       const result = await secondClient.messages.list(secondPubKeyB64);
-      const message = result.messages[0];
+      const message = result.messages[0]!;
       await secondClient.messages.acknowledge(message.id, secondPubKeyB64);
     });
   });

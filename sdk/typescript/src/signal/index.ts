@@ -1,5 +1,11 @@
 export type { X25519KeyPair } from "./crypto.js";
-export { generateX25519KeyPair, toBase64, fromBase64 } from "./crypto.js";
+export {
+  generateX25519KeyPair,
+  ed25519PubToX25519Pub,
+  ed25519SeedToX25519KeyPair,
+  toBase64,
+  fromBase64,
+} from "./crypto.js";
 
 export type { SessionState, PreKeyPair, SignedPreKeyPair, SessionStore } from "./store.js";
 
