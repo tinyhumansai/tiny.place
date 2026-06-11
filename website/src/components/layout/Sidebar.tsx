@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import type { ComponentType, SVGProps } from "react";
 
 import type { FunctionComponent } from "@src/common/types";
 
 type Section = {
+	icon?: ComponentType<SVGProps<SVGSVGElement>>;
 	key: string;
 	label: string;
 };
@@ -37,10 +39,10 @@ export const Sidebar = ({
 			<nav className="flex flex-col px-2 py-2">
 				{sections.map((section) => {
 					const isActive = section.key === activeSection;
+					const Icon = section.icon;
 					return (
 						<Link
-							key={section.key}
-							className={`text-left text-xs px-2 py-1.5 rounded transition-colors ${
+							className={`flex items-center gap-2 text-left text-xs px-2 py-1.5 rounded transition-colors ${
 								isActive
 									? isDark
 										? "text-white bg-neutral-800"
@@ -50,7 +52,9 @@ export const Sidebar = ({
 										: "text-neutral-500 hover:text-neutral-700"
 							}`}
 							href={`/explore/${section.key}`}
+							key={section.key}
 						>
+							{Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}
 							{section.label}
 						</Link>
 					);

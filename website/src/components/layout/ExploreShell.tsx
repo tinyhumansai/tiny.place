@@ -1,33 +1,54 @@
 "use client";
 
-import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
+import {
+	ArrowsRightLeftIcon,
+	ChartBarIcon,
+	ChatBubbleLeftRightIcon,
+	CreditCardIcon,
+	GlobeAltIcon,
+	IdentificationIcon,
+	InboxIcon,
+	MagnifyingGlassIcon,
+	MegaphoneIcon,
+	MoonIcon,
+	SparklesIcon,
+	StarIcon,
+	SunIcon,
+	TagIcon,
+	TrophyIcon,
+	UserGroupIcon,
+	UserIcon,
+	WrenchScrewdriverIcon,
+} from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
 
 import type { FunctionComponent } from "@src/common/types";
 import { ConnectWalletButton } from "@src/components/ConnectWalletButton";
 import { Sidebar } from "@src/components/layout/Sidebar";
 import { useAppStore } from "@src/store/app";
 
-const sections = [
-	{ key: "identity-registry", label: "Identity Registry" },
-	{ key: "identity-trading", label: "Identity Trading" },
-	{ key: "profiles", label: "Profiles" },
-	{ key: "messaging", label: "Messaging" },
-	{ key: "inbox", label: "Inbox" },
-	{ key: "groups", label: "Groups" },
-	{ key: "broadcasts", label: "Broadcasts" },
-	{ key: "events", label: "Events" },
-	{ key: "marketplace", label: "Marketplace" },
-	{ key: "payments", label: "Payments" },
-	{ key: "ledger", label: "Ledger" },
-	{ key: "reputation", label: "Reputation" },
-	{ key: "leaderboards", label: "Leaderboards" },
-	{ key: "stats", label: "Stats" },
-	{ key: "explorer", label: "Explorer" },
-	{ key: "search", label: "Search" },
-	{ key: "harness", label: "Harness" },
-	{ key: "poker", label: "Poker" },
+type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
+
+const sections: Array<{ icon: IconComponent; key: string; label: string }> = [
+	{ key: "identity-registry", label: "Identity Registry", icon: IdentificationIcon },
+	{ key: "identity-trading", label: "Identity Trading", icon: ArrowsRightLeftIcon },
+	{ key: "profiles", label: "Profiles", icon: UserIcon },
+	{ key: "messaging", label: "Messaging", icon: ChatBubbleLeftRightIcon },
+	{ key: "inbox", label: "Inbox", icon: InboxIcon },
+	{ key: "groups", label: "Groups", icon: UserGroupIcon },
+	{ key: "broadcasts", label: "Broadcasts", icon: MegaphoneIcon },
+	{ key: "events", label: "Events", icon: SparklesIcon },
+	{ key: "marketplace", label: "Marketplace", icon: TagIcon },
+	{ key: "payments", label: "Payments", icon: CreditCardIcon },
+	{ key: "ledger", label: "Ledger", icon: ChartBarIcon },
+	{ key: "reputation", label: "Reputation", icon: StarIcon },
+	{ key: "leaderboards", label: "Leaderboards", icon: TrophyIcon },
+	{ key: "stats", label: "Stats", icon: ChartBarIcon },
+	{ key: "explorer", label: "Explorer", icon: GlobeAltIcon },
+	{ key: "search", label: "Search", icon: MagnifyingGlassIcon },
+	{ key: "harness", label: "Harness", icon: WrenchScrewdriverIcon },
+	{ key: "poker", label: "Poker", icon: SparklesIcon },
 ];
 
 type ExploreShellProperties = {
