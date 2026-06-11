@@ -4,14 +4,9 @@ import { SectionPage } from "@src/components/layout/SectionPage";
 import { sectionComponents } from "@src/components/explore";
 
 const sectionTitles: Record<string, string> = {
-	"identity-registry": "Identity Registry",
-	"identity-trading": "Identity Trading",
-	directory: "Directory",
+	identities: "Identities",
 	profiles: "Profiles",
 	messaging: "Messaging",
-	inbox: "Inbox",
-	groups: "Groups",
-	broadcasts: "Broadcasts",
 	events: "Events",
 	marketplace: "Marketplace",
 	payments: "Payments",
@@ -21,14 +16,7 @@ const sectionTitles: Record<string, string> = {
 	stats: "Stats",
 	explorer: "Explorer",
 	search: "Search",
-	harness: "Harness",
-	constitution: "Constitution",
-	"censorship-resistance": "Censorship Resistance",
-	security: "Security",
-	admin: "Admin",
-	api: "API Reference",
 	poker: "Poker",
-	terms: "Terms",
 };
 
 type PageProperties = {

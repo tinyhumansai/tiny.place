@@ -1,24 +1,19 @@
 "use client";
 
 import {
-	ArrowsRightLeftIcon,
 	ChartBarIcon,
 	ChatBubbleLeftRightIcon,
 	CreditCardIcon,
 	GlobeAltIcon,
 	IdentificationIcon,
-	InboxIcon,
 	MagnifyingGlassIcon,
-	MegaphoneIcon,
 	MoonIcon,
 	SparklesIcon,
 	StarIcon,
 	SunIcon,
 	TagIcon,
 	TrophyIcon,
-	UserGroupIcon,
 	UserIcon,
-	WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
 import type { ComponentType, ReactNode, SVGProps } from "react";
@@ -31,13 +26,9 @@ import { useAppStore } from "@src/store/app";
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
 const sections: Array<{ icon: IconComponent; key: string; label: string }> = [
-	{ key: "identity-registry", label: "Identity Registry", icon: IdentificationIcon },
-	{ key: "identity-trading", label: "Identity Trading", icon: ArrowsRightLeftIcon },
+	{ key: "identities", label: "Identities", icon: IdentificationIcon },
 	{ key: "profiles", label: "Profiles", icon: UserIcon },
 	{ key: "messaging", label: "Messaging", icon: ChatBubbleLeftRightIcon },
-	{ key: "inbox", label: "Inbox", icon: InboxIcon },
-	{ key: "groups", label: "Groups", icon: UserGroupIcon },
-	{ key: "broadcasts", label: "Broadcasts", icon: MegaphoneIcon },
 	{ key: "events", label: "Events", icon: SparklesIcon },
 	{ key: "marketplace", label: "Marketplace", icon: TagIcon },
 	{ key: "payments", label: "Payments", icon: CreditCardIcon },
@@ -47,7 +38,6 @@ const sections: Array<{ icon: IconComponent; key: string; label: string }> = [
 	{ key: "stats", label: "Stats", icon: ChartBarIcon },
 	{ key: "explorer", label: "Explorer", icon: GlobeAltIcon },
 	{ key: "search", label: "Search", icon: MagnifyingGlassIcon },
-	{ key: "harness", label: "Harness", icon: WrenchScrewdriverIcon },
 	{ key: "poker", label: "Poker", icon: SparklesIcon },
 ];
 

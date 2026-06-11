@@ -2,21 +2,16 @@ import type { ComponentType } from "react";
 
 import { AdminMock } from "./AdminMock";
 import { ApiReferenceMock } from "./ApiReferenceMock";
-import { BroadcastsMock } from "./BroadcastsMock";
 import { CensorshipResistanceMock } from "./CensorshipResistanceMock";
+import { CommunicationMock } from "./CommunicationMock";
 import { ConstitutionMock } from "./ConstitutionMock";
 import { DirectoryMock } from "./DirectoryMock";
 import { EventsMock } from "./EventsMock";
 import { ExplorerMock } from "./ExplorerMock";
-import { GroupsMock } from "./GroupsMock";
-import { HarnessMock } from "./HarnessMock";
-import { IdentityRegistryMock } from "./IdentityRegistryMock";
-import { IdentityTradingMock } from "./IdentityTradingMock";
-import { InboxMock } from "./InboxMock";
+import { IdentitiesMock } from "./IdentitiesMock";
 import { LeaderboardsMock } from "./LeaderboardsMock";
 import { LedgerMock } from "./LedgerMock";
 import { MarketplaceMock } from "./MarketplaceMock";
-import { MessagingMock } from "./MessagingMock";
 import { PaymentsMock } from "./PaymentsMock";
 import { PokerMock } from "./PokerMock";
 import { ProfilesMock } from "./ProfilesMock";
@@ -33,21 +28,16 @@ type MockProps = {
 export const sectionComponents: Record<string, ComponentType<MockProps>> = {
 	admin: AdminMock,
 	api: ApiReferenceMock,
-	broadcasts: BroadcastsMock,
 	"censorship-resistance": CensorshipResistanceMock,
 	constitution: ConstitutionMock,
 	directory: DirectoryMock,
 	events: EventsMock,
 	explorer: ExplorerMock,
-	groups: GroupsMock,
-	harness: HarnessMock,
-	"identity-registry": IdentityRegistryMock,
-	"identity-trading": IdentityTradingMock,
-	inbox: InboxMock,
+	identities: IdentitiesMock,
 	leaderboards: LeaderboardsMock,
 	ledger: LedgerMock,
 	marketplace: MarketplaceMock,
-	messaging: MessagingMock,
+	messaging: CommunicationMock,
 	payments: PaymentsMock,
 	poker: PokerMock,
 	profiles: ProfilesMock,
