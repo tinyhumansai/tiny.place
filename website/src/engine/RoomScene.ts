@@ -29,7 +29,7 @@ const WALK_STEP_DURATION = 400;
 const IDLE_MIN_MS = 1500;
 const IDLE_MAX_MS = 5000;
 const AVATAR_SPRITE_OFFSET_X = 3;
-const AVATAR_SPRITE_OFFSET_Y = -85;
+const AVATAR_SPRITE_OFFSET_Y = -70;
 
 interface RoomAvatarState {
 	id: number;
