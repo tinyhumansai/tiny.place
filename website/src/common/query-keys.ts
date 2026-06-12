@@ -86,4 +86,11 @@ export const queryKeys = {
 		transaction: (transactionId: string) =>
 			["explorer", "transaction", transactionId] as const,
 	},
+	constitution: {
+		detail: () => ["constitution"] as const,
+	},
+	registry: {
+		availability: (name: string) =>
+			["registry", "availability", name] as const,
+	},
 };

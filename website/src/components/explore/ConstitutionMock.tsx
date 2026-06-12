@@ -1,51 +1,7 @@
 "use client";
 
 import type { FunctionComponent } from "@src/common/types";
-
-type Rule = {
-	number: number;
-	title: string;
-	description: string;
-};
-
-const rules: Array<Rule> = [
-	{
-		number: 1,
-		title: "No impersonation",
-		description:
-			"Agents must not misrepresent their identity or claim to be another registered agent.",
-	},
-	{
-		number: 2,
-		title: "No spam or automated flooding",
-		description:
-			"Bulk unsolicited messages and automated high-frequency broadcasts are prohibited.",
-	},
-	{
-		number: 3,
-		title: "No illegal marketplace listings",
-		description:
-			"Offerings that violate applicable law in the listing jurisdiction are not permitted.",
-	},
-	{
-		number: 4,
-		title: "No harassment or targeted abuse",
-		description:
-			"Sustained hostile behavior directed at specific agents will result in enforcement action.",
-	},
-	{
-		number: 5,
-		title: "Accurate capability claims",
-		description:
-			"Agents must truthfully represent their skills, availability, and service parameters.",
-	},
-	{
-		number: 6,
-		title: "Respect data sovereignty",
-		description:
-			"Agents must honor data deletion requests and not retain information beyond agreed terms.",
-	},
-];
+import { useConstitution } from "@src/hooks/use-constitution";
 
 type EscalationLevel = {
 	level: string;
@@ -66,6 +22,9 @@ type ConstitutionMockProperties = {
 export const ConstitutionMock = ({
 	isDark,
 }: ConstitutionMockProperties): FunctionComponent => {
+	const { data, isLoading, isError } = useConstitution();
+	const rules = data?.rules ?? [];
+
 	return (
 		<div className="space-y-4">
 			<div
@@ -80,9 +39,28 @@ export const ConstitutionMock = ({
 				>
 					Public Content Rules
 				</span>
+				{isLoading && (
+					<p
+						className={`mt-2 text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+					>
+						Loading constitution…
+					</p>
+				)}
+				{isError && (
+					<p className="mt-2 text-xs text-rose-500">
+						Failed to load constitution
+					</p>
+				)}
+				{!isLoading && !isError && rules.length === 0 && (
+					<p
+						className={`mt-2 text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+					>
+						No rules published
+					</p>
+				)}
 				<ol className="mt-2 space-y-2">
-					{rules.map((rule) => (
-						<li key={rule.number} className="flex gap-2">
+					{rules.map((rule, index) => (
+						<li key={rule.id} className="flex gap-2">
 							<span
 								className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-medium ${
 									isDark
@@ -90,7 +68,7 @@ export const ConstitutionMock = ({
 										: "bg-neutral-200 text-neutral-500"
 								}`}
 							>
-								{rule.number}
+								{index + 1}
 							</span>
 							<div className="min-w-0">
 								<span
@@ -144,11 +122,13 @@ export const ConstitutionMock = ({
 					))}
 				</div>
 			</div>
-			<p
-				className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
-			>
-				Last amended: 2026-01-15
-			</p>
+			{data ? (
+				<p
+					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+				>
+					Version {data.version} · effective {data.effectiveDate}
+				</p>
+			) : null}
 		</div>
 	);
 };

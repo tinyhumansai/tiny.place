@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
+
 import type { FunctionComponent } from "@src/common/types";
+import { useHandleAvailability } from "@src/hooks/use-registry";
 
 type RegistryEntry = {
 	handle: string;
@@ -90,57 +93,125 @@ export const IdentityRegistryMock = ({
 	const secondaryClass = isDark ? "text-neutral-500" : "text-neutral-400";
 	const rowEvenClass = isDark ? "bg-neutral-900/50" : "bg-neutral-100/50";
 
+	const [input, setInput] = useState<string>("");
+	const [checked, setChecked] = useState<string>("");
+	const { data, isFetching, isError, refetch } = useHandleAvailability(checked);
+
 	return (
-		<div className={`overflow-hidden rounded-lg border ${cardClass}`}>
-			<table className="w-full text-left text-xs">
-				<thead>
-					<tr
-						className={`border-b ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
+		<div className="space-y-3">
+			<form
+				className={`rounded-lg border p-3 ${cardClass}`}
+				onSubmit={(event): void => {
+					event.preventDefault();
+					const next = input.trim();
+					if (next === checked) {
+						// Same handle as last check — re-run instead of no-op'ing.
+						void refetch();
+					} else {
+						setChecked(next);
+					}
+				}}
+			>
+				<label
+					className={`text-xs font-medium ${headingClass}`}
+					htmlFor="handle-availability-input"
+				>
+					Check handle availability
+				</label>
+				<div className="mt-2 flex gap-2">
+					<input
+						id="handle-availability-input"
+						placeholder="@yourhandle"
+						value={input}
+						className={`flex-1 rounded-md border px-2 py-1 text-xs ${
+							isDark
+								? "border-neutral-800 bg-neutral-900 text-white placeholder:text-neutral-600"
+								: "border-neutral-200 bg-white text-black placeholder:text-neutral-400"
+						}`}
+						onChange={(event): void => {
+							setInput(event.target.value);
+						}}
+					/>
+					<button
+						disabled={!input.trim()}
+						type="submit"
+						className={`rounded-md px-3 py-1 text-xs font-medium ${
+							isDark ? "bg-white text-black" : "bg-black text-white"
+						} ${input.trim() ? "" : "opacity-50"}`}
 					>
-						<th className={`px-3 py-2 font-medium ${headerClass}`}>Handle</th>
-						<th className={`px-3 py-2 font-medium ${headerClass}`}>
-							Crypto ID
-						</th>
-						<th className={`px-3 py-2 font-medium ${headerClass}`}>Created</th>
-						<th className={`px-3 py-2 font-medium ${headerClass}`}>Status</th>
-						<th className={`px-3 py-2 text-right font-medium ${headerClass}`}>
-							Value
-						</th>
-					</tr>
-				</thead>
-				<tbody>
-					{registryEntries.map((entry, index) => (
+						Check
+					</button>
+				</div>
+				{checked && isFetching && (
+					<p className={`mt-2 text-xs ${secondaryClass}`}>Checking…</p>
+				)}
+				{checked && isError && (
+					<p className="mt-2 text-xs text-rose-500">Failed to check handle</p>
+				)}
+				{checked && !isFetching && !isError && data ? (
+					<p
+						className={`mt-2 text-xs font-medium ${
+							data.available ? "text-green-500" : "text-rose-500"
+						}`}
+					>
+						{data.name} is {data.available ? "available" : "taken"}
+					</p>
+				) : null}
+			</form>
+
+			<div className={`overflow-hidden rounded-lg border ${cardClass}`}>
+				<table className="w-full text-left text-xs">
+					<thead>
 						<tr
-							key={entry.handle}
-							className={`border-b last:border-b-0 ${isDark ? "border-neutral-800" : "border-neutral-200"} ${
-								index % 2 === 1 ? rowEvenClass : ""
-							}`}
+							className={`border-b ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
 						>
-							<td className={`px-3 py-2 font-medium ${headingClass}`}>
-								{entry.handle}
-							</td>
-							<td className={`px-3 py-2 font-mono ${secondaryClass}`}>
-								{entry.cryptoId}
-							</td>
-							<td className={`px-3 py-2 ${secondaryClass}`}>
-								{entry.createdDate}
-							</td>
-							<td className="px-3 py-2">
-								<span
-									className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[entry.status]}`}
-								>
-									{entry.status}
-								</span>
-							</td>
-							<td
-								className={`px-3 py-2 text-right font-medium ${headingClass}`}
-							>
-								{entry.valueEstimate}
-							</td>
+							<th className={`px-3 py-2 font-medium ${headerClass}`}>Handle</th>
+							<th className={`px-3 py-2 font-medium ${headerClass}`}>
+								Crypto ID
+							</th>
+							<th className={`px-3 py-2 font-medium ${headerClass}`}>
+								Created
+							</th>
+							<th className={`px-3 py-2 font-medium ${headerClass}`}>Status</th>
+							<th className={`px-3 py-2 text-right font-medium ${headerClass}`}>
+								Value
+							</th>
 						</tr>
-					))}
-				</tbody>
-			</table>
+					</thead>
+					<tbody>
+						{registryEntries.map((entry, index) => (
+							<tr
+								key={entry.handle}
+								className={`border-b last:border-b-0 ${isDark ? "border-neutral-800" : "border-neutral-200"} ${
+									index % 2 === 1 ? rowEvenClass : ""
+								}`}
+							>
+								<td className={`px-3 py-2 font-medium ${headingClass}`}>
+									{entry.handle}
+								</td>
+								<td className={`px-3 py-2 font-mono ${secondaryClass}`}>
+									{entry.cryptoId}
+								</td>
+								<td className={`px-3 py-2 ${secondaryClass}`}>
+									{entry.createdDate}
+								</td>
+								<td className="px-3 py-2">
+									<span
+										className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[entry.status]}`}
+									>
+										{entry.status}
+									</span>
+								</td>
+								<td
+									className={`px-3 py-2 text-right font-medium ${headingClass}`}
+								>
+									{entry.valueEstimate}
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
 		</div>
 	);
 };
