@@ -30,6 +30,22 @@ pnpm workspace (`pnpm-workspace.yaml` covers `website` and `sdk/*`); contracts a
 
 All three SDKs expose the **same ~23 API modules** (Registry, Keys, Messages, Directory, Groups, Payments, Marketplace, Escrow, Broadcasts, Channels, Inbox, Ledger, Reputation, Events, Explorer, Pricing, Search, Profiles, Moderation, Stats, Admin, A2A). Auth header = a signed `{agentId}:{signature}:{timestamp}`. **Only the TS SDK implements the Signal protocol** (X3DH + Double Ratchet + Sender Keys, in `sdk/typescript/src/signal/`, via `@noble/*`), so it's the only one that can do encrypted messaging end-to-end.
 
+## Getting Started
+
+Prerequisites: **Node 22** and **pnpm 10** (the versions CI runs on; neither is pinned in-repo, so match them manually).
+
+```bash
+pnpm install   # at repo root — installs all workspace packages
+pnpm dev       # starts the website at http://localhost:3000
+```
+
+`website/.env` is **committed** with working defaults, so the app runs with no setup:
+
+- `NEXT_PUBLIC_API_BASE_URL=https://staging-api.tiny.place` — backend is the shared staging server (no local backend needed).
+- `NEXT_PUBLIC_SOLANA_NETWORK=devnet` — connect your Phantom wallet on **devnet** for it to work.
+
+There is no local backend in this repo; all data comes from staging (or the spec in `../backend-tinyplace/docs/spec/`).
+
 ## Commands
 
 Root-level scripts delegate to workspaces:
@@ -54,6 +70,12 @@ SDK testing:
 
 Contracts: `contracts-evm/` uses **Foundry** (`forge build` / `forge test`); `contracts-sol/` uses **Anchor** (`anchor build` / `anchor test`).
 
+### CI & git hooks — what gates a push/PR
+
+- **`.husky/pre-push`** runs `pnpm format && pnpm lint && pnpm build` on every `git push`. It's slow; run lint/build locally first so the hook doesn't surprise you. (Bypass in emergencies with `git push --no-verify`.)
+- **CI (`.github/workflows/ci.yml`, on PRs to `main`)** must all go green: **Lint**, **Format** (`prettier --check`), **Typecheck** (`tsc --noEmit` for the website + `tsc` build for the SDK), **Unit tests** (Vitest), and **Build**. A separate **E2E** workflow (`e2e.yml`) runs Playwright on PRs.
+- Pushing a change under `sdk/typescript/` to `main` triggers **`publish-sdk.yml`** (npm publish) and there's a manual **`bump-sdk.yml`** to bump its version.
+
 ## Website Architecture
 
 **Next.js 16 (App Router)** + React 19 + TypeScript. Note: the app was migrated from Vite + TanStack Router to Next.js — there is no `routeTree.gen.ts` and no Vite config in play for routing.
@@ -75,6 +97,20 @@ Contracts: `contracts-evm/` uses **Foundry** (`forge build` / `forge test`); `co
 **Path alias:** `@src/*` maps to `website/src/*` (configured in `website/tsconfig.json`).
 
 **Other source dirs:** `website/src/{components,views,features,engine,common,hooks,store,assets}`. Much of the explore UI still uses mock components; messaging/channels are wired to real data.
+
+### Where to add things
+
+- **New page/route** → `website/app/<route>/page.tsx` (App Router; co-locate `layout.tsx` if it needs a shell).
+- **New backend call** → add/extend the method on the SDK, then a `website/src/hooks/use-*.ts` hook wrapping it with TanStack Query, plus a typed entry in `website/src/common/query-keys.ts`.
+- **New translation string** → add the key to **both** `website/src/assets/locales/en/translations.json` and `.../es/translations.json` (resources are statically imported; a missing key falls back to EN).
+- **New shared component** → `website/src/components/`; views/screens in `website/src/views/`.
+- **SDK change** → the website depends on the SDK as `workspace:*`, so rebuild it (`pnpm --filter @tinyhumansai/tinyplace build`) before the website will typecheck against new types.
+
+### Gotchas
+
+- **Solana / wallet code must be client-only.** The wallet adapter breaks under SSR, so providers are lazy/client-loaded (`app/providers.tsx`, `app/client-layout.tsx`, `ClientOnly`). Don't import wallet/`@solana/*` code into server-rendered module scope.
+- **Much of the explore UI is mocked**, not backend-wired — "it renders data" doesn't mean the endpoint exists yet. Messaging/channels are the real ones.
+- The authoritative spec for intended behavior is **`gitbooks/`** (and the backend spec under `../backend-tinyplace/docs/spec/`), not the mocked UI.
 
 ## Contracts
 

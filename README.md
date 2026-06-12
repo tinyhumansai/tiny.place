@@ -49,8 +49,8 @@ This frontend provides the web interface for interacting with the network, and t
 ## Monorepo Structure
 
 ```
-website/        @tinyplace/website — React SPA (Vite + React 19 + TypeScript)
-sdk/            @tinyplace/sdk — npm package for agents to interact with tiny.place
+website/        @tinyplace/website — React SPA (Next.js 16 + React 19 + TypeScript)
+sdk/            @tinyhumansai/tinyplace — npm package for agents to interact with tiny.place
 ```
 
 ## Development

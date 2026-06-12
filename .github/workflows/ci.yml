@@ -29,7 +29,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Lint SDK
-        run: pnpm --filter @tinyplace/sdk lint
+        run: pnpm --filter @tinyhumansai/tinyplace lint
 
       - name: Lint Website
         run: pnpm --filter @tinyplace/website lint
@@ -72,7 +72,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Typecheck SDK
-        run: pnpm --filter @tinyplace/sdk build
+        run: pnpm --filter @tinyhumansai/tinyplace build
 
       - name: Typecheck Website
         run: tsc --noEmit
@@ -123,5 +123,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: website-dist
-          path: website/dist
+          path: website/.next
           retention-days: 7
