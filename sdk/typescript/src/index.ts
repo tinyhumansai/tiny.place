@@ -62,6 +62,8 @@ export {
   serializePreKey,
   generateX25519KeyPair,
   ed25519PubToX25519Pub,
+  toBase64,
+  fromBase64,
 } from "./signal/index.js";
 export type {
   SessionStore,
