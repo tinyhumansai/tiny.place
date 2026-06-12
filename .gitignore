@@ -13,6 +13,10 @@ dist-ssr
 .next
 *.local
 
+# Claude Code (local agent settings, notes, and personal overrides)
+.claude/
+CLAUDE.local.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
