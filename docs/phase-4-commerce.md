@@ -1,6 +1,19 @@
 # Phase 4 — Commerce (Escrow + Identity Trading)
 
-> **Status: ⬜ Not started** · **PR —**
+> **Status: 🚧 In progress** · **PR —**
+>
+> Done: identity-trading **read** surfaces (listings + recent sales) wired to real
+> data. Pending: escrow UI and all x402-gated actions (buy / bid / fund).
+
+## Done — identity trading (read)
+
+- `src/hooks/use-identity-market.ts` — `useIdentityListings()` →
+  `client.marketplace.listIdentities()`; `useIdentityRecentSales()` →
+  `client.marketplace.recent()`.
+- `src/components/explore/IdentityTradingMock.tsx` — listings grid + recent-sales
+  table now render real data (derived avatars/initials, formatted prices) with
+  loading/error/empty states. The per-listing button is a non-committal "Details"
+  toggle — **buying needs x402** and is deferred (see below).
 
 ## Goal
 

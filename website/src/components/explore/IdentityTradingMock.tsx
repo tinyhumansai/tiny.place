@@ -2,80 +2,43 @@
 
 import { useState } from "react";
 
+import type { MarketplacePrice } from "@tinyhumansai/tinyplace";
+
 import type { FunctionComponent } from "@src/common/types";
+import {
+	useIdentityListings,
+	useIdentityRecentSales,
+} from "@src/hooks/use-identity-market";
 
-type Listing = {
-	handle: string;
-	askingPrice: string;
-	seller: string;
-	initials: string;
-	color: string;
-};
-
-type Sale = {
-	handle: string;
-	price: string;
-	buyer: string;
-	date: string;
-};
-
-const listings: Array<Listing> = [
-	{
-		handle: "@quantum",
-		askingPrice: "4,200 USDC",
-		seller: "@atlas",
-		initials: "QU",
-		color: "bg-indigo-600",
-	},
-	{
-		handle: "@nexus",
-		askingPrice: "1,800 USDC",
-		seller: "@cipher",
-		initials: "NE",
-		color: "bg-teal-600",
-	},
-	{
-		handle: "@prism",
-		askingPrice: "3,500 USDC",
-		seller: "@drift",
-		initials: "PR",
-		color: "bg-orange-600",
-	},
-	{
-		handle: "@helix",
-		askingPrice: "2,100 USDC",
-		seller: "@sage",
-		initials: "HE",
-		color: "bg-rose-600",
-	},
+const avatarColors = [
+	"bg-indigo-600",
+	"bg-teal-600",
+	"bg-orange-600",
+	"bg-rose-600",
+	"bg-emerald-600",
+	"bg-blue-600",
+	"bg-purple-600",
 ];
 
-const recentSales: Array<Sale> = [
-	{
-		handle: "@orbit",
-		price: "3,800 USDC",
-		buyer: "@meridian",
-		date: "2025-06-14",
-	},
-	{
-		handle: "@spark",
-		price: "1,200 USDC",
-		buyer: "@echo",
-		date: "2025-06-12",
-	},
-	{
-		handle: "@pulse",
-		price: "5,600 USDC",
-		buyer: "@flux",
-		date: "2025-06-10",
-	},
-	{
-		handle: "@arc",
-		price: "900 USDC",
-		buyer: "@nova",
-		date: "2025-06-08",
-	},
-];
+function strip(name: string): string {
+	return name.replace(/^@+/, "");
+}
+
+function initialsFor(name: string): string {
+	return strip(name).slice(0, 2).toUpperCase();
+}
+
+function colorFor(name: string): string {
+	let hash = 0;
+	for (const char of strip(name)) {
+		hash = (hash + char.charCodeAt(0)) % avatarColors.length;
+	}
+	return avatarColors[hash] ?? "bg-indigo-600";
+}
+
+function formatPrice(price: MarketplacePrice): string {
+	return `${price.amount} ${price.asset}`;
+}
 
 type IdentityTradingMockProperties = {
 	isDark: boolean;
@@ -85,6 +48,11 @@ export const IdentityTradingMock = ({
 	isDark,
 }: IdentityTradingMockProperties): FunctionComponent => {
 	const [selectedListing, setSelectedListing] = useState<string | null>(null);
+
+	const listingsQuery = useIdentityListings();
+	const salesQuery = useIdentityRecentSales();
+	const listings = listingsQuery.data?.listings ?? [];
+	const sales = salesQuery.data?.recent ?? [];
 
 	const cardClass = isDark
 		? "border-neutral-800 bg-neutral-950"
@@ -102,28 +70,41 @@ export const IdentityTradingMock = ({
 				>
 					Listed for Sale
 				</h3>
+				{listingsQuery.isLoading && (
+					<p className={`text-xs ${secondaryClass}`}>Loading listings…</p>
+				)}
+				{listingsQuery.isError && (
+					<p className="text-xs text-rose-500">Failed to load listings</p>
+				)}
+				{!listingsQuery.isLoading &&
+					!listingsQuery.isError &&
+					listings.length === 0 && (
+						<p className={`text-xs ${secondaryClass}`}>
+							No identities listed for sale
+						</p>
+					)}
 				<div className="grid grid-cols-2 gap-2">
 					{listings.map((listing) => (
 						<div
-							key={listing.handle}
+							key={listing.listingId}
 							className={`rounded-lg border p-3 transition-colors ${cardClass} ${
-								selectedListing === listing.handle ? "border-blue-500" : ""
+								selectedListing === listing.listingId ? "border-blue-500" : ""
 							}`}
 						>
 							<div className="flex items-center gap-2">
 								<div
-									className={`${listing.color} flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium text-white`}
+									className={`${colorFor(listing.name)} flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium text-white`}
 								>
-									{listing.initials}
+									{initialsFor(listing.name)}
 								</div>
 								<span className={`text-sm font-medium ${headingClass}`}>
-									{listing.handle}
+									{listing.name}
 								</span>
 							</div>
 							<div className="mt-2 flex items-center justify-between">
 								<div>
 									<div className={`text-xs font-semibold ${headingClass}`}>
-										{listing.askingPrice}
+										{formatPrice(listing.price)}
 									</div>
 									<div className={`text-xs ${secondaryClass}`}>
 										by {listing.seller}
@@ -132,19 +113,21 @@ export const IdentityTradingMock = ({
 								<button
 									type="button"
 									className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-										selectedListing === listing.handle
+										selectedListing === listing.listingId
 											? "bg-blue-600 text-white"
 											: isDark
 												? "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
 												: "bg-neutral-200 text-neutral-600 hover:bg-neutral-300"
 									}`}
-									onClick={() => {
+									onClick={(): void => {
 										setSelectedListing(
-											selectedListing === listing.handle ? null : listing.handle
+											selectedListing === listing.listingId
+												? null
+												: listing.listingId
 										);
 									}}
 								>
-									Buy
+									Details
 								</button>
 							</div>
 						</div>
@@ -159,49 +142,64 @@ export const IdentityTradingMock = ({
 					Recent Sales
 				</h3>
 				<div className={`overflow-hidden rounded-lg border ${cardClass}`}>
-					<table className="w-full text-left text-xs">
-						<thead>
-							<tr
-								className={`border-b ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
-							>
-								<th className={`px-3 py-2 font-medium ${headerClass}`}>
-									Handle
-								</th>
-								<th className={`px-3 py-2 font-medium ${headerClass}`}>
-									Price
-								</th>
-								<th className={`px-3 py-2 font-medium ${headerClass}`}>
-									Buyer
-								</th>
-								<th
-									className={`px-3 py-2 text-right font-medium ${headerClass}`}
-								>
-									Date
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							{recentSales.map((sale, index) => (
+					{salesQuery.isLoading && (
+						<p className={`p-3 text-xs ${secondaryClass}`}>Loading sales…</p>
+					)}
+					{salesQuery.isError && (
+						<p className="p-3 text-xs text-rose-500">Failed to load sales</p>
+					)}
+					{!salesQuery.isLoading &&
+						!salesQuery.isError &&
+						sales.length === 0 && (
+							<p className={`p-3 text-xs ${secondaryClass}`}>No recent sales</p>
+						)}
+					{sales.length > 0 && (
+						<table className="w-full text-left text-xs">
+							<thead>
 								<tr
-									key={sale.handle}
-									className={`border-b last:border-b-0 ${isDark ? "border-neutral-800" : "border-neutral-200"} ${
-										index % 2 === 1 ? rowEvenClass : ""
-									}`}
+									className={`border-b ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
 								>
-									<td className={`px-3 py-2 font-medium ${headingClass}`}>
-										{sale.handle}
-									</td>
-									<td className={`px-3 py-2 ${headingClass}`}>{sale.price}</td>
-									<td className={`px-3 py-2 ${secondaryClass}`}>
-										{sale.buyer}
-									</td>
-									<td className={`px-3 py-2 text-right ${secondaryClass}`}>
-										{sale.date}
-									</td>
+									<th className={`px-3 py-2 font-medium ${headerClass}`}>
+										Handle
+									</th>
+									<th className={`px-3 py-2 font-medium ${headerClass}`}>
+										Price
+									</th>
+									<th className={`px-3 py-2 font-medium ${headerClass}`}>
+										Buyer
+									</th>
+									<th
+										className={`px-3 py-2 text-right font-medium ${headerClass}`}
+									>
+										Date
+									</th>
 								</tr>
-							))}
-						</tbody>
-					</table>
+							</thead>
+							<tbody>
+								{sales.map((sale, index) => (
+									<tr
+										key={sale.saleId}
+										className={`border-b last:border-b-0 ${isDark ? "border-neutral-800" : "border-neutral-200"} ${
+											index % 2 === 1 ? rowEvenClass : ""
+										}`}
+									>
+										<td className={`px-3 py-2 font-medium ${headingClass}`}>
+											{sale.name}
+										</td>
+										<td className={`px-3 py-2 ${headingClass}`}>
+											{formatPrice(sale.price)}
+										</td>
+										<td className={`px-3 py-2 ${secondaryClass}`}>
+											{sale.buyer}
+										</td>
+										<td className={`px-3 py-2 text-right ${secondaryClass}`}>
+											{sale.createdAt.slice(0, 10)}
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					)}
 				</div>
 			</div>
 		</div>
