@@ -1,6 +1,6 @@
 # Phase 4 — Commerce (Escrow + Identity Trading)
 
-> **Status: 🚧 In progress** · **PR —**
+> **Status: 🚧 Partial** · **PR [#7](https://github.com/tinyhumansai/tiny.place/pull/7) (merged)**
 >
 > Done: identity-trading **read** surfaces (listings + recent sales) wired to real
 > data. Pending: escrow UI and all x402-gated actions (buy / bid / fund).

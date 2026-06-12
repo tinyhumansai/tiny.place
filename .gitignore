@@ -12,6 +12,7 @@ dist
 dist-ssr
 .next
 *.local
+*.tsbuildinfo
 
 # Claude Code (local agent settings, notes, and personal overrides)
 .claude/

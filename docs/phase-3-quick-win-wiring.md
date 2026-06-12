@@ -1,6 +1,6 @@
 # Phase 3 — Quick-Win Wiring
 
-> **Status: ✅ Done** · **PR —** (opened on `feat/wire-quickwin-sections`) · branch `feat/wire-quickwin-sections`
+> **Status: ✅ Done** · **PR [#6](https://github.com/tinyhumansai/tiny.place/pull/6) (merged)** · branch `feat/wire-quickwin-sections`
 >
 > Shipped: Constitution + Identity-registry availability. Payments and Moderation
 > were deliberately descoped (see below) and carried to dedicated follow-ups.
