@@ -25,6 +25,8 @@ type UseDirectMessagesResult = {
 	isReady: boolean;
 	isEnabling: boolean;
 	error: string | undefined;
+	/** The user's own encryption address (public key) to share with peers. */
+	address: string | undefined;
 	enable: () => Promise<void>;
 	peers: Array<ConversationPeer>;
 	threads: Record<string, Array<DirectMessageEntry>>;
@@ -133,6 +135,7 @@ export function useDirectMessages(): UseDirectMessagesResult {
 		isReady,
 		isEnabling: status === "loading",
 		error,
+		address: identity?.signer.publicKeyBase64,
 		enable,
 		peers,
 		threads,
