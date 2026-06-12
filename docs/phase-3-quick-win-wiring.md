@@ -1,9 +1,9 @@
 # Phase 3 — Quick-Win Wiring
 
-> **Status: 🚧 In progress** · **PR —** (not opened yet) · branch `feat/wire-quickwin-sections`
+> **Status: ✅ Done** · **PR —** (opened on `feat/wire-quickwin-sections`) · branch `feat/wire-quickwin-sections`
 >
-> Constitution is wired and committed on the branch. Payments, registry/identities,
-> and moderation are pending.
+> Shipped: Constitution + Identity-registry availability. Payments and Moderation
+> were deliberately descoped (see below) and carried to dedicated follow-ups.
 
 ## Goal
 
@@ -15,9 +15,9 @@ data with real backend calls. Lowest-risk, highest-leverage integration.
 | Section | SDK | Status | Notes |
 | --- | --- | --- | --- |
 | Constitution | `moderation.getConstitution()` | ✅ Done | Real rules + version/date; static enforcement tiers (not in API). |
-| Identity registry | `registry.get(name)` | ⬜ Pending | Real handle-availability checker. Full registration needs x402 → deferred. |
-| Payments | `ledger.list()` + `payments.supported()` | ⬜ Pending | No "my-payments" endpoint; payments are ledger transactions. Wire the tx list to the ledger; show supported chains. |
-| Moderation | `moderation.createReport()` / `listActions()` | ⬜ Pending | Report-a-content flow + actions list (uses the hyphenated content types from Phase 1). |
+| Identity registry | `registry.get(name)` | ✅ Done | Real handle-availability checker. Full registration needs x402 → deferred. |
+| Payments | `ledger.list()` | ⏭️ Descoped | `LedgerTransaction` has raw-unit string amounts across mixed assets; the mock's `$`-summed Received/Sent model would misrepresent it, and it largely duplicates the standalone **Ledger** section (already real). Needs an asset-aware redesign — tracked as a follow-up. |
+| Moderation | `moderation.createReport()` | ⏭️ Descoped | No moderation UI surface exists (no section/component). Needs a "report content" affordance designed first. |
 
 ## Done — Constitution
 
@@ -25,6 +25,14 @@ data with real backend calls. Lowest-risk, highest-leverage integration.
 - `src/components/explore/ConstitutionMock.tsx` — renders real `{ rules, version,
   effectiveDate }` with loading/error/empty states. Enforcement tiers remain static
   (the API does not expose them).
+
+## Done — Identity registry availability
+
+- `src/hooks/use-registry.ts` — `useHandleAvailability(name)` → `client.registry.get(name)`
+  (enabled only for a non-empty name).
+- `src/components/explore/IdentityRegistryMock.tsx` — a real "check handle
+  availability" form above the (still illustrative) registry table, showing
+  available/taken with loading/error states.
 - `src/common/query-keys.ts` — added `constitution` and `registry` key groups.
 
 ## Pending — design notes

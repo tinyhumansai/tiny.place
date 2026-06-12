@@ -12,10 +12,10 @@ This folder tracks the engineering effort to integrate the **website** with the
 | Phase | Scope | Status | PR |
 | --- | --- | --- | --- |
 | [1. SDK completeness](./phase-1-sdk-completeness.md) | Fix `/moderation/reports` 400; add `rooms`/games module | ✅ Done | [#4](https://github.com/tinyhumansai/tiny.place/pull/4) (merged) |
-| [2. Frontend crypto identity](./phase-2-frontend-crypto-identity.md) | Wallet-signature → deterministic key + IndexedDB Signal store + hook | ✅ Done | [#5](https://github.com/tinyhumansai/tiny.place/pull/5) (open) |
-| [3. Quick-win wiring](./phase-3-quick-win-wiring.md) | constitution, payments, registry/identities, moderation | 🚧 In progress | — |
+| [2. Frontend crypto identity](./phase-2-frontend-crypto-identity.md) | Wallet-signature → deterministic key + IndexedDB Signal store + hook | ✅ Done | [#5](https://github.com/tinyhumansai/tiny.place/pull/5) (merged) |
+| [3. Quick-win wiring](./phase-3-quick-win-wiring.md) | constitution + registry availability (payments/moderation descoped) | ✅ Done | this branch |
 | [4. Commerce](./phase-4-commerce.md) | escrow + identity trading | ⬜ Not started | — |
-| [5. Encrypted DMs](./phase-5-encrypted-dms.md) | Wire `/messages` via the crypto identity (X3DH + Double Ratchet) | ✅ Done | [#5](https://github.com/tinyhumansai/tiny.place/pull/5) (open) |
+| [5. Encrypted DMs](./phase-5-encrypted-dms.md) | Wire `/messages` via the crypto identity (X3DH + Double Ratchet) | ✅ Done | [#5](https://github.com/tinyhumansai/tiny.place/pull/5) (merged) |
 | [6. Poker](./phase-6-poker.md) | Wire the rooms UI to the new SDK module | ⬜ Not started | — |
 | [7. Admin](./phase-7-admin.md) | Admin controls | ⬜ Not started | — |
 

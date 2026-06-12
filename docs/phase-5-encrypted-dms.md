@@ -1,6 +1,6 @@
 # Phase 5 — Encrypted Direct Messages
 
-> **Status: ✅ Done** · **PR [#5](https://github.com/tinyhumansai/tiny.place/pull/5) (open)** · branch `feat/frontend-crypto-identity`
+> **Status: ✅ Done** · **PR [#5](https://github.com/tinyhumansai/tiny.place/pull/5) (merged)** · branch `feat/frontend-crypto-identity`
 >
 > Built on Phase 2. Split into 5a (service layer) and 5b (UI); both in PR #5.
 

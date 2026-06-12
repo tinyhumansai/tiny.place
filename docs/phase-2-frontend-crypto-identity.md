@@ -1,6 +1,6 @@
 # Phase 2 — Frontend Crypto Identity
 
-> **Status: ✅ Done** · **PR [#5](https://github.com/tinyhumansai/tiny.place/pull/5) (open)** · branch `feat/frontend-crypto-identity`
+> **Status: ✅ Done** · **PR [#5](https://github.com/tinyhumansai/tiny.place/pull/5) (merged)** · branch `feat/frontend-crypto-identity`
 >
 > Shipped together with Phase 5 in PR #5 (it is the foundation that unblocks DMs).
 
