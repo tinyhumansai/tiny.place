@@ -6,7 +6,9 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
 	generateNonce,
 	signX402Authorization,
+	TinyVerseError,
 	type AvailabilityResponse,
+	type X402AuthorizationFields,
 } from "@tinyhumansai/tinyplace";
 import type { FunctionComponent } from "@src/common/types";
 import { useApiClient } from "@src/common/api-context";
@@ -42,11 +44,36 @@ function getAnnualFee(name: string): string {
 			baseFee = 5;
 			break;
 	}
-	return String(baseFee * STAGING_PRICE_MULTIPLIER);
+	return String(Math.max(1, Math.ceil(baseFee * STAGING_PRICE_MULTIPLIER)));
 }
 
 function formatFee(amount: string): string {
 	return `${Number(amount).toLocaleString()} USDC`;
+}
+
+type RegistryPaymentChallenge = {
+	error: string;
+	payment: Omit<X402AuthorizationFields, "expiresAt" | "nonce"> &
+		Partial<Pick<X402AuthorizationFields, "expiresAt" | "nonce">>;
+};
+
+function registryPaymentChallenge(
+	error: unknown
+): RegistryPaymentChallenge | null {
+	if (!(error instanceof TinyVerseError) || error.status !== 402) {
+		return null;
+	}
+	if (!error.body || typeof error.body !== "object") {
+		return null;
+	}
+	const body = error.body as Partial<RegistryPaymentChallenge>;
+	if (!body.payment || typeof body.payment !== "object") {
+		return null;
+	}
+	return {
+		error: body.error ?? "Payment required",
+		payment: body.payment,
+	};
 }
 
 type DomainRegistrationProperties = {
@@ -81,47 +108,55 @@ export const DomainRegistration = ({
 				throw new Error("Connect your wallet first");
 			}
 
-			const amount = getAnnualFee(selectedName);
-			const nonce = generateNonce("reg");
-
-			const payment = await signX402Authorization(signer, {
-				scheme: "exact",
-				network: "eip155:8453",
-				asset: "USDC",
-				amount,
-				from: agentId,
-				to: "tinyplace-registry",
-				nonce,
-				expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-				metadata: {
-					domain: "tiny.place",
-					publicKey: signer.publicKeyBase64,
-					identity: selectedName,
-					purpose: "registration",
-				},
-			});
-
-			return client.registry.register({
+			const request = {
 				username: selectedName,
 				bio,
 				cryptoId: agentId,
 				publicKey: signer.publicKeyBase64,
-				payment: {
-					scheme: payment.scheme,
-					network: payment.network,
-					asset: payment.asset,
-					amount: payment.amount,
-					from: payment.from,
-					to: payment.to,
-					nonce: payment.nonce,
-					expiresAt: payment.expiresAt,
-					signature: payment.signature,
-					"metadata.domain": "tiny.place",
-					"metadata.publicKey": signer.publicKeyBase64,
-					"metadata.identity": selectedName,
-					"metadata.purpose": "registration",
-				},
-			});
+			};
+
+			try {
+				return await client.registry.register(request);
+			} catch (error) {
+				const challenge = registryPaymentChallenge(error);
+				if (!challenge) {
+					throw error;
+				}
+				const challengePayment = challenge.payment;
+				const metadata = {
+					...challengePayment.metadata,
+					domain: challengePayment.metadata?.["domain"] ?? "tiny.place",
+					identity: challengePayment.metadata?.["identity"] ?? selectedName,
+					publicKey: signer.publicKeyBase64,
+					purpose: challengePayment.metadata?.["purpose"] ?? "registration",
+				};
+				const signedPayment = await signX402Authorization(signer, {
+					...challengePayment,
+					expiresAt:
+						challengePayment.expiresAt ??
+						new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+					metadata,
+					nonce: challengePayment.nonce || generateNonce("reg"),
+				});
+				return client.registry.register({
+					...request,
+					payment: {
+						scheme: signedPayment.scheme,
+						network: signedPayment.network,
+						asset: signedPayment.asset,
+						amount: signedPayment.amount,
+						from: signedPayment.from,
+						to: signedPayment.to,
+						nonce: signedPayment.nonce,
+						expiresAt: signedPayment.expiresAt,
+						signature: signedPayment.signature,
+						"metadata.domain": metadata.domain,
+						"metadata.identity": metadata.identity,
+						"metadata.publicKey": metadata.publicKey,
+						"metadata.purpose": metadata.purpose,
+					},
+				});
+			}
 		},
 		onSuccess: () => {
 			setRegistrationComplete(true);
