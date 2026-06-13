@@ -6,6 +6,7 @@ export * from "./payments.js";
 export * from "./reputation.js";
 export * from "./social.js";
 export * from "./groups.js";
+export * from "./conversations.js";
 export * from "./marketplace.js";
 export * from "./broadcasts.js";
 export * from "./events.js";

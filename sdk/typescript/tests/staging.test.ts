@@ -15,9 +15,60 @@ import type { Signer } from "../src/index.js";
 import { toBase64, ed25519PubToX25519Pub } from "../src/signal/crypto.js";
 
 const BASE_URL = "https://staging-api.tiny.place";
+const RATE_LIMIT_RETRY_PADDING_MS = 250;
+const MAX_RATE_LIMIT_RETRIES = 2;
 
 function makeClient(signer?: Signer): TinyVerseClient {
-  return new TinyVerseClient({ baseUrl: BASE_URL, signer });
+  return new TinyVerseClient({
+    baseUrl: BASE_URL,
+    fetch: fetchWithRateLimitRetry,
+    signer,
+  });
+}
+
+async function fetchWithRateLimitRetry(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  let response = await fetch(input, init);
+  for (let attempt = 0; attempt < MAX_RATE_LIMIT_RETRIES; attempt += 1) {
+    if (response.status !== 429) {
+      return response;
+    }
+
+    const delayMs = rateLimitDelayMs(response);
+    await delay(delayMs);
+    response = await fetch(input, init);
+  }
+  return response;
+}
+
+function rateLimitDelayMs(response: Response): number {
+  const retryAfter = response.headers.get("retry-after");
+  if (retryAfter) {
+    const retryAfterSeconds = Number(retryAfter);
+    if (Number.isFinite(retryAfterSeconds)) {
+      return retryAfterSeconds * 1000 + RATE_LIMIT_RETRY_PADDING_MS;
+    }
+
+    const retryAt = Date.parse(retryAfter);
+    if (Number.isFinite(retryAt)) {
+      return Math.max(0, retryAt - Date.now()) + RATE_LIMIT_RETRY_PADDING_MS;
+    }
+  }
+
+  const reset = Number(response.headers.get("x-ratelimit-reset"));
+  if (Number.isFinite(reset) && reset > 0) {
+    return Math.max(0, reset * 1000 - Date.now()) + RATE_LIMIT_RETRY_PADDING_MS;
+  }
+
+  return 1000 + RATE_LIMIT_RETRY_PADDING_MS;
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
 }
 
 describe("staging: unauthenticated endpoints", () => {
@@ -29,7 +80,10 @@ describe("staging: unauthenticated endpoints", () => {
   });
 
   it("spec returns document list", async () => {
-    const result = (await client.spec()) as { name: string; documents: Array<string> };
+    const result = (await client.spec()) as {
+      name: string;
+      documents: Array<string>;
+    };
     expect(result.name).toBeDefined();
     expect(result.documents.length).toBeGreaterThan(0);
   });
@@ -307,7 +361,9 @@ describe("staging: authenticated flows", () => {
 
     it("appears in channels listing", async () => {
       const result = await client.channels.list();
-      const found = (result.channels ?? []).find((c) => c.channelId === channelId);
+      const found = (result.channels ?? []).find(
+        (c) => c.channelId === channelId,
+      );
       expect(found).toBeDefined();
     });
 
@@ -315,6 +371,79 @@ describe("staging: authenticated flows", () => {
       await client.channels.remove(channelId);
       const channel = await client.channels.get(channelId);
       expect(channel.closedAt).toBeDefined();
+    });
+  });
+
+  describe("conversations", () => {
+    let conversationId: string;
+    let messageId: string;
+
+    it("creates a conversation", async () => {
+      const conversation = await client.conversations.create({
+        type: "public_group",
+        name: `sdk-conversation-${Date.now()}`,
+        description: "SDK test conversation",
+        creator: publicKeyB64,
+        creatorCryptoId: publicKeyB64,
+        membershipPolicy: "open",
+        visibility: "public",
+      });
+      expect(conversation).toHaveProperty("conversationId");
+      conversationId = conversation.conversationId;
+    });
+
+    it("retrieves the conversation", async () => {
+      const conversation = await client.conversations.get(conversationId);
+      expect(conversation.conversationId).toBe(conversationId);
+      expect(conversation.description).toBe("SDK test conversation");
+    });
+
+    it("lists conversation members", async () => {
+      const result = await client.conversations.members(conversationId);
+      expect(result.members.length).toBeGreaterThan(0);
+    });
+
+    it("posts a conversation message", async () => {
+      const message = await client.conversations.postMessage(conversationId, {
+        body: "Hello from SDK conversation test!",
+        author: publicKeyB64,
+        authorCryptoId: publicKeyB64,
+      });
+      expect(message).toHaveProperty("messageId");
+      messageId = message.messageId;
+    });
+
+    it("lists conversation messages", async () => {
+      const result = await client.conversations.listMessages(conversationId);
+      const found = result.messages.find(
+        (message) => message.messageId === messageId,
+      );
+      expect(found).toBeDefined();
+    });
+
+    it("updates the conversation", async () => {
+      const updated = await client.conversations.update(conversationId, {
+        description: "Updated SDK test conversation",
+      });
+      expect(updated.description).toBe("Updated SDK test conversation");
+    });
+
+    it("appears in conversation listing", async () => {
+      const result = await client.conversations.list({ creator: publicKeyB64 });
+      const found = result.conversations.find(
+        (conversation) => conversation.conversationId === conversationId,
+      );
+      expect(found).toBeDefined();
+    });
+
+    it("deletes the conversation message", async () => {
+      await client.conversations.deleteMessage(conversationId, messageId);
+    });
+
+    it("cleans up: deletes the conversation", async () => {
+      await client.conversations.remove(conversationId);
+      const conversation = await client.conversations.get(conversationId);
+      expect(conversation.closedAt).toBeDefined();
     });
   });
 
@@ -409,7 +538,9 @@ describe("staging: authenticated flows", () => {
 
     it("appears in broadcasts listing", async () => {
       const result = await client.broadcasts.list();
-      const found = (result.broadcasts ?? []).find((b) => b.broadcastId === broadcastId);
+      const found = (result.broadcasts ?? []).find(
+        (b) => b.broadcastId === broadcastId,
+      );
       expect(found).toBeDefined();
     });
 
@@ -576,7 +707,9 @@ describe("staging: authenticated flows", () => {
         aliceX25519Pub,
         envelope,
       );
-      expect(new TextDecoder().decode(decrypted)).toBe("hello from SDK signal test!");
+      expect(new TextDecoder().decode(decrypted)).toBe(
+        "hello from SDK signal test!",
+      );
     });
 
     it("recipient acknowledges the message", async () => {
