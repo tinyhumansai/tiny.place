@@ -133,6 +133,13 @@ describe("staging: unauthenticated endpoints", () => {
     expect(stats).toBeDefined();
   });
 
+  it("stats.fees returns fee stats", async () => {
+    const stats = await client.stats.fees();
+    expect(stats).toHaveProperty("total_usd");
+    expect(stats).toHaveProperty("last_24h_usd");
+    expect(stats).toHaveProperty("last_30d_usd");
+  });
+
   it("explorer.overview returns canonical overview data", async () => {
     const result = await client.explorer.overview();
     expect(result).toHaveProperty("ledger");
