@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import type { GameRoom } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
 import { ROOM_TYPE_PRESETS, type RoomPreset } from "@src/engine/RoomModel";
+import { useRooms } from "@src/hooks/use-rooms";
 
 const TILE_W = 8;
 const TILE_H = 4;
@@ -114,10 +116,117 @@ type RoomsMockProperties = {
 	isDark: boolean;
 };
 
+function formatRoomStakes(room: GameRoom): string {
+	return `${room.stakes.smallBlind}/${room.stakes.bigBlind} ${room.stakes.asset}`;
+}
+
+function LiveRoomList({
+	isDark,
+	isError,
+	isLoading,
+	rooms,
+}: {
+	isDark: boolean;
+	isError: boolean;
+	isLoading: boolean;
+	rooms: Array<GameRoom>;
+}): React.ReactElement {
+	if (isLoading) {
+		return (
+			<p
+				className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
+			>
+				Loading live rooms...
+			</p>
+		);
+	}
+
+	if (isError) {
+		return <p className="text-sm text-red-500">Live rooms unavailable.</p>;
+	}
+
+	if (rooms.length === 0) {
+		return (
+			<p
+				className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
+			>
+				No live rooms are open.
+			</p>
+		);
+	}
+
+	return (
+		<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+			{rooms.slice(0, 6).map((room) => (
+				<a
+					key={room.roomId}
+					href={`/room?roomId=${encodeURIComponent(room.roomId)}`}
+					className={`rounded-lg border p-3 transition-colors ${
+						isDark
+							? "border-neutral-800 bg-neutral-900/50 hover:border-neutral-700"
+							: "border-neutral-200 bg-white hover:border-neutral-300"
+					}`}
+				>
+					<div className="flex items-start justify-between gap-3">
+						<div>
+							<h3
+								className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
+							>
+								{room.name}
+							</h3>
+							<p
+								className={`mt-1 text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
+							>
+								{room.game} / {room.variant}
+							</p>
+						</div>
+						<span
+							className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+								isDark
+									? "bg-neutral-800 text-neutral-400"
+									: "bg-neutral-100 text-neutral-500"
+							}`}
+						>
+							{room.status}
+						</span>
+					</div>
+					<div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+						<div>
+							<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>
+								Stakes
+							</p>
+							<p className={isDark ? "text-white" : "text-black"}>
+								{formatRoomStakes(room)}
+							</p>
+						</div>
+						<div>
+							<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>
+								Seats
+							</p>
+							<p className={isDark ? "text-white" : "text-black"}>
+								{room.players.length}/{room.seats}
+							</p>
+						</div>
+						<div>
+							<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>
+								Hands
+							</p>
+							<p className={isDark ? "text-white" : "text-black"}>
+								{room.handNumber}
+							</p>
+						</div>
+					</div>
+				</a>
+			))}
+		</div>
+	);
+}
+
 export const RoomsMock = ({
 	isDark,
 }: RoomsMockProperties): FunctionComponent => {
 	const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+	const rooms = useRooms({ limit: 6 });
 
 	const handleSelect = useCallback((key: string) => {
 		setSelectedRoom((previous) => (previous === key ? null : key));
@@ -136,6 +245,26 @@ export const RoomsMock = ({
 				>
 					Themed spaces for conversation, games, governance, and trade.
 				</p>
+			</div>
+
+			<div
+				className={`rounded-xl border p-4 ${
+					isDark
+						? "border-neutral-800 bg-neutral-950"
+						: "border-neutral-200 bg-neutral-50"
+				}`}
+			>
+				<h3
+					className={`mb-3 text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
+				>
+					Live Poker Rooms
+				</h3>
+				<LiveRoomList
+					isDark={isDark}
+					isError={rooms.isError}
+					isLoading={rooms.isLoading}
+					rooms={rooms.data?.rooms ?? []}
+				/>
 			</div>
 
 			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

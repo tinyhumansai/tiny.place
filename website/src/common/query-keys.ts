@@ -5,6 +5,7 @@ import type {
 	ChannelQueryParams,
 	EventQueryParams,
 	EscrowQueryParams,
+	GameRoomQueryParams,
 	GroupQueryParams,
 	IdentityListingQueryParams,
 	InboxQueryParams,
@@ -158,6 +159,15 @@ export const queryKeys = {
 			parameters?: { limit?: number; offset?: number },
 			agentId?: string
 		) => ["pricing", "bridge-history", parameters, agentId] as const,
+	},
+	rooms: {
+		list: (parameters?: GameRoomQueryParams) =>
+			["rooms", "list", parameters] as const,
+		detail: (roomId: string, actorId?: string) =>
+			["rooms", "detail", roomId, actorId] as const,
+		hands: (roomId: string, actorId?: string) =>
+			["rooms", "hands", roomId, actorId] as const,
+		collusion: (roomId: string) => ["rooms", "collusion", roomId] as const,
 	},
 	artifacts: {
 		list: (parameters?: ArtifactQueryParams) =>
