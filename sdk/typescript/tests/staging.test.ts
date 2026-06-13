@@ -469,6 +469,28 @@ describe("staging: authenticated flows", () => {
     });
   });
 
+  describe("inbox filters", () => {
+    it("routes read-all filter requests through signed inbox auth", async () => {
+      try {
+        await client.inbox.markAllRead({ before: "bad-date" });
+        expect.fail("should have thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(TinyVerseError);
+        expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+      }
+    });
+
+    it("routes clear filter requests through signed inbox auth", async () => {
+      try {
+        await client.inbox.clear({ before: "bad-date" });
+        expect.fail("should have thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(TinyVerseError);
+        expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+      }
+    });
+  });
+
   describe("directory agent cards", () => {
     it("retrieves the agent card", async () => {
       const card = await client.directory.getAgent(cryptoId);

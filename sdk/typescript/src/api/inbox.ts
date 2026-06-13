@@ -1,10 +1,13 @@
 import type { HttpClient } from "../http.js";
 import type { TinyVerseWebSocket, TinyVerseWebSocketOptions } from "../websocket.js";
 import type {
+  InboxClearParams,
+  InboxClearResult,
   InboxCounts,
   InboxItem,
   InboxListResult,
   InboxQueryParams,
+  InboxReadAllResult,
 } from "../types/index.js";
 
 export class InboxApi {
@@ -14,55 +17,70 @@ export class InboxApi {
   ) {}
 
   list(params?: InboxQueryParams): Promise<InboxListResult> {
-    return this.http.getAuth<InboxListResult>("/inbox", params as Record<string, unknown>);
+    return this.http.getAgentAuth<InboxListResult>(
+      "/inbox",
+      params as Record<string, unknown>,
+    );
   }
 
   get(itemId: string): Promise<InboxItem> {
-    return this.http.getAuth<InboxItem>(`/inbox/${encodeURIComponent(itemId)}`);
+    return this.http.getAgentAuth<InboxItem>(
+      `/inbox/${encodeURIComponent(itemId)}`,
+    );
   }
 
   search(query: string): Promise<{ items: Array<InboxItem> }> {
-    return this.http.getAuth<{ items: Array<InboxItem> }>("/inbox/search", { q: query });
+    return this.http.getAgentAuth<{ items: Array<InboxItem> }>("/inbox/search", {
+      q: query,
+    });
   }
 
   counts(): Promise<InboxCounts> {
-    return this.http.getAuth<InboxCounts>("/inbox/counts");
+    return this.http.getAgentAuth<InboxCounts>("/inbox/counts");
   }
 
   markRead(itemId: string): Promise<InboxItem> {
-    return this.http.put<InboxItem>(`/inbox/${encodeURIComponent(itemId)}/read`);
+    return this.http.putAgentAuth<InboxItem>(
+      `/inbox/${encodeURIComponent(itemId)}/read`,
+    );
   }
 
   markReadBulk(itemIds: Array<string>): Promise<void> {
-    return this.http.put<void>("/inbox/read", { itemIds });
+    return this.http.putAgentAuth<void>("/inbox/read", { itemIds });
   }
 
-  markAllRead(): Promise<void> {
-    return this.http.put<void>("/inbox/read-all");
+  markAllRead(params?: InboxClearParams): Promise<InboxReadAllResult> {
+    return this.http.putAgentAuth<InboxReadAllResult>("/inbox/read-all", params);
   }
 
   archive(itemId: string): Promise<InboxItem> {
-    return this.http.put<InboxItem>(`/inbox/${encodeURIComponent(itemId)}/archive`);
+    return this.http.putAgentAuth<InboxItem>(
+      `/inbox/${encodeURIComponent(itemId)}/archive`,
+    );
   }
 
   archiveBulk(itemIds: Array<string>): Promise<void> {
-    return this.http.put<void>("/inbox/archive", { itemIds });
+    return this.http.putAgentAuth<void>("/inbox/archive", { itemIds });
   }
 
   unarchive(itemId: string): Promise<InboxItem> {
-    return this.http.put<InboxItem>(`/inbox/${encodeURIComponent(itemId)}/unarchive`);
+    return this.http.putAgentAuth<InboxItem>(
+      `/inbox/${encodeURIComponent(itemId)}/unarchive`,
+    );
   }
 
   remove(itemId: string): Promise<void> {
-    return this.http.delete<void>(`/inbox/${encodeURIComponent(itemId)}`);
+    return this.http.deleteAgentAuth<void>(
+      `/inbox/${encodeURIComponent(itemId)}`,
+    );
   }
 
   removeBulk(itemIds: Array<string>): Promise<void> {
-    return this.http.delete<void>("/inbox", { itemIds });
+    return this.http.deleteAgentAuth<void>("/inbox", { itemIds });
   }
 
-  clear(params?: { status?: string; type?: string }): Promise<void> {
-    return this.http.delete<void>("/inbox/clear");
+  clear(params?: InboxClearParams): Promise<InboxClearResult> {
+    return this.http.deleteAgentAuth<InboxClearResult>("/inbox/clear", params);
   }
 
   stream(): TinyVerseWebSocket | undefined {

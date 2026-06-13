@@ -66,6 +66,21 @@ export interface InboxQueryParams {
   cursor?: string;
 }
 
+export interface InboxClearParams {
+  status?: InboxStatus | "all";
+  type?: string;
+  before?: string;
+  includeArchived?: boolean;
+}
+
+export interface InboxReadAllResult {
+  updated: number;
+}
+
+export interface InboxClearResult {
+  deleted: number;
+}
+
 export interface Channel {
   channelId: string;
   name: string;

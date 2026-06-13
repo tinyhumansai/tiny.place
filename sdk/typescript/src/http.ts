@@ -59,6 +59,7 @@ export class HttpClient {
       query?: Record<string, unknown>;
       signed?: boolean;
       directoryAuth?: boolean;
+      agentAuth?: boolean;
       responseType?: "json" | "text" | "raw";
     },
   ): Promise<T> {
@@ -70,7 +71,11 @@ export class HttpClient {
 
     const bodyStr = options?.body != null ? JSON.stringify(options.body) : "";
 
-    if (options?.directoryAuth && this.signingKey && this.publicKeyBase64) {
+    if (
+      (options?.directoryAuth || options?.agentAuth) &&
+      this.signingKey &&
+      this.publicKeyBase64
+    ) {
       const requestUri = `${path}${queryString}`;
       const writeHeaders = await signDirectoryWrite(
         this.signingKey,
@@ -80,7 +85,9 @@ export class HttpClient {
         bodyStr,
       );
       Object.assign(headers, writeHeaders);
-      headers["X-Agent-ID"] = this.publicKeyBase64;
+      headers["X-Agent-ID"] = options.agentAuth
+        ? this.signingKey.agentId
+        : this.publicKeyBase64;
     } else if (options?.signed && this.signingKey) {
       const authHeaders = await signRequest(this.signingKey, bodyStr);
       Object.assign(headers, authHeaders);
@@ -153,6 +160,13 @@ export class HttpClient {
     return this.request<T>("GET", path, { query, directoryAuth: true });
   }
 
+  getAgentAuth<T>(
+    path: string,
+    query?: Record<string, unknown>,
+  ): Promise<T> {
+    return this.request<T>("GET", path, { query, agentAuth: true });
+  }
+
   getDirectoryAuthRaw(
     path: string,
     query?: Record<string, unknown>,
@@ -184,11 +198,19 @@ export class HttpClient {
     return this.request<T>("PUT", path, { body, directoryAuth: true });
   }
 
+  putAgentAuth<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>("PUT", path, { body, agentAuth: true });
+  }
+
   delete<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("DELETE", path, { body, signed: true });
   }
 
   deleteDirectoryAuth<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("DELETE", path, { body, directoryAuth: true });
+  }
+
+  deleteAgentAuth<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>("DELETE", path, { body, agentAuth: true });
   }
 }
