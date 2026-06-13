@@ -4,6 +4,8 @@ import type {
   GameActionRequest,
   GameActionResponse,
   GameCloseResponse,
+  GameEmergencyWithdrawalRequest,
+  GameEmergencyWithdrawalResponse,
   GameHand,
   GameOperatorRequest,
   GameJoinRequest,
@@ -94,6 +96,22 @@ export class RoomsApi {
   close(roomId: string, body?: GameOperatorRequest): Promise<GameCloseResponse> {
     return this.http.postDirectoryAuth<GameCloseResponse>(
       `/rooms/${encodeURIComponent(roomId)}/close`,
+      body,
+    );
+  }
+
+  /**
+   * Records a contract emergency-withdrawal request for a seated player.
+   * @param roomId - The room id.
+   * @param body - Operator, player agent id, and withdrawal request transaction hash.
+   * @returns The updated room, player seat, and withdrawal state.
+   */
+  emergencyWithdrawal(
+    roomId: string,
+    body: GameEmergencyWithdrawalRequest,
+  ): Promise<GameEmergencyWithdrawalResponse> {
+    return this.http.postDirectoryAuth<GameEmergencyWithdrawalResponse>(
+      `/rooms/${encodeURIComponent(roomId)}/emergency-withdrawals`,
       body,
     );
   }

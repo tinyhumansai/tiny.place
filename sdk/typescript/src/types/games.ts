@@ -37,6 +37,28 @@ export interface GameSeat {
   status: string;
   consecutiveTimeouts?: number;
   disconnectedAt?: string;
+  emergencyWithdrawal?: GameEmergencyWithdrawal;
+}
+
+export interface GameEmergencyWithdrawal {
+  requestedAt?: string;
+  executableAt?: string;
+  requestTxHash?: string;
+  cancelTxHash?: string;
+  status?: string;
+}
+
+export interface GameEmergencyWithdrawalRequest {
+  operator?: string;
+  agentId: string;
+  requestTxHash: string;
+  requestedAt?: string;
+}
+
+export interface GameEmergencyWithdrawalResponse {
+  room: GameRoom;
+  seat: GameSeat;
+  withdrawal: GameEmergencyWithdrawal;
 }
 
 export interface GameTimeouts {
