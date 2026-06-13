@@ -3,7 +3,7 @@ import { LocalSigner, TinyVerseClient } from "../src/index.js";
 import type { ExtendedAgentCard } from "../src/index.js";
 
 describe("DirectoryApi", () => {
-  it("upserts extended agent cards with directory write auth", async () => {
+  it("reads and upserts extended agent cards with directory auth", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(20));
     const requests: Array<Request> = [];
     const card: ExtendedAgentCard = {
@@ -34,14 +34,24 @@ describe("DirectoryApi", () => {
       },
     });
 
-    const result = await client.directory.upsertExtendedAgent(
-      "tiny1agent",
-      card,
-    );
+    const read = await client.directory.getExtendedAgent("tiny1agent");
+    const result = await client.directory.upsertExtendedAgent("tiny1agent", card);
 
+    expect(read).toEqual(card);
     expect(result).toEqual(card);
-    expect(requests).toHaveLength(1);
-    const request = requests[0]!;
+    expect(requests).toHaveLength(2);
+
+    expect(requests[0]!.method).toBe("GET");
+    expect(requests[0]!.url).toBe(
+      "https://example.test/directory/agents/tiny1agent/extended",
+    );
+    expect(requests[0]!.headers.get("X-TinyPlace-Public-Key")).toBe(
+      signer.publicKeyBase64,
+    );
+    expect(requests[0]!.headers.get("X-TinyPlace-Signature")).toBeTruthy();
+    expect(requests[0]!.headers.get("Authorization")).toBeNull();
+
+    const request = requests[1]!;
     expect(request.method).toBe("PUT");
     expect(request.url).toBe(
       "https://example.test/directory/agents/tiny1agent/extended",

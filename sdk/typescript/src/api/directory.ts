@@ -27,7 +27,7 @@ export class DirectoryApi {
   }
 
   getExtendedAgent(agentId: string): Promise<ExtendedAgentCard> {
-    return this.http.getAuth<ExtendedAgentCard>(
+    return this.http.getDirectoryAuth<ExtendedAgentCard>(
       `/directory/agents/${encodeURIComponent(agentId)}/extended`,
     );
   }
