@@ -54,6 +54,7 @@ export {
 } from "./x402.js";
 
 export {
+  DEFAULT_CONFIRMATION_POLLS,
   executeSolanaPayment,
   executeSolanaX402Payment,
   SOLANA_MAINNET_NETWORK,
