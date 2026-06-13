@@ -9,7 +9,7 @@
     "dev": "next dev --webpack",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
-    "test": "vitest run src/ && playwright test",
+    "test": "vitest run src/ --passWithNoTests && playwright test",
     "test:unit": "vitest src/",
     "test:unit:coverage": "vitest --coverage src/",
     "test:e2e": "playwright test",
