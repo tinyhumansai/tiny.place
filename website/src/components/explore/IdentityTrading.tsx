@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type {
+	Identity,
 	IdentityListing,
 	MarketplacePrice,
 } from "@tinyhumansai/tinyplace";
@@ -19,6 +20,7 @@ import {
 	firstActiveIdentity,
 	useOwnedIdentities,
 } from "@src/hooks/use-marketplace";
+import { useSetPrimaryIdentity } from "@src/hooks/use-registry";
 import { useAuthStore } from "@src/store/auth";
 
 const avatarColors = [
@@ -217,6 +219,80 @@ function FloorCard({ isDark, length }: FloorCardProperties): FunctionComponent {
 	);
 }
 
+type MyIdentitiesPanelProperties = {
+	identities: Array<Identity>;
+	isDark: boolean;
+};
+
+// Lists the connected wallet's active identities, shows which one is the
+// primary handle, and lets the owner assign/unassign primary. A primary name is
+// locked from sale, so this is where a seller unassigns before listing.
+function MyIdentitiesPanel({
+	identities,
+	isDark,
+}: MyIdentitiesPanelProperties): FunctionComponent {
+	const setPrimary = useSetPrimaryIdentity();
+	const cardClass = isDark
+		? "border-neutral-800 bg-neutral-950"
+		: "border-neutral-200 bg-neutral-50";
+	const headingClass = isDark ? "text-white" : "text-black";
+	const secondaryClass = isDark ? "text-neutral-500" : "text-neutral-400";
+
+	if (identities.length === 0) {
+		return null;
+	}
+
+	return (
+		<div className={`rounded-lg border p-4 ${cardClass}`}>
+			<h3 className={`mb-3 text-sm font-medium ${headingClass}`}>
+				Your Identities
+			</h3>
+			<ul className="space-y-2">
+				{identities.map((identity) => (
+					<li
+						key={identity.username}
+						className="flex items-center justify-between gap-2"
+					>
+						<span className={`text-sm ${headingClass}`}>
+							{identity.username}
+							{identity.primary && (
+								<span className="ml-2 rounded-full bg-emerald-600/20 px-2 py-0.5 text-xs font-medium text-emerald-500">
+									Primary
+								</span>
+							)}
+							{!identity.primary && (
+								<span className={`ml-2 text-xs ${secondaryClass}`}>
+									Unassigned · sellable
+								</span>
+							)}
+						</span>
+						<button
+							className="rounded-md border border-neutral-600 px-2.5 py-1 text-xs font-medium transition-colors hover:bg-neutral-700/30 disabled:opacity-50"
+							disabled={setPrimary.isPending}
+							type="button"
+							onClick={(): void => {
+								setPrimary.mutate({
+									name: identity.username,
+									primary: !identity.primary,
+								});
+							}}
+						>
+							{identity.primary ? "Unassign" : "Set primary"}
+						</button>
+					</li>
+				))}
+			</ul>
+			{setPrimary.isError && (
+				<p className="mt-2 text-xs text-rose-500">
+					{setPrimary.error instanceof Error
+						? setPrimary.error.message
+						: "Failed to update primary"}
+				</p>
+			)}
+		</div>
+	);
+}
+
 type IdentityTradingProperties = {
 	isDark: boolean;
 };
@@ -252,14 +328,26 @@ export const IdentityTrading = ({
 		);
 	}
 
+	const ownedActive = (ownedIdentities.data?.identities ?? []).filter(
+		(identity) => identity.status === "active"
+	);
+	// Only an unassigned name is sellable; never offer a primary handle to the
+	// listing form (the backend rejects it anyway).
+	const sellableHandle = ownedActive.find((identity) => !identity.primary)
+		?.username;
+
 	return (
 		<div className="space-y-4">
+			{agentId && ownedActive.length > 0 && (
+				<MyIdentitiesPanel identities={ownedActive} isDark={isDark} />
+			)}
+
 			{agentId && (
 				<IdentityListingForm
 					agentId={agentId}
 					isDark={isDark}
 					isIdentityLoading={ownedIdentities.isLoading}
-					sellerHandle={buyerIdentity?.username}
+					sellerHandle={sellableHandle}
 				/>
 			)}
 

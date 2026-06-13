@@ -19,11 +19,21 @@ import {
 import { createClient } from "@src/common/api-client";
 import { assertValidX402Challenge } from "@src/common/x402-challenge";
 import { useHandleAvailability } from "@src/hooks/use-registry";
+import { useOwnedIdentities } from "@src/hooks/use-marketplace";
 import { useAuthStore } from "@src/store/auth";
 
 function normalizedHandle(value: string): string {
 	const normalized = value.trim().replace(/^@+/, "");
 	return normalized ? `@${normalized}` : "";
+}
+
+// Parse a free-text links field (one URL per line or comma-separated) into a
+// clean list of non-empty URLs.
+function parseLinks(value: string): Array<string> {
+	return value
+		.split(/[\n,]/)
+		.map((link) => link.trim())
+		.filter((link) => link.length > 0);
 }
 
 type RegistryPaymentChallenge = {
@@ -70,6 +80,9 @@ export const DomainRegistration = ({
 	const [searchInput, setSearchInput] = useState("");
 	const [selectedName, setSelectedName] = useState<string | null>(null);
 	const [bio, setBio] = useState("");
+	const [links, setLinks] = useState("");
+	// null = follow the auto-primary default; true/false = explicit user choice.
+	const [primaryChoice, setPrimaryChoice] = useState<boolean | null>(null);
 	const [registrationComplete, setRegistrationComplete] = useState(false);
 	const [paymentChallenge, setPaymentChallenge] =
 		useState<RegistryPaymentChallenge | null>(null);
@@ -77,17 +90,30 @@ export const DomainRegistration = ({
 	const searchName = normalizedHandle(searchInput);
 	const availabilityQuery = useHandleAvailability(searchName);
 
+	// A wallet's first name is auto-assigned as primary; offer the toggle
+	// defaulted on only when the wallet has no primary yet.
+	const ownedIdentities = useOwnedIdentities(agentId);
+	const hasExistingPrimary = Boolean(
+		ownedIdentities.data?.identities?.some((identity) => identity.primary)
+	);
+	const primary = primaryChoice ?? !hasExistingPrimary;
+
 	const registerMutation = useMutation({
 		mutationFn: async (): Promise<unknown> => {
 			if (!selectedName || !agentId || !signer) {
 				throw new Error("Connect your wallet first");
 			}
 
+			const parsedLinks = parseLinks(links);
 			const request = {
 				username: selectedName,
-				bio,
 				cryptoId: agentId,
 				publicKey: signer.publicKeyBase64,
+				primary,
+				...(bio.trim() ? { bio: bio.trim() } : {}),
+				...(parsedLinks.length > 0
+					? { metadata: { links: parsedLinks } }
+					: {}),
 			};
 
 			try {
@@ -173,6 +199,8 @@ export const DomainRegistration = ({
 						setSelectedName(null);
 						setSearchInput("");
 						setBio("");
+						setLinks("");
+						setPrimaryChoice(null);
 						setPaymentChallenge(null);
 					}}
 				>
@@ -208,9 +236,9 @@ export const DomainRegistration = ({
 					</div>
 				</div>
 
-				<div className={`rounded-lg border p-4 ${cardClass}`}>
+				<div className={`space-y-3 rounded-lg border p-4 ${cardClass}`}>
 					<label className={`block text-xs font-medium ${headingClass}`}>
-						Bio
+						Bio <span className={secondaryClass}>(optional)</span>
 						<textarea
 							className={`mt-1 w-full rounded-md border px-3 py-2 text-sm ${inputClass}`}
 							placeholder="Describe your agent's purpose and capabilities..."
@@ -221,6 +249,35 @@ export const DomainRegistration = ({
 							}}
 						/>
 					</label>
+					<label className={`block text-xs font-medium ${headingClass}`}>
+						Links <span className={secondaryClass}>(optional, one per line)</span>
+						<textarea
+							className={`mt-1 w-full rounded-md border px-3 py-2 text-sm ${inputClass}`}
+							placeholder={"https://github.com/your-agent\nhttps://x.com/your-agent"}
+							rows={2}
+							value={links}
+							onChange={(event): void => {
+								setLinks(event.target.value);
+							}}
+						/>
+					</label>
+					<label
+						className={`flex items-center gap-2 text-xs font-medium ${headingClass}`}
+					>
+						<input
+							checked={primary}
+							type="checkbox"
+							onChange={(event): void => {
+								setPrimaryChoice(event.target.checked);
+							}}
+						/>
+						Set as primary handle
+						<span className={secondaryClass}>
+							{hasExistingPrimary
+								? "(replaces your current primary)"
+								: "(your wallet's display identity)"}
+						</span>
+					</label>
 				</div>
 
 				{!signer && (
@@ -230,10 +287,10 @@ export const DomainRegistration = ({
 				)}
 
 				<button
-					disabled={!signer || bio.length === 0 || registerMutation.isPending}
+					disabled={!signer || registerMutation.isPending}
 					type="button"
 					className={`w-full rounded-md px-4 py-2.5 text-sm font-medium transition-colors ${
-						signer && bio.length > 0 && !registerMutation.isPending
+						signer && !registerMutation.isPending
 							? buttonClass
 							: disabledButtonClass
 					}`}

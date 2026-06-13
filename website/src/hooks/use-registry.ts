@@ -124,6 +124,49 @@ export function useRenewIdentity(): UseMutationResult<
 	});
 }
 
+/**
+ * Assigns or unassigns a name as the connected wallet's primary handle. A
+ * primary name is the wallet's display identity and is locked from sale; at
+ * most one name per wallet is primary, so assigning one unassigns the rest.
+ */
+export function useSetPrimaryIdentity(): UseMutationResult<
+	Identity,
+	Error,
+	{ name: string; primary: boolean }
+> {
+	const client = useApiClient();
+	const agentId = useAuthStore((state) => state.agentId);
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({ name, primary }): Promise<Identity> => {
+			const normalized = name.trim().replace(/^@+/, "");
+			if (!normalized) {
+				throw new Error("Identity name is required");
+			}
+			const handle = `@${normalized}`;
+			return primary
+				? client.registry.assignPrimary(handle)
+				: client.registry.unassignPrimary(handle);
+		},
+		onSuccess: (identity): void => {
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.registry.availability(
+					identity.username.trim().replace(/^@+/, "")
+				),
+			});
+			if (agentId) {
+				void queryClient.invalidateQueries({
+					queryKey: queryKeys.directory.reverse(agentId),
+				});
+			}
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.directory.identities(),
+			});
+		},
+	});
+}
+
 export function useClaimIdentity(): UseMutationResult<
 	Identity,
 	Error,
