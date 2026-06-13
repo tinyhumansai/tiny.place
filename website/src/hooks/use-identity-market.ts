@@ -5,11 +5,17 @@ import {
 	type UseMutationResult,
 	type UseQueryResult,
 } from "@tanstack/react-query";
-import type {
-	IdentityFloor,
-	IdentityListing,
-	IdentitySale,
-	MarketplacePrice,
+import {
+	generateNonce,
+	signX402Authorization,
+	TinyVerseError,
+	x402AuthorizationToPaymentMap,
+	type IdentityBuyRequest,
+	type IdentityFloor,
+	type IdentityListing,
+	type IdentitySale,
+	type MarketplacePrice,
+	type X402AuthorizationFields,
 } from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
@@ -56,6 +62,31 @@ export function useIdentityFloor(
 		queryFn: (): Promise<IdentityFloor> =>
 			client.marketplace.identityFloor(length),
 	});
+}
+
+type IdentityPaymentChallenge = {
+	error: string;
+	payment: Omit<X402AuthorizationFields, "expiresAt" | "nonce"> &
+		Partial<Pick<X402AuthorizationFields, "expiresAt" | "nonce">>;
+};
+
+function identityPaymentChallenge(
+	error: unknown
+): IdentityPaymentChallenge | null {
+	if (!(error instanceof TinyVerseError) || error.status !== 402) {
+		return null;
+	}
+	if (!error.body || typeof error.body !== "object") {
+		return null;
+	}
+	const body = error.body as Partial<IdentityPaymentChallenge>;
+	if (!body.payment || typeof body.payment !== "object") {
+		return null;
+	}
+	return {
+		error: body.error ?? "Payment required",
+		payment: body.payment,
+	};
 }
 
 export function useCreateIdentityListing(): UseMutationResult<
@@ -116,19 +147,50 @@ export function useBuyIdentityListing(): UseMutationResult<
 	}
 > {
 	const client = useApiClient();
+	const signer = useAuthStore((state) => state.signer);
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: ({
+		mutationFn: async ({
 			buyer,
 			buyerCryptoId,
 			buyerPublicKey,
 			listingId,
-		}): Promise<IdentitySale> =>
-			client.marketplace.buyIdentityListing(listingId, {
+		}): Promise<IdentitySale> => {
+			if (!signer) {
+				throw new Error("Connect your wallet first");
+			}
+
+			const request: IdentityBuyRequest = {
 				buyer,
 				buyerCryptoId,
-				buyerPublicKey,
-			}),
+				buyerPublicKey: buyerPublicKey ?? signer.publicKeyBase64,
+			};
+
+			try {
+				return await client.marketplace.buyIdentityListing(listingId, request);
+			} catch (error) {
+				const challenge = identityPaymentChallenge(error);
+				if (!challenge) {
+					throw error;
+				}
+
+				const challengePayment = challenge.payment;
+				const signedPayment = await signX402Authorization(signer, {
+					...challengePayment,
+					expiresAt:
+						challengePayment.expiresAt ??
+						new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+					from: challengePayment.from || buyer,
+					metadata: challengePayment.metadata,
+					nonce: challengePayment.nonce || generateNonce("identity"),
+				});
+
+				return client.marketplace.buyIdentityListing(listingId, {
+					...request,
+					payment: x402AuthorizationToPaymentMap(signedPayment),
+				});
+			}
+		},
 		onSuccess: (): void => {
 			void queryClient.invalidateQueries({
 				queryKey: queryKeys.marketplace.identityListings(),
