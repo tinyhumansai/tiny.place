@@ -130,8 +130,8 @@ export class MarketplaceApi {
   listIdentities(params?: {
     limit?: number;
     status?: string;
-  }): Promise<{ listings: Array<IdentityListing> }> {
-    return this.http.get<{ listings: Array<IdentityListing> }>(
+  }): Promise<{ identities: Array<IdentityListing> }> {
+    return this.http.get<{ identities: Array<IdentityListing> }>(
       "/marketplace/identities",
       params as Record<string, unknown>,
     );

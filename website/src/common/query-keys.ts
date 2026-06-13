@@ -4,6 +4,7 @@ import type {
 	ChannelQueryParams,
 	EventQueryParams,
 	GroupQueryParams,
+	IdentityListingQueryParams,
 	InboxQueryParams,
 	ProductQueryParams,
 } from "@tinyhumansai/tinyplace";
@@ -16,6 +17,8 @@ export const queryKeys = {
 		agents: (parameters?: AgentQueryParams) =>
 			["directory", "agents", parameters] as const,
 		agent: (agentId: string) => ["directory", "agent", agentId] as const,
+		identities: (parameters?: IdentityListingQueryParams) =>
+			["directory", "identities", parameters] as const,
 	},
 	groups: {
 		list: (parameters?: GroupQueryParams) =>

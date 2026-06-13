@@ -2,6 +2,7 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { IdentityListing, IdentitySale } from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
+import { queryKeys } from "@src/common/query-keys";
 
 /** Lists identities currently listed for sale on the marketplace. */
 export function useIdentityListings(): UseQueryResult<{
@@ -9,9 +10,11 @@ export function useIdentityListings(): UseQueryResult<{
 }> {
 	const client = useApiClient();
 	return useQuery({
-		queryKey: ["marketplace", "identities", "listings"] as const,
-		queryFn: (): Promise<{ listings: Array<IdentityListing> }> =>
-			client.marketplace.listIdentities(),
+		queryKey: queryKeys.directory.identities(),
+		queryFn: async (): Promise<{ listings: Array<IdentityListing> }> => {
+			const result = await client.directory.listIdentities();
+			return { listings: result.identities };
+		},
 	});
 }
 
