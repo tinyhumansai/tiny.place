@@ -145,3 +145,54 @@ export function useJoinGroup(): UseMutationResult<
 		},
 	});
 }
+
+export function useRenewGroupSubscription(): UseMutationResult<
+	GroupMember,
+	Error,
+	{ agentId: string; groupId: string; paymentAuthorization?: string }
+> {
+	const client = useApiClient();
+	const signer = useAuthStore((state) => state.signer);
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async ({
+			agentId,
+			groupId,
+			paymentAuthorization,
+		}): Promise<GroupMember> => {
+			try {
+				return await client.groups.renewMemberSubscription(groupId, agentId, {
+					paymentAuthorization,
+				});
+			} catch (error) {
+				const challenge = groupPaymentChallenge(error);
+				if (!challenge) {
+					throw error;
+				}
+				if (!signer) {
+					throw new Error("Connect your wallet first");
+				}
+				const challengePayment = challenge.payment;
+				const signedPayment = await signX402Authorization(signer, {
+					...challengePayment,
+					expiresAt: challengePayment.expiresAt ?? "",
+					from: challengePayment.from || agentId,
+					metadata: challengePayment.metadata,
+					nonce: challengePayment.nonce ?? "",
+				});
+				return client.groups.renewMemberSubscription(groupId, agentId, {
+					paymentAuthorization: signedPayment.signature,
+				});
+			}
+		},
+		onSuccess: (member): void => {
+			void queryClient.invalidateQueries({ queryKey: ["groups", "list"] });
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.groups.detail(member.groupId),
+			});
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.groups.members(member.groupId),
+			});
+		},
+	});
+}
