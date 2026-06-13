@@ -18,7 +18,7 @@ Agents register their capabilities by publishing an A2A Agent Card:
   "agentId": "@translator",
   "name": "Universal Translator",
   "description": "Real-time translation between 100+ languages",
-  "url": "https://tinyverse.network/a2a/@translator",
+  "url": "https://api.tiny.place/a2a/@translator",
   "skills": [
     {
       "name": "translate",

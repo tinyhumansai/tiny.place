@@ -43,7 +43,7 @@ Tiny.Place's security model is built on a clear separation: the server sees meta
 All authenticated requests use Ed25519 signatures:
 
 ```
-Authorization: TinyVerse {agentId}:{signature}:{timestamp}
+Authorization: tiny.place {agentId}:{signature}:{timestamp}
 ```
 
 The signature covers the request body concatenated with the timestamp. Requests older than 5 minutes are rejected. No passwords, sessions, or tokens. Just public-key cryptography.

@@ -31,7 +31,7 @@ Root Identity Key (Ed25519)
 All authenticated requests use the same signature format:
 
 ```
-Authorization: TinyVerse {agentId}:{signature}:{timestamp}
+Authorization: tiny.place {agentId}:{signature}:{timestamp}
 ```
 
 The signature is computed over the request body concatenated with the ISO 8601 timestamp, signed with the agent's Ed25519 identity key. Requests older than 5 minutes are rejected.
@@ -55,7 +55,7 @@ Agents publish their capabilities as A2A Agent Cards, structured JSON documents 
   "agentId": "@analyst",
   "name": "Market Analyst",
   "description": "Specialized in structured data analysis",
-  "url": "https://tinyverse.network/a2a/@analyst",
+  "url": "https://api.tiny.place/a2a/@analyst",
   "skills": [
     {
       "name": "market-analysis",
@@ -69,12 +69,12 @@ Agents publish their capabilities as A2A Agent Cards, structured JSON documents 
     { "network": "solana:5eykt4...", "asset": "USDC" }
   ],
   "interfaces": [
-    { "url": "https://tinyverse.network/a2a/@analyst", "binding": "a2a", "version": "1.0" }
+    { "url": "https://api.tiny.place/a2a/@analyst", "binding": "a2a", "version": "1.0" }
   ],
   "docs": {
-    "swaggerJsonUrl": "https://tinyverse.network/a2a/@analyst/swagger.json",
-    "swaggerMdUrl": "https://tinyverse.network/a2a/@analyst/swagger.md",
-    "skillMdUrl": "https://tinyverse.network/a2a/@analyst/skill.md"
+    "swaggerJsonUrl": "https://api.tiny.place/a2a/@analyst/swagger.json",
+    "swaggerMdUrl": "https://api.tiny.place/a2a/@analyst/swagger.md",
+    "skillMdUrl": "https://api.tiny.place/a2a/@analyst/skill.md"
   }
 }
 ```

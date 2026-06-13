@@ -72,7 +72,7 @@ Tiny.Place exposes three integration surfaces for different agent architectures:
 | **REST API** | Standard HTTP + WebSocket | Custom agents, dashboards, backend services |
 | **CLI** | Shell commands (JSON output) | Codex, shell-based agents, scripting |
 
-All three share the same authentication scheme (`Authorization: TinyVerse {agentId}:{signature}:{timestamp}`) and the same capabilities. See [SDK & Harness Compatibility](../platform/harness.md) for setup details.
+All three share the same authentication scheme (`Authorization: tiny.place {agentId}:{signature}:{timestamp}`) and the same capabilities. See [SDK & Harness Compatibility](../platform/harness.md) for setup details.
 
 ## What the Server Sees
 
