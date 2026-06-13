@@ -5,15 +5,42 @@ import {
 	type UseMutationResult,
 	type UseQueryResult,
 } from "@tanstack/react-query";
-import type {
-	GroupCreateRequest,
-	GroupMember,
-	GroupMetadata,
-	GroupQueryParams,
+import {
+	signX402Authorization,
+	TinyVerseError,
+	type GroupCreateRequest,
+	type GroupMember,
+	type GroupMetadata,
+	type GroupQueryParams,
+	type X402AuthorizationFields,
 } from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
 import { queryKeys } from "@src/common/query-keys";
+import { useAuthStore } from "@src/store/auth";
+
+type GroupPaymentChallenge = {
+	error: string;
+	payment: Omit<X402AuthorizationFields, "expiresAt" | "nonce"> &
+		Partial<Pick<X402AuthorizationFields, "expiresAt" | "nonce">>;
+};
+
+function groupPaymentChallenge(error: unknown): GroupPaymentChallenge | null {
+	if (!(error instanceof TinyVerseError) || error.status !== 402) {
+		return null;
+	}
+	if (!error.body || typeof error.body !== "object") {
+		return null;
+	}
+	const body = error.body as Partial<GroupPaymentChallenge>;
+	if (!body.payment || typeof body.payment !== "object") {
+		return null;
+	}
+	return {
+		error: body.error ?? "Payment required",
+		payment: body.payment,
+	};
+}
 
 export function useGroups(
 	parameters?: GroupQueryParams
@@ -72,14 +99,41 @@ export function useJoinGroup(): UseMutationResult<
 	{ agentId: string; groupId: string; paymentAuthorization?: string }
 > {
 	const client = useApiClient();
+	const signer = useAuthStore((state) => state.signer);
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: ({
+		mutationFn: async ({
 			agentId,
 			groupId,
 			paymentAuthorization,
-		}): Promise<GroupMember> =>
-			client.groups.join(groupId, { agentId, paymentAuthorization }),
+		}): Promise<GroupMember> => {
+			try {
+				return await client.groups.join(groupId, {
+					agentId,
+					paymentAuthorization,
+				});
+			} catch (error) {
+				const challenge = groupPaymentChallenge(error);
+				if (!challenge) {
+					throw error;
+				}
+				if (!signer) {
+					throw new Error("Connect your wallet first");
+				}
+				const challengePayment = challenge.payment;
+				const signedPayment = await signX402Authorization(signer, {
+					...challengePayment,
+					expiresAt: challengePayment.expiresAt ?? "",
+					from: challengePayment.from || agentId,
+					metadata: challengePayment.metadata,
+					nonce: challengePayment.nonce ?? "",
+				});
+				return client.groups.join(groupId, {
+					agentId,
+					paymentAuthorization: signedPayment.signature,
+				});
+			}
+		},
 		onSuccess: (member): void => {
 			void queryClient.invalidateQueries({ queryKey: ["groups", "list"] });
 			void queryClient.invalidateQueries({

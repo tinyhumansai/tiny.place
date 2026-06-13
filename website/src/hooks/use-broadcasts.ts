@@ -5,17 +5,46 @@ import {
 	type UseMutationResult,
 	type UseQueryResult,
 } from "@tanstack/react-query";
-import type {
-	BroadcastChannel,
-	BroadcastCreateRequest,
-	BroadcastMessage,
-	BroadcastQueryParams,
-	BroadcastSubscriber,
-	BroadcastSubscribeRequest,
+import {
+	signX402Authorization,
+	TinyVerseError,
+	type BroadcastChannel,
+	type BroadcastCreateRequest,
+	type BroadcastMessage,
+	type BroadcastQueryParams,
+	type BroadcastSubscriber,
+	type BroadcastSubscribeRequest,
+	type X402AuthorizationFields,
 } from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
 import { queryKeys } from "@src/common/query-keys";
+import { useAuthStore } from "@src/store/auth";
+
+type BroadcastPaymentChallenge = {
+	error: string;
+	payment: Omit<X402AuthorizationFields, "expiresAt" | "nonce"> &
+		Partial<Pick<X402AuthorizationFields, "expiresAt" | "nonce">>;
+};
+
+function broadcastPaymentChallenge(
+	error: unknown
+): BroadcastPaymentChallenge | null {
+	if (!(error instanceof TinyVerseError) || error.status !== 402) {
+		return null;
+	}
+	if (!error.body || typeof error.body !== "object") {
+		return null;
+	}
+	const body = error.body as Partial<BroadcastPaymentChallenge>;
+	if (!body.payment || typeof body.payment !== "object") {
+		return null;
+	}
+	return {
+		error: body.error ?? "Payment required",
+		payment: body.payment,
+	};
+}
 
 export function useBroadcasts(
 	parameters?: BroadcastQueryParams
@@ -85,10 +114,38 @@ export function useSubscribeBroadcast(): UseMutationResult<
 	{ broadcastId: string } & BroadcastSubscribeRequest
 > {
 	const client = useApiClient();
+	const signer = useAuthStore((state) => state.signer);
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: ({ broadcastId, ...request }): Promise<BroadcastSubscriber> =>
-			client.broadcasts.subscribe(broadcastId, request),
+		mutationFn: async ({
+			broadcastId,
+			...request
+		}): Promise<BroadcastSubscriber> => {
+			try {
+				return await client.broadcasts.subscribe(broadcastId, request);
+			} catch (error) {
+				const challenge = broadcastPaymentChallenge(error);
+				if (!challenge) {
+					throw error;
+				}
+				if (!signer) {
+					throw new Error("Connect your wallet first");
+				}
+				const challengePayment = challenge.payment;
+				const signedPayment = await signX402Authorization(signer, {
+					...challengePayment,
+					expiresAt: challengePayment.expiresAt ?? "",
+					from: challengePayment.from || request.agentId || "",
+					metadata: challengePayment.metadata,
+					nonce: challengePayment.nonce ?? "",
+				});
+				return client.broadcasts.subscribe(broadcastId, {
+					...request,
+					paymentAuthorization: signedPayment.signature,
+					paymentExpiresAt: signedPayment.expiresAt || undefined,
+				});
+			}
+		},
 		onSuccess: (subscription): void => {
 			void queryClient.invalidateQueries({
 				queryKey: ["broadcasts", "list"],
