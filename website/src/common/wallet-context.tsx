@@ -11,6 +11,8 @@ import { clusterApiUrl, type Cluster } from "@solana/web3.js";
 import { useEffect, useMemo, type ReactNode } from "react";
 
 import type { FunctionComponent } from "@src/common/types";
+import { createClient } from "@src/common/api-client";
+import { SessionWalletSigner } from "@src/common/session-wallet";
 import { WalletSigner } from "@src/common/wallet-signer";
 import { useAuthStore } from "@src/store/auth";
 
@@ -31,13 +33,31 @@ const WalletAuthSync = (): null => {
 	const clearSession = useAuthStore((state) => state.clearSession);
 
 	useEffect(() => {
-		if (connected && publicKey && signMessage) {
-			const publicKeyBytes = publicKey.toBytes();
-			const signer = new WalletSigner(publicKeyBytes, signMessage);
-			setSigner(signer, signer.agentId);
-		} else {
+		if (!(connected && publicKey && signMessage)) {
 			clearSession();
+			return;
 		}
+		let cancelled = false;
+		const publicKeyBytes = publicKey.toBytes();
+		// Establish a hot session wallet: one wallet signature approves an
+		// in-memory session key that signs everything afterwards. If the user
+		// declines the approval (or it fails), fall back to the direct
+		// WalletSigner, which still works but prompts the wallet per request.
+		SessionWalletSigner.establish(publicKeyBytes, signMessage, createClient())
+			.then((signer) => {
+				if (!cancelled) {
+					setSigner(signer, signer.agentId);
+				}
+			})
+			.catch(() => {
+				if (!cancelled) {
+					const fallback = new WalletSigner(publicKeyBytes, signMessage);
+					setSigner(fallback, fallback.agentId);
+				}
+			});
+		return (): void => {
+			cancelled = true;
+		};
 	}, [connected, publicKey, signMessage, setSigner, clearSession]);
 
 	return null;
