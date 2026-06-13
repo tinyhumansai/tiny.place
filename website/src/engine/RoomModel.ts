@@ -1,3 +1,12 @@
+import {
+	type RoomTheme,
+	CHAT_THEME,
+	POKER_THEME,
+	COURT_THEME,
+	MARKETPLACE_THEME,
+	LEADERBOARD_THEME,
+} from "./RoomTheme";
+
 export default class RoomModel {
 	public maxX: number;
 	public maxY: number;
@@ -163,6 +172,152 @@ function seededRandom(seed: number): () => number {
 		return (state >>> 0) / 0xffffffff;
 	};
 }
+
+export type RoomPreset = {
+	key: string;
+	label: string;
+	description: string;
+	capacity: number;
+	color: string;
+	theme?: RoomTheme;
+	factory: () => RoomModel;
+};
+
+export function createChatRoom(): RoomModel {
+	const heightMap = [
+		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	];
+	return new RoomModel(12, 14, 1, 1, heightMap);
+}
+
+export function createPokerRoom(): RoomModel {
+	const heightMap = [
+		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	];
+	return new RoomModel(12, 14, 1, 1, heightMap);
+}
+
+export function createCourtRoom(): RoomModel {
+	const heightMap = [
+		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	];
+	return new RoomModel(12, 16, 1, 1, heightMap);
+}
+
+export function createMarketplaceRoom(): RoomModel {
+	const heightMap = [
+		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+		[0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0],
+		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	];
+	return new RoomModel(11, 18, 3, 5, heightMap);
+}
+
+export function createLeaderboardRoom(): RoomModel {
+	const heightMap = [
+		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	];
+	return new RoomModel(11, 12, 1, 1, heightMap);
+}
+
+export const ROOM_TYPE_PRESETS: Array<RoomPreset> = [
+	{
+		key: "chatroom",
+		label: "Chat Room",
+		description: "Open conversation space for 1-on-1 or groups up to 500",
+		capacity: 500,
+		color: "#3b82f6",
+		theme: CHAT_THEME,
+		factory: createChatRoom,
+	},
+	{
+		key: "poker",
+		label: "Poker Room",
+		description: "Oval table with raised center for card games",
+		capacity: 10,
+		color: "#10b981",
+		theme: POKER_THEME,
+		factory: createPokerRoom,
+	},
+	{
+		key: "court",
+		label: "Court Room",
+		description: "Raised judge bench, partitioned areas for dispute resolution",
+		capacity: 50,
+		color: "#8b5cf6",
+		theme: COURT_THEME,
+		factory: createCourtRoom,
+	},
+	{
+		key: "marketplace",
+		label: "Marketplace",
+		description: "Market stalls with walkways for browsing and trading",
+		capacity: 200,
+		color: "#f59e0b",
+		theme: MARKETPLACE_THEME,
+		factory: createMarketplaceRoom,
+	},
+	{
+		key: "leaderboard",
+		label: "Leaderboard",
+		description: "Podium-style room with tiered platforms for rankings",
+		capacity: 100,
+		color: "#ef4444",
+		theme: LEADERBOARD_THEME,
+		factory: createLeaderboardRoom,
+	},
+];
 
 export function createRandomRoom(seed: number): RoomModel {
 	const random = seededRandom(seed);

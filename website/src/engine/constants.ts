@@ -1,6 +1,3 @@
-export const SPRITES_BASE_URL = "/sprites/";
-export const FURNI_RESOURCES_URL = "/sprites/furni/";
-
 export const ROOM_TILE_HEIGHT = 16;
 export const ROOM_TILE_WIDTH = 32;
 
@@ -11,8 +8,9 @@ export const ROOM_WALL_R_OFFSET_Y = -139;
 
 export const SELECTED_TILE_ASSET = "assets/selected_tile.png";
 export const SHADOW_TILE_ASSET = "assets/shadow_tile.png";
-export const FURNI_PLACEHOLDER_ASSET = "assets/furni_placeholder.png";
-export const WALL_PLACEHOLDER_ASSET = "assets/wall_placeholder.png";
+
+export const AVATAR_SVG_WIDTH = 64;
+export const AVATAR_SVG_HEIGHT = 110;
 
 export const PRIORITY_DOOR_FLOOR = 1;
 export const PRIORITY_DOOR_FLOOR_SELECT = 2;

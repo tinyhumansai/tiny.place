@@ -12,6 +12,22 @@ export { buildAuthHeader, signRequest, signDirectoryWrite, signCanonicalPayload 
 
 export { Signer } from "./signer.js";
 export { LocalSigner } from "./local-signer.js";
+export { BrowserSessionSigner } from "./browser-session-signer.js";
+export type {
+  SessionApprovalRequest,
+  BrowserSessionSignerOptions,
+} from "./browser-session-signer.js";
+
+export type {
+  X402Scheme,
+  X402AuthorizationFields,
+  X402Authorization,
+} from "./x402.js";
+export {
+  buildCanonicalMessage,
+  signX402Authorization,
+  generateNonce,
+} from "./x402.js";
 
 export type { KeyPair } from "./crypto.js";
 export {
@@ -41,6 +57,7 @@ export { EventsApi } from "./api/events.js";
 export { MarketplaceApi } from "./api/marketplace.js";
 export { EscrowApi } from "./api/escrow.js";
 export { SearchApi } from "./api/search.js";
+export { SignersApi } from "./api/signers.js";
 export { ProfilesApi } from "./api/profiles.js";
 export { ExplorerApi } from "./api/explorer.js";
 export { PricingApi } from "./api/pricing.js";

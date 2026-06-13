@@ -5,6 +5,7 @@ import {
 	ChatBubbleLeftRightIcon,
 	CreditCardIcon,
 	GlobeAltIcon,
+
 	IdentificationIcon,
 	MagnifyingGlassIcon,
 	MoonIcon,
@@ -36,6 +37,7 @@ const sections: Array<{ icon: IconComponent; key: string; label: string }> = [
 	{ key: "reputation", label: "Reputation", icon: StarIcon },
 	{ key: "leaderboards", label: "Leaderboards", icon: TrophyIcon },
 	{ key: "stats", label: "Stats", icon: ChartBarIcon },
+
 	{ key: "explorer", label: "Explorer", icon: GlobeAltIcon },
 	{ key: "search", label: "Search", icon: MagnifyingGlassIcon },
 	{ key: "poker", label: "Poker", icon: SparklesIcon },

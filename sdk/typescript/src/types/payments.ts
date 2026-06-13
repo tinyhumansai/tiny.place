@@ -101,3 +101,19 @@ export interface Subscription {
   createdAt: string;
   updatedAt: string;
 }
+
+export type SignerApprovalStatus = "active" | "revoked" | "expired" | "exhausted";
+
+export interface SignerApproval {
+  signerKey: string;
+  grantor: string;
+  network: string;
+  asset: string;
+  budget: string;
+  spent: string;
+  remaining: string;
+  expiresAt: string;
+  nonce: string;
+  status: SignerApprovalStatus;
+  createdAt: string;
+}

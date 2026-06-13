@@ -9,6 +9,10 @@ import type {
 } from "@tinyhumansai/tinyplace";
 
 export const queryKeys = {
+	registry: {
+		availability: (name: string) =>
+			["registry", "availability", name] as const,
+	},
 	directory: {
 		agents: (parameters?: AgentQueryParams) =>
 			["directory", "agents", parameters] as const,

@@ -34,23 +34,22 @@ export class RegistryApi {
   ) {}
 
   async register(request: RegisterRequest): Promise<Identity> {
-    const payload = canonicalPayload("identity.register", {
-      bio: request.bio,
-      cryptoId: request.cryptoId,
-      metadata: request.metadata,
-      paymentMethods: request.paymentMethods,
-      publicKey: request.publicKey,
-      username: request.username,
-    });
-
     let signature: string | undefined;
-    if (this.signingKey) {
+    if (this.signingKey && !request.payment) {
+      const payload = canonicalPayload("identity.register", {
+        bio: request.bio,
+        cryptoId: request.cryptoId,
+        metadata: request.metadata,
+        paymentMethods: request.paymentMethods,
+        publicKey: request.publicKey,
+        username: request.username,
+      });
       signature = await signCanonicalPayload(this.signingKey, payload);
     }
 
     return this.http.postPublic<Identity>("/registry/names", {
       ...request,
-      signature,
+      ...(signature ? { signature } : {}),
     });
   }
 

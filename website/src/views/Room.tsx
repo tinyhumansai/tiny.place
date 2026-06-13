@@ -3,89 +3,26 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { FunctionComponent } from "@src/common/types";
 import GameEngine from "@src/engine/GameEngine";
-import type { Direction } from "@src/engine/imagers/AvatarInfo";
+import type { Direction } from "@src/engine/types";
+import { randomAppearance } from "@src/engine/SvgAvatarRenderer";
+import type { RoomTheme } from "@src/engine/RoomTheme";
 import {
 	createDefaultRoom,
 	createLShapedRoom,
 	createMultiLevelRoom,
 	createRandomRoom,
+	ROOM_TYPE_PRESETS,
 } from "@src/engine/RoomModel";
 
-const DEFAULT_FIGURE =
-	"hd-190-10.lg-3023-1408.ch-215-91.hr-893-45.ha-1003-1408";
-
-const FIGURE_PARTS: Record<
-	string,
-	{ ids: Array<number>; palette: Array<number> }
-> = {
-	hd: {
-		ids: [180, 185, 190, 195, 200, 205, 600, 605, 610, 615, 620, 625],
-		palette: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-	},
-	hr: {
-		ids: [
-			100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170,
-			175, 177, 828, 829, 890, 891, 893,
-		],
-		palette: [31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45],
-	},
-	ch: {
-		ids: [
-			210, 215, 220, 225, 230, 235, 240, 245, 250, 255, 265, 630, 635, 640, 645,
-			650, 655, 660, 665, 670,
-		],
-		palette: [
-			62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 80, 81, 82, 83,
-			84, 85, 86, 87, 88, 89, 90, 91,
-		],
-	},
-	lg: {
-		ids: [
-			270, 275, 280, 281, 285, 695, 696, 700, 705, 710, 715, 720, 3006, 3023,
-		],
-		palette: [
-			62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 80, 81, 82, 83, 84, 85, 86, 87,
-			88, 89, 90, 91, 1408,
-		],
-	},
-	ha: {
-		ids: [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1012, 1013, 1014],
-		palette: [
-			62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 80, 81, 82, 83, 84, 85, 86, 87,
-			88, 89, 90, 91, 1408,
-		],
-	},
-};
-
-function pickRandom<T>(array: Array<T>): T {
-	return array[Math.floor(Math.random() * array.length)]!;
+function appearanceToFigure(appearance: ReturnType<typeof randomAppearance>): string {
+	return `skin-${appearance.skinColor}-hair-${appearance.hairColor}-shirt-${appearance.shirtColor}-pants-${appearance.pantsColor}-hs-${appearance.hairStyle}`;
 }
 
 function generateRandomFigure(): string {
-	const parts: Array<string> = [];
-	const required: Array<string> = ["hd", "hr", "ch", "lg"];
-	const optional: Array<string> = ["ha"];
-
-	for (const type of required) {
-		const config = FIGURE_PARTS[type]!;
-		parts.push(
-			`${type}-${pickRandom(config.ids)}-${pickRandom(config.palette)}`
-		);
-	}
-
-	if (Math.random() < 0.4) {
-		for (const type of optional) {
-			const config = FIGURE_PARTS[type]!;
-			parts.push(
-				`${type}-${pickRandom(config.ids)}-${pickRandom(config.palette)}`
-			);
-		}
-	}
-
-	return parts.join(".");
+	return appearanceToFigure(randomAppearance());
 }
 
-const ROOM_PRESETS = [
+const ROOM_PRESETS: Array<{ label: string; theme?: RoomTheme; factory: () => ReturnType<typeof createDefaultRoom> }> = [
 	{ label: "Default 8x8", factory: createDefaultRoom },
 	{ label: "L-Shaped", factory: createLShapedRoom },
 	{ label: "Multi-Level", factory: createMultiLevelRoom },
@@ -94,7 +31,12 @@ const ROOM_PRESETS = [
 		factory: (): ReturnType<typeof createRandomRoom> =>
 			createRandomRoom(Math.floor(Math.random() * 0xffffffff)),
 	},
-] as const;
+	...ROOM_TYPE_PRESETS.map((preset) => ({
+		label: preset.label,
+		theme: preset.theme,
+		factory: preset.factory,
+	})),
+];
 
 const DIRECTIONS: Array<{ label: string; value: Direction }> = [
 	{ label: "N", value: 0 },
@@ -115,7 +57,7 @@ export function Room(): FunctionComponent {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [selectedRoom, setSelectedRoom] = useState(0);
-	const [avatarFigure, setAvatarFigure] = useState(DEFAULT_FIGURE);
+	const [avatarFigure, setAvatarFigure] = useState(generateRandomFigure());
 	const [avatarX, setAvatarX] = useState(3);
 	const [avatarY, setAvatarY] = useState(3);
 	const [avatarDirection, setAvatarDirection] = useState<Direction>(2);
@@ -133,10 +75,7 @@ export function Room(): FunctionComponent {
 			.then(() => {
 				if (canvasRef.current && engineRef.current === engine) {
 					engine.mount(canvasRef.current);
-					engine.loadRoom(createDefaultRoom());
-					engine.placeRandomFurniture(
-						Math.floor(engine.currentModel!.getValidTiles().length / 8)
-					);
+					void engine.loadRoom(createDefaultRoom());
 					setLoading(false);
 				}
 			})
@@ -170,10 +109,7 @@ export function Room(): FunctionComponent {
 			const preset = ROOM_PRESETS[index];
 			if (!preset) return;
 			const model = preset.factory();
-			engineRef.current.loadRoom(model);
-			engineRef.current.placeRandomFurniture(
-				Math.floor(engineRef.current.currentModel!.getValidTiles().length / 8)
-			);
+			void engineRef.current.loadRoom(model, preset.theme);
 		}
 	}, []);
 
@@ -212,14 +148,7 @@ export function Room(): FunctionComponent {
 		if (!engine?.currentModel) return;
 
 		const validTiles = engine.currentModel.getValidTiles();
-		const blocked = new Set<string>();
-		for (const [, furni] of engine.furniture) {
-			for (const tile of furni.occupiedTiles) {
-				blocked.add(`${tile.x},${tile.y}`);
-			}
-		}
-		const freeTiles = validTiles.filter((t) => !blocked.has(`${t.x},${t.y}`));
-		const spawnTiles = freeTiles.length > 0 ? freeTiles : validTiles;
+		const spawnTiles = validTiles.length > 0 ? validTiles : [];
 
 		const newAvatars: Array<{ id: number; name: string; figure: string }> = [];
 
@@ -228,7 +157,7 @@ export function Room(): FunctionComponent {
 			const figure = generateRandomFigure();
 			const name = `Avatar ${id}`;
 			const tile = spawnTiles[Math.floor(Math.random() * spawnTiles.length)]!;
-			const direction = Math.floor(Math.random() * 8) as Direction;
+			const direction = (Math.floor(Math.random() * 8)) as Direction;
 
 			void engine
 				.addAvatar(id, name, figure, tile.x, tile.y, 0, direction)
@@ -250,10 +179,6 @@ export function Room(): FunctionComponent {
 			engine.removeAvatar(avatar.id);
 		}
 		setAvatarList([]);
-
-		for (const [id] of engine.furniture) {
-			engine.removeFurniture(id);
-		}
 	}, [avatarList]);
 
 	const handleCenterCamera = useCallback(() => {
@@ -262,13 +187,13 @@ export function Room(): FunctionComponent {
 
 	return (
 		<div className="flex h-screen w-screen bg-gray-900">
-			{/* Room canvas - 90% */}
+			{/* Room canvas */}
 			<div ref={canvasRef} className="relative flex-1">
 				{loading && (
 					<div className="absolute inset-0 flex items-center justify-center bg-gray-900">
 						<div className="text-center">
 							<div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent mx-auto" />
-							<p className="text-gray-400">Loading sprites...</p>
+							<p className="text-gray-400">Loading engine...</p>
 						</div>
 					</div>
 				)}
@@ -281,7 +206,7 @@ export function Room(): FunctionComponent {
 				)}
 			</div>
 
-			{/* Controls panel - 10% */}
+			{/* Controls panel */}
 			<div className="w-80 overflow-y-auto border-l border-gray-700 bg-gray-800 p-4 text-sm text-gray-200">
 				<h2 className="mb-4 text-lg font-bold text-white">Room Controls</h2>
 
@@ -351,23 +276,6 @@ export function Room(): FunctionComponent {
 							}}
 						>
 							Spawn {populateCount} Random Avatars
-						</button>
-						<button
-							className="w-full rounded bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600"
-							disabled={loading}
-							type="button"
-							onClick={() => {
-								const engine = engineRef.current;
-								if (!engine?.currentModel) return;
-								for (const [id] of engine.furniture) {
-									engine.removeFurniture(id);
-								}
-								engine.placeRandomFurniture(
-									Math.floor(engine.currentModel.getValidTiles().length / 8)
-								);
-							}}
-						>
-							Re-roll Furniture
 						</button>
 						<button
 							className="w-full rounded bg-red-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
@@ -510,7 +418,7 @@ export function Room(): FunctionComponent {
 					</p>
 					<p className="text-xs text-gray-500">Avatars: {avatarList.length}</p>
 					<p className="mt-2 text-xs text-gray-600">
-						Engine: PixiJS + Bobba sprite renderer
+						Engine: Phaser 3 + SVG avatars
 					</p>
 				</section>
 			</div>
