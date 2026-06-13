@@ -18,6 +18,8 @@ export interface X402Authorization extends X402AuthorizationFields {
   signature: string;
 }
 
+export type X402PaymentMap = Record<string, string>;
+
 function sortedMetadataEntries(
   metadata: Record<string, string> | undefined,
 ): Array<{ key: string; value: string }> | undefined {
@@ -68,6 +70,28 @@ export async function signX402Authorization(
   const messageBytes = new TextEncoder().encode(message);
   const signature = await key.sign(messageBytes);
   return { ...fields, signature: toBase64(signature) };
+}
+
+export function x402AuthorizationToPaymentMap(
+  authorization: X402Authorization,
+): X402PaymentMap {
+  const payment: X402PaymentMap = {
+    scheme: authorization.scheme,
+    network: authorization.network,
+    asset: authorization.asset,
+    amount: authorization.amount,
+    from: authorization.from,
+    to: authorization.to,
+    nonce: authorization.nonce,
+    expiresAt: authorization.expiresAt,
+    signature: authorization.signature,
+  };
+
+  for (const [key, value] of Object.entries(authorization.metadata ?? {})) {
+    payment[`metadata.${key}`] = value;
+  }
+
+  return payment;
 }
 
 export function generateNonce(prefix?: string): string {

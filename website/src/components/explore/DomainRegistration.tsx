@@ -7,6 +7,7 @@ import {
 	generateNonce,
 	signX402Authorization,
 	TinyVerseError,
+	x402AuthorizationToPaymentMap,
 	type AvailabilityResponse,
 	type X402AuthorizationFields,
 } from "@tinyhumansai/tinyplace";
@@ -132,21 +133,7 @@ export const DomainRegistration = ({
 				});
 				return client.registry.register({
 					...request,
-					payment: {
-						scheme: signedPayment.scheme,
-						network: signedPayment.network,
-						asset: signedPayment.asset,
-						amount: signedPayment.amount,
-						from: signedPayment.from,
-						to: signedPayment.to,
-						nonce: signedPayment.nonce,
-						expiresAt: signedPayment.expiresAt,
-						signature: signedPayment.signature,
-						"metadata.domain": metadata.domain,
-						"metadata.identity": metadata.identity,
-						"metadata.publicKey": metadata.publicKey,
-						"metadata.purpose": metadata.purpose,
-					},
+					payment: x402AuthorizationToPaymentMap(signedPayment),
 				});
 			}
 		},

@@ -34,6 +34,7 @@ export type {
 export {
   buildCanonicalMessage,
   signX402Authorization,
+  x402AuthorizationToPaymentMap,
   generateNonce,
 } from "./x402.js";
 
