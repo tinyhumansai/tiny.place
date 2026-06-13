@@ -146,4 +146,16 @@ export const queryKeys = {
 			["signers", "list", grantor] as const,
 		detail: (signerKey: string) => ["signers", "detail", signerKey] as const,
 	},
+	admin: {
+		config: () => ["admin", "config"] as const,
+		fees: () => ["admin", "fees"] as const,
+		feeResolution: (parameters: {
+			from: string;
+			to: string;
+			type: string | undefined;
+		}) => ["admin", "fee-resolution", parameters] as const,
+		audit: (parameters?: { limit?: number; offset?: number }) =>
+			["admin", "audit", parameters] as const,
+		feeMetrics: () => ["admin", "fee-metrics"] as const,
+	},
 };
