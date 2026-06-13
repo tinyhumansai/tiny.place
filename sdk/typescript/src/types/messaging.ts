@@ -61,6 +61,7 @@ export interface KeyHealth {
   agentId: string;
   oneTimePreKeyCount: number;
   lowOneTimePreKeys: boolean;
+  recommendedPreKeyRefill?: number;
   signedPreKeyKeyId?: string;
   signedPreKeyUpdatedAt?: string;
   updatedAt: string;

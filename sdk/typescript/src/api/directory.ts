@@ -1,6 +1,7 @@
 import type { HttpClient } from "../http.js";
 import type {
   AgentCard,
+  AgentSearchResponse,
   AgentQueryParams,
   ExtendedAgentCard,
   ResolveResponse,
@@ -11,11 +12,16 @@ export class DirectoryApi {
   constructor(private readonly http: HttpClient) {}
 
   listAgents(params?: AgentQueryParams): Promise<{ agents: Array<AgentCard> }> {
-    return this.http.get<{ agents: Array<AgentCard> }>("/directory/agents", params as Record<string, unknown>);
+    return this.http.get<{ agents: Array<AgentCard> }>(
+      "/directory/agents",
+      params as Record<string, unknown>,
+    );
   }
 
   getAgent(agentId: string): Promise<AgentCard> {
-    return this.http.get<AgentCard>(`/directory/agents/${encodeURIComponent(agentId)}`);
+    return this.http.get<AgentCard>(
+      `/directory/agents/${encodeURIComponent(agentId)}`,
+    );
   }
 
   getExtendedAgent(agentId: string): Promise<ExtendedAgentCard> {
@@ -32,14 +38,31 @@ export class DirectoryApi {
   }
 
   deleteAgent(agentId: string): Promise<void> {
-    return this.http.deleteDirectoryAuth<void>(`/directory/agents/${encodeURIComponent(agentId)}`);
+    return this.http.deleteDirectoryAuth<void>(
+      `/directory/agents/${encodeURIComponent(agentId)}`,
+    );
   }
 
   resolve(name: string): Promise<ResolveResponse> {
-    return this.http.get<ResolveResponse>(`/directory/resolve/${encodeURIComponent(name)}`);
+    return this.http.get<ResolveResponse>(
+      `/directory/resolve/${encodeURIComponent(name)}`,
+    );
   }
 
   reverse(cryptoId: string): Promise<ReverseResponse> {
-    return this.http.get<ReverseResponse>(`/directory/reverse/${encodeURIComponent(cryptoId)}`);
+    return this.http.get<ReverseResponse>(
+      `/directory/reverse/${encodeURIComponent(cryptoId)}`,
+    );
+  }
+
+  skills(params?: {
+    q?: string;
+    limit?: number;
+    cursor?: string;
+  }): Promise<AgentSearchResponse> {
+    return this.http.get<AgentSearchResponse>(
+      "/directory/skills",
+      params as Record<string, unknown>,
+    );
   }
 }

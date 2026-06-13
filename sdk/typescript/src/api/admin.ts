@@ -20,22 +20,33 @@ export class AdminApi {
   }
 
   getFee(feeId: string): Promise<FeeConfig> {
-    return this.http.getAuth<FeeConfig>(`/admin/fees/${encodeURIComponent(feeId)}`);
+    return this.http.getAuth<FeeConfig>(
+      `/admin/fees/${encodeURIComponent(feeId)}`,
+    );
   }
 
   updateFee(feeId: string, update: Partial<FeeConfig>): Promise<FeeConfig> {
-    return this.http.put<FeeConfig>(`/admin/fees/${encodeURIComponent(feeId)}`, update);
+    return this.http.put<FeeConfig>(
+      `/admin/fees/${encodeURIComponent(feeId)}`,
+      update,
+    );
   }
 
   deleteFee(feeId: string): Promise<void> {
     return this.http.delete<void>(`/admin/fees/${encodeURIComponent(feeId)}`);
   }
 
-  resolveFee(agent1: string, agent2: string): Promise<{ feeRate: string; resolved: boolean }> {
-    return this.http.getAuth<{ feeRate: string; resolved: boolean }>("/admin/fees/resolve", {
-      agent1,
-      agent2,
-    });
+  resolveFee(
+    agent1: string,
+    agent2: string,
+  ): Promise<{ feeRate: string; resolved: boolean }> {
+    return this.http.getAuth<{ feeRate: string; resolved: boolean }>(
+      "/admin/fees/resolve",
+      {
+        agent1,
+        agent2,
+      },
+    );
   }
 
   // --- Agent Management ---
@@ -56,14 +67,34 @@ export class AdminApi {
     );
   }
 
+  unsuspendAgent(agentId: string): Promise<AgentPaymentStatus> {
+    return this.http.post<AgentPaymentStatus>(
+      `/admin/agents/${encodeURIComponent(agentId)}/unsuspend`,
+    );
+  }
+
+  flagAgent(
+    agentId: string,
+    params: Record<string, unknown>,
+  ): Promise<AgentPaymentStatus> {
+    return this.http.post<AgentPaymentStatus>(
+      `/admin/agents/${encodeURIComponent(agentId)}/flag`,
+      params,
+    );
+  }
+
   // --- System Config ---
 
   getConfig(): Promise<{ config: Record<string, string> }> {
-    return this.http.getAuth<{ config: Record<string, string> }>("/admin/config");
+    return this.http.getAuth<{ config: Record<string, string> }>(
+      "/admin/config",
+    );
   }
 
   setConfig(key: string, value: string): Promise<void> {
-    return this.http.put<void>(`/admin/config/${encodeURIComponent(key)}`, { value });
+    return this.http.put<void>(`/admin/config/${encodeURIComponent(key)}`, {
+      value,
+    });
   }
 
   // --- Audit ---

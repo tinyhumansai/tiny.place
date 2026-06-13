@@ -8,6 +8,7 @@ import type {
   GasEstimate,
   PriceHistory,
   PriceQuote,
+  SupportedChain,
   SwapExecution,
   SwapExecuteRequest,
   SwapQuote,
@@ -22,8 +23,15 @@ export class PricingApi {
 
   // --- Price Data ---
 
-  quote(params: { base: string; quote: string; network?: string }): Promise<PriceQuote> {
-    return this.http.get<PriceQuote>("/pricing/quote", params as Record<string, unknown>);
+  quote(params: {
+    base: string;
+    quote: string;
+    network?: string;
+  }): Promise<PriceQuote> {
+    return this.http.get<PriceQuote>(
+      "/pricing/quote",
+      params as Record<string, unknown>,
+    );
   }
 
   history(params: {
@@ -33,21 +41,28 @@ export class PricingApi {
     from?: string;
     to?: string;
   }): Promise<PriceHistory> {
-    return this.http.get<PriceHistory>("/pricing/history", params as Record<string, unknown>);
+    return this.http.get<PriceHistory>(
+      "/pricing/history",
+      params as Record<string, unknown>,
+    );
   }
 
-  assets(): Promise<{ assets: Array<{ symbol: string; address?: string; decimals: number }> }> {
-    return this.http.get<{ assets: Array<{ symbol: string; address?: string; decimals: number }> }>(
-      "/pricing/assets",
-    );
+  assets(): Promise<{
+    assets: Array<{ symbol: string; address?: string; decimals: number }>;
+  }> {
+    return this.http.get<{
+      assets: Array<{ symbol: string; address?: string; decimals: number }>;
+    }>("/pricing/assets");
   }
 
   pairs(): Promise<{ pairs: Array<TradePair> }> {
     return this.http.get<{ pairs: Array<TradePair> }>("/pricing/pairs");
   }
 
-  networks(): Promise<{ networks: Array<string> }> {
-    return this.http.get<{ networks: Array<string> }>("/pricing/networks");
+  networks(): Promise<{ networks: Array<SupportedChain> }> {
+    return this.http.get<{ networks: Array<SupportedChain> }>(
+      "/pricing/networks",
+    );
   }
 
   gas(network: string): Promise<GasEstimate> {
@@ -65,7 +80,10 @@ export class PricingApi {
     toAsset: string;
     amount: string;
   }): Promise<SwapQuote> {
-    return this.http.get<SwapQuote>("/swap/quote", params as Record<string, unknown>);
+    return this.http.get<SwapQuote>(
+      "/swap/quote",
+      params as Record<string, unknown>,
+    );
   }
 
   executeSwap(request: SwapExecuteRequest): Promise<SwapExecution> {
@@ -73,10 +91,15 @@ export class PricingApi {
   }
 
   getSwap(swapId: string): Promise<SwapExecution> {
-    return this.http.getAuth<SwapExecution>(`/swap/${encodeURIComponent(swapId)}`);
+    return this.http.getAuth<SwapExecution>(
+      `/swap/${encodeURIComponent(swapId)}`,
+    );
   }
 
-  swapHistory(params?: { limit?: number; offset?: number }): Promise<{ swaps: Array<SwapExecution> }> {
+  swapHistory(params?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<{ swaps: Array<SwapExecution> }> {
     return this.http.getAuth<{ swaps: Array<SwapExecution> }>(
       "/swap/history",
       params as Record<string, unknown>,
@@ -85,7 +108,10 @@ export class PricingApi {
 
   // --- Bridge ---
 
-  bridgeRoutes(params: { fromChain: string; toChain: string }): Promise<{ routes: Array<BridgeRoute> }> {
+  bridgeRoutes(params: {
+    fromChain: string;
+    toChain: string;
+  }): Promise<{ routes: Array<BridgeRoute> }> {
     return this.http.get<{ routes: Array<BridgeRoute> }>(
       "/bridge/routes",
       params as Record<string, unknown>,
@@ -98,7 +124,10 @@ export class PricingApi {
     token: string;
     amount: string;
   }): Promise<BridgeQuote> {
-    return this.http.get<BridgeQuote>("/bridge/quote", params as Record<string, unknown>);
+    return this.http.get<BridgeQuote>(
+      "/bridge/quote",
+      params as Record<string, unknown>,
+    );
   }
 
   executeBridge(request: BridgeExecuteRequest): Promise<BridgeExecution> {
@@ -106,10 +135,15 @@ export class PricingApi {
   }
 
   getBridge(bridgeId: string): Promise<BridgeExecution> {
-    return this.http.getAuth<BridgeExecution>(`/bridge/${encodeURIComponent(bridgeId)}`);
+    return this.http.getAuth<BridgeExecution>(
+      `/bridge/${encodeURIComponent(bridgeId)}`,
+    );
   }
 
-  bridgeHistory(params?: { limit?: number; offset?: number }): Promise<{ bridges: Array<BridgeExecution> }> {
+  bridgeHistory(params?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<{ bridges: Array<BridgeExecution> }> {
     return this.http.getAuth<{ bridges: Array<BridgeExecution> }>(
       "/bridge/history",
       params as Record<string, unknown>,

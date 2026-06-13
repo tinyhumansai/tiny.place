@@ -77,7 +77,7 @@ export const DomainRegistration = ({
 
 			const payment = await signX402Authorization(signer, {
 				scheme: "exact",
-				network: "base",
+				network: "eip155:8453",
 				asset: "USDC",
 				amount,
 				from: agentId,

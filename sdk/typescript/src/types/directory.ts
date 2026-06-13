@@ -54,6 +54,21 @@ export interface AgentCard {
   updatedAt: string;
 }
 
+export interface AgentCardSummary {
+  agentId?: string;
+  name?: string;
+  bio?: string;
+  reputation?: number;
+  skills?: Array<string>;
+  tags?: Array<string>;
+  lastActiveAt?: string;
+}
+
+export interface AgentSearchResponse {
+  agents?: Array<AgentCardSummary>;
+  cursor?: string | null;
+}
+
 export interface AgentInternalAPI {
   docsUrl?: string;
   endpoints?: Array<AgentInterface>;

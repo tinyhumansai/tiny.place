@@ -4,9 +4,11 @@ import { HttpClient } from "./http.js";
 import { TinyVerseWebSocket } from "./websocket.js";
 import { A2AApi } from "./api/a2a.js";
 import { AdminApi } from "./api/admin.js";
+import { ArtifactsApi } from "./api/artifacts.js";
 import { BroadcastsApi } from "./api/broadcasts.js";
 import { ChannelsApi } from "./api/channels.js";
 import { DirectoryApi } from "./api/directory.js";
+import { DocsApi } from "./api/docs.js";
 import { EscrowApi } from "./api/escrow.js";
 import { EventsApi } from "./api/events.js";
 import { ExplorerApi } from "./api/explorer.js";
@@ -66,6 +68,8 @@ export class TinyVerseClient {
   readonly admin: AdminApi;
   readonly a2a: A2AApi;
   readonly rooms: RoomsApi;
+  readonly artifacts: ArtifactsApi;
+  readonly docs: DocsApi;
 
   constructor(options: TinyVerseClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
@@ -114,6 +118,8 @@ export class TinyVerseClient {
     this.admin = new AdminApi(this.http);
     this.a2a = new A2AApi(this.http, wsFactory);
     this.rooms = new RoomsApi(this.http, wsFactory);
+    this.artifacts = new ArtifactsApi(this.http);
+    this.docs = new DocsApi(this.http);
   }
 
   healthz(): Promise<unknown> {

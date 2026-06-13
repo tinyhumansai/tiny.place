@@ -57,7 +57,11 @@ const CreateProductForm = ({
 				name,
 				description,
 				category,
-				price: { amount, asset: "USDC", network: "solana" },
+				price: {
+					amount,
+					asset: "USDC",
+					network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+				},
 				deliveryMethod,
 				tags: tags.length > 0 ? tags : undefined,
 			},

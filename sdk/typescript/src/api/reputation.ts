@@ -13,10 +13,14 @@ export class ReputationApi {
   constructor(private readonly http: HttpClient) {}
 
   getScore(agentId: string): Promise<ReputationScore> {
-    return this.http.get<ReputationScore>(`/reputation/${encodeURIComponent(agentId)}`);
+    return this.http.get<ReputationScore>(
+      `/reputation/${encodeURIComponent(agentId)}`,
+    );
   }
 
-  getHistory(agentId: string): Promise<{ history: Array<ReputationHistoryPoint> }> {
+  getHistory(
+    agentId: string,
+  ): Promise<{ history: Array<ReputationHistoryPoint> }> {
     return this.http.get<{ history: Array<ReputationHistoryPoint> }>(
       `/reputation/${encodeURIComponent(agentId)}/history`,
     );
@@ -28,7 +32,9 @@ export class ReputationApi {
     );
   }
 
-  getAttestations(agentId: string): Promise<{ attestations: Array<Attestation> }> {
+  getAttestations(
+    agentId: string,
+  ): Promise<{ attestations: Array<Attestation> }> {
     return this.http.get<{ attestations: Array<Attestation> }>(
       `/reputation/${encodeURIComponent(agentId)}/attestations`,
     );
@@ -48,12 +54,76 @@ export class ReputationApi {
     );
   }
 
+  trustGraph(
+    params?: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    return this.http.get<Record<string, unknown>>(
+      "/reputation/trust/graph",
+      params,
+    );
+  }
+
+  getTrust(agentId: string): Promise<Record<string, unknown>> {
+    return this.http.get<Record<string, unknown>>(
+      `/reputation/${encodeURIComponent(agentId)}/trust`,
+    );
+  }
+
+  getVouches(agentId: string): Promise<Record<string, unknown>> {
+    return this.http.get<Record<string, unknown>>(
+      `/reputation/${encodeURIComponent(agentId)}/vouches`,
+    );
+  }
+
+  getGivenVouches(agentId: string): Promise<Record<string, unknown>> {
+    return this.http.get<Record<string, unknown>>(
+      `/reputation/${encodeURIComponent(agentId)}/vouches/given`,
+    );
+  }
+
+  createVouch(
+    vouch: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    return this.http.post<Record<string, unknown>>(
+      "/reputation/vouches",
+      vouch,
+    );
+  }
+
+  deleteVouch(vouchId: string): Promise<void> {
+    return this.http.delete<void>(
+      `/reputation/vouches/${encodeURIComponent(vouchId)}`,
+    );
+  }
+
   leaderboard(
     category?: string,
     params?: { limit?: number; period?: string; sort?: string },
   ): Promise<LeaderboardResponse> {
     return this.http.get<LeaderboardResponse>(
-      category ? `/leaderboards/${encodeURIComponent(category)}` : "/leaderboards/reputation",
+      category
+        ? `/leaderboards/${encodeURIComponent(category)}`
+        : "/leaderboards/reputation",
+      params as Record<string, unknown>,
+    );
+  }
+
+  risingLeaderboard(params?: {
+    limit?: number;
+    period?: string;
+  }): Promise<LeaderboardResponse> {
+    return this.http.get<LeaderboardResponse>(
+      "/leaderboards/rising",
+      params as Record<string, unknown>,
+    );
+  }
+
+  sellersLeaderboard(params?: {
+    limit?: number;
+    period?: string;
+  }): Promise<LeaderboardResponse> {
+    return this.http.get<LeaderboardResponse>(
+      "/leaderboards/sellers",
       params as Record<string, unknown>,
     );
   }

@@ -19,7 +19,9 @@ export class MarketplaceApi {
 
   // --- Products ---
 
-  listProducts(params?: ProductQueryParams): Promise<{ products: Array<Product> }> {
+  listProducts(
+    params?: ProductQueryParams,
+  ): Promise<{ products: Array<Product> }> {
     return this.http.get<{ products: Array<Product> }>(
       "/marketplace/products",
       params as Record<string, unknown>,
@@ -27,44 +29,79 @@ export class MarketplaceApi {
   }
 
   createProduct(product: ProductCreateRequest): Promise<Product> {
-    return this.http.post<Product>("/marketplace/products", product);
+    return this.http.postDirectoryAuth<Product>(
+      "/marketplace/products",
+      product,
+    );
   }
 
   getProduct(productId: string): Promise<Product> {
-    return this.http.get<Product>(`/marketplace/products/${encodeURIComponent(productId)}`);
+    return this.http.get<Product>(
+      `/marketplace/products/${encodeURIComponent(productId)}`,
+    );
   }
 
   updateProduct(productId: string, update: Partial<Product>): Promise<Product> {
-    return this.http.put<Product>(
+    return this.http.putDirectoryAuth<Product>(
       `/marketplace/products/${encodeURIComponent(productId)}`,
       update,
     );
   }
 
   deleteProduct(productId: string): Promise<void> {
-    return this.http.delete<void>(`/marketplace/products/${encodeURIComponent(productId)}`);
+    return this.http.deleteDirectoryAuth<void>(
+      `/marketplace/products/${encodeURIComponent(productId)}`,
+    );
   }
 
-  buyProduct(productId: string, payment: Record<string, string>): Promise<LedgerTransaction> {
-    return this.http.post<LedgerTransaction>(
+  buyProduct(
+    productId: string,
+    payment: Record<string, string>,
+  ): Promise<LedgerTransaction> {
+    return this.http.postDirectoryAuth<LedgerTransaction>(
       `/marketplace/products/${encodeURIComponent(productId)}/buy`,
       payment,
     );
   }
 
   downloadProduct(productId: string, purchaseId: string): Promise<Response> {
-    return this.http.getAuth<Response>(
+    return this.http.getDirectoryAuthRaw(
       `/marketplace/products/${encodeURIComponent(productId)}/download/${encodeURIComponent(purchaseId)}`,
     );
   }
 
-  listProductReviews(productId: string): Promise<{ reviews: Array<ProductReview> }> {
+  getProductDelivery(
+    productId: string,
+    purchaseId: string,
+  ): Promise<Record<string, unknown>> {
+    return this.http.getDirectoryAuth<Record<string, unknown>>(
+      `/marketplace/products/${encodeURIComponent(productId)}/purchases/${encodeURIComponent(purchaseId)}/delivery`,
+    );
+  }
+
+  updateProductDelivery(
+    productId: string,
+    purchaseId: string,
+    delivery: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    return this.http.postDirectoryAuth<Record<string, unknown>>(
+      `/marketplace/products/${encodeURIComponent(productId)}/purchases/${encodeURIComponent(purchaseId)}/delivery`,
+      delivery,
+    );
+  }
+
+  listProductReviews(
+    productId: string,
+  ): Promise<{ reviews: Array<ProductReview> }> {
     return this.http.get<{ reviews: Array<ProductReview> }>(
       `/marketplace/products/${encodeURIComponent(productId)}/reviews`,
     );
   }
 
-  createProductReview(productId: string, review: Partial<ProductReview>): Promise<ProductReview> {
+  createProductReview(
+    productId: string,
+    review: Partial<ProductReview>,
+  ): Promise<ProductReview> {
     return this.http.post<ProductReview>(
       `/marketplace/products/${encodeURIComponent(productId)}/reviews`,
       review,
@@ -83,19 +120,26 @@ export class MarketplaceApi {
     );
   }
 
-  createIdentityListing(listing: Partial<IdentityListing>): Promise<IdentityListing> {
-    return this.http.post<IdentityListing>("/marketplace/identities", listing);
+  createIdentityListing(
+    listing: Partial<IdentityListing>,
+  ): Promise<IdentityListing> {
+    return this.http.postDirectoryAuth<IdentityListing>(
+      "/marketplace/identities",
+      listing,
+    );
   }
 
   deleteIdentityListing(listingId: string): Promise<void> {
-    return this.http.delete<void>(`/marketplace/identities/${encodeURIComponent(listingId)}`);
+    return this.http.deleteDirectoryAuth<void>(
+      `/marketplace/identities/${encodeURIComponent(listingId)}`,
+    );
   }
 
   buyIdentityListing(
     listingId: string,
     payment: Record<string, string>,
   ): Promise<LedgerTransaction> {
-    return this.http.post<LedgerTransaction>(
+    return this.http.postDirectoryAuth<LedgerTransaction>(
       `/marketplace/identities/${encodeURIComponent(listingId)}/buy`,
       payment,
     );
@@ -108,15 +152,25 @@ export class MarketplaceApi {
   }
 
   placeBid(listingId: string, bid: Partial<IdentityBid>): Promise<IdentityBid> {
-    return this.http.post<IdentityBid>(
+    return this.http.postDirectoryAuth<IdentityBid>(
       `/marketplace/identities/${encodeURIComponent(listingId)}/bids`,
       bid,
     );
   }
 
   closeListing(listingId: string): Promise<IdentitySale> {
-    return this.http.post<IdentitySale>(
+    return this.http.postDirectoryAuth<IdentitySale>(
       `/marketplace/identities/${encodeURIComponent(listingId)}/close`,
+    );
+  }
+
+  setDefaultIdentityListing(
+    listingId: string,
+    request?: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    return this.http.postDirectoryAuth<Record<string, unknown>>(
+      `/marketplace/identities/${encodeURIComponent(listingId)}/default`,
+      request,
     );
   }
 
@@ -126,8 +180,13 @@ export class MarketplaceApi {
     );
   }
 
-  identityFloor(length?: number): Promise<{ floorPrice: string; assetPerLength: Record<string, unknown> }> {
-    return this.http.get<{ floorPrice: string; assetPerLength: Record<string, unknown> }>(
+  identityFloor(
+    length?: number,
+  ): Promise<{ floorPrice: string; assetPerLength: Record<string, unknown> }> {
+    return this.http.get<{
+      floorPrice: string;
+      assetPerLength: Record<string, unknown>;
+    }>(
       "/marketplace/identities/floor",
       length != null ? { length } : undefined,
     );
@@ -136,15 +195,20 @@ export class MarketplaceApi {
   // --- Offers ---
 
   createOffer(offer: Partial<IdentityOffer>): Promise<IdentityOffer> {
-    return this.http.post<IdentityOffer>("/marketplace/offers", offer);
+    return this.http.postDirectoryAuth<IdentityOffer>(
+      "/marketplace/offers",
+      offer,
+    );
   }
 
   cancelOffer(offerId: string): Promise<void> {
-    return this.http.delete<void>(`/marketplace/offers/${encodeURIComponent(offerId)}`);
+    return this.http.deleteDirectoryAuth<void>(
+      `/marketplace/offers/${encodeURIComponent(offerId)}`,
+    );
   }
 
   acceptOffer(offerId: string): Promise<IdentitySale> {
-    return this.http.post<IdentitySale>(
+    return this.http.postDirectoryAuth<IdentitySale>(
       `/marketplace/offers/${encodeURIComponent(offerId)}/accept`,
     );
   }
@@ -152,7 +216,9 @@ export class MarketplaceApi {
   // --- Browsing ---
 
   categories(): Promise<{ categories: Array<MarketplaceCategory> }> {
-    return this.http.get<{ categories: Array<MarketplaceCategory> }>("/marketplace/categories");
+    return this.http.get<{ categories: Array<MarketplaceCategory> }>(
+      "/marketplace/categories",
+    );
   }
 
   featured(): Promise<{ featured: Array<unknown> }> {
@@ -160,6 +226,8 @@ export class MarketplaceApi {
   }
 
   recent(): Promise<{ recent: Array<IdentitySale> }> {
-    return this.http.get<{ recent: Array<IdentitySale> }>("/marketplace/recent");
+    return this.http.get<{ recent: Array<IdentitySale> }>(
+      "/marketplace/recent",
+    );
   }
 }

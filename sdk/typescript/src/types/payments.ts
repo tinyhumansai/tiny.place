@@ -35,23 +35,28 @@ export interface X402VerifyRequest {
 
 export interface X402VerifyResponse {
   valid: boolean;
-  intentId: string;
-  feeRate: string;
-  feeAmount: string;
-  netAmount: string;
+  intentId?: string;
+  network?: string;
+  asset?: string;
+  amount?: string;
+  feeRate?: string;
+  feeAmount?: string;
+  netAmount?: string;
   error?: string;
 }
 
 export interface X402SettleRequest {
-  intentId: string;
-  onChainTx: string;
-  network: string;
+  payment: X402VerifyRequest;
+  feeQuoteId?: string;
+  reference?: Record<string, unknown>;
+  shielded?: boolean;
 }
 
 export interface X402SettleResponse {
-  ledgerTxId: string;
-  onChainTx: string;
-  status: string;
+  ledgerTxId?: string;
+  onChainTx?: string;
+  status?: string;
+  [key: string]: unknown;
 }
 
 export interface SupportedChain {
@@ -102,7 +107,11 @@ export interface Subscription {
   updatedAt: string;
 }
 
-export type SignerApprovalStatus = "active" | "revoked" | "expired" | "exhausted";
+export type SignerApprovalStatus =
+  | "active"
+  | "revoked"
+  | "expired"
+  | "exhausted";
 
 export interface SignerApproval {
   signerKey: string;

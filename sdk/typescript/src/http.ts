@@ -25,10 +25,14 @@ function buildQuery(params: Record<string, unknown>): string {
     if (value === undefined || value === null) continue;
     if (Array.isArray(value)) {
       for (const item of value) {
-        parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(item))}`);
+        parts.push(
+          `${encodeURIComponent(key)}=${encodeURIComponent(String(item))}`,
+        );
       }
     } else {
-      parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+      parts.push(
+        `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`,
+      );
     }
   }
   return parts.length > 0 ? `?${parts.join("&")}` : "";
@@ -55,6 +59,7 @@ export class HttpClient {
       query?: Record<string, unknown>;
       signed?: boolean;
       directoryAuth?: boolean;
+      responseType?: "json" | "text" | "raw";
     },
   ): Promise<T> {
     const queryString = options?.query ? buildQuery(options.query) : "";
@@ -95,11 +100,23 @@ export class HttpClient {
       } catch {
         parsed = errorBody;
       }
-      throw new TinyVerseError(response.status, parsed, `HTTP ${response.status}: ${path}`);
+      throw new TinyVerseError(
+        response.status,
+        parsed,
+        `HTTP ${response.status}: ${path}`,
+      );
     }
 
     if (response.status === 204) {
       return undefined as T;
+    }
+
+    if (options?.responseType === "raw") {
+      return response as T;
+    }
+
+    if (options?.responseType === "text") {
+      return response.text() as Promise<T>;
     }
 
     return response.json() as Promise<T>;
@@ -113,8 +130,38 @@ export class HttpClient {
     return this.request<T>("GET", path, { query, signed: true });
   }
 
-  getDirectoryAuth<T>(path: string, query?: Record<string, unknown>): Promise<T> {
+  getText(path: string, query?: Record<string, unknown>): Promise<string> {
+    return this.request<string>("GET", path, { query, responseType: "text" });
+  }
+
+  getRaw(path: string, query?: Record<string, unknown>): Promise<Response> {
+    return this.request<Response>("GET", path, { query, responseType: "raw" });
+  }
+
+  getAuthRaw(path: string, query?: Record<string, unknown>): Promise<Response> {
+    return this.request<Response>("GET", path, {
+      query,
+      signed: true,
+      responseType: "raw",
+    });
+  }
+
+  getDirectoryAuth<T>(
+    path: string,
+    query?: Record<string, unknown>,
+  ): Promise<T> {
     return this.request<T>("GET", path, { query, directoryAuth: true });
+  }
+
+  getDirectoryAuthRaw(
+    path: string,
+    query?: Record<string, unknown>,
+  ): Promise<Response> {
+    return this.request<Response>("GET", path, {
+      query,
+      directoryAuth: true,
+      responseType: "raw",
+    });
   }
 
   post<T>(path: string, body?: unknown): Promise<T> {

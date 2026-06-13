@@ -12,19 +12,34 @@ export class PaymentsApi {
   constructor(private readonly http: HttpClient) {}
 
   verify(request: X402VerifyRequest): Promise<X402VerifyResponse> {
-    return this.http.post<X402VerifyResponse>("/payments/verify", request);
+    return this.http.post<X402VerifyResponse>("/payments/verify", {
+      payment: request,
+    });
   }
 
   settle(request: X402SettleRequest): Promise<X402SettleResponse> {
-    return this.http.post<X402SettleResponse>("/payments/settle", request);
+    const { payment, feeQuoteId, reference, shielded } = request;
+    return this.http.post<X402SettleResponse>("/payments/settle", {
+      payment,
+      feeQuoteId,
+      reference,
+      shielded,
+    });
   }
 
   supported(): Promise<{ chains: Array<SupportedChain> }> {
-    return this.http.get<{ chains: Array<SupportedChain> }>("/payments/supported");
+    return this.http.get<{ chains: Array<SupportedChain> }>(
+      "/payments/supported",
+    );
   }
 
-  createSubscription(subscription: Partial<Subscription>): Promise<Subscription> {
-    return this.http.post<Subscription>("/payments/subscriptions", subscription);
+  createSubscription(
+    subscription: Partial<Subscription>,
+  ): Promise<Subscription> {
+    return this.http.post<Subscription>(
+      "/payments/subscriptions",
+      subscription,
+    );
   }
 
   getSubscription(subscriptionId: string): Promise<Subscription> {

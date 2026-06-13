@@ -5,10 +5,18 @@ export type { TinyVerseClientOptions } from "./client.js";
 
 export { TinyVerseError } from "./http.js";
 export { TinyVerseWebSocket } from "./websocket.js";
-export type { TinyVerseWebSocketOptions, WebSocketEventHandler } from "./websocket.js";
+export type {
+  TinyVerseWebSocketOptions,
+  WebSocketEventHandler,
+} from "./websocket.js";
 
 export type { SigningKey, AuthHeaders, DirectoryWriteHeaders } from "./auth.js";
-export { buildAuthHeader, signRequest, signDirectoryWrite, signCanonicalPayload } from "./auth.js";
+export {
+  buildAuthHeader,
+  signRequest,
+  signDirectoryWrite,
+  signCanonicalPayload,
+} from "./auth.js";
 
 export { Signer } from "./signer.js";
 export { LocalSigner } from "./local-signer.js";
@@ -67,6 +75,8 @@ export { AdminApi } from "./api/admin.js";
 export { A2AApi } from "./api/a2a.js";
 export type { A2ATaskRequest, A2ATaskResponse } from "./api/a2a.js";
 export { RoomsApi } from "./api/rooms.js";
+export { ArtifactsApi } from "./api/artifacts.js";
+export { DocsApi } from "./api/docs.js";
 
 export * from "./types/index.js";
 

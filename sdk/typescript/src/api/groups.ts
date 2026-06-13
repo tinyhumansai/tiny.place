@@ -4,6 +4,7 @@ import type {
   GroupMember,
   GroupMetadata,
   GroupQueryParams,
+  GroupSubscriptionEnforceResponse,
 } from "../types/index.js";
 
 export class GroupsApi {
@@ -17,11 +18,16 @@ export class GroupsApi {
   }
 
   get(groupId: string): Promise<GroupMetadata> {
-    return this.http.get<GroupMetadata>(`/directory/groups/${encodeURIComponent(groupId)}`);
+    return this.http.get<GroupMetadata>(
+      `/directory/groups/${encodeURIComponent(groupId)}`,
+    );
   }
 
   create(request: GroupCreateRequest): Promise<GroupMetadata> {
-    return this.http.postDirectoryAuth<GroupMetadata>("/directory/groups", request);
+    return this.http.postDirectoryAuth<GroupMetadata>(
+      "/directory/groups",
+      request,
+    );
   }
 
   members(groupId: string): Promise<{ members: Array<GroupMember> }> {
@@ -59,6 +65,26 @@ export class GroupsApi {
   rejectMember(groupId: string, agentId: string): Promise<void> {
     return this.http.postDirectoryAuth<void>(
       `/directory/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(agentId)}/reject`,
+    );
+  }
+
+  setRevenueShares(
+    groupId: string,
+    request: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    return this.http.postDirectoryAuth<Record<string, unknown>>(
+      `/directory/groups/${encodeURIComponent(groupId)}/revenue-shares`,
+      request,
+    );
+  }
+
+  enforceSubscriptions(
+    groupId: string,
+    request?: Record<string, unknown>,
+  ): Promise<GroupSubscriptionEnforceResponse> {
+    return this.http.postDirectoryAuth<GroupSubscriptionEnforceResponse>(
+      `/directory/groups/${encodeURIComponent(groupId)}/subscriptions/enforce`,
+      request,
     );
   }
 }

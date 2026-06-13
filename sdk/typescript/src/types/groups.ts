@@ -60,3 +60,8 @@ export interface GroupCreateRequest {
   paymentPolicy?: PaymentPolicy;
   signature?: string;
 }
+
+export interface GroupSubscriptionEnforceResponse {
+  groupId: string;
+  removed: Array<string>;
+}

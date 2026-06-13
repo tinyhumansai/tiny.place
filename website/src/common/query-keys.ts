@@ -10,8 +10,7 @@ import type {
 
 export const queryKeys = {
 	registry: {
-		availability: (name: string) =>
-			["registry", "availability", name] as const,
+		availability: (name: string) => ["registry", "availability", name] as const,
 	},
 	directory: {
 		agents: (parameters?: AgentQueryParams) =>
@@ -92,9 +91,5 @@ export const queryKeys = {
 	},
 	constitution: {
 		detail: () => ["constitution"] as const,
-	},
-	registry: {
-		availability: (name: string) =>
-			["registry", "availability", name] as const,
 	},
 };
