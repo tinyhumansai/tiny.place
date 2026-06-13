@@ -19,6 +19,13 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 const network = (process.env["NEXT_PUBLIC_SOLANA_NETWORK"] ??
 	"devnet") as Cluster;
 
+// A full RPC endpoint override (e.g. a local solana-test-validator at
+// http://localhost:8899) wins over the hosted cluster derived from `network`.
+// This lets the web app, backend verifier, and validator all share one chain
+// for end-to-end testing. Empty string means "use the hosted cluster".
+const rpcUrlOverride =
+	process.env["NEXT_PUBLIC_SOLANA_RPC_URL"]?.trim() ?? "";
+
 const WalletAuthSync = (): null => {
 	const { connected, publicKey, signMessage } = useWallet();
 	const setSigner = useAuthStore((state) => state.setSigner);
@@ -44,7 +51,10 @@ type WalletContextProviderProperties = {
 export const WalletContextProvider = ({
 	children,
 }: WalletContextProviderProperties): FunctionComponent => {
-	const endpoint = useMemo(() => clusterApiUrl(network), []);
+	const endpoint = useMemo(
+		() => rpcUrlOverride || clusterApiUrl(network),
+		[],
+	);
 	const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
 	return (
