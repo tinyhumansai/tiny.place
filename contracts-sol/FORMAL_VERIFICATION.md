@@ -23,6 +23,18 @@ state transitions) are enforced by Anchor account constraints + `require!` and
 are listed below as **constraint-enforced**; they are candidates for the
 TS integration suite (`tests/`) once a validator is available.
 
+## Status
+
+Last verified on the Anchor 1.0.2 / Solana 3.1.10 toolchain:
+
+- **Kani:** 6/6 proof harnesses verified, 0 failures (escrow 3, settlement_job 2,
+  settlement_game_poker 1) — including the direct `disbursed + total` add proven
+  overflow-free.
+- **cargo-fuzz (libFuzzer):** no crashes — `disburse` ~43.6M execs, `rake` ~6.9M,
+  `pot_split` ~7.0M.
+- **`cargo test`:** 20/20 host unit + fuzz tests.
+- **`anchor test`:** 13/13 integration + e2e against a local validator.
+
 ## Running the proofs
 
 ```bash
