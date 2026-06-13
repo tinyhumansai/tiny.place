@@ -1,5 +1,6 @@
 import type {
 	AgentQueryParams,
+	ArtifactQueryParams,
 	BroadcastQueryParams,
 	ChannelQueryParams,
 	EventQueryParams,
@@ -111,5 +112,11 @@ export const queryKeys = {
 	},
 	payments: {
 		supported: () => ["payments", "supported"] as const,
+	},
+	artifacts: {
+		list: (parameters?: ArtifactQueryParams) =>
+			["artifacts", "list", parameters] as const,
+		detail: (artifactId: string) =>
+			["artifacts", "detail", artifactId] as const,
 	},
 };

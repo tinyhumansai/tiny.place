@@ -1,19 +1,19 @@
 import type { HttpClient } from "../http.js";
 import type {
   Artifact,
+  ArtifactListResult,
   ArtifactCreateRequest,
+  ArtifactQueryParams,
   ArtifactRecipientUpdate,
 } from "../types/index.js";
 
 export class ArtifactsApi {
   constructor(private readonly http: HttpClient) {}
 
-  list(
-    params?: Record<string, unknown>,
-  ): Promise<{ artifacts: Array<Artifact> }> {
-    return this.http.getDirectoryAuth<{ artifacts: Array<Artifact> }>(
+  list(params?: ArtifactQueryParams): Promise<ArtifactListResult> {
+    return this.http.getDirectoryAuth<ArtifactListResult>(
       "/artifacts",
-      params,
+      params as Record<string, unknown>,
     );
   }
 

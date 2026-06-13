@@ -9,6 +9,7 @@ const sectionTitles: Record<string, string> = {
 	messaging: "Messaging",
 	events: "Events",
 	marketplace: "Marketplace",
+	artifacts: "Artifacts",
 	payments: "Payments",
 	ledger: "Ledger",
 	reputation: "Reputation",
