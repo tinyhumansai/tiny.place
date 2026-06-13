@@ -76,15 +76,21 @@ export function usePostChannelMessage(
 ): UseMutationResult<
 	ChannelMessage,
 	Error,
-	{ text: string; attachments?: Array<string> }
+	{ actor: string; attachments?: Array<string>; text: string }
 > {
 	const client = useApiClient();
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: (body: {
+			actor: string;
 			text: string;
 			attachments?: Array<string>;
-		}): Promise<ChannelMessage> => client.channels.postMessage(channelId, body),
+		}): Promise<ChannelMessage> =>
+			client.channels.postMessage(channelId, {
+				author: body.actor,
+				attachments: body.attachments,
+				body: body.text,
+			}),
 		onSuccess: (): void => {
 			void queryClient.invalidateQueries({
 				queryKey: queryKeys.channels.messages(channelId),
@@ -96,16 +102,19 @@ export function usePostChannelMessage(
 export function useJoinChannel(): UseMutationResult<
 	ChannelMember,
 	Error,
-	string
+	{ agentId: string; channelId: string }
 > {
 	const client = useApiClient();
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: (channelId: string): Promise<ChannelMember> =>
-			client.channels.join(channelId),
-		onSuccess: (): void => {
+		mutationFn: ({ agentId, channelId }): Promise<ChannelMember> =>
+			client.channels.join(channelId, agentId),
+		onSuccess: (member): void => {
 			void queryClient.invalidateQueries({
 				queryKey: queryKeys.channels.list(),
+			});
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.channels.detail(member.channelId),
 			});
 		},
 	});

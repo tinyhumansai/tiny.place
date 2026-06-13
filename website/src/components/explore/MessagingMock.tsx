@@ -135,12 +135,12 @@ const ChannelList = ({
 };
 
 const MessageThread = ({
+	actor,
 	channelId,
-	currentAgentId,
 	isDark,
 }: {
+	actor: string;
 	channelId: string;
-	currentAgentId: string | undefined;
 	isDark: boolean;
 }): FunctionComponent => {
 	const { data, isLoading, isError } = useChannelMessages(channelId);
@@ -151,8 +151,8 @@ const MessageThread = ({
 
 	function handleSend(): void {
 		const text = inputValue.trim();
-		if (!text) return;
-		postMessage.mutate({ text });
+		if (!text || !actor) return;
+		postMessage.mutate({ actor, text });
 		setInputValue("");
 	}
 
@@ -197,7 +197,7 @@ const MessageThread = ({
 				)}
 
 				{messages.map((message: ChannelMessage): React.ReactElement => {
-					const isOwn = message.author === currentAgentId;
+					const isOwn = message.author === actor;
 					return (
 						<div
 							key={message.messageId}
@@ -239,7 +239,7 @@ const MessageThread = ({
 			<div
 				className={`border-t p-3 ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
 			>
-				{currentAgentId ? (
+				{actor ? (
 					<div className="flex gap-2">
 						<input
 							disabled={postMessage.isPending}
@@ -271,7 +271,7 @@ const MessageThread = ({
 					<p
 						className={`text-center text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 					>
-						Connect your wallet to send messages
+						Enter an actor handle to send messages
 					</p>
 				)}
 				{postMessage.isError && (
@@ -290,6 +290,7 @@ export const MessagingMock = ({
 	isDark: boolean;
 }): FunctionComponent => {
 	const [selectedChannelId, setSelectedChannelId] = useState("");
+	const [actor, setActor] = useState("");
 	const agentId = useAuthStore((state) => state.agentId);
 	const { data, isLoading, isError, error } = useChannels();
 
@@ -328,6 +329,7 @@ export const MessagingMock = ({
 	}
 
 	const channels = data?.channels ?? [];
+	const effectiveActor = actor.trim() || agentId || "";
 	const activeChannelId =
 		selectedChannelId ||
 		(channels.length > 0 ? channels[0]?.channelId : undefined);
@@ -348,6 +350,19 @@ export const MessagingMock = ({
 					>
 						Channels
 					</p>
+					<input
+						placeholder="@actor"
+						type="text"
+						value={actor}
+						className={`mt-2 w-full rounded-md border px-2 py-1 text-[10px] ${
+							isDark
+								? "border-neutral-800 bg-neutral-900 text-white placeholder:text-neutral-600"
+								: "border-neutral-200 bg-white text-black placeholder:text-neutral-400"
+						}`}
+						onChange={(event): void => {
+							setActor(event.target.value);
+						}}
+					/>
 				</div>
 				<ChannelList
 					channels={channels}
@@ -386,8 +401,8 @@ export const MessagingMock = ({
 					</div>
 
 					<MessageThread
+						actor={effectiveActor}
 						channelId={activeChannelId}
-						currentAgentId={agentId}
 						isDark={isDark}
 					/>
 				</div>
