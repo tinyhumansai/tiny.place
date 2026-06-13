@@ -71,7 +71,11 @@ export interface SwapQuote {
 
 export interface SwapExecuteRequest {
   quoteId: string;
-  paymentAuthorization: string;
+  paymentAuthorization?: string;
+  payment?: CommercePaymentPayload;
+  /** Spec alias for the target output address. */
+  destination?: string;
+  destinationAddress?: string;
   slippageTolerance?: string;
   deadline?: number;
 }
@@ -83,6 +87,7 @@ export interface SwapExecution {
   status: string;
   from: MoneyAmount;
   to: MoneyAmount;
+  destinationAddress?: string;
   txHash?: string;
   ledgerEntry?: string;
   completedAt?: string;
@@ -111,8 +116,22 @@ export interface BridgeQuote {
 
 export interface BridgeExecuteRequest {
   quoteId: string;
-  destinationAddress: string;
-  paymentAuthorization: string;
+  destinationAddress?: string;
+  paymentAuthorization?: string;
+  payment?: CommercePaymentPayload;
+}
+
+export interface CommercePaymentPayload {
+  scheme: string;
+  network: string;
+  asset: string;
+  amount: string;
+  from: string;
+  to: string;
+  nonce?: string;
+  expiresAt?: string;
+  signature?: string;
+  metadata?: Record<string, string>;
 }
 
 export interface BridgeExecution {
