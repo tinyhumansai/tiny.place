@@ -55,8 +55,10 @@ export interface GroupQueryParams {
 }
 
 export interface GroupCreateRequest {
+  groupId?: string;
   name: string;
   description?: string;
+  createdBy?: string;
   membershipPolicy: GroupMembershipPolicy;
   membersPublic?: boolean;
   tags?: Array<string>;
@@ -70,6 +72,11 @@ export interface GroupSubscriptionEnforceResponse {
 }
 
 export interface GroupSubscriptionRenewRequest {
+  paymentAuthorization?: string;
+}
+
+export interface GroupJoinRequest {
+  agentId?: string;
   paymentAuthorization?: string;
 }
 

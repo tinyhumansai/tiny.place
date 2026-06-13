@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -8,7 +8,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import type { GroupMetadata } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
-import { useGroups } from "@src/hooks/use-groups";
+import { useCreateGroup, useGroups, useJoinGroup } from "@src/hooks/use-groups";
 
 dayjs.extend(relativeTime);
 
@@ -18,12 +18,40 @@ export const GroupsMock = ({
 	isDark: boolean;
 }): FunctionComponent => {
 	const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+	const [actor, setActor] = useState("");
+	const [name, setName] = useState("Research Guild");
+	const [description, setDescription] = useState("Encrypted agent workspace");
 	const { data, isLoading, isError, error } = useGroups();
+	const createGroup = useCreateGroup();
+	const joinGroup = useJoinGroup();
 
 	const groups: Array<GroupMetadata> = data?.groups ?? [];
 	const activeGroup = groups.find(
 		(group): boolean => group.groupId === selectedGroupId
 	);
+	const mutationError = createGroup.error ?? joinGroup.error;
+
+	const formClass = isDark
+		? "border-neutral-800 bg-neutral-950"
+		: "border-neutral-200 bg-neutral-50";
+	const inputClass = isDark
+		? "border-neutral-800 bg-neutral-900 text-white placeholder:text-neutral-600"
+		: "border-neutral-200 bg-white text-black placeholder:text-neutral-400";
+
+	const handleCreate = (event: FormEvent): void => {
+		event.preventDefault();
+		if (!actor.trim() || !name.trim()) {
+			return;
+		}
+		createGroup.mutate({
+			name,
+			description,
+			createdBy: actor.trim(),
+			membershipPolicy: "open",
+			membersPublic: true,
+			tags: ["explore"],
+		});
+	};
 
 	const renderLoading = (): React.ReactElement => (
 		<div className="flex flex-1 items-center justify-center p-6">
@@ -84,6 +112,19 @@ export const GroupsMock = ({
 					)}
 				</div>
 			)}
+			<button
+				className="mt-3 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+				disabled={!actor.trim() || joinGroup.isPending}
+				type="button"
+				onClick={(): void => {
+					joinGroup.mutate({
+						agentId: actor.trim(),
+						groupId: group.groupId,
+					});
+				}}
+			>
+				{joinGroup.isPending ? "Joining..." : "Join"}
+			</button>
 		</div>
 	);
 
@@ -152,6 +193,47 @@ export const GroupsMock = ({
 		<div
 			className={`flex h-full flex-col overflow-hidden rounded-lg border ${isDark ? "border-neutral-800 bg-neutral-950" : "border-neutral-200 bg-neutral-50"}`}
 		>
+			<form className={`border-b p-3 ${formClass}`} onSubmit={handleCreate}>
+				<div className="grid gap-2 md:grid-cols-3">
+					<input
+						className={`rounded-md border px-2 py-1 text-xs ${inputClass}`}
+						placeholder="@owner"
+						type="text"
+						value={actor}
+						onChange={(event): void => {
+							setActor(event.target.value);
+						}}
+					/>
+					<input
+						className={`rounded-md border px-2 py-1 text-xs ${inputClass}`}
+						placeholder="Group name"
+						type="text"
+						value={name}
+						onChange={(event): void => {
+							setName(event.target.value);
+						}}
+					/>
+					<button
+						className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+						disabled={createGroup.isPending || !actor.trim() || !name.trim()}
+						type="submit"
+					>
+						{createGroup.isPending ? "Creating..." : "Create Group"}
+					</button>
+				</div>
+				<input
+					className={`mt-2 w-full rounded-md border px-2 py-1 text-xs ${inputClass}`}
+					placeholder="Description"
+					type="text"
+					value={description}
+					onChange={(event): void => {
+						setDescription(event.target.value);
+					}}
+				/>
+				{mutationError ? (
+					<p className="mt-2 text-xs text-red-500">{mutationError.message}</p>
+				) : null}
+			</form>
 			<div
 				className={`flex items-center justify-between border-b px-4 py-3 ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
 			>
