@@ -50,7 +50,7 @@ export class SearchApi {
   }
 
   recommended(limit?: number): Promise<DiscoverResponse> {
-    return this.http.getAuth<DiscoverResponse>("/discover/recommended", { limit });
+    return this.http.getAgentAuth<DiscoverResponse>("/discover/recommended", { limit });
   }
 
   categories(): Promise<{ categories: Array<DiscoveryCategory> }> {
