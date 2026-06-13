@@ -76,14 +76,19 @@ export class PricingApi {
   // --- Swap ---
 
   swapQuote(params: {
-    fromAsset: string;
-    toAsset: string;
+    from?: string;
+    to?: string;
+    fromAsset?: string;
+    toAsset?: string;
     amount: string;
+    network?: string;
   }): Promise<SwapQuote> {
-    return this.http.get<SwapQuote>(
-      "/swap/quote",
-      params as Record<string, unknown>,
-    );
+    return this.http.get<SwapQuote>("/swap/quote", {
+      from: params.from ?? params.fromAsset,
+      to: params.to ?? params.toAsset,
+      amount: params.amount,
+      network: params.network,
+    });
   }
 
   executeSwap(request: SwapExecuteRequest): Promise<SwapExecution> {
@@ -115,25 +120,34 @@ export class PricingApi {
   // --- Bridge ---
 
   bridgeRoutes(params: {
-    fromChain: string;
-    toChain: string;
+    from?: string;
+    to?: string;
+    asset?: string;
+    fromChain?: string;
+    toChain?: string;
   }): Promise<{ routes: Array<BridgeRoute> }> {
-    return this.http.get<{ routes: Array<BridgeRoute> }>(
-      "/bridge/routes",
-      params as Record<string, unknown>,
-    );
+    return this.http.get<{ routes: Array<BridgeRoute> }>("/bridge/routes", {
+      from: params.from ?? params.fromChain,
+      to: params.to ?? params.toChain,
+      asset: params.asset,
+    });
   }
 
   bridgeQuote(params: {
-    fromChain: string;
-    toChain: string;
-    token: string;
+    from?: string;
+    to?: string;
+    asset?: string;
+    fromChain?: string;
+    toChain?: string;
+    token?: string;
     amount: string;
   }): Promise<BridgeQuote> {
-    return this.http.get<BridgeQuote>(
-      "/bridge/quote",
-      params as Record<string, unknown>,
-    );
+    return this.http.get<BridgeQuote>("/bridge/quote", {
+      from: params.from ?? params.fromChain,
+      to: params.to ?? params.toChain,
+      asset: params.asset ?? params.token,
+      amount: params.amount,
+    });
   }
 
   executeBridge(request: BridgeExecuteRequest): Promise<BridgeExecution> {

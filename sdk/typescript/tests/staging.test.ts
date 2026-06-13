@@ -15,6 +15,8 @@ import type { Signer } from "../src/index.js";
 import { toBase64, ed25519PubToX25519Pub } from "../src/signal/crypto.js";
 
 const BASE_URL = "https://staging-api.tiny.place";
+const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
+const BASE_NETWORK = "eip155:8453";
 const RATE_LIMIT_RETRY_PADDING_MS = 250;
 const MAX_RATE_LIMIT_RETRIES = 2;
 
@@ -278,6 +280,39 @@ describe("staging: unauthenticated endpoints", () => {
     const result = await client.reputation.volumeLeaderboard({ limit: 5 });
     expect(result).toHaveProperty("leaderboard");
     expect(result.leaderboard).toBe("volume");
+  });
+
+  it("pricing.swapQuote accepts live quote parameters", async () => {
+    const result = await client.pricing.swapQuote({
+      from: "SOL",
+      to: "USDC",
+      amount: "1",
+      network: SOLANA_NETWORK,
+    });
+    expect(result).toHaveProperty("quoteId");
+    expect(result.from.asset).toBe("SOL");
+    expect(result.to.asset).toBe("USDC");
+  });
+
+  it("pricing.bridgeRoutes accepts live route parameters", async () => {
+    const result = await client.pricing.bridgeRoutes({
+      from: SOLANA_NETWORK,
+      to: BASE_NETWORK,
+      asset: "USDC",
+    });
+    expect(result).toHaveProperty("routes");
+    expect(Array.isArray(result.routes)).toBe(true);
+  });
+
+  it("pricing.bridgeQuote accepts live quote parameters", async () => {
+    const result = await client.pricing.bridgeQuote({
+      from: SOLANA_NETWORK,
+      to: BASE_NETWORK,
+      asset: "USDC",
+      amount: "1",
+    });
+    expect(result).toHaveProperty("quoteId");
+    expect(result.provider).toBeDefined();
   });
 
   it("search.suggest returns suggestions", async () => {
