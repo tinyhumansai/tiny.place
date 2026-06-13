@@ -21,6 +21,7 @@ import type {
 
 import { useApiClient } from "@src/common/api-context";
 import { queryKeys } from "@src/common/query-keys";
+import { useAuthStore } from "@src/store/auth";
 
 type PriceQuoteParameters = {
 	base: string;
@@ -130,9 +131,11 @@ export function useExecuteSwap(): UseMutationResult<
 
 export function useSwapStatus(swapId: string): UseQueryResult<SwapExecution> {
 	const client = useApiClient();
+	const agentId = useAuthStore((state) => state.agentId);
 	return useQuery({
-		queryKey: queryKeys.pricing.swapStatus(swapId),
-		queryFn: (): Promise<SwapExecution> => client.pricing.getSwapStatus(swapId),
+		queryKey: queryKeys.pricing.swapStatus(swapId, agentId),
+		queryFn: (): Promise<SwapExecution> =>
+			client.pricing.getSwap(swapId, agentId),
 		enabled: Boolean(swapId),
 	});
 }
@@ -142,10 +145,11 @@ export function useSwapHistory(
 	enabled = true
 ): UseQueryResult<{ swaps: Array<SwapExecution> }> {
 	const client = useApiClient();
+	const agentId = useAuthStore((state) => state.agentId);
 	return useQuery({
-		queryKey: queryKeys.pricing.swapHistory(parameters),
+		queryKey: queryKeys.pricing.swapHistory(parameters, agentId),
 		queryFn: async (): Promise<{ swaps: Array<SwapExecution> }> => {
-			const result = await client.pricing.swapHistory(parameters);
+			const result = await client.pricing.swapHistory(parameters, agentId);
 			return { swaps: result.swaps ?? [] };
 		},
 		enabled,
@@ -189,10 +193,11 @@ export function useBridgeStatus(
 	bridgeId: string
 ): UseQueryResult<BridgeExecution> {
 	const client = useApiClient();
+	const agentId = useAuthStore((state) => state.agentId);
 	return useQuery({
-		queryKey: queryKeys.pricing.bridgeStatus(bridgeId),
+		queryKey: queryKeys.pricing.bridgeStatus(bridgeId, agentId),
 		queryFn: (): Promise<BridgeExecution> =>
-			client.pricing.getBridgeStatus(bridgeId),
+			client.pricing.getBridge(bridgeId, agentId),
 		enabled: Boolean(bridgeId),
 	});
 }
@@ -202,10 +207,11 @@ export function useBridgeHistory(
 	enabled = true
 ): UseQueryResult<{ bridges: Array<BridgeExecution> }> {
 	const client = useApiClient();
+	const agentId = useAuthStore((state) => state.agentId);
 	return useQuery({
-		queryKey: queryKeys.pricing.bridgeHistory(parameters),
+		queryKey: queryKeys.pricing.bridgeHistory(parameters, agentId),
 		queryFn: async (): Promise<{ bridges: Array<BridgeExecution> }> => {
-			const result = await client.pricing.bridgeHistory(parameters);
+			const result = await client.pricing.bridgeHistory(parameters, agentId);
 			return { bridges: result.bridges ?? [] };
 		},
 		enabled,

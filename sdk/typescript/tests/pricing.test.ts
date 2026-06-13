@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyVerseClient } from "../src/index.js";
 
 describe("PricingApi", () => {
   it("builds swap and bridge quote query strings", async () => {
@@ -143,5 +143,57 @@ describe("PricingApi", () => {
         signature: "signed",
       },
     });
+  });
+
+  it("signs swap and bridge reads as the requested agent", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(62));
+    const requests: Array<Request> = [];
+    const client = new TinyVerseClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        requests.push(request);
+        if (request.url.includes("/swap/history")) {
+          return Response.json({ swaps: [] });
+        }
+        if (request.url.includes("/bridge/history")) {
+          return Response.json({ bridges: [] });
+        }
+        if (request.url.includes("/swap/")) {
+          return Response.json({
+            swapId: "swap_123",
+            status: "completed",
+            createdAt: "2026-06-13T00:00:00.000Z",
+          });
+        }
+        return Response.json({
+          bridgeId: "bridge_123",
+          status: "completed",
+          createdAt: "2026-06-13T00:00:00.000Z",
+        });
+      },
+    });
+
+    await client.pricing.getSwap("swap_123", signer.agentId);
+    await client.pricing.swapHistory({ limit: 2 }, signer.agentId);
+    await client.pricing.getBridge("bridge_123", signer.agentId);
+    await client.pricing.bridgeHistory({ limit: 2 }, signer.agentId);
+
+    expect(requests.map((request) => request.url)).toEqual([
+      "https://example.test/swap/swap_123",
+      "https://example.test/swap/history?limit=2",
+      "https://example.test/bridge/bridge_123",
+      "https://example.test/bridge/history?limit=2",
+    ]);
+
+    for (const request of requests) {
+      expect(request.headers.get("X-Agent-ID")).toBe(signer.agentId);
+      expect(request.headers.get("X-TinyPlace-Public-Key")).toBe(
+        signer.publicKeyBase64,
+      );
+      expect(request.headers.get("X-TinyPlace-Signature")).toBeTruthy();
+      expect(request.headers.get("Authorization")).toBeNull();
+    }
   });
 });

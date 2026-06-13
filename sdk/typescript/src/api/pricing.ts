@@ -95,10 +95,14 @@ export class PricingApi {
     return this.http.post<SwapExecution>("/swap/execute", request);
   }
 
-  getSwap(swapId: string): Promise<SwapExecution> {
-    return this.http.getAuth<SwapExecution>(
-      `/swap/${encodeURIComponent(swapId)}`,
-    );
+  getSwap(swapId: string, agentId?: string): Promise<SwapExecution> {
+    if (agentId) {
+      return this.http.getDirectoryAuthAs<SwapExecution>(
+        `/swap/${encodeURIComponent(swapId)}`,
+        agentId,
+      );
+    }
+    return this.http.get<SwapExecution>(`/swap/${encodeURIComponent(swapId)}`);
   }
 
   getSwapStatus(swapId: string): Promise<SwapExecution> {
@@ -107,11 +111,21 @@ export class PricingApi {
     );
   }
 
-  swapHistory(params?: {
-    limit?: number;
-    offset?: number;
-  }): Promise<{ swaps: Array<SwapExecution> }> {
-    return this.http.getAuth<{ swaps: Array<SwapExecution> }>(
+  swapHistory(
+    params?: {
+      limit?: number;
+      offset?: number;
+    },
+    agentId?: string,
+  ): Promise<{ swaps: Array<SwapExecution> }> {
+    if (agentId) {
+      return this.http.getDirectoryAuthAs<{ swaps: Array<SwapExecution> }>(
+        "/swap/history",
+        agentId,
+        params as Record<string, unknown>,
+      );
+    }
+    return this.http.get<{ swaps: Array<SwapExecution> }>(
       "/swap/history",
       params as Record<string, unknown>,
     );
@@ -154,8 +168,14 @@ export class PricingApi {
     return this.http.post<BridgeExecution>("/bridge/execute", request);
   }
 
-  getBridge(bridgeId: string): Promise<BridgeExecution> {
-    return this.http.getAuth<BridgeExecution>(
+  getBridge(bridgeId: string, agentId?: string): Promise<BridgeExecution> {
+    if (agentId) {
+      return this.http.getDirectoryAuthAs<BridgeExecution>(
+        `/bridge/${encodeURIComponent(bridgeId)}`,
+        agentId,
+      );
+    }
+    return this.http.get<BridgeExecution>(
       `/bridge/${encodeURIComponent(bridgeId)}`,
     );
   }
@@ -166,11 +186,21 @@ export class PricingApi {
     );
   }
 
-  bridgeHistory(params?: {
-    limit?: number;
-    offset?: number;
-  }): Promise<{ bridges: Array<BridgeExecution> }> {
-    return this.http.getAuth<{ bridges: Array<BridgeExecution> }>(
+  bridgeHistory(
+    params?: {
+      limit?: number;
+      offset?: number;
+    },
+    agentId?: string,
+  ): Promise<{ bridges: Array<BridgeExecution> }> {
+    if (agentId) {
+      return this.http.getDirectoryAuthAs<{ bridges: Array<BridgeExecution> }>(
+        "/bridge/history",
+        agentId,
+        params as Record<string, unknown>,
+      );
+    }
+    return this.http.get<{ bridges: Array<BridgeExecution> }>(
       "/bridge/history",
       params as Record<string, unknown>,
     );
