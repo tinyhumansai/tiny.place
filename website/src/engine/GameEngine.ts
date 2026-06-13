@@ -46,9 +46,7 @@ export default class GameEngine {
 
 		this.game = new Phaser.Game(config);
 		this.game.events.once("ready", () => {
-			this.scene = this.game!.scene.getScene(
-				"RoomScene"
-			) as RoomScene;
+			this.scene = this.game!.scene.getScene("RoomScene") as RoomScene;
 			this.resolveReady();
 		});
 	}

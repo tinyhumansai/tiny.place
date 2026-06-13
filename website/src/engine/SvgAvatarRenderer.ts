@@ -67,9 +67,18 @@ export function randomAppearance(): AvatarAppearance {
 }
 
 function darken(hex: string, factor: number): string {
-	const r = Math.max(0, Math.round(Number.parseInt(hex.slice(1, 3), 16) * factor));
-	const g = Math.max(0, Math.round(Number.parseInt(hex.slice(3, 5), 16) * factor));
-	const b = Math.max(0, Math.round(Number.parseInt(hex.slice(5, 7), 16) * factor));
+	const r = Math.max(
+		0,
+		Math.round(Number.parseInt(hex.slice(1, 3), 16) * factor)
+	);
+	const g = Math.max(
+		0,
+		Math.round(Number.parseInt(hex.slice(3, 5), 16) * factor)
+	);
+	const b = Math.max(
+		0,
+		Math.round(Number.parseInt(hex.slice(5, 7), 16) * factor)
+	);
 	return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
@@ -163,7 +172,9 @@ export function generateAvatarSvg(
 
 	const parts: Array<string> = [];
 
-	parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`);
+	parts.push(
+		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`
+	);
 
 	const leftLegX = cx - legGap - legW / 2 + legOffsets.leftX;
 	const rightLegX = cx + legGap - legW / 2 + legOffsets.rightX;

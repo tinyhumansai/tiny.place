@@ -3,10 +3,7 @@
 import { useCallback, useState } from "react";
 
 import type { FunctionComponent } from "@src/common/types";
-import {
-	ROOM_TYPE_PRESETS,
-	type RoomPreset,
-} from "@src/engine/RoomModel";
+import { ROOM_TYPE_PRESETS, type RoomPreset } from "@src/engine/RoomModel";
 
 const TILE_W = 8;
 const TILE_H = 4;
@@ -77,7 +74,8 @@ function RoomPreview({
 				const leftPoints = `${isoX - hw},${isoY} ${isoX},${isoY + hh} ${isoX},${isoY + hh + 2} ${isoX - hw},${isoY + 2}`;
 				const rightPoints = `${isoX + hw},${isoY} ${isoX},${isoY + hh} ${isoX},${isoY + hh + 2} ${isoX + hw},${isoY + 2}`;
 
-				const brightness = tile.height === 1 ? 1 : tile.height === 2 ? 0.85 : 0.7;
+				const brightness =
+					tile.height === 1 ? 1 : tile.height === 2 ? 0.85 : 0.7;
 				const topOpacity = 0.3 + brightness * 0.3;
 				const leftOpacity = 0.15 + brightness * 0.15;
 				const rightOpacity = 0.2 + brightness * 0.2;

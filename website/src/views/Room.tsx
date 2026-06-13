@@ -14,7 +14,9 @@ import {
 	ROOM_TYPE_PRESETS,
 } from "@src/engine/RoomModel";
 
-function appearanceToFigure(appearance: ReturnType<typeof randomAppearance>): string {
+function appearanceToFigure(
+	appearance: ReturnType<typeof randomAppearance>
+): string {
 	return `skin-${appearance.skinColor}-hair-${appearance.hairColor}-shirt-${appearance.shirtColor}-pants-${appearance.pantsColor}-hs-${appearance.hairStyle}`;
 }
 
@@ -22,7 +24,11 @@ function generateRandomFigure(): string {
 	return appearanceToFigure(randomAppearance());
 }
 
-const ROOM_PRESETS: Array<{ label: string; theme?: RoomTheme; factory: () => ReturnType<typeof createDefaultRoom> }> = [
+const ROOM_PRESETS: Array<{
+	label: string;
+	theme?: RoomTheme;
+	factory: () => ReturnType<typeof createDefaultRoom>;
+}> = [
 	{ label: "Default 8x8", factory: createDefaultRoom },
 	{ label: "L-Shaped", factory: createLShapedRoom },
 	{ label: "Multi-Level", factory: createMultiLevelRoom },
@@ -157,7 +163,7 @@ export function Room(): FunctionComponent {
 			const figure = generateRandomFigure();
 			const name = `Avatar ${id}`;
 			const tile = spawnTiles[Math.floor(Math.random() * spawnTiles.length)]!;
-			const direction = (Math.floor(Math.random() * 8)) as Direction;
+			const direction = Math.floor(Math.random() * 8) as Direction;
 
 			void engine
 				.addAvatar(id, name, figure, tile.x, tile.y, 0, direction)

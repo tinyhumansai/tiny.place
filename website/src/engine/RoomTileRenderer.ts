@@ -32,7 +32,10 @@ function drawDiamond(
 	context.fill();
 }
 
-function generateFloorTile(thickness: number, theme: RoomTheme): HTMLCanvasElement {
+function generateFloorTile(
+	thickness: number,
+	theme: RoomTheme
+): HTMLCanvasElement {
 	const canvas = document.createElement("canvas");
 	const context = canvas.getContext("2d");
 	canvas.width = 64;
@@ -167,7 +170,10 @@ function generateWallR(height: number, theme: RoomTheme): HTMLCanvasElement {
 	return canvas;
 }
 
-function generateWallBeforeDoorL(height: number, theme: RoomTheme): HTMLCanvasElement {
+function generateWallBeforeDoorL(
+	height: number,
+	theme: RoomTheme
+): HTMLCanvasElement {
 	const canvas = document.createElement("canvas");
 	const context = canvas.getContext("2d");
 	canvas.width = 40;
@@ -348,7 +354,10 @@ function generateStairR(theme: RoomTheme): HTMLCanvasElement | null {
 export default class RoomTileRenderer {
 	private currentThemeId: string = "";
 
-	public initialize(scene: Phaser.Scene, theme: RoomTheme = DEFAULT_THEME): void {
+	public initialize(
+		scene: Phaser.Scene,
+		theme: RoomTheme = DEFAULT_THEME
+	): void {
 		this.currentThemeId = theme.id;
 
 		const tileKey = `room_tile_${theme.id}`;
@@ -380,7 +389,11 @@ export default class RoomTileRenderer {
 		return `room_stair_r_${this.currentThemeId}`;
 	}
 
-	public getWallLKey(scene: Phaser.Scene, z: number, theme: RoomTheme = DEFAULT_THEME): string {
+	public getWallLKey(
+		scene: Phaser.Scene,
+		z: number,
+		theme: RoomTheme = DEFAULT_THEME
+	): string {
 		const key = `room_wall_l_${theme.id}_${z}`;
 		if (!scene.textures.exists(key)) {
 			scene.textures.addCanvas(key, generateWallL(122 + z * 32, theme));
@@ -388,7 +401,11 @@ export default class RoomTileRenderer {
 		return key;
 	}
 
-	public getWallRKey(scene: Phaser.Scene, z: number, theme: RoomTheme = DEFAULT_THEME): string {
+	public getWallRKey(
+		scene: Phaser.Scene,
+		z: number,
+		theme: RoomTheme = DEFAULT_THEME
+	): string {
 		const key = `room_wall_r_${theme.id}_${z}`;
 		if (!scene.textures.exists(key)) {
 			scene.textures.addCanvas(key, generateWallR(122 + z * 32, theme));
@@ -396,7 +413,10 @@ export default class RoomTileRenderer {
 		return key;
 	}
 
-	public getDoorLKey(scene: Phaser.Scene, theme: RoomTheme = DEFAULT_THEME): string {
+	public getDoorLKey(
+		scene: Phaser.Scene,
+		theme: RoomTheme = DEFAULT_THEME
+	): string {
 		const key = `room_door_l_${theme.id}`;
 		if (!scene.textures.exists(key)) {
 			scene.textures.addCanvas(key, generateWallL(28, theme));
@@ -404,7 +424,11 @@ export default class RoomTileRenderer {
 		return key;
 	}
 
-	public getDoorBeforeLKey(scene: Phaser.Scene, z: number, theme: RoomTheme = DEFAULT_THEME): string {
+	public getDoorBeforeLKey(
+		scene: Phaser.Scene,
+		z: number,
+		theme: RoomTheme = DEFAULT_THEME
+	): string {
 		const key = `room_door_before_l_${theme.id}_${z}`;
 		if (!scene.textures.exists(key)) {
 			scene.textures.addCanvas(

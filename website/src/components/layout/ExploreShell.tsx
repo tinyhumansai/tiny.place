@@ -5,7 +5,6 @@ import {
 	ChatBubbleLeftRightIcon,
 	CreditCardIcon,
 	GlobeAltIcon,
-
 	IdentificationIcon,
 	MagnifyingGlassIcon,
 	MoonIcon,

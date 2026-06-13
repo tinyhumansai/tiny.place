@@ -7,14 +7,59 @@ const POKER_ROOM_LAYOUT: RoomFurnitureLayout = {
 
 		{ itemType: "dealer_chip", tileX: 5.2, tileY: 6.0, tileZ: 2, offsetY: -30 },
 
-		{ itemType: "chip_stack_red", tileX: 5.5, tileY: 6.5, tileZ: 2, offsetY: -34 },
-		{ itemType: "chip_stack_blue", tileX: 6.5, tileY: 6.8, tileZ: 2, offsetY: -36 },
-		{ itemType: "chip_stack_green", tileX: 5.8, tileY: 7.5, tileZ: 2, offsetY: -30 },
-		{ itemType: "chip_stack_black", tileX: 6.5, tileY: 7.5, tileZ: 2, offsetY: -34 },
+		{
+			itemType: "chip_stack_red",
+			tileX: 5.5,
+			tileY: 6.5,
+			tileZ: 2,
+			offsetY: -34,
+		},
+		{
+			itemType: "chip_stack_blue",
+			tileX: 6.5,
+			tileY: 6.8,
+			tileZ: 2,
+			offsetY: -36,
+		},
+		{
+			itemType: "chip_stack_green",
+			tileX: 5.8,
+			tileY: 7.5,
+			tileZ: 2,
+			offsetY: -30,
+		},
+		{
+			itemType: "chip_stack_black",
+			tileX: 6.5,
+			tileY: 7.5,
+			tileZ: 2,
+			offsetY: -34,
+		},
 
-		{ itemType: "card_facedown", tileX: 5.5, tileY: 7.0, tileZ: 2, offsetY: -32, offsetX: -4 },
-		{ itemType: "card_facedown", tileX: 6.3, tileY: 7.2, tileZ: 2, offsetY: -34, offsetX: 6 },
-		{ itemType: "card_facedown", tileX: 6.0, tileY: 7.5, tileZ: 2, offsetY: -30, offsetX: 2 },
+		{
+			itemType: "card_facedown",
+			tileX: 5.5,
+			tileY: 7.0,
+			tileZ: 2,
+			offsetY: -32,
+			offsetX: -4,
+		},
+		{
+			itemType: "card_facedown",
+			tileX: 6.3,
+			tileY: 7.2,
+			tileZ: 2,
+			offsetY: -34,
+			offsetX: 6,
+		},
+		{
+			itemType: "card_facedown",
+			tileX: 6.0,
+			tileY: 7.5,
+			tileZ: 2,
+			offsetY: -30,
+			offsetX: 2,
+		},
 
 		// Dealer chair — top-left short end
 		{ itemType: "chair", tileX: 4.5, tileY: 5.5, tileZ: 2, offsetY: -10 },
@@ -46,7 +91,13 @@ const COURT_ROOM_LAYOUT: RoomFurnitureLayout = {
 		{ itemType: "chair", tileX: 5.0, tileY: 3.0, tileZ: 2, offsetY: -10 },
 
 		// Witness stand — to the right of the judge
-		{ itemType: "witness_stand", tileX: 8.5, tileY: 4.5, tileZ: 2, offsetY: -20 },
+		{
+			itemType: "witness_stand",
+			tileX: 8.5,
+			tileY: 4.5,
+			tileZ: 2,
+			offsetY: -20,
+		},
 		{ itemType: "chair", tileX: 8.0, tileY: 4.0, tileZ: 2, offsetY: -10 },
 
 		// Defense table — left side, facing judge

@@ -69,9 +69,7 @@ function calculateZIndex(
 	priority: number
 ): number {
 	return (
-		(x + y) * COMPARABLE_X_Y +
-		z * COMPARABLE_Z +
-		PRIORITY_MULTIPLIER * priority
+		(x + y) * COMPARABLE_X_Y + z * COMPARABLE_Z + PRIORITY_MULTIPLIER * priority
 	);
 }
 
@@ -184,10 +182,7 @@ export default class RoomScene extends Phaser.Scene {
 			this.currentModel.doorY,
 			0
 		);
-		this.cameras.main.centerOn(
-			door.x,
-			door.y + CAMERA_CENTERED_OFFSET_Y
-		);
+		this.cameras.main.centerOn(door.x, door.y + CAMERA_CENTERED_OFFSET_Y);
 	}
 
 	public loadRoom(model: RoomModel, theme: RoomTheme = DEFAULT_THEME): void {
@@ -229,13 +224,13 @@ export default class RoomScene extends Phaser.Scene {
 		for (let x = 0; x < model.maxX; x++) {
 			for (let y = 0; y < model.maxY; y++) {
 				const tile = model.getTile(x, y);
-				if (
-					(model.doorX !== x || model.doorY !== y) &&
-					tile > 0 &&
-					y <= minY
-				) {
+				if ((model.doorX !== x || model.doorY !== y) && tile > 0 && y <= minY) {
 					if (minY > y) minY = y;
-					const key = this.tileRenderer.getWallRKey(this, maxHeight - tile, theme);
+					const key = this.tileRenderer.getWallRKey(
+						this,
+						maxHeight - tile,
+						theme
+					);
 					const local = tileToLocal(x, y + 1, maxHeight - 1);
 					const wall = this.add.image(
 						local.x + ROOM_WALL_R_OFFSET_X,
@@ -290,10 +285,7 @@ export default class RoomScene extends Phaser.Scene {
 
 				let textureKey = floorKey;
 
-				if (
-					model.isValidTile(x + 1, y) &&
-					model.getTile(x + 1, y) < tile
-				) {
+				if (model.isValidTile(x + 1, y) && model.getTile(x + 1, y) < tile) {
 					textureKey = stairLKey;
 				} else if (
 					model.isValidTile(x - 1, y) &&
@@ -311,11 +303,7 @@ export default class RoomScene extends Phaser.Scene {
 				) {
 					if (this.textures.exists(stairRKey)) {
 						const local = tileToLocal(x, y, tile - 1);
-						const stair = this.add.image(
-							local.x - 34,
-							local.y,
-							stairRKey
-						);
+						const stair = this.add.image(local.x - 34, local.y, stairRKey);
 						stair.setOrigin(0, 0);
 						stair.setDepth(
 							calculateZIndex(
@@ -490,11 +478,7 @@ export default class RoomScene extends Phaser.Scene {
 	private updateAvatarTexture(avatar: RoomAvatarState): void {
 		if (!avatar.loaded) return;
 		const frameCount =
-			avatar.action === "walking"
-				? 4
-				: avatar.action === "waving"
-					? 2
-					: 1;
+			avatar.action === "walking" ? 4 : avatar.action === "waving" ? 2 : 1;
 		const { key, flipX } = getTextureKey(
 			avatar.textureKeyPrefix,
 			avatar.direction,
@@ -565,12 +549,9 @@ export default class RoomScene extends Phaser.Scene {
 		}
 
 		const t = avatar.walkProgress;
-		const visualX =
-			avatar.previousX + (avatar.targetX - avatar.previousX) * t;
-		const visualY =
-			avatar.previousY + (avatar.targetY - avatar.previousY) * t;
-		const visualZ =
-			avatar.previousZ + (avatar.targetZ - avatar.previousZ) * t;
+		const visualX = avatar.previousX + (avatar.targetX - avatar.previousX) * t;
+		const visualY = avatar.previousY + (avatar.targetY - avatar.previousY) * t;
+		const visualZ = avatar.previousZ + (avatar.targetZ - avatar.previousZ) * t;
 
 		const local = tileToLocal(visualX, visualY, visualZ);
 		const offsetX =
@@ -598,10 +579,7 @@ export default class RoomScene extends Phaser.Scene {
 		}
 	}
 
-	private updateAutonomy(
-		avatar: RoomAvatarState,
-		deltaMs: number
-	): void {
+	private updateAutonomy(avatar: RoomAvatarState, deltaMs: number): void {
 		if (!avatar.autonomy || !this.currentModel) return;
 
 		if (avatar.action === "waving") {
@@ -626,7 +604,7 @@ export default class RoomScene extends Phaser.Scene {
 			return;
 		}
 		if (roll < 0.3) {
-			avatar.direction = (Math.floor(Math.random() * 8)) as Direction;
+			avatar.direction = Math.floor(Math.random() * 8) as Direction;
 			avatar.idleTimer = randomBetween(IDLE_MIN_MS, IDLE_MAX_MS);
 			this.updateAvatarTexture(avatar);
 			return;
@@ -636,8 +614,7 @@ export default class RoomScene extends Phaser.Scene {
 		if (tiles.length === 0) return;
 
 		for (let attempt = 0; attempt < 10; attempt++) {
-			const target =
-				tiles[Math.floor(Math.random() * tiles.length)]!;
+			const target = tiles[Math.floor(Math.random() * tiles.length)]!;
 			if (target.x === avatar.x && target.y === avatar.y) continue;
 
 			const path = this.currentModel.findPath(
