@@ -14,6 +14,10 @@ export class ExplorerApi {
     private readonly wsFactory?: (path: string) => TinyVerseWebSocket,
   ) {}
 
+  root(): Promise<ExplorerOverview> {
+    return this.http.get<ExplorerOverview>("/explorer");
+  }
+
   overview(): Promise<ExplorerOverview> {
     return this.http.get<ExplorerOverview>("/explorer/overview");
   }
