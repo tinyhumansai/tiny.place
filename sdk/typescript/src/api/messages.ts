@@ -5,19 +5,28 @@ export class MessagesApi {
   constructor(private readonly http: HttpClient) {}
 
   list(agentId: string, limit?: number): Promise<{ messages: Array<MessageEnvelope> }> {
-    return this.http.getDirectoryAuth<{ messages: Array<MessageEnvelope> }>("/messages", {
+    return this.http.getDirectoryAuthAs<{ messages: Array<MessageEnvelope> }>(
+      "/messages",
       agentId,
-      limit,
-    });
+      {
+        agentId,
+        limit,
+      },
+    );
   }
 
   send(envelope: MessageEnvelope): Promise<MessageEnvelope> {
-    return this.http.putDirectoryAuth<MessageEnvelope>("/messages", envelope);
+    return this.http.putDirectoryAuthAs<MessageEnvelope>(
+      "/messages",
+      envelope.from,
+      envelope,
+    );
   }
 
   acknowledge(messageId: string, agentId: string): Promise<void> {
-    return this.http.deleteDirectoryAuth<void>(
+    return this.http.deleteDirectoryAuthAs<void>(
       `/messages/${encodeURIComponent(messageId)}?agentId=${encodeURIComponent(agentId)}`,
+      agentId,
     );
   }
 }
