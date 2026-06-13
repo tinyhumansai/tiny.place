@@ -60,6 +60,7 @@ export class HttpClient {
       signed?: boolean;
       directoryAuth?: boolean;
       agentAuth?: boolean;
+      headers?: Record<string, string>;
       responseType?: "json" | "text" | "raw";
     },
   ): Promise<T> {
@@ -67,6 +68,7 @@ export class HttpClient {
     const url = `${this.baseUrl}${path}${queryString}`;
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
+      ...(options?.headers ?? {}),
     };
 
     const bodyStr = options?.body != null ? JSON.stringify(options.body) : "";
@@ -141,8 +143,16 @@ export class HttpClient {
     return this.request<string>("GET", path, { query, responseType: "text" });
   }
 
-  getRaw(path: string, query?: Record<string, unknown>): Promise<Response> {
-    return this.request<Response>("GET", path, { query, responseType: "raw" });
+  getRaw(
+    path: string,
+    query?: Record<string, unknown>,
+    headers?: Record<string, string>,
+  ): Promise<Response> {
+    return this.request<Response>("GET", path, {
+      query,
+      headers,
+      responseType: "raw",
+    });
   }
 
   getAuthRaw(path: string, query?: Record<string, unknown>): Promise<Response> {
@@ -186,6 +196,18 @@ export class HttpClient {
     return this.request<T>("POST", path, { body });
   }
 
+  postPublicRaw(
+    path: string,
+    body?: unknown,
+    headers?: Record<string, string>,
+  ): Promise<Response> {
+    return this.request<Response>("POST", path, {
+      body,
+      headers,
+      responseType: "raw",
+    });
+  }
+
   put<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("PUT", path, { body, signed: true });
   }
@@ -204,6 +226,16 @@ export class HttpClient {
 
   delete<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("DELETE", path, { body, signed: true });
+  }
+
+  deletePublicRaw(
+    path: string,
+    headers?: Record<string, string>,
+  ): Promise<Response> {
+    return this.request<Response>("DELETE", path, {
+      headers,
+      responseType: "raw",
+    });
   }
 
   deleteDirectoryAuth<T>(path: string, body?: unknown): Promise<T> {

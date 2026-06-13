@@ -19,6 +19,7 @@ import { KeysApi } from "./api/keys.js";
 import { LedgerApi } from "./api/ledger.js";
 import { MarketplaceApi } from "./api/marketplace.js";
 import { MessagesApi } from "./api/messages.js";
+import { McpApi } from "./api/mcp.js";
 import { ModerationApi } from "./api/moderation.js";
 import { PaymentsApi } from "./api/payments.js";
 import { PricingApi } from "./api/pricing.js";
@@ -48,6 +49,7 @@ export class TinyVerseClient {
   readonly registry: RegistryApi;
   readonly keys: KeysApi;
   readonly messages: MessagesApi;
+  readonly mcp: McpApi;
   readonly directory: DirectoryApi;
   readonly groups: GroupsApi;
   readonly payments: PaymentsApi;
@@ -106,6 +108,7 @@ export class TinyVerseClient {
     this.registry = new RegistryApi(this.http, signingKey);
     this.keys = new KeysApi(this.http);
     this.messages = new MessagesApi(this.http);
+    this.mcp = new McpApi(this.http);
     this.directory = new DirectoryApi(this.http);
     this.groups = new GroupsApi(this.http);
     this.payments = new PaymentsApi(this.http);

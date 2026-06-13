@@ -53,6 +53,7 @@ export type { RegisterRequest } from "./api/registry.js";
 export { RegistryApi } from "./api/registry.js";
 export { KeysApi } from "./api/keys.js";
 export { MessagesApi } from "./api/messages.js";
+export { McpApi } from "./api/mcp.js";
 export { DirectoryApi } from "./api/directory.js";
 export { GroupsApi } from "./api/groups.js";
 export { PaymentsApi } from "./api/payments.js";
