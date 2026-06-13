@@ -14,7 +14,7 @@ export class ExplorerApi {
   ) {}
 
   overview(): Promise<ExplorerOverview> {
-    return this.http.get<ExplorerOverview>("/explorer");
+    return this.http.get<ExplorerOverview>("/explorer/overview");
   }
 
   listTransactions(params?: {

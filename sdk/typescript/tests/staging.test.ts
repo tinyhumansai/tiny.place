@@ -133,6 +133,13 @@ describe("staging: unauthenticated endpoints", () => {
     expect(stats).toBeDefined();
   });
 
+  it("explorer.overview returns canonical overview data", async () => {
+    const result = await client.explorer.overview();
+    expect(result).toHaveProperty("ledger");
+    expect(result).toHaveProperty("last24h");
+    expect(result).toHaveProperty("allTime");
+  });
+
   it("directory.listAgents returns array", async () => {
     const result = await client.directory.listAgents();
     expect(result).toHaveProperty("agents");
