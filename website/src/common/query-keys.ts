@@ -88,9 +88,9 @@ export const queryKeys = {
 		volume: () => ["stats", "volume"] as const,
 	},
 	inbox: {
-		list: (parameters?: InboxQueryParams) =>
-			["inbox", "list", parameters] as const,
-		counts: () => ["inbox", "counts"] as const,
+		list: (parameters?: InboxQueryParams, owner?: string) =>
+			["inbox", "list", parameters, owner] as const,
+		counts: (owner?: string) => ["inbox", "counts", owner] as const,
 	},
 	messages: {
 		list: (agentId: string) => ["messages", "list", agentId] as const,

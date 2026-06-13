@@ -5,7 +5,14 @@ import { useState } from "react";
 import type { InboxItem, InboxType } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
-import { useInbox } from "@src/hooks/use-inbox";
+import {
+	useArchiveInboxItem,
+	useDeleteInboxItem,
+	useInbox,
+	useMarkAllInboxRead,
+	useMarkInboxRead,
+} from "@src/hooks/use-inbox";
+import { useAuthStore } from "@src/store/auth";
 
 const filterOptions = ["All", "Tasks", "Payments", "Invites"] as const;
 
@@ -18,6 +25,7 @@ const typeColorMap: Record<InboxType, string> = {
 	PAYMENT_REQUIRED: "bg-green-400",
 	GROUP_INVITE: "bg-purple-500",
 	GROUP_MESSAGE: "bg-purple-400",
+	ARTIFACT_SHARED: "bg-cyan-500",
 	IDENTITY_TRANSFER: "bg-orange-500",
 	OFFER_RECEIVED: "bg-teal-500",
 	SUBSCRIPTION_EVENT: "bg-indigo-500",
@@ -57,7 +65,19 @@ export const InboxMock = ({
 	isDark: boolean;
 }): FunctionComponent => {
 	const [activeFilter, setActiveFilter] = useState<Filter>("All");
-	const { data, isLoading, isError, error } = useInbox();
+	const [ownerInput, setOwnerInput] = useState("");
+	const agentId = useAuthStore((state) => state.agentId);
+	const owner = ownerInput.trim() || agentId || undefined;
+	const { data, isLoading, isError, error } = useInbox({ limit: 50 }, owner);
+	const markRead = useMarkInboxRead();
+	const archiveItem = useArchiveInboxItem();
+	const deleteItem = useDeleteInboxItem();
+	const markAllRead = useMarkAllInboxRead();
+	const mutationError =
+		markRead.error ??
+		archiveItem.error ??
+		deleteItem.error ??
+		markAllRead.error;
 
 	const isAuthError =
 		isError &&
@@ -118,6 +138,19 @@ export const InboxMock = ({
 					)}
 				</span>
 				<div className="flex gap-1">
+					<input
+						placeholder="@owner"
+						type="text"
+						value={ownerInput}
+						className={`w-36 rounded-md border px-2 py-1 text-[10px] ${
+							isDark
+								? "border-neutral-800 bg-neutral-900 text-white placeholder:text-neutral-600"
+								: "border-neutral-200 bg-white text-black placeholder:text-neutral-400"
+						}`}
+						onChange={(event): void => {
+							setOwnerInput(event.target.value);
+						}}
+					/>
 					{filterOptions.map(
 						(filter): React.ReactElement => (
 							<button
@@ -138,8 +171,23 @@ export const InboxMock = ({
 							</button>
 						)
 					)}
+					<button
+						className="rounded-md bg-blue-500/10 px-2 py-1 text-[10px] font-medium text-blue-500 disabled:opacity-50"
+						disabled={!owner || markAllRead.isPending}
+						type="button"
+						onClick={(): void => {
+							markAllRead.mutate({ owner });
+						}}
+					>
+						Read all
+					</button>
 				</div>
 			</div>
+			{mutationError ? (
+				<p className="border-b border-red-500/20 px-4 py-2 text-xs text-red-500">
+					{mutationError.message}
+				</p>
+			) : null}
 
 			<div className="flex-1 overflow-y-auto">
 				{isLoading && (
@@ -194,27 +242,46 @@ export const InboxMock = ({
 									{formatTimestamp(item.timestamp)}
 								</p>
 							</div>
-							{item.actions && item.actions.length > 0 && (
-								<div className="flex shrink-0 gap-1">
-									{item.actions.map(
-										(action): React.ReactElement => (
-											<button
-												key={action}
-												type="button"
-												className={`rounded-md px-2 py-1 text-[10px] font-medium ${
-													action === "Decline"
-														? isDark
-															? "text-neutral-500 hover:text-neutral-300"
-															: "text-neutral-400 hover:text-neutral-600"
-														: "bg-blue-500/10 text-blue-500"
-												}`}
-											>
-												{action}
-											</button>
-										)
-									)}
-								</div>
-							)}
+							<div className="flex shrink-0 gap-1">
+								{item.status === "unread" ? (
+									<button
+										className="rounded-md bg-blue-500/10 px-2 py-1 text-[10px] font-medium text-blue-500 disabled:opacity-50"
+										disabled={!owner || markRead.isPending}
+										type="button"
+										onClick={(): void => {
+											markRead.mutate({ itemId: item.itemId, owner });
+										}}
+									>
+										Read
+									</button>
+								) : null}
+								{item.status !== "archived" ? (
+									<button
+										disabled={!owner || archiveItem.isPending}
+										type="button"
+										className={`rounded-md px-2 py-1 text-[10px] font-medium disabled:opacity-50 ${
+											isDark
+												? "text-neutral-500 hover:text-neutral-300"
+												: "text-neutral-400 hover:text-neutral-600"
+										}`}
+										onClick={(): void => {
+											archiveItem.mutate({ itemId: item.itemId, owner });
+										}}
+									>
+										Archive
+									</button>
+								) : null}
+								<button
+									className="rounded-md px-2 py-1 text-[10px] font-medium text-red-500 disabled:opacity-50"
+									disabled={!owner || deleteItem.isPending}
+									type="button"
+									onClick={(): void => {
+										deleteItem.mutate({ itemId: item.itemId, owner });
+									}}
+								>
+									Delete
+								</button>
+							</div>
 						</div>
 					)
 				)}

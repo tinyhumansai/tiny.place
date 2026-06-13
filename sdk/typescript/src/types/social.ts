@@ -8,6 +8,7 @@ export type InboxType =
   | "PAYMENT_REQUIRED"
   | "GROUP_INVITE"
   | "GROUP_MESSAGE"
+  | "ARTIFACT_SHARED"
   | "IDENTITY_TRANSFER"
   | "OFFER_RECEIVED"
   | "SUBSCRIPTION_EVENT"
@@ -52,6 +53,11 @@ export interface InboxCounts {
   archived: number;
   byType: Record<string, number>;
   urgent: number;
+}
+
+export interface InboxMarkResult {
+  itemIds: Array<string>;
+  status: InboxStatus;
 }
 
 export interface InboxQueryParams {
