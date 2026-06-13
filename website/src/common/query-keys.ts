@@ -59,6 +59,7 @@ export const queryKeys = {
 		list: (parameters?: EscrowQueryParams) =>
 			["escrow", "list", parameters] as const,
 		detail: (escrowId: string) => ["escrow", "detail", escrowId] as const,
+		dispute: (escrowId: string) => ["escrow", "dispute", escrowId] as const,
 	},
 	marketplace: {
 		products: (parameters?: ProductQueryParams) =>

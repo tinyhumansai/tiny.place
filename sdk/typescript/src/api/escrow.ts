@@ -65,24 +65,39 @@ export class EscrowApi {
     );
   }
 
-  acceptDelivery(escrowId: string, actor?: string): Promise<Escrow> {
+  acceptDelivery(
+    escrowId: string,
+    actor?: string,
+    onChainTx?: string,
+  ): Promise<Escrow> {
     return this.postEscrowActor(
       `/escrow/${encodeURIComponent(escrowId)}/accept-delivery`,
       actor,
+      onChainTx ? { onChainTx } : undefined,
     );
   }
 
-  claimRelease(escrowId: string, actor?: string): Promise<Escrow> {
+  claimRelease(
+    escrowId: string,
+    actor?: string,
+    onChainTx?: string,
+  ): Promise<Escrow> {
     return this.postEscrowActor(
       `/escrow/${encodeURIComponent(escrowId)}/claim-release`,
       actor,
+      onChainTx ? { onChainTx } : undefined,
     );
   }
 
-  claimRefund(escrowId: string, actor?: string): Promise<Escrow> {
+  claimRefund(
+    escrowId: string,
+    actor?: string,
+    onChainTx?: string,
+  ): Promise<Escrow> {
     return this.postEscrowActor(
       `/escrow/${encodeURIComponent(escrowId)}/claim-refund`,
       actor,
+      onChainTx ? { onChainTx } : undefined,
     );
   }
 
@@ -98,10 +113,11 @@ export class EscrowApi {
     );
   }
 
-  cancel(escrowId: string, actor?: string): Promise<Escrow> {
+  cancel(escrowId: string, actor?: string, onChainTx?: string): Promise<Escrow> {
     return this.postEscrowActor(
       `/escrow/${encodeURIComponent(escrowId)}/cancel`,
       actor,
+      onChainTx ? { onChainTx } : undefined,
     );
   }
 
@@ -169,13 +185,13 @@ export class EscrowApi {
 
   payArbitration(
     escrowId: string,
-    amount: string,
+    onChainTx: string,
     actor?: string,
   ): Promise<EscrowDispute> {
     return this.postEscrowActor(
       `/escrow/${encodeURIComponent(escrowId)}/dispute/pay-arbitration`,
       actor,
-      { actor, amount },
+      { actor, onChainTx },
     );
   }
 
@@ -208,10 +224,12 @@ export class EscrowApi {
     escrowId: string,
     milestoneId: string,
     actor?: string,
+    onChainTx?: string,
   ): Promise<EscrowMilestone> {
     return this.postEscrowActor(
       `/escrow/${encodeURIComponent(escrowId)}/milestones/${encodeURIComponent(milestoneId)}/accept-delivery`,
       actor,
+      onChainTx ? { onChainTx } : undefined,
     );
   }
 
