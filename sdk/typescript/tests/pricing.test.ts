@@ -230,14 +230,18 @@ describe("PricingApi", () => {
     });
 
     await client.pricing.getSwap("swap_123", signer.agentId);
+    await client.pricing.getSwapStatus("swap_123", signer.agentId);
     await client.pricing.swapHistory({ limit: 2 }, signer.agentId);
     await client.pricing.getBridge("bridge_123", signer.agentId);
+    await client.pricing.getBridgeStatus("bridge_123", signer.agentId);
     await client.pricing.bridgeHistory({ limit: 2 }, signer.agentId);
 
     expect(requests.map((request) => request.url)).toEqual([
       "https://example.test/swap/swap_123",
+      "https://example.test/swap/status/swap_123",
       "https://example.test/swap/history?limit=2",
       "https://example.test/bridge/bridge_123",
+      "https://example.test/bridge/status/bridge_123",
       "https://example.test/bridge/history?limit=2",
     ]);
 

@@ -115,7 +115,13 @@ export class PricingApi {
     return this.http.get<SwapExecution>(`/swap/${encodeURIComponent(swapId)}`);
   }
 
-  getSwapStatus(swapId: string): Promise<SwapExecution> {
+  getSwapStatus(swapId: string, agentId?: string): Promise<SwapExecution> {
+    if (agentId) {
+      return this.http.getDirectoryAuthAs<SwapExecution>(
+        `/swap/status/${encodeURIComponent(swapId)}`,
+        agentId,
+      );
+    }
     return this.http.get<SwapExecution>(
       `/swap/status/${encodeURIComponent(swapId)}`,
     );
@@ -200,7 +206,16 @@ export class PricingApi {
     );
   }
 
-  getBridgeStatus(bridgeId: string): Promise<BridgeExecution> {
+  getBridgeStatus(
+    bridgeId: string,
+    agentId?: string,
+  ): Promise<BridgeExecution> {
+    if (agentId) {
+      return this.http.getDirectoryAuthAs<BridgeExecution>(
+        `/bridge/status/${encodeURIComponent(bridgeId)}`,
+        agentId,
+      );
+    }
     return this.http.get<BridgeExecution>(
       `/bridge/status/${encodeURIComponent(bridgeId)}`,
     );
