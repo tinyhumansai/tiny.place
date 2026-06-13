@@ -65,6 +65,18 @@ export const queryKeys = {
 			["marketplace", "products", parameters] as const,
 		product: (productId: string) =>
 			["marketplace", "product", productId] as const,
+		productDelivery: (
+			productId: string,
+			purchaseId: string,
+			actorId?: string
+		) =>
+			[
+				"marketplace",
+				"product-delivery",
+				productId,
+				purchaseId,
+				actorId,
+			] as const,
 		categories: () => ["marketplace", "categories"] as const,
 		featured: () => ["marketplace", "featured"] as const,
 		identityListings: () => ["marketplace", "identity-listings"] as const,

@@ -45,6 +45,24 @@ export function useProduct(productId: string): UseQueryResult<Product> {
 	});
 }
 
+export function useProductDelivery(
+	productId: string,
+	purchaseId: string,
+	actorId?: string
+): UseQueryResult<Record<string, unknown>> {
+	const client = useApiClient();
+	return useQuery({
+		queryKey: queryKeys.marketplace.productDelivery(
+			productId,
+			purchaseId,
+			actorId
+		),
+		queryFn: (): Promise<Record<string, unknown>> =>
+			client.marketplace.getProductDelivery(productId, purchaseId, actorId),
+		enabled: Boolean(productId && purchaseId),
+	});
+}
+
 export function useMarketplaceCategories(): UseQueryResult<{
 	categories: Array<MarketplaceCategory>;
 }> {
@@ -129,6 +147,58 @@ export function useCreateProduct(): UseMutationResult<
 		onSuccess: (): void => {
 			void queryClient.invalidateQueries({
 				queryKey: queryKeys.marketplace.products(),
+			});
+		},
+	});
+}
+
+export function useDownloadProduct(): UseMutationResult<
+	Response,
+	Error,
+	{ actorId?: string; productId: string; purchaseId: string }
+> {
+	const client = useApiClient();
+	return useMutation({
+		mutationFn: ({ actorId, productId, purchaseId }): Promise<Response> =>
+			client.marketplace.downloadProduct(productId, purchaseId, actorId),
+	});
+}
+
+export function useUpdateProductDelivery(): UseMutationResult<
+	Record<string, unknown>,
+	Error,
+	{
+		actorId?: string;
+		delivery: Record<string, unknown>;
+		productId: string;
+		purchaseId: string;
+	}
+> {
+	const client = useApiClient();
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({
+			actorId,
+			delivery,
+			productId,
+			purchaseId,
+		}): Promise<Record<string, unknown>> =>
+			client.marketplace.updateProductDelivery(
+				productId,
+				purchaseId,
+				delivery,
+				actorId
+			),
+		onSuccess: (_delivery, { actorId, productId, purchaseId }): void => {
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.marketplace.productDelivery(
+					productId,
+					purchaseId,
+					actorId
+				),
+			});
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.marketplace.product(productId),
 			});
 		},
 	});
