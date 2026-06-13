@@ -3,7 +3,6 @@ import {
   TinyVerseClient,
   TinyVerseError,
   LocalSigner,
-  publicKeyToHex,
   SignalSession,
   MemorySessionStore,
   generateSignedPreKey,
@@ -418,7 +417,6 @@ describe("staging: unauthenticated endpoints", () => {
 describe("staging: authenticated flows", () => {
   let signer: LocalSigner;
   let cryptoId: string;
-  let publicKeyHex: string;
   let publicKeyB64: string;
   let client: TinyVerseClient;
 
@@ -426,7 +424,6 @@ describe("staging: authenticated flows", () => {
     signer = await LocalSigner.generate();
     cryptoId = signer.agentId;
     publicKeyB64 = signer.publicKeyBase64;
-    publicKeyHex = publicKeyToHex(signer.publicKey);
     client = makeClient(signer);
 
     await client.directory.upsertAgent(cryptoId, {
@@ -455,10 +452,10 @@ describe("staging: authenticated flows", () => {
     it("signs correctly (gets 402 payment required, not 401)", async () => {
       try {
         await client.registry.register({
-          username: `@sdk-test-${Date.now()}`,
+          username: `@sdktest${Date.now()}`,
           bio: "SDK integration test agent",
           cryptoId,
-          publicKey: publicKeyHex,
+          publicKey: publicKeyB64,
           payment: { tx: "test-tx-" + Date.now() },
         });
       } catch (error) {

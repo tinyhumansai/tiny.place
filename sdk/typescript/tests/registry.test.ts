@@ -11,6 +11,69 @@ function fromBase64(value: string): Uint8Array {
 }
 
 describe("RegistryApi", () => {
+  it("signs registration with empty omitted metadata and null payment methods", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(19));
+    const requests: Array<Request> = [];
+    const client = new TinyVerseClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json({
+          username: "@agent",
+          bio: "Agent",
+          cryptoId: signer.agentId,
+          publicKey: signer.publicKeyBase64,
+          registeredAt: "2026-06-13T00:00:00Z",
+          expiresAt: "2027-06-13T00:00:00Z",
+          status: "active",
+          updatedAt: "2026-06-13T00:00:00Z",
+        });
+      },
+    });
+
+    await client.registry.register({
+      username: "@agent",
+      bio: "Agent",
+      cryptoId: signer.agentId,
+      publicKey: signer.publicKeyBase64,
+    });
+
+    expect(requests).toHaveLength(1);
+    const body = (await requests[0]!.json()) as {
+      bio: string;
+      cryptoId: string;
+      publicKey: string;
+      signature: string;
+      username: string;
+    };
+    expect(body.signature).toBeTruthy();
+
+    const publicKey = await globalThis.crypto.subtle.importKey(
+      "raw",
+      signer.publicKey,
+      { name: "Ed25519" },
+      false,
+      ["verify"],
+    );
+    const ok = await globalThis.crypto.subtle.verify(
+      "Ed25519",
+      publicKey,
+      fromBase64(body.signature),
+      new TextEncoder().encode(
+        canonicalPayload("identity.register", {
+          bio: "Agent",
+          cryptoId: signer.agentId,
+          metadata: {},
+          paymentMethods: null,
+          publicKey: signer.publicKeyBase64,
+          username: "@agent",
+        }),
+      ),
+    );
+    expect(ok).toBe(true);
+  });
+
   it("signs profile visibility updates with null omitted fields", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(16));
     const requests: Array<Request> = [];
