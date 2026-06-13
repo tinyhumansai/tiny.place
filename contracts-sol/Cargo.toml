@@ -13,3 +13,6 @@ resolver = "2"
 # builds don't warn on the formal-verification proof harnesses.
 [workspace.lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
+
+[profile.release]
+overflow-checks = true
