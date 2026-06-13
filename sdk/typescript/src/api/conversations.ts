@@ -31,10 +31,18 @@ export class ConversationsApi {
   }
 
   create(request: ConversationCreateRequest): Promise<Conversation> {
-    return this.http.postDirectoryAuth<Conversation>("/conversations", {
+    const body = {
       ...request,
       conversationId: request.conversationId ?? nextClientId("conv"),
-    });
+    };
+    if (body.creator) {
+      return this.http.postDirectoryAuthAs<Conversation>(
+        "/conversations",
+        body.creator,
+        body,
+      );
+    }
+    return this.http.postDirectoryAuth<Conversation>("/conversations", body);
   }
 
   get(conversationId: string): Promise<Conversation> {
@@ -46,28 +54,54 @@ export class ConversationsApi {
   update(
     conversationId: string,
     update: ConversationUpdateRequest,
+    actorId?: string,
   ): Promise<Conversation> {
+    if (actorId) {
+      return this.http.putDirectoryAuthAs<Conversation>(
+        `/conversations/${encodeURIComponent(conversationId)}`,
+        actorId,
+        update,
+      );
+    }
     return this.http.putDirectoryAuth<Conversation>(
       `/conversations/${encodeURIComponent(conversationId)}`,
       update,
     );
   }
 
-  remove(conversationId: string): Promise<void> {
+  remove(conversationId: string, actorId?: string): Promise<void> {
+    if (actorId) {
+      return this.http.deleteDirectoryAuthAs<void>(
+        `/conversations/${encodeURIComponent(conversationId)}`,
+        actorId,
+      );
+    }
     return this.http.deleteDirectoryAuth<void>(
       `/conversations/${encodeURIComponent(conversationId)}`,
     );
   }
 
   join(conversationId: string, agentId?: string): Promise<ConversationMember> {
+    if (agentId) {
+      return this.http.postDirectoryAuthAs<ConversationMember>(
+        `/conversations/${encodeURIComponent(conversationId)}/join`,
+        agentId,
+        { agentId },
+      );
+    }
     return this.http.postDirectoryAuth<ConversationMember>(
       `/conversations/${encodeURIComponent(conversationId)}/join`,
-      agentId ? { agentId } : undefined,
     );
   }
 
   leave(conversationId: string, agentId?: string): Promise<void> {
     const query = agentId ? `?agentId=${encodeURIComponent(agentId)}` : "";
+    if (agentId) {
+      return this.http.deleteDirectoryAuthAs<void>(
+        `/conversations/${encodeURIComponent(conversationId)}/leave${query}`,
+        agentId,
+      );
+    }
     return this.http.deleteDirectoryAuth<void>(
       `/conversations/${encodeURIComponent(conversationId)}/leave${query}`,
     );
@@ -86,30 +120,68 @@ export class ConversationsApi {
   addMember(
     conversationId: string,
     agentId: string,
+    managerId?: string,
   ): Promise<ConversationMember> {
+    if (managerId) {
+      return this.http.postDirectoryAuthAs<ConversationMember>(
+        `/conversations/${encodeURIComponent(conversationId)}/members`,
+        managerId,
+        { agentId },
+      );
+    }
     return this.http.postDirectoryAuth<ConversationMember>(
       `/conversations/${encodeURIComponent(conversationId)}/members`,
       { agentId },
     );
   }
 
-  removeMember(conversationId: string, agentId: string): Promise<void> {
-    return this.http.deleteDirectoryAuth<void>(
+  removeMember(
+    conversationId: string,
+    agentId: string,
+    managerId?: string,
+  ): Promise<void> {
+    if (managerId) {
+      return this.http.deleteDirectoryAuthAs<void>(
+        `/conversations/${encodeURIComponent(conversationId)}/members/${encodeURIComponent(agentId)}`,
+        managerId,
+      );
+    }
+    return this.http.deleteDirectoryAuthAs<void>(
       `/conversations/${encodeURIComponent(conversationId)}/members/${encodeURIComponent(agentId)}`,
+      agentId,
     );
   }
 
   approveMember(
     conversationId: string,
     agentId: string,
+    managerId?: string,
   ): Promise<ConversationMember> {
+    if (managerId) {
+      return this.http.postDirectoryAuthAs<ConversationMember>(
+        `/conversations/${encodeURIComponent(conversationId)}/approve`,
+        managerId,
+        { agentId },
+      );
+    }
     return this.http.postDirectoryAuth<ConversationMember>(
       `/conversations/${encodeURIComponent(conversationId)}/approve`,
       { agentId },
     );
   }
 
-  rejectMember(conversationId: string, agentId: string): Promise<void> {
+  rejectMember(
+    conversationId: string,
+    agentId: string,
+    managerId?: string,
+  ): Promise<void> {
+    if (managerId) {
+      return this.http.postDirectoryAuthAs<void>(
+        `/conversations/${encodeURIComponent(conversationId)}/reject`,
+        managerId,
+        { agentId },
+      );
+    }
     return this.http.postDirectoryAuth<void>(
       `/conversations/${encodeURIComponent(conversationId)}/reject`,
       { agentId },
@@ -131,16 +203,34 @@ export class ConversationsApi {
     conversationId: string,
     message: ConversationMessageCreateRequest,
   ): Promise<ConversationMessage> {
+    const body = {
+      ...message,
+      messageId: message.messageId ?? nextClientId("msg"),
+    };
+    if (body.author) {
+      return this.http.postDirectoryAuthAs<ConversationMessage>(
+        `/conversations/${encodeURIComponent(conversationId)}/messages`,
+        body.author,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<ConversationMessage>(
       `/conversations/${encodeURIComponent(conversationId)}/messages`,
-      {
-        ...message,
-        messageId: message.messageId ?? nextClientId("msg"),
-      },
+      body,
     );
   }
 
-  deleteMessage(conversationId: string, messageId: string): Promise<void> {
+  deleteMessage(
+    conversationId: string,
+    messageId: string,
+    actorId?: string,
+  ): Promise<void> {
+    if (actorId) {
+      return this.http.deleteDirectoryAuthAs<void>(
+        `/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`,
+        actorId,
+      );
+    }
     return this.http.deleteDirectoryAuth<void>(
       `/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`,
     );
@@ -149,14 +239,32 @@ export class ConversationsApi {
   addModerator(
     conversationId: string,
     agentId: string,
+    ownerId?: string,
   ): Promise<ConversationRoleChange> {
+    if (ownerId) {
+      return this.http.postDirectoryAuthAs<ConversationRoleChange>(
+        `/conversations/${encodeURIComponent(conversationId)}/moderators`,
+        ownerId,
+        { agentId },
+      );
+    }
     return this.http.postDirectoryAuth<ConversationRoleChange>(
       `/conversations/${encodeURIComponent(conversationId)}/moderators`,
       { agentId },
     );
   }
 
-  removeModerator(conversationId: string, agentId: string): Promise<void> {
+  removeModerator(
+    conversationId: string,
+    agentId: string,
+    ownerId?: string,
+  ): Promise<void> {
+    if (ownerId) {
+      return this.http.deleteDirectoryAuthAs<void>(
+        `/conversations/${encodeURIComponent(conversationId)}/moderators/${encodeURIComponent(agentId)}`,
+        ownerId,
+      );
+    }
     return this.http.deleteDirectoryAuth<void>(
       `/conversations/${encodeURIComponent(conversationId)}/moderators/${encodeURIComponent(agentId)}`,
     );
@@ -165,14 +273,32 @@ export class ConversationsApi {
   addPublisher(
     conversationId: string,
     agentId: string,
+    ownerId?: string,
   ): Promise<ConversationRoleChange> {
+    if (ownerId) {
+      return this.http.postDirectoryAuthAs<ConversationRoleChange>(
+        `/conversations/${encodeURIComponent(conversationId)}/publishers`,
+        ownerId,
+        { agentId },
+      );
+    }
     return this.http.postDirectoryAuth<ConversationRoleChange>(
       `/conversations/${encodeURIComponent(conversationId)}/publishers`,
       { agentId },
     );
   }
 
-  removePublisher(conversationId: string, agentId: string): Promise<void> {
+  removePublisher(
+    conversationId: string,
+    agentId: string,
+    ownerId?: string,
+  ): Promise<void> {
+    if (ownerId) {
+      return this.http.deleteDirectoryAuthAs<void>(
+        `/conversations/${encodeURIComponent(conversationId)}/publishers/${encodeURIComponent(agentId)}`,
+        ownerId,
+      );
+    }
     return this.http.deleteDirectoryAuth<void>(
       `/conversations/${encodeURIComponent(conversationId)}/publishers/${encodeURIComponent(agentId)}`,
     );
