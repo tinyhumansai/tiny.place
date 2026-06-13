@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import {
@@ -16,7 +16,7 @@ import {
 	getAnnualFee,
 	PRICING_TIERS,
 } from "@src/components/explore/domain-pricing";
-import { useApiClient } from "@src/common/api-context";
+import { createClient } from "@src/common/api-client";
 import { assertValidX402Challenge } from "@src/common/x402-challenge";
 import { useHandleAvailability } from "@src/hooks/use-registry";
 import { useAuthStore } from "@src/store/auth";
@@ -58,9 +58,14 @@ type DomainRegistrationProperties = {
 export const DomainRegistration = ({
 	isDark,
 }: DomainRegistrationProperties): FunctionComponent => {
-	const client = useApiClient();
-	const signer = useAuthStore((state) => state.signer);
+	// Registration binds the cryptoId to the public key, an act the backend
+	// rejects under session-key delegation (it requires base58(publicKey) ===
+	// cryptoId). So we sign with the identity signer — the wallet itself — whose
+	// key derives the agentId, not the hot session key used for routine calls.
+	const identitySigner = useAuthStore((state) => state.identitySigner);
 	const agentId = useAuthStore((state) => state.agentId);
+	const signer = identitySigner;
+	const client = useMemo(() => createClient(identitySigner), [identitySigner]);
 
 	const [searchInput, setSearchInput] = useState("");
 	const [selectedName, setSelectedName] = useState<string | null>(null);

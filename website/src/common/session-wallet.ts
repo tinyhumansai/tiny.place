@@ -35,13 +35,22 @@ export class SessionWalletSigner extends Signer {
 	public readonly agentId: string;
 	/** The session key's public key — presented for signature verification. */
 	public readonly publicKeyBase64: string;
+	/**
+	 * The underlying wallet (grantor) signer. Its public key base58-derives to
+	 * {@link agentId}, so it — not the session key — must sign acts that bind the
+	 * cryptoId to the public key (identity registration), which the backend
+	 * cannot accept under delegation. Routine, delegated calls keep using the
+	 * session key via {@link sign}.
+	 */
+	public readonly walletSigner: WalletSigner;
 
 	private readonly session: BrowserSessionSigner;
 
-	private constructor(grantorAgentId: string, session: BrowserSessionSigner) {
+	private constructor(grantor: WalletSigner, session: BrowserSessionSigner) {
 		super();
-		this.agentId = grantorAgentId;
+		this.agentId = grantor.agentId;
 		this.publicKeyBase64 = session.publicKeyBase64;
+		this.walletSigner = grantor;
 		this.session = session;
 	}
 
@@ -87,6 +96,6 @@ export class SessionWalletSigner extends Signer {
 		// delegate that can act as the wallet.
 		await client.signers.approve(approval.authorization);
 
-		return new SessionWalletSigner(grantor.agentId, session);
+		return new SessionWalletSigner(grantor, session);
 	}
 }

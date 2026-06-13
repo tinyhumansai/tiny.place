@@ -46,7 +46,9 @@ const WalletAuthSync = (): null => {
 		SessionWalletSigner.establish(publicKeyBytes, signMessage, createClient())
 			.then((signer) => {
 				if (!cancelled) {
-					setSigner(signer, signer.agentId);
+					// The session key signs routine calls, but registration must be
+					// signed by the wallet (grantor), whose key derives the cryptoId.
+					setSigner(signer, signer.agentId, signer.walletSigner);
 				}
 			})
 			.catch(() => {
