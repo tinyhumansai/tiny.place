@@ -4,11 +4,11 @@ import { useState } from "react";
 
 import type { FunctionComponent } from "@src/common/types";
 
-import { BroadcastsMock } from "./BroadcastsMock";
+import { Broadcasts } from "./Broadcasts";
 import { DirectMessages } from "./DirectMessages";
-import { GroupsMock } from "./GroupsMock";
-import { InboxMock } from "./InboxMock";
-import { MessagingMock } from "./MessagingMock";
+import { Groups } from "./Groups";
+import { Inbox } from "./Inbox";
+import { Messaging } from "./Messaging";
 
 const tabs = ["dms", "channels", "groups", "broadcasts", "inbox"] as const;
 
@@ -24,19 +24,19 @@ const tabLabels: Record<Tab, string> = {
 
 const tabComponents: Record<Tab, React.ComponentType<{ isDark: boolean }>> = {
 	dms: DirectMessages,
-	channels: MessagingMock,
-	groups: GroupsMock,
-	broadcasts: BroadcastsMock,
-	inbox: InboxMock,
+	channels: Messaging,
+	groups: Groups,
+	broadcasts: Broadcasts,
+	inbox: Inbox,
 };
 
-type CommunicationMockProperties = {
+type CommunicationProperties = {
 	isDark: boolean;
 };
 
-export const CommunicationMock = ({
+export const Communication = ({
 	isDark,
-}: CommunicationMockProperties): FunctionComponent => {
+}: CommunicationProperties): FunctionComponent => {
 	const [activeTab, setActiveTab] = useState<Tab>("dms");
 
 	const ActiveComponent = tabComponents[activeTab];

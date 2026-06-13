@@ -20,7 +20,7 @@ import {
 	useUpdateAdminConfig,
 } from "@src/hooks/use-admin";
 
-type AdminMockProperties = {
+type AdminProperties = {
 	isDark: boolean;
 };
 
@@ -305,9 +305,7 @@ function ResolutionPanel({
 	);
 }
 
-export const AdminMock = ({
-	isDark,
-}: AdminMockProperties): FunctionComponent => {
+export const Admin = ({ isDark }: AdminProperties): FunctionComponent => {
 	const [from, setFrom] = useState("@buyer");
 	const [to, setTo] = useState("@seller");
 	const [type, setType] = useState<LedgerType>("PAYMENT");

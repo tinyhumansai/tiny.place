@@ -128,7 +128,7 @@ function BroadcastCard({
 	);
 }
 
-export const BroadcastsMock = ({
+export const Broadcasts = ({
 	isDark,
 }: {
 	isDark: boolean;

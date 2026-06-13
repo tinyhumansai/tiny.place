@@ -114,11 +114,7 @@ function SignerRow({
 	);
 }
 
-export const SignersMock = ({
-	isDark,
-}: {
-	isDark: boolean;
-}): FunctionComponent => {
+export const Signers = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 	const agentId = useAuthStore((state) => state.agentId);
 	const signers = useApprovedSigners();
 	const revokeSigner = useRevokeSigner();

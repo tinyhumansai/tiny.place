@@ -5,13 +5,13 @@ import type { LeaderboardEntry } from "@tinyhumansai/tinyplace";
 import type { FunctionComponent } from "@src/common/types";
 import { useLeaderboard } from "@src/hooks/use-reputation";
 
-type ReputationMockProperties = {
+type ReputationProperties = {
 	isDark: boolean;
 };
 
-export const ReputationMock = ({
+export const Reputation = ({
 	isDark,
-}: ReputationMockProperties): FunctionComponent => {
+}: ReputationProperties): FunctionComponent => {
 	const { data, isLoading, isError, error } = useLeaderboard("reputation");
 
 	const entries = data?.entries ?? [];

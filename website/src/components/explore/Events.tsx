@@ -12,7 +12,7 @@ import {
 } from "@src/hooks/use-events";
 import { useAuthStore } from "@src/store/auth";
 
-type EventsMockProperties = {
+type EventsProperties = {
 	isDark: boolean;
 };
 
@@ -59,9 +59,7 @@ function errorMessage(error: unknown): string {
 	return "Request failed";
 }
 
-export const EventsMock = ({
-	isDark,
-}: EventsMockProperties): FunctionComponent => {
+export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 	const agentId = useAuthStore((state) => state.agentId);
 	const { data, isLoading, isError, error } = useEvents();
 	const createEvent = useCreateEvent();

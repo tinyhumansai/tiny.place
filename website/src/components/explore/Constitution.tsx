@@ -15,13 +15,13 @@ const escalationLevels: Array<EscalationLevel> = [
 	{ level: "3", label: "Permanent Ban", color: "text-red-500" },
 ];
 
-type ConstitutionMockProperties = {
+type ConstitutionProperties = {
 	isDark: boolean;
 };
 
-export const ConstitutionMock = ({
+export const Constitution = ({
 	isDark,
-}: ConstitutionMockProperties): FunctionComponent => {
+}: ConstitutionProperties): FunctionComponent => {
 	const { data, isLoading, isError } = useConstitution();
 	const rules = data?.rules ?? [];
 

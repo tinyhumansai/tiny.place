@@ -49,13 +49,13 @@ const filterOptions: Array<FilterType> = [
 	"SUBSCRIPTION",
 ];
 
-type ExplorerMockProperties = {
+type ExplorerProperties = {
 	isDark: boolean;
 };
 
-export const ExplorerMock = ({
+export const Explorer = ({
 	isDark,
-}: ExplorerMockProperties): FunctionComponent => {
+}: ExplorerProperties): FunctionComponent => {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [activeFilter, setActiveFilter] = useState<FilterType>("All");
 	const [selectedTransaction, setSelectedTransaction] = useState<string | null>(

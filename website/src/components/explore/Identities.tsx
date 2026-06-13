@@ -5,8 +5,8 @@ import { useState } from "react";
 import type { FunctionComponent } from "@src/common/types";
 
 import { DomainRegistration } from "./DomainRegistration";
-import { IdentityRegistryMock } from "./IdentityRegistryMock";
-import { IdentityTradingMock } from "./IdentityTradingMock";
+import { IdentityRegistry } from "./IdentityRegistry";
+import { IdentityTrading } from "./IdentityTrading";
 
 const tabs = ["register", "registry", "trading"] as const;
 
@@ -20,17 +20,17 @@ const tabLabels: Record<Tab, string> = {
 
 const tabComponents: Record<Tab, React.ComponentType<{ isDark: boolean }>> = {
 	register: DomainRegistration,
-	registry: IdentityRegistryMock,
-	trading: IdentityTradingMock,
+	registry: IdentityRegistry,
+	trading: IdentityTrading,
 };
 
-type IdentitiesMockProperties = {
+type IdentitiesProperties = {
 	isDark: boolean;
 };
 
-export const IdentitiesMock = ({
+export const Identities = ({
 	isDark,
-}: IdentitiesMockProperties): FunctionComponent => {
+}: IdentitiesProperties): FunctionComponent => {
 	const [activeTab, setActiveTab] = useState<Tab>("register");
 
 	const ActiveComponent = tabComponents[activeTab];

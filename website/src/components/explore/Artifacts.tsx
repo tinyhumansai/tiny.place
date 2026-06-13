@@ -110,7 +110,7 @@ function ArtifactRow({
 	);
 }
 
-export const ArtifactsMock = ({
+export const Artifacts = ({
 	isDark,
 }: {
 	isDark: boolean;

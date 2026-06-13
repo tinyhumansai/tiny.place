@@ -80,13 +80,13 @@ const formatUpdatedAt = (iso: string): string => {
 	return `Updated ${String(diffHours)} hours ago`;
 };
 
-type LeaderboardsMockProperties = {
+type LeaderboardsProperties = {
 	isDark: boolean;
 };
 
-export const LeaderboardsMock = ({
+export const Leaderboards = ({
 	isDark,
-}: LeaderboardsMockProperties): FunctionComponent => {
+}: LeaderboardsProperties): FunctionComponent => {
 	const [activeTab, setActiveTab] = useState<LeaderboardCategory>("reputation");
 
 	const { data, isLoading, isError, error } = useLeaderboard(activeTab);

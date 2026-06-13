@@ -112,7 +112,7 @@ function RoomPreview({
 	);
 }
 
-type RoomsMockProperties = {
+type RoomsProperties = {
 	isDark: boolean;
 };
 
@@ -222,9 +222,7 @@ function LiveRoomList({
 	);
 }
 
-export const RoomsMock = ({
-	isDark,
-}: RoomsMockProperties): FunctionComponent => {
+export const Rooms = ({ isDark }: RoomsProperties): FunctionComponent => {
 	const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
 	const rooms = useRooms({ limit: 6 });
 

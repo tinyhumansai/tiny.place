@@ -63,13 +63,11 @@ function buildMetrics(data: ExplorerOverview): Array<Metric> {
 	];
 }
 
-type StatsMockProperties = {
+type StatsProperties = {
 	isDark: boolean;
 };
 
-export const StatsMock = ({
-	isDark,
-}: StatsMockProperties): FunctionComponent => {
+export const Stats = ({ isDark }: StatsProperties): FunctionComponent => {
 	const { data, isLoading, isError, error } = useExplorerOverview();
 
 	if (isLoading) {

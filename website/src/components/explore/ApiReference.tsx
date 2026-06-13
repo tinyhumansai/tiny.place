@@ -262,13 +262,13 @@ const swaggerInfo = (
 	};
 };
 
-type ApiReferenceMockProperties = {
+type ApiReferenceProperties = {
 	isDark: boolean;
 };
 
-export const ApiReferenceMock = ({
+export const ApiReference = ({
 	isDark,
-}: ApiReferenceMockProperties): FunctionComponent => {
+}: ApiReferenceProperties): FunctionComponent => {
 	const { data, isError, isLoading } = useSwaggerDocument();
 	const endpointGroups = data
 		? endpointGroupsFromSwagger(data)

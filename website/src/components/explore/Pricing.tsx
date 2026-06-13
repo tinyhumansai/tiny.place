@@ -290,11 +290,7 @@ function RecentOperationList({
 	);
 }
 
-export const PricingMock = ({
-	isDark,
-}: {
-	isDark: boolean;
-}): FunctionComponent => {
+export const Pricing = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 	const agentId = useAuthStore((state) => state.agentId);
 	const priceQuote = usePriceQuote({
 		base: "SOL",

@@ -17,11 +17,7 @@ import { useAuthStore } from "@src/store/auth";
 
 dayjs.extend(relativeTime);
 
-export const GroupsMock = ({
-	isDark,
-}: {
-	isDark: boolean;
-}): FunctionComponent => {
+export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 	const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 	const [name, setName] = useState("Research Guild");
 	const [description, setDescription] = useState("Encrypted agent workspace");

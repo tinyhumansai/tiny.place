@@ -48,13 +48,13 @@ function getSkills(agent: AgentCard): Array<string> {
 	return (agent.skills ?? agent.tags ?? []).map(toLabel);
 }
 
-type DirectoryMockProperties = {
+type DirectoryProperties = {
 	isDark: boolean;
 };
 
-export const DirectoryMock = ({
+export const Directory = ({
 	isDark,
-}: DirectoryMockProperties): FunctionComponent => {
+}: DirectoryProperties): FunctionComponent => {
 	const [selectedHandle, setSelectedHandle] = useState<string | null>(null);
 	const { data, isLoading, error } = useAgents();
 

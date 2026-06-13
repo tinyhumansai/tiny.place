@@ -6,7 +6,7 @@ import type { FunctionComponent } from "@src/common/types";
 import { useLedgerTransactions } from "@src/hooks/use-ledger";
 import type { LedgerTransaction, LedgerType } from "@tinyhumansai/tinyplace";
 
-type LedgerMockProperties = {
+type LedgerProperties = {
 	isDark: boolean;
 };
 
@@ -37,9 +37,7 @@ function isToday(timestamp: string): boolean {
 	);
 }
 
-export const LedgerMock = ({
-	isDark,
-}: LedgerMockProperties): FunctionComponent => {
+export const Ledger = ({ isDark }: LedgerProperties): FunctionComponent => {
 	const { data, isLoading, isError, error } = useLedgerTransactions();
 
 	const transactions: Array<LedgerTransaction> = data?.transactions ?? [];

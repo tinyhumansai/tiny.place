@@ -15,7 +15,7 @@ import {
 } from "@src/hooks/use-moderation";
 import { useAuthStore } from "@src/store/auth";
 
-type ModerationMockProperties = {
+type ModerationProperties = {
 	isDark: boolean;
 };
 
@@ -111,9 +111,9 @@ function ActionRow({
 	);
 }
 
-export const ModerationMock = ({
+export const Moderation = ({
 	isDark,
-}: ModerationMockProperties): FunctionComponent => {
+}: ModerationProperties): FunctionComponent => {
 	const agentId = useAuthStore((state) => state.agentId);
 	const [targetFilter, setTargetFilter] = useState("");
 	const [reportContentType, setReportContentType] =

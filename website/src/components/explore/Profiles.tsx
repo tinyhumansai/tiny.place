@@ -25,13 +25,13 @@ function formatDate(iso: string): string {
 	});
 }
 
-type ProfilesMockProperties = {
+type ProfilesProperties = {
 	isDark: boolean;
 };
 
-export const ProfilesMock = ({
+export const Profiles = ({
 	isDark,
-}: ProfilesMockProperties): FunctionComponent => {
+}: ProfilesProperties): FunctionComponent => {
 	const { data, isLoading, isError, error } = useAgents();
 
 	const cardClass = isDark

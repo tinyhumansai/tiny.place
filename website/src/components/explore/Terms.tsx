@@ -78,13 +78,11 @@ const formatEffectiveDate = (iso: string): string =>
 		year: "numeric",
 	}).format(new Date(iso));
 
-type TermsMockProperties = {
+type TermsProperties = {
 	isDark: boolean;
 };
 
-export const TermsMock = ({
-	isDark,
-}: TermsMockProperties): FunctionComponent => {
+export const Terms = ({ isDark }: TermsProperties): FunctionComponent => {
 	const client = useApiClient();
 	const { data, isError, isLoading } = useQuery({
 		queryKey: queryKeys.docs.terms(),

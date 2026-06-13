@@ -288,7 +288,7 @@ const MessageThread = ({
 	);
 };
 
-export const MessagingMock = ({
+export const Messaging = ({
 	isDark,
 }: {
 	isDark: boolean;

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import type { Escrow, TinyVerseError } from "@tinyhumansai/tinyplace";
+import type {
+	Escrow as EscrowRecord,
+	TinyVerseError,
+} from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
 import {
@@ -17,7 +20,7 @@ import {
 } from "@src/hooks/use-marketplace";
 import { useAuthStore } from "@src/store/auth";
 
-type EscrowMockProperties = {
+type EscrowProperties = {
 	isDark: boolean;
 };
 
@@ -76,7 +79,7 @@ function EscrowCard({
 	onDeliver,
 }: {
 	actor: string;
-	escrow: Escrow;
+	escrow: EscrowRecord;
 	isDark: boolean;
 	onAccept: (escrowId: string) => void;
 	onCancel: (escrowId: string) => void;
@@ -173,9 +176,7 @@ function EscrowCard({
 	);
 }
 
-export const EscrowMock = ({
-	isDark,
-}: EscrowMockProperties): FunctionComponent => {
+export const Escrow = ({ isDark }: EscrowProperties): FunctionComponent => {
 	const agentId = useAuthStore((state) => state.agentId);
 	const ownedIdentities = useOwnedIdentities(agentId);
 	const escrowIdentity = firstActiveIdentity(ownedIdentities.data?.identities);

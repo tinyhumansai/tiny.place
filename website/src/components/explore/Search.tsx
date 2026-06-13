@@ -52,13 +52,11 @@ function mapResult(result: ApiSearchResult): MappedResult | undefined {
 	};
 }
 
-type SearchMockProperties = {
+type SearchProperties = {
 	isDark: boolean;
 };
 
-export const SearchMock = ({
-	isDark,
-}: SearchMockProperties): FunctionComponent => {
+export const Search = ({ isDark }: SearchProperties): FunctionComponent => {
 	const [query, setQuery] = useState("");
 	const [activeFilters, setActiveFilters] = useState<Array<FilterType>>([]);
 

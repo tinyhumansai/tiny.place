@@ -217,13 +217,13 @@ function FloorCard({ isDark, length }: FloorCardProperties): FunctionComponent {
 	);
 }
 
-type IdentityTradingMockProperties = {
+type IdentityTradingProperties = {
 	isDark: boolean;
 };
 
-export const IdentityTradingMock = ({
+export const IdentityTrading = ({
 	isDark,
-}: IdentityTradingMockProperties): FunctionComponent => {
+}: IdentityTradingProperties): FunctionComponent => {
 	const [selectedListing, setSelectedListing] = useState<string | null>(null);
 	const agentId = useAuthStore((state) => state.agentId);
 

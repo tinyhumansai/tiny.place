@@ -15,7 +15,7 @@ import {
 } from "@src/hooks/use-payments";
 import { useAuthStore } from "@src/store/auth";
 
-type PaymentsMockProperties = {
+type PaymentsProperties = {
 	isDark: boolean;
 };
 
@@ -92,9 +92,9 @@ function ResultPanel({
 	);
 }
 
-export const PaymentsMock = ({
+export const Payments = ({
 	isDark,
-}: PaymentsMockProperties): FunctionComponent => {
+}: PaymentsProperties): FunctionComponent => {
 	const signer = useAuthStore((state) => state.signer);
 	const agentId = useAuthStore((state) => state.agentId);
 	const supportedPayments = useSupportedPayments();

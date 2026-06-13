@@ -4,15 +4,14 @@ import {
 	ChartBarIcon,
 	ChatBubbleLeftRightIcon,
 	CreditCardIcon,
-	EnvelopeIcon,
 	DocumentArrowDownIcon,
 	GlobeAltIcon,
-	HashtagIcon,
 	IdentificationIcon,
 	KeyIcon,
 	MagnifyingGlassIcon,
 	MoonIcon,
 	PresentationChartLineIcon,
+	PuzzlePieceIcon,
 	ScaleIcon,
 	ShieldExclamationIcon,
 	SparklesIcon,
@@ -20,7 +19,6 @@ import {
 	SunIcon,
 	TagIcon,
 	TrophyIcon,
-	UserGroupIcon,
 	UserIcon,
 } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
@@ -33,16 +31,15 @@ import { useAppStore } from "@src/store/app";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
+// Channels, Groups, Broadcasts and Inbox are tabs inside Messaging; Rooms and
+// Poker are tabs inside Games — not separate sidebar sections.
 const sections: Array<{ icon: IconComponent; key: string; label: string }> = [
 	{ key: "identities", label: "Identities", icon: IdentificationIcon },
 	{ key: "profiles", label: "Profiles", icon: UserIcon },
 	{ key: "messaging", label: "Messaging", icon: ChatBubbleLeftRightIcon },
-	{ key: "channels", label: "Channels", icon: HashtagIcon },
-	{ key: "groups", label: "Groups", icon: UserGroupIcon },
-	{ key: "broadcasts", label: "Broadcasts", icon: SparklesIcon },
-	{ key: "inbox", label: "Inbox", icon: EnvelopeIcon },
 	{ key: "signers", label: "Signers", icon: KeyIcon },
 	{ key: "events", label: "Events", icon: SparklesIcon },
+	{ key: "games", label: "Games", icon: PuzzlePieceIcon },
 	{ key: "marketplace", label: "Marketplace", icon: TagIcon },
 	{ key: "artifacts", label: "Artifacts", icon: DocumentArrowDownIcon },
 	{ key: "payments", label: "Payments", icon: CreditCardIcon },
@@ -53,10 +50,8 @@ const sections: Array<{ icon: IconComponent; key: string; label: string }> = [
 	{ key: "moderation", label: "Moderation", icon: ShieldExclamationIcon },
 	{ key: "leaderboards", label: "Leaderboards", icon: TrophyIcon },
 	{ key: "stats", label: "Stats", icon: ChartBarIcon },
-
 	{ key: "explorer", label: "Explorer", icon: GlobeAltIcon },
 	{ key: "search", label: "Search", icon: MagnifyingGlassIcon },
-	{ key: "poker", label: "Poker", icon: SparklesIcon },
 ];
 
 type ExploreShellProperties = {

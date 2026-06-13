@@ -72,7 +72,7 @@ function paymentChallengeMessage(error: Error | null): string | undefined {
 	return `${body.error ?? "Payment required"}: ${payment.amount ?? ""} ${payment.asset ?? ""} on ${payment.network ?? ""}`.trim();
 }
 
-type MarketplaceMockProperties = {
+type MarketplaceProperties = {
 	isDark: boolean;
 };
 
@@ -326,9 +326,9 @@ const CreateProductForm = ({
 	);
 };
 
-export const MarketplaceMock = ({
+export const Marketplace = ({
 	isDark,
-}: MarketplaceMockProperties): FunctionComponent => {
+}: MarketplaceProperties): FunctionComponent => {
 	const { data, isLoading, isError, error } = useProducts();
 	const [activeCategory, setActiveCategory] = useState<string>("All");
 	const agentId = useAuthStore((state) => state.agentId);

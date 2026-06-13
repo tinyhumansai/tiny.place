@@ -63,11 +63,7 @@ function matchesFilter(item: InboxItem, filter: Filter): boolean {
 	return allowedTypes.includes(item.type);
 }
 
-export const InboxMock = ({
-	isDark,
-}: {
-	isDark: boolean;
-}): FunctionComponent => {
+export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 	const [activeFilter, setActiveFilter] = useState<Filter>("All");
 	const agentId = useAuthStore((state) => state.agentId);
 	const ownedIdentities = useOwnedIdentities(agentId);

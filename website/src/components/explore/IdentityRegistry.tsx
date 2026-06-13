@@ -7,7 +7,7 @@ import type { FunctionComponent } from "@src/common/types";
 import { useDirectoryIdentities } from "@src/hooks/use-directory";
 import { useHandleAvailability } from "@src/hooks/use-registry";
 
-type IdentityRegistryMockProperties = {
+type IdentityRegistryProperties = {
 	isDark: boolean;
 };
 
@@ -27,9 +27,9 @@ function formatDate(value: string): string {
 	});
 }
 
-export const IdentityRegistryMock = ({
+export const IdentityRegistry = ({
 	isDark,
-}: IdentityRegistryMockProperties): FunctionComponent => {
+}: IdentityRegistryProperties): FunctionComponent => {
 	const cardClass = isDark
 		? "border-neutral-800 bg-neutral-950"
 		: "border-neutral-200 bg-neutral-50";
