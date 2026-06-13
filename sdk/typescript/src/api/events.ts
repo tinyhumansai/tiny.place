@@ -52,10 +52,10 @@ export class EventsApi {
     );
   }
 
-  rsvp(eventId: string, ticketType?: string): Promise<EventAttendee> {
+  rsvp(eventId: string, tier?: string): Promise<EventAttendee> {
     return this.http.postDirectoryAuth<EventAttendee>(
       `/events/${encodeURIComponent(eventId)}/rsvp`,
-      ticketType ? { ticketType } : undefined,
+      tier ? { tier } : undefined,
     );
   }
 

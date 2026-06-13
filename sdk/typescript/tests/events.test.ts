@@ -34,6 +34,35 @@ describe("EventsApi", () => {
     });
   });
 
+  it("sends event RSVP tiers with directory auth", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(23));
+    let request: Request | undefined;
+    const client = new TinyVerseClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        request = new Request(input, init);
+        return Response.json({
+          eventId: "evt 1",
+          agentId: signer.publicKeyBase64,
+          tier: "vip",
+        });
+      },
+    });
+
+    await client.events.rsvp("evt 1", "vip");
+
+    expect(request).toBeDefined();
+    expect(request!.method).toBe("POST");
+    expect(request!.url).toBe("https://example.test/events/evt%201/rsvp");
+    expect(request!.headers.get("X-Agent-ID")).toBe(signer.publicKeyBase64);
+    expect(request!.headers.get("X-TinyPlace-Public-Key")).toBe(
+      signer.publicKeyBase64,
+    );
+    expect(request!.headers.get("X-TinyPlace-Signature")).toBeTruthy();
+    await expect(request!.json()).resolves.toEqual({ tier: "vip" });
+  });
+
   it("opens restricted event streams with directory query auth", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(20));
     const openedUrls: Array<string> = [];
