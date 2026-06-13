@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const nextConfig: NextConfig = {
-	turbopack: {},
+	turbopack: {
+		root: repositoryRoot,
+	},
 	env: {
 		NEXT_PUBLIC_API_BASE_URL:
 			process.env.NEXT_PUBLIC_API_BASE_URL ??
