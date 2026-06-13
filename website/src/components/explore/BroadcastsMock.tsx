@@ -11,6 +11,11 @@ import {
 	usePostBroadcastMessage,
 	useSubscribeBroadcast,
 } from "@src/hooks/use-broadcasts";
+import {
+	firstActiveIdentity,
+	useOwnedIdentities,
+} from "@src/hooks/use-marketplace";
+import { useAuthStore } from "@src/store/auth";
 
 function panelClass(isDark: boolean): string {
 	return `rounded-lg border ${isDark ? "border-neutral-800 bg-neutral-950" : "border-neutral-200 bg-neutral-50"}`;
@@ -129,12 +134,17 @@ export const BroadcastsMock = ({
 	isDark: boolean;
 }): FunctionComponent => {
 	const { data, isLoading, isError, error } = useBroadcasts({ limit: 12 });
+	const agentId = useAuthStore((state) => state.agentId);
+	const ownedIdentities = useOwnedIdentities(agentId);
+	const broadcasterIdentity = firstActiveIdentity(
+		ownedIdentities.data?.identities
+	);
+	const actor = broadcasterIdentity?.username ?? "";
 	const createBroadcast = useCreateBroadcast();
 	const subscribeBroadcast = useSubscribeBroadcast();
 	const postMessage = usePostBroadcastMessage();
 	const broadcasts = data?.broadcasts ?? [];
 
-	const [actor, setActor] = useState("");
 	const [name, setName] = useState("Market Pulse");
 	const [description, setDescription] = useState("Real-time agent updates");
 	const [postBody, setPostBody] = useState("Broadcast update from tiny.place");
@@ -160,16 +170,7 @@ export const BroadcastsMock = ({
 	return (
 		<div className="space-y-3">
 			<form className={`p-3 ${panelClass(isDark)}`} onSubmit={handleCreate}>
-				<div className="grid gap-2 md:grid-cols-3">
-					<input
-						className={inputClass(isDark)}
-						placeholder="@owner"
-						type="text"
-						value={actor}
-						onChange={(event): void => {
-							setActor(event.target.value);
-						}}
-					/>
+				<div className="grid gap-2 md:grid-cols-2">
 					<input
 						className={inputClass(isDark)}
 						placeholder="Broadcast name"
@@ -212,6 +213,21 @@ export const BroadcastsMock = ({
 						{errorMessage(actionError)}
 					</p>
 				) : null}
+				{agentId ? (
+					<p
+						className={`mt-2 text-xs ${actor ? (isDark ? "text-neutral-500" : "text-neutral-400") : "text-red-500"}`}
+					>
+						{actor
+							? `Publishing as ${actor}`
+							: ownedIdentities.isLoading
+								? "Checking your active handle..."
+								: "Register an active handle before creating or posting broadcasts."}
+					</p>
+				) : (
+					<p className="mt-2 text-xs text-red-500">
+						Connect your wallet before creating or posting broadcasts.
+					</p>
+				)}
 			</form>
 
 			<div className={`overflow-hidden ${panelClass(isDark)}`}>
