@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { FunctionComponent } from "@src/common/types";
+import { useSupportedPayments } from "@src/hooks/use-payments";
 
 type Transaction = {
 	type: "Received" | "Sent";
@@ -91,6 +92,7 @@ export const PaymentsMock = ({
 }: PaymentsMockProperties): FunctionComponent => {
 	const [activeFilter, setActiveFilter] =
 		useState<(typeof filters)[number]>("All");
+	const supportedPayments = useSupportedPayments();
 
 	const filtered =
 		activeFilter === "All"
@@ -111,6 +113,88 @@ export const PaymentsMock = ({
 
 	return (
 		<div className="flex flex-col gap-3">
+			<div
+				className={`rounded-lg border p-3 ${
+					isDark
+						? "border-neutral-800 bg-neutral-950"
+						: "border-neutral-200 bg-neutral-50"
+				}`}
+			>
+				<div className="flex items-center justify-between gap-3">
+					<span
+						className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
+					>
+						Supported payment networks
+					</span>
+					<span
+						className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+					>
+						Live from staging
+					</span>
+				</div>
+				{supportedPayments.isLoading && (
+					<p
+						className={`mt-2 text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+					>
+						Loading supported networks...
+					</p>
+				)}
+				{supportedPayments.isError && (
+					<p className="mt-2 text-xs text-red-500">
+						Failed to load supported payment networks
+					</p>
+				)}
+				{supportedPayments.data && (
+					<div className="mt-3 grid gap-2 md:grid-cols-2">
+						{supportedPayments.data.chains.map((chain) => (
+							<div
+								key={chain.network}
+								className={`rounded-md border p-2 ${
+									isDark
+										? "border-neutral-800 bg-neutral-900"
+										: "border-neutral-200 bg-white"
+								}`}
+							>
+								<div className="flex items-center justify-between gap-2">
+									<span
+										className={`text-xs font-medium ${isDark ? "text-white" : "text-black"}`}
+									>
+										{chain.name}
+									</span>
+									<span
+										className={`rounded-full px-1.5 py-0.5 text-xs ${
+											isDark
+												? "bg-neutral-800 text-neutral-400"
+												: "bg-neutral-100 text-neutral-500"
+										}`}
+									>
+										{chain.kind}
+									</span>
+								</div>
+								<p
+									className={`mt-1 break-all text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+								>
+									{chain.network}
+								</p>
+								<div className="mt-2 flex flex-wrap gap-1">
+									{chain.assets.map((asset) => (
+										<span
+											key={`${chain.network}-${asset.symbol}`}
+											className={`rounded-full px-1.5 py-0.5 text-xs ${
+												isDark
+													? "bg-neutral-800 text-neutral-300"
+													: "bg-neutral-100 text-neutral-600"
+											}`}
+										>
+											{asset.symbol}
+										</span>
+									))}
+								</div>
+							</div>
+						))}
+					</div>
+				)}
+			</div>
 			<div className="grid grid-cols-3 gap-2">
 				<div
 					className={`rounded-lg border p-2.5 ${

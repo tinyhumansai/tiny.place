@@ -97,4 +97,7 @@ export const queryKeys = {
 	docs: {
 		terms: () => ["docs", "terms"] as const,
 	},
+	payments: {
+		supported: () => ["payments", "supported"] as const,
+	},
 };
