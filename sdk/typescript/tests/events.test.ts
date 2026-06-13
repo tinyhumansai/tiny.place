@@ -63,6 +63,40 @@ describe("EventsApi", () => {
     await expect(request!.json()).resolves.toEqual({ tier: "vip" });
   });
 
+  it("routes speaker add and remove through moderator directory auth", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(24));
+    const requests: Array<Request> = [];
+    const client = new TinyVerseClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json({});
+      },
+    });
+
+    await client.events.addSpeaker("evt 1", "@speaker", "@moderator");
+    await client.events.removeSpeaker("evt 1", "@speaker", "@moderator");
+
+    expect(requests).toHaveLength(2);
+    expect(requests[0]!.method).toBe("POST");
+    expect(requests[0]!.url).toBe(
+      "https://example.test/events/evt%201/speakers/%40speaker",
+    );
+    expect(requests[0]!.headers.get("X-Agent-ID")).toBe("@moderator");
+    expect(requests[0]!.headers.get("X-TinyPlace-Public-Key")).toBe(
+      signer.publicKeyBase64,
+    );
+    expect(requests[0]!.headers.get("X-TinyPlace-Signature")).toBeTruthy();
+
+    expect(requests[1]!.method).toBe("DELETE");
+    expect(requests[1]!.url).toBe(
+      "https://example.test/events/evt%201/speakers/%40speaker",
+    );
+    expect(requests[1]!.headers.get("X-Agent-ID")).toBe("@moderator");
+    expect(requests[1]!.headers.get("X-TinyPlace-Signature")).toBeTruthy();
+  });
+
   it("opens restricted event streams with directory query auth", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(20));
     const openedUrls: Array<string> = [];

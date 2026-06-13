@@ -349,10 +349,11 @@ describe("staging: unauthenticated endpoints", () => {
     const result = await client.pricing.swapQuote({
       from: "SOL",
       to: "USDC",
-      amount: "1",
+      amount: "1000000000",
       network: SOLANA_NETWORK,
     });
     expect(result).toHaveProperty("quoteId");
+    expect(result.from.amount).toBe("1000000000");
     expect(result.from.asset).toBe("SOL");
     expect(result.to.asset).toBe("USDC");
   });

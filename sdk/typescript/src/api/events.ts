@@ -156,6 +156,30 @@ export class EventsApi {
     );
   }
 
+  addSpeaker(
+    eventId: string,
+    speakerId: string,
+    moderatorId?: string,
+  ): Promise<Event> {
+    const path = `/events/${encodeURIComponent(eventId)}/speakers/${encodeURIComponent(speakerId)}`;
+    if (moderatorId) {
+      return this.http.postDirectoryAuthAs<Event>(path, moderatorId);
+    }
+    return this.http.postDirectoryAuth<Event>(path);
+  }
+
+  removeSpeaker(
+    eventId: string,
+    speakerId: string,
+    moderatorId?: string,
+  ): Promise<Event> {
+    const path = `/events/${encodeURIComponent(eventId)}/speakers/${encodeURIComponent(speakerId)}`;
+    if (moderatorId) {
+      return this.http.deleteDirectoryAuthAs<Event>(path, moderatorId);
+    }
+    return this.http.deleteDirectoryAuth<Event>(path);
+  }
+
   muteSpeaker(
     eventId: string,
     speakerId: string,
