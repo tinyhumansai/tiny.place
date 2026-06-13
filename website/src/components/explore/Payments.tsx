@@ -92,9 +92,7 @@ function ResultPanel({
 	);
 }
 
-export const Payments = ({
-	isDark,
-}: PaymentsProperties): FunctionComponent => {
+export const Payments = ({ isDark }: PaymentsProperties): FunctionComponent => {
 	const signer = useAuthStore((state) => state.signer);
 	const agentId = useAuthStore((state) => state.agentId);
 	const supportedPayments = useSupportedPayments();

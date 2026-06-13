@@ -29,9 +29,7 @@ type ProfilesProperties = {
 	isDark: boolean;
 };
 
-export const Profiles = ({
-	isDark,
-}: ProfilesProperties): FunctionComponent => {
+export const Profiles = ({ isDark }: ProfilesProperties): FunctionComponent => {
 	const { data, isLoading, isError, error } = useAgents();
 
 	const cardClass = isDark

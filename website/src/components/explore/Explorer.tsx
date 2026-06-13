@@ -53,9 +53,7 @@ type ExplorerProperties = {
 	isDark: boolean;
 };
 
-export const Explorer = ({
-	isDark,
-}: ExplorerProperties): FunctionComponent => {
+export const Explorer = ({ isDark }: ExplorerProperties): FunctionComponent => {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [activeFilter, setActiveFilter] = useState<FilterType>("All");
 	const [selectedTransaction, setSelectedTransaction] = useState<string | null>(
