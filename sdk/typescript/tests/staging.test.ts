@@ -461,7 +461,8 @@ describe("staging: authenticated flows", () => {
       } catch (error) {
         expect(error).toBeInstanceOf(TinyVerseError);
         const tvError = error as TinyVerseError;
-        expect(tvError.status).not.toBe(401);
+        expect(tvError.status).toBe(402);
+        expect(tvError.body).toHaveProperty("payment");
       }
     });
   });
