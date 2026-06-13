@@ -88,6 +88,14 @@ describe("staging: unauthenticated endpoints", () => {
     expect(result.documents.length).toBeGreaterThan(0);
   });
 
+  it("docs.swaggerJson returns the live OpenAPI document", async () => {
+    const result = await client.docs.swaggerJson();
+    expect(result).toHaveProperty("paths");
+    expect(Object.keys(result.paths as Record<string, unknown>).length).toBeGreaterThan(
+      0,
+    );
+  });
+
   it("docs.terms returns the current terms document", async () => {
     const result = await client.docs.terms();
     expect(result.version).toBeDefined();

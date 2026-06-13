@@ -96,6 +96,7 @@ export const queryKeys = {
 	},
 	docs: {
 		terms: () => ["docs", "terms"] as const,
+		swagger: () => ["docs", "swagger"] as const,
 	},
 	payments: {
 		supported: () => ["payments", "supported"] as const,
