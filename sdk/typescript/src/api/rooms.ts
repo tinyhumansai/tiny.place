@@ -4,12 +4,14 @@ import type {
   GameActionRequest,
   GameActionResponse,
   GameHand,
+  GameOperatorRequest,
   GameJoinRequest,
   GameJoinResponse,
   GameLeaveRequest,
   GameLeaveResponse,
   GameRoom,
   GameRoomQueryParams,
+  GameTimeoutResponse,
 } from "../types/index.js";
 
 /**
@@ -89,6 +91,22 @@ export class RoomsApi {
   action(roomId: string, body: GameActionRequest): Promise<GameActionResponse> {
     return this.http.postDirectoryAuth<GameActionResponse>(
       `/rooms/${encodeURIComponent(roomId)}/action`,
+      body,
+    );
+  }
+
+  /**
+   * Applies the room operator timeout action for the current decision.
+   * @param roomId - The room id.
+   * @param body - Optional operator id. Defaults server-side from X-Agent-ID.
+   * @returns The updated room, hand, timeout action, and affected seat.
+   */
+  timeout(
+    roomId: string,
+    body?: GameOperatorRequest,
+  ): Promise<GameTimeoutResponse> {
+    return this.http.postDirectoryAuth<GameTimeoutResponse>(
+      `/rooms/${encodeURIComponent(roomId)}/timeout`,
       body,
     );
   }

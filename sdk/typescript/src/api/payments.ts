@@ -1,5 +1,8 @@
 import type { HttpClient } from "../http.js";
 import type {
+  DueRenewalResult,
+  PaymentBatchFlushRequest,
+  PaymentBatchFlushResponse,
   Subscription,
   SupportedChain,
   X402SettleRequest,
@@ -57,6 +60,25 @@ export class PaymentsApi {
   renewSubscription(subscriptionId: string): Promise<Subscription> {
     return this.http.post<Subscription>(
       `/payments/subscriptions/${encodeURIComponent(subscriptionId)}/renew`,
+    );
+  }
+
+  renewDueSubscriptions(params?: {
+    limit?: number;
+  }): Promise<DueRenewalResult> {
+    return this.http.post<DueRenewalResult>(
+      "/payments/subscriptions/renew-due",
+      params,
+    );
+  }
+
+  flushBatch(
+    batchId: string,
+    request: PaymentBatchFlushRequest,
+  ): Promise<PaymentBatchFlushResponse> {
+    return this.http.post<PaymentBatchFlushResponse>(
+      `/payments/batches/${encodeURIComponent(batchId)}/flush`,
+      request,
     );
   }
 }

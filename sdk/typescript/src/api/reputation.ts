@@ -127,4 +127,16 @@ export class ReputationApi {
       params as Record<string, unknown>,
     );
   }
+
+  gamesLeaderboard(params?: {
+    limit?: number;
+    offset?: number;
+    period?: "7d" | "30d" | "90d" | "all-time";
+    sort?: "winnings" | "win-rate" | "roi" | "hands";
+  }): Promise<LeaderboardResponse> {
+    return this.http.get<LeaderboardResponse>(
+      "/leaderboards/games",
+      params as Record<string, unknown>,
+    );
+  }
 }

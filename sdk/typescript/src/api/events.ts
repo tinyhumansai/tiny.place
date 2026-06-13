@@ -220,6 +220,17 @@ export class EventsApi {
     );
   }
 
+  markQuestionAnswered(
+    eventId: string,
+    questionId: string,
+    body?: Record<string, unknown>,
+  ): Promise<EventQuestion> {
+    return this.http.postDirectoryAuth<EventQuestion>(
+      `/events/${encodeURIComponent(eventId)}/questions/${encodeURIComponent(questionId)}/answered`,
+      body,
+    );
+  }
+
   polls(eventId: string): Promise<{ polls: Array<EventPoll> }> {
     return this.http.get<{ polls: Array<EventPoll> }>(
       `/events/${encodeURIComponent(eventId)}/polls`,

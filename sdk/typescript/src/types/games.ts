@@ -32,6 +32,8 @@ export interface GameSeat {
   cryptoId?: string;
   stack: string;
   status: string;
+  consecutiveTimeouts?: number;
+  disconnectedAt?: string;
 }
 
 export interface GameTimeouts {
@@ -167,4 +169,15 @@ export interface GameLeaveResponse {
 export interface GameActionResponse {
   hand: GameHand;
   action: GameHandAction;
+}
+
+export interface GameOperatorRequest {
+  operator?: string;
+}
+
+export interface GameTimeoutResponse {
+  room: GameRoom;
+  hand: GameHand;
+  action: GameHandAction;
+  seat?: GameSeat;
 }

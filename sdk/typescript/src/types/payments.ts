@@ -59,6 +59,37 @@ export interface X402SettleResponse {
   [key: string]: unknown;
 }
 
+export interface PaymentBatchFlushRequest {
+  limit?: number;
+}
+
+export type PaymentBatchFlushStatus = "flushed" | "failed";
+
+export interface PaymentBatchFlush {
+  flushId: string;
+  batchId: string;
+  status: PaymentBatchFlushStatus;
+  itemCount: number;
+  itemIds?: Array<string>;
+  grossAmount?: string;
+  feeAmount?: string;
+  netAmount?: string;
+  asset?: string;
+  network?: string;
+  feeLedgerTxIds?: Array<string>;
+  parentLedgerTxId?: string;
+  onChainTx?: string;
+  error?: string;
+  metadata?: Record<string, string>;
+  createdAt?: string;
+  updatedAt?: string;
+  completedAt?: string;
+}
+
+export interface PaymentBatchFlushResponse {
+  flush: PaymentBatchFlush;
+}
+
 export interface SupportedChain {
   network: string;
   name: string;
@@ -105,6 +136,13 @@ export interface Subscription {
   autoRenew: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DueRenewalResult {
+  renewed: number;
+  failed: number;
+  suspended: number;
+  errors?: Array<string>;
 }
 
 export type SignerApprovalStatus =

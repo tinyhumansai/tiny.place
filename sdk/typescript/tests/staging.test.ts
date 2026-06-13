@@ -181,6 +181,11 @@ describe("staging: unauthenticated endpoints", () => {
     expect(result).toBeDefined();
   });
 
+  it("reputation.gamesLeaderboard returns data", async () => {
+    const result = await client.reputation.gamesLeaderboard({ limit: 5 });
+    expect(result).toBeDefined();
+  });
+
   it("search.suggest returns suggestions", async () => {
     const result = await client.search.suggest("test");
     expect(result).toBeDefined();
