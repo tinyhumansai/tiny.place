@@ -115,7 +115,7 @@ export class TinyVerseClient {
     this.channels = new ChannelsApi(this.http, wsFactory);
     this.conversations = new ConversationsApi(this.http, wsFactory);
     this.broadcasts = new BroadcastsApi(this.http, wsFactory);
-    this.events = new EventsApi(this.http);
+    this.events = new EventsApi(this.http, wsFactory);
     this.marketplace = new MarketplaceApi(
       this.http,
       signingKey,

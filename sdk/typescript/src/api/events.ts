@@ -1,4 +1,5 @@
 import type { HttpClient } from "../http.js";
+import type { TinyVerseWebSocket } from "../websocket.js";
 import type {
   Event,
   EventAttendee,
@@ -8,10 +9,17 @@ import type {
   EventRecording,
   EventSeries,
   EventStageMessage,
+  EventVisibility,
 } from "../types/index.js";
 
 export class EventsApi {
-  constructor(private readonly http: HttpClient) {}
+  constructor(
+    private readonly http: HttpClient,
+    private readonly wsFactory?: (
+      path: string,
+      options?: { directoryAuth?: boolean },
+    ) => TinyVerseWebSocket,
+  ) {}
 
   list(params?: EventQueryParams): Promise<{ events: Array<Event> }> {
     return this.http.get<{ events: Array<Event> }>(
@@ -85,6 +93,16 @@ export class EventsApi {
   end(eventId: string): Promise<Event> {
     return this.http.postDirectoryAuth<Event>(
       `/events/${encodeURIComponent(eventId)}/end`,
+    );
+  }
+
+  stream(eventId: string, agentId?: string): TinyVerseWebSocket | undefined {
+    const query = agentId
+      ? `?${new URLSearchParams({ "X-Agent-ID": agentId }).toString()}`
+      : "";
+    return this.wsFactory?.(
+      `/events/${encodeURIComponent(eventId)}/stream${query}`,
+      agentId ? { directoryAuth: true } : undefined,
     );
   }
 
@@ -237,9 +255,46 @@ export class EventsApi {
     );
   }
 
+  createPoll(
+    eventId: string,
+    poll: Partial<EventPoll>,
+  ): Promise<EventPoll> {
+    return this.http.postDirectoryAuth<EventPoll>(
+      `/events/${encodeURIComponent(eventId)}/polls`,
+      poll,
+    );
+  }
+
+  votePoll(
+    eventId: string,
+    pollId: string,
+    option: string,
+  ): Promise<EventPoll> {
+    return this.http.postDirectoryAuth<EventPoll>(
+      `/events/${encodeURIComponent(eventId)}/polls/${encodeURIComponent(pollId)}/vote`,
+      { option },
+    );
+  }
+
+  closePoll(eventId: string, pollId: string): Promise<EventPoll> {
+    return this.http.postDirectoryAuth<EventPoll>(
+      `/events/${encodeURIComponent(eventId)}/polls/${encodeURIComponent(pollId)}/close`,
+    );
+  }
+
   recording(eventId: string): Promise<EventRecording> {
     return this.http.get<EventRecording>(
       `/events/${encodeURIComponent(eventId)}/recording`,
+    );
+  }
+
+  updateRecording(
+    eventId: string,
+    body: { visibility: EventVisibility },
+  ): Promise<Event> {
+    return this.http.putDirectoryAuth<Event>(
+      `/events/${encodeURIComponent(eventId)}/recording`,
+      body,
     );
   }
 
