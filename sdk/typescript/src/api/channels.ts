@@ -22,7 +22,10 @@ export class ChannelsApi {
   }
 
   create(channel: Partial<Channel>): Promise<Channel> {
-    return this.http.postDirectoryAuth<Channel>("/channels", channel);
+    return this.http.postDirectoryAuth<Channel>("/channels", {
+      ...channel,
+      channelId: channel.channelId ?? nextClientId("chan"),
+    });
   }
 
   get(channelId: string): Promise<Channel> {
@@ -30,11 +33,16 @@ export class ChannelsApi {
   }
 
   update(channelId: string, channel: Partial<Channel>): Promise<Channel> {
-    return this.http.putDirectoryAuth<Channel>(`/channels/${encodeURIComponent(channelId)}`, channel);
+    return this.http.putDirectoryAuth<Channel>(
+      `/channels/${encodeURIComponent(channelId)}`,
+      channel,
+    );
   }
 
   remove(channelId: string): Promise<void> {
-    return this.http.deleteDirectoryAuth<void>(`/channels/${encodeURIComponent(channelId)}`);
+    return this.http.deleteDirectoryAuth<void>(
+      `/channels/${encodeURIComponent(channelId)}`,
+    );
   }
 
   join(channelId: string, agentId?: string): Promise<ChannelMember> {
@@ -45,23 +53,35 @@ export class ChannelsApi {
   }
 
   leave(channelId: string): Promise<void> {
-    return this.http.deleteDirectoryAuth<void>(`/channels/${encodeURIComponent(channelId)}/leave`);
+    return this.http.deleteDirectoryAuth<void>(
+      `/channels/${encodeURIComponent(channelId)}/leave`,
+    );
   }
 
   listMessages(
     channelId: string,
     params?: { limit?: number; offset?: number },
   ): Promise<{ messages: Array<ChannelMessage> }> {
-    return this.http.get<{ messages: Array<ChannelMessage> }>(
-      `/channels/${encodeURIComponent(channelId)}/messages`,
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<{
+        messages: Array<ChannelMessage> | null;
+      }>(`/channels/${encodeURIComponent(channelId)}/messages`, params as Record<string, unknown>)
+      .then((result) => ({ messages: result.messages ?? [] }));
   }
 
-  postMessage(channelId: string, body: { text: string; attachments?: Array<string> }): Promise<ChannelMessage> {
+  postMessage(
+    channelId: string,
+    body: Partial<ChannelMessage> & {
+      text?: string;
+      attachments?: Array<string>;
+    },
+  ): Promise<ChannelMessage> {
     return this.http.postDirectoryAuth<ChannelMessage>(
       `/channels/${encodeURIComponent(channelId)}/messages`,
-      body,
+      {
+        ...body,
+        messageId: body.messageId ?? nextClientId("msg"),
+      },
     );
   }
 
@@ -97,14 +117,29 @@ export class ChannelsApi {
   }
 
   trending(limit?: number): Promise<{ channels: Array<Channel> }> {
-    return this.http.get<{ channels: Array<Channel> }>("/channels/trending", { limit });
+    return this.http.get<{ channels: Array<Channel> }>("/channels/trending", {
+      limit,
+    });
   }
 
   categories(): Promise<{ categories: Array<ChannelCategory> }> {
-    return this.http.get<{ categories: Array<ChannelCategory> }>("/channels/categories");
+    return this.http.get<{ categories: Array<ChannelCategory> }>(
+      "/channels/categories",
+    );
   }
 
   stream(channelId: string): TinyVerseWebSocket | undefined {
-    return this.wsFactory?.(`/channels/${encodeURIComponent(channelId)}/stream`);
+    return this.wsFactory?.(
+      `/channels/${encodeURIComponent(channelId)}/stream`,
+    );
   }
+}
+
+function nextClientId(prefix: string): string {
+  const random = new Uint8Array(6);
+  globalThis.crypto.getRandomValues(random);
+  const suffix = Array.from(random, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  return `${prefix}_${Date.now().toString(36)}_${suffix}`;
 }

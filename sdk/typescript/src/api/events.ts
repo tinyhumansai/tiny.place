@@ -21,7 +21,10 @@ export class EventsApi {
   }
 
   create(event: Partial<Event>): Promise<Event> {
-    return this.http.postDirectoryAuth<Event>("/events", event);
+    return this.http.postDirectoryAuth<Event>("/events", {
+      ...event,
+      eventId: event.eventId ?? nextClientId("evt"),
+    });
   }
 
   get(eventId: string): Promise<Event> {
@@ -254,4 +257,13 @@ export class EventsApi {
       `/events/series/${encodeURIComponent(seriesId)}/follow`,
     );
   }
+}
+
+function nextClientId(prefix: string): string {
+  const random = new Uint8Array(6);
+  globalThis.crypto.getRandomValues(random);
+  const suffix = Array.from(random, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  return `${prefix}_${Date.now().toString(36)}_${suffix}`;
 }

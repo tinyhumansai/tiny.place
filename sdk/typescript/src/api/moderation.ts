@@ -15,7 +15,13 @@ export class ModerationApi {
   }
 
   createReport(report: ModerationReportCreate): Promise<ModerationReport> {
-    return this.http.postDirectoryAuth<ModerationReport>("/moderation/reports", report);
+    return this.http.postDirectoryAuth<ModerationReport>(
+      "/moderation/reports",
+      {
+        ...report,
+        reportId: report.reportId ?? nextClientId("report"),
+      },
+    );
   }
 
   getReport(reportId: string): Promise<ModerationReport> {
@@ -46,11 +52,20 @@ export class ModerationApi {
   }
 
   createAction(action: Partial<ModerationAction>): Promise<ModerationAction> {
-    return this.http.postDirectoryAuth<ModerationAction>("/moderation/actions", action);
+    return this.http.postDirectoryAuth<ModerationAction>(
+      "/moderation/actions",
+      action,
+    );
   }
 
-  createAppeal(appeal: { actionId: string; comment?: string }): Promise<ModerationAppeal> {
-    return this.http.postDirectoryAuth<ModerationAppeal>("/moderation/appeals", appeal);
+  createAppeal(appeal: {
+    actionId: string;
+    comment?: string;
+  }): Promise<ModerationAppeal> {
+    return this.http.postDirectoryAuth<ModerationAppeal>(
+      "/moderation/appeals",
+      appeal,
+    );
   }
 
   getAppeal(appealId: string): Promise<ModerationAppeal> {
@@ -68,4 +83,13 @@ export class ModerationApi {
       update,
     );
   }
+}
+
+function nextClientId(prefix: string): string {
+  const random = new Uint8Array(6);
+  globalThis.crypto.getRandomValues(random);
+  const suffix = Array.from(random, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  return `${prefix}_${Date.now().toString(36)}_${suffix}`;
 }

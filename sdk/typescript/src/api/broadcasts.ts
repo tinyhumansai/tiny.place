@@ -15,7 +15,9 @@ export class BroadcastsApi {
     private readonly wsFactory?: (path: string) => TinyVerseWebSocket,
   ) {}
 
-  list(params?: BroadcastQueryParams): Promise<{ broadcasts: Array<BroadcastChannel> }> {
+  list(
+    params?: BroadcastQueryParams,
+  ): Promise<{ broadcasts: Array<BroadcastChannel> }> {
     return this.http.get<{ broadcasts: Array<BroadcastChannel> }>(
       "/broadcasts",
       params as Record<string, unknown>,
@@ -23,14 +25,22 @@ export class BroadcastsApi {
   }
 
   create(request: BroadcastCreateRequest): Promise<BroadcastChannel> {
-    return this.http.postDirectoryAuth<BroadcastChannel>("/broadcasts", request);
+    return this.http.postDirectoryAuth<BroadcastChannel>("/broadcasts", {
+      ...request,
+      broadcastId: request.broadcastId ?? nextClientId("bcast"),
+    });
   }
 
   get(broadcastId: string): Promise<BroadcastChannel> {
-    return this.http.get<BroadcastChannel>(`/broadcasts/${encodeURIComponent(broadcastId)}`);
+    return this.http.get<BroadcastChannel>(
+      `/broadcasts/${encodeURIComponent(broadcastId)}`,
+    );
   }
 
-  update(broadcastId: string, update: Partial<BroadcastChannel>): Promise<BroadcastChannel> {
+  update(
+    broadcastId: string,
+    update: Partial<BroadcastChannel>,
+  ): Promise<BroadcastChannel> {
     return this.http.putDirectoryAuth<BroadcastChannel>(
       `/broadcasts/${encodeURIComponent(broadcastId)}`,
       update,
@@ -38,7 +48,9 @@ export class BroadcastsApi {
   }
 
   remove(broadcastId: string): Promise<void> {
-    return this.http.deleteDirectoryAuth<void>(`/broadcasts/${encodeURIComponent(broadcastId)}`);
+    return this.http.deleteDirectoryAuth<void>(
+      `/broadcasts/${encodeURIComponent(broadcastId)}`,
+    );
   }
 
   addPublisher(broadcastId: string, agentId: string): Promise<void> {
@@ -66,10 +78,12 @@ export class BroadcastsApi {
     );
   }
 
-  subscribers(broadcastId: string): Promise<{ subscribers: Array<BroadcastSubscriber> }> {
-    return this.http.getDirectoryAuth<{ subscribers: Array<BroadcastSubscriber> }>(
-      `/broadcasts/${encodeURIComponent(broadcastId)}/subscribers`,
-    );
+  subscribers(
+    broadcastId: string,
+  ): Promise<{ subscribers: Array<BroadcastSubscriber> }> {
+    return this.http.getDirectoryAuth<{
+      subscribers: Array<BroadcastSubscriber>;
+    }>(`/broadcasts/${encodeURIComponent(broadcastId)}/subscribers`);
   }
 
   removeSubscriber(broadcastId: string, agentId: string): Promise<void> {
@@ -82,10 +96,11 @@ export class BroadcastsApi {
     broadcastId: string,
     params?: { limit?: number; offset?: number },
   ): Promise<{ messages: Array<BroadcastMessage> }> {
-    return this.http.getDirectoryAuth<{ messages: Array<BroadcastMessage> }>(
-      `/broadcasts/${encodeURIComponent(broadcastId)}/messages`,
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .getDirectoryAuth<{
+        messages: Array<BroadcastMessage> | null;
+      }>(`/broadcasts/${encodeURIComponent(broadcastId)}/messages`, params as Record<string, unknown>)
+      .then((result) => ({ messages: result.messages ?? [] }));
   }
 
   postMessage(
@@ -94,7 +109,10 @@ export class BroadcastsApi {
   ): Promise<BroadcastMessage> {
     return this.http.postDirectoryAuth<BroadcastMessage>(
       `/broadcasts/${encodeURIComponent(broadcastId)}/messages`,
-      message,
+      {
+        ...message,
+        messageId: message.messageId ?? nextClientId("bmsg"),
+      },
     );
   }
 
@@ -105,6 +123,17 @@ export class BroadcastsApi {
   }
 
   stream(broadcastId: string): TinyVerseWebSocket | undefined {
-    return this.wsFactory?.(`/broadcasts/${encodeURIComponent(broadcastId)}/stream`);
+    return this.wsFactory?.(
+      `/broadcasts/${encodeURIComponent(broadcastId)}/stream`,
+    );
   }
+}
+
+function nextClientId(prefix: string): string {
+  const random = new Uint8Array(6);
+  globalThis.crypto.getRandomValues(random);
+  const suffix = Array.from(random, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  return `${prefix}_${Date.now().toString(36)}_${suffix}`;
 }

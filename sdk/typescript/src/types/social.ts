@@ -164,6 +164,7 @@ export interface ModerationReport {
 }
 
 export interface ModerationReportCreate {
+  reportId?: string;
   reporter: string;
   contentType: ModerationReportContentType;
   contentId: string;

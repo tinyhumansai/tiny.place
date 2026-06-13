@@ -71,8 +71,11 @@ export interface BroadcastMessage {
 }
 
 export interface BroadcastCreateRequest {
+  broadcastId?: string;
   name: string;
   description?: string;
+  owner?: string;
+  ownerCryptoId?: string;
   tags?: Array<string>;
   visibility?: BroadcastVisibility;
   encryption?: BroadcastEncryption;
