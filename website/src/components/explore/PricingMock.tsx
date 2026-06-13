@@ -1,14 +1,17 @@
 "use client";
 
 import type {
+	BridgeExecution,
 	BridgeRoute,
 	GasEstimate,
 	PriceQuote,
+	SwapExecution,
 	SwapQuote,
 } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
 import {
+	useBridgeHistory,
 	useBridgeQuote,
 	useBridgeRoutes,
 	useGasEstimate,
@@ -16,8 +19,10 @@ import {
 	usePricingAssets,
 	usePricingNetworks,
 	usePricingPairs,
+	useSwapHistory,
 	useSwapQuote,
 } from "@src/hooks/use-pricing";
+import { useAuthStore } from "@src/store/auth";
 
 const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 const BASE_NETWORK = "eip155:8453";
@@ -229,11 +234,68 @@ function BridgeRouteList({
 	);
 }
 
+function RecentOperationList({
+	bridges,
+	isDark,
+	swaps,
+}: {
+	bridges: Array<BridgeExecution>;
+	isDark: boolean;
+	swaps: Array<SwapExecution>;
+}): React.ReactElement {
+	const items = [
+		...swaps.map((swap) => ({
+			id: swap.swapId,
+			label: `${swap.from.asset} -> ${swap.to.asset}`,
+			status: swap.status,
+			type: "Swap",
+		})),
+		...bridges.map((bridge) => ({
+			id: bridge.bridgeId,
+			label: `${bridge.from.network} -> ${bridge.to.network}`,
+			status: bridge.status,
+			type: "Bridge",
+		})),
+	].slice(0, 4);
+
+	if (items.length === 0) {
+		return <p className="text-xs text-neutral-500">No recent operations.</p>;
+	}
+
+	return (
+		<div className="space-y-2">
+			{items.map((item) => (
+				<div
+					key={`${item.type}-${item.id}`}
+					className={`rounded-md border p-2 text-xs ${
+						isDark
+							? "border-neutral-800 bg-neutral-900"
+							: "border-neutral-200 bg-white"
+					}`}
+				>
+					<div className="flex items-center justify-between gap-2">
+						<span className={isDark ? "text-white" : "text-black"}>
+							{item.type}
+						</span>
+						<span className={isDark ? "text-neutral-500" : "text-neutral-500"}>
+							{item.status}
+						</span>
+					</div>
+					<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>
+						{item.label}
+					</p>
+				</div>
+			))}
+		</div>
+	);
+}
+
 export const PricingMock = ({
 	isDark,
 }: {
 	isDark: boolean;
 }): FunctionComponent => {
+	const agentId = useAuthStore((state) => state.agentId);
 	const priceQuote = usePriceQuote({
 		base: "SOL",
 		quote: "USDC",
@@ -260,6 +322,8 @@ export const PricingMock = ({
 		asset: "USDC",
 		amount: "1000000",
 	});
+	const swapHistory = useSwapHistory({ limit: 3 }, Boolean(agentId));
+	const bridgeHistory = useBridgeHistory({ limit: 3 }, Boolean(agentId));
 
 	return (
 		<div className="grid gap-4 md:grid-cols-2">
@@ -370,6 +434,28 @@ export const PricingMock = ({
 						</div>
 					</div>
 				</DataState>
+			</Panel>
+
+			<Panel isDark={isDark} title="Recent Swap & Bridge Activity">
+				{agentId ? (
+					<DataState
+						isDark={isDark}
+						isError={swapHistory.isError || bridgeHistory.isError}
+						isLoading={swapHistory.isLoading || bridgeHistory.isLoading}
+					>
+						<RecentOperationList
+							bridges={bridgeHistory.data?.bridges ?? []}
+							isDark={isDark}
+							swaps={swapHistory.data?.swaps ?? []}
+						/>
+					</DataState>
+				) : (
+					<p
+						className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
+					>
+						Connect your wallet to view swap and bridge history.
+					</p>
+				)}
 			</Panel>
 		</div>
 	);

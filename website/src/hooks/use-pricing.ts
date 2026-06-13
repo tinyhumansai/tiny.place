@@ -1,10 +1,20 @@
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+	useMutation,
+	useQuery,
+	useQueryClient,
+	type UseMutationResult,
+	type UseQueryResult,
+} from "@tanstack/react-query";
 import type {
+	BridgeExecuteRequest,
+	BridgeExecution,
 	BridgeQuote,
 	BridgeRoute,
 	GasEstimate,
 	PriceQuote,
 	SupportedChain,
+	SwapExecuteRequest,
+	SwapExecution,
 	SwapQuote,
 	TradePair,
 } from "@tinyhumansai/tinyplace";
@@ -97,6 +107,51 @@ export function useSwapQuote(
 	});
 }
 
+export function useExecuteSwap(): UseMutationResult<
+	SwapExecution,
+	Error,
+	SwapExecuteRequest
+> {
+	const client = useApiClient();
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (request): Promise<SwapExecution> =>
+			client.pricing.executeSwap(request),
+		onSuccess: (swap): void => {
+			void queryClient.invalidateQueries({
+				queryKey: ["pricing", "swap-history"],
+			});
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.pricing.swapStatus(swap.swapId),
+			});
+		},
+	});
+}
+
+export function useSwapStatus(swapId: string): UseQueryResult<SwapExecution> {
+	const client = useApiClient();
+	return useQuery({
+		queryKey: queryKeys.pricing.swapStatus(swapId),
+		queryFn: (): Promise<SwapExecution> => client.pricing.getSwapStatus(swapId),
+		enabled: Boolean(swapId),
+	});
+}
+
+export function useSwapHistory(
+	parameters?: { limit?: number; offset?: number },
+	enabled = true
+): UseQueryResult<{ swaps: Array<SwapExecution> }> {
+	const client = useApiClient();
+	return useQuery({
+		queryKey: queryKeys.pricing.swapHistory(parameters),
+		queryFn: async (): Promise<{ swaps: Array<SwapExecution> }> => {
+			const result = await client.pricing.swapHistory(parameters);
+			return { swaps: result.swaps ?? [] };
+		},
+		enabled,
+	});
+}
+
 export function useBridgeRoutes(
 	parameters: BridgeParameters
 ): UseQueryResult<{ routes: Array<BridgeRoute> }> {
@@ -106,6 +161,54 @@ export function useBridgeRoutes(
 		queryFn: (): Promise<{ routes: Array<BridgeRoute> }> =>
 			client.pricing.bridgeRoutes(parameters),
 		enabled: Boolean(parameters.from && parameters.to && parameters.asset),
+	});
+}
+
+export function useExecuteBridge(): UseMutationResult<
+	BridgeExecution,
+	Error,
+	BridgeExecuteRequest
+> {
+	const client = useApiClient();
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (request): Promise<BridgeExecution> =>
+			client.pricing.executeBridge(request),
+		onSuccess: (bridge): void => {
+			void queryClient.invalidateQueries({
+				queryKey: ["pricing", "bridge-history"],
+			});
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.pricing.bridgeStatus(bridge.bridgeId),
+			});
+		},
+	});
+}
+
+export function useBridgeStatus(
+	bridgeId: string
+): UseQueryResult<BridgeExecution> {
+	const client = useApiClient();
+	return useQuery({
+		queryKey: queryKeys.pricing.bridgeStatus(bridgeId),
+		queryFn: (): Promise<BridgeExecution> =>
+			client.pricing.getBridgeStatus(bridgeId),
+		enabled: Boolean(bridgeId),
+	});
+}
+
+export function useBridgeHistory(
+	parameters?: { limit?: number; offset?: number },
+	enabled = true
+): UseQueryResult<{ bridges: Array<BridgeExecution> }> {
+	const client = useApiClient();
+	return useQuery({
+		queryKey: queryKeys.pricing.bridgeHistory(parameters),
+		queryFn: async (): Promise<{ bridges: Array<BridgeExecution> }> => {
+			const result = await client.pricing.bridgeHistory(parameters);
+			return { bridges: result.bridges ?? [] };
+		},
+		enabled,
 	});
 }
 

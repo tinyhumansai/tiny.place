@@ -126,6 +126,9 @@ export const queryKeys = {
 			network?: string;
 			to: string;
 		}) => ["pricing", "swap-quote", parameters] as const,
+		swapStatus: (swapId: string) => ["pricing", "swap-status", swapId] as const,
+		swapHistory: (parameters?: { limit?: number; offset?: number }) =>
+			["pricing", "swap-history", parameters] as const,
 		bridgeRoutes: (parameters: { asset: string; from: string; to: string }) =>
 			["pricing", "bridge-routes", parameters] as const,
 		bridgeQuote: (parameters: {
@@ -134,6 +137,10 @@ export const queryKeys = {
 			from: string;
 			to: string;
 		}) => ["pricing", "bridge-quote", parameters] as const,
+		bridgeStatus: (bridgeId: string) =>
+			["pricing", "bridge-status", bridgeId] as const,
+		bridgeHistory: (parameters?: { limit?: number; offset?: number }) =>
+			["pricing", "bridge-history", parameters] as const,
 	},
 	artifacts: {
 		list: (parameters?: ArtifactQueryParams) =>
