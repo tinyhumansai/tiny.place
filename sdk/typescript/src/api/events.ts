@@ -11,6 +11,14 @@ import type {
   EventStageMessage,
   EventVisibility,
 } from "../types/index.js";
+import type { X402PaymentMap } from "../x402.js";
+
+export interface EventRsvpRequest {
+  agentId?: string;
+  payment?: X402PaymentMap;
+  paymentAuthorization?: string;
+  tier?: string;
+}
 
 export class EventsApi {
   constructor(
@@ -69,23 +77,24 @@ export class EventsApi {
     );
   }
 
-  rsvp(
-    eventId: string,
-    tier?: string,
-    agentId?: string,
-  ): Promise<EventAttendee> {
-    const body = { ...(tier ? { tier } : {}), ...(agentId ? { agentId } : {}) };
-    const requestBody = Object.keys(body).length > 0 ? body : undefined;
+  rsvp(eventId: string, request?: EventRsvpRequest): Promise<EventAttendee> {
+    const { agentId, ...body } = request ?? {};
+    const requestBody = {
+      ...body,
+      ...(agentId ? { agentId } : {}),
+    };
+    const payload =
+      Object.keys(requestBody).length > 0 ? requestBody : undefined;
     if (agentId) {
       return this.http.postDirectoryAuthAs<EventAttendee>(
         `/events/${encodeURIComponent(eventId)}/rsvp`,
         agentId,
-        requestBody,
+        payload,
       );
     }
     return this.http.postDirectoryAuth<EventAttendee>(
       `/events/${encodeURIComponent(eventId)}/rsvp`,
-      requestBody,
+      payload,
     );
   }
 
