@@ -45,6 +45,13 @@ export interface SolanaPaymentExecutionOptions {
   sourceTokenAccount?: string;
   destinationTokenAccount?: string;
   commitment?: "processed" | "confirmed" | "finalized";
+  /**
+   * How many times to poll for the transaction to reach `commitment` (500ms
+   * apart) before giving up. Defaults to {@link DEFAULT_CONFIRMATION_POLLS}.
+   * Raise it when waiting for `finalized` (e.g. SPL settlements the backend
+   * reads on-chain at finalized commitment, which can take ~30s on a validator).
+   */
+  confirmationPolls?: number;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -105,7 +112,8 @@ type SignatureStatusesResponse = {
 
 const BASE58_ALPHABET =
   "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const MAX_CONFIRMATION_POLLS = 20;
+/** Default number of 500ms confirmation polls (≈10s) before giving up. */
+export const DEFAULT_CONFIRMATION_POLLS = 20;
 
 export async function executeSolanaPayment(
   options: SolanaPaymentExecutionOptions,
@@ -137,6 +145,7 @@ export async function executeSolanaPayment(
 
   const fetchFn = options.fetch ?? globalThis.fetch;
   const commitment = options.commitment ?? "confirmed";
+  const polls = options.confirmationPolls ?? DEFAULT_CONFIRMATION_POLLS;
   const payer = encodeBase58(publicKey);
   const amount = normalizedAmount(options.payment.amount);
 
@@ -161,6 +170,7 @@ export async function executeSolanaPayment(
       message,
       seed,
       commitment,
+      polls,
     );
     return {
       signature: txSignature,
@@ -215,6 +225,7 @@ export async function executeSolanaPayment(
     message,
     seed,
     commitment,
+      polls,
   );
 
   return {
@@ -235,14 +246,22 @@ async function sendSignedMessage(
   message: Uint8Array,
   seed: Uint8Array,
   commitment: string,
+  polls: number,
 ): Promise<string> {
   const signature = ed25519.sign(message, seed);
   const transaction = concatBytes(shortVec(1), signature, message);
+  // Preflight simulation runs at "confirmed" regardless of the (possibly
+  // stricter) confirmation commitment: a "finalized" preflight would fail to
+  // see recently-confirmed funding (e.g. a just-landed airdrop) and reject the
+  // send with "no record of a prior credit". Confirmation still waits for the
+  // requested commitment below.
+  const preflightCommitment =
+    commitment === "processed" ? "processed" : "confirmed";
   const txSignature = await rpc<string>(fetchFn, rpcUrl, "sendTransaction", [
     bytesToBase64(transaction),
-    { encoding: "base64", preflightCommitment: commitment },
+    { encoding: "base64", preflightCommitment },
   ]);
-  await confirmSignature(fetchFn, rpcUrl, txSignature, commitment);
+  await confirmSignature(fetchFn, rpcUrl, txSignature, commitment, polls);
   return txSignature;
 }
 
@@ -301,8 +320,9 @@ async function confirmSignature(
   rpcUrl: string,
   signature: string,
   commitment: string,
+  polls: number,
 ): Promise<void> {
-  for (let attempt = 0; attempt < MAX_CONFIRMATION_POLLS; attempt += 1) {
+  for (let attempt = 0; attempt < polls; attempt += 1) {
     const statuses = await rpc<SignatureStatusesResponse>(
       fetchFn,
       rpcUrl,
