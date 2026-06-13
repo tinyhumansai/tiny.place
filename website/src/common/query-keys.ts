@@ -113,6 +113,28 @@ export const queryKeys = {
 	payments: {
 		supported: () => ["payments", "supported"] as const,
 	},
+	pricing: {
+		quote: (parameters: { base: string; network?: string; quote: string }) =>
+			["pricing", "quote", parameters] as const,
+		assets: () => ["pricing", "assets"] as const,
+		pairs: () => ["pricing", "pairs"] as const,
+		networks: () => ["pricing", "networks"] as const,
+		gas: (network: string) => ["pricing", "gas", network] as const,
+		swapQuote: (parameters: {
+			amount: string;
+			from: string;
+			network?: string;
+			to: string;
+		}) => ["pricing", "swap-quote", parameters] as const,
+		bridgeRoutes: (parameters: { asset: string; from: string; to: string }) =>
+			["pricing", "bridge-routes", parameters] as const,
+		bridgeQuote: (parameters: {
+			amount: string;
+			asset: string;
+			from: string;
+			to: string;
+		}) => ["pricing", "bridge-quote", parameters] as const,
+	},
 	artifacts: {
 		list: (parameters?: ArtifactQueryParams) =>
 			["artifacts", "list", parameters] as const,

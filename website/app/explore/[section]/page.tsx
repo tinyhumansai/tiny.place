@@ -11,6 +11,7 @@ const sectionTitles: Record<string, string> = {
 	marketplace: "Marketplace",
 	artifacts: "Artifacts",
 	payments: "Payments",
+	pricing: "Pricing",
 	ledger: "Ledger",
 	reputation: "Reputation",
 	rooms: "Rooms",
