@@ -122,13 +122,15 @@ export async function sendDirectMessage(
 	const bundle = hasSession
 		? undefined
 		: await encClient.keys.getBundle(toEncKeyB64);
-	const recipientX25519 = ed25519PubToX25519Pub(decodeBase64(toEncKeyB64));
+	const recipientEd25519 = decodeBase64(toEncKeyB64);
+	const recipientX25519 = ed25519PubToX25519Pub(recipientEd25519);
 
 	const encrypted = await session.encrypt(
 		toEncKeyB64,
 		recipientX25519,
 		new TextEncoder().encode(text),
-		bundle
+		bundle,
+		recipientEd25519
 	);
 
 	await encClient.messages.send({

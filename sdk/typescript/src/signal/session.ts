@@ -1,6 +1,6 @@
 import { toBase64, fromBase64 } from "./crypto.js";
 import type { X25519KeyPair } from "./crypto.js";
-import { x3dhInitiate, x3dhRespond, buildAssociatedData } from "./x3dh.js";
+import { x3dhInitiate, x3dhRespond, buildAssociatedData, verifyPreKeySignature } from "./x3dh.js";
 import type { X3DHBundle } from "./x3dh.js";
 import { ratchetEncrypt, ratchetDecrypt } from "./ratchet.js";
 import type { RatchetMessage, RatchetHeader } from "./ratchet.js";
@@ -27,6 +27,7 @@ export class SignalSession {
     recipientIdentityKey: Uint8Array,
     plaintext: Uint8Array,
     recipientBundle?: KeyBundle,
+    recipientIdentityEd25519Key?: Uint8Array,
   ): Promise<EncryptedMessage> {
     let session = await this.store.getSession(recipientAddress);
     let isPreKeyMessage = false;
@@ -35,7 +36,11 @@ export class SignalSession {
     let oneTimePreKeyId: string | undefined;
 
     if (!session && recipientBundle) {
-      const bundle = parseKeyBundle(recipientBundle, recipientIdentityKey);
+      const bundle = parseKeyBundle(
+        recipientBundle,
+        recipientIdentityKey,
+        recipientIdentityEd25519Key,
+      );
       const identityKeyPair = await this.store.getIdentityX25519KeyPair();
       const result = x3dhInitiate(identityKeyPair, bundle);
       session = result.session;
@@ -141,13 +146,38 @@ export class SignalSession {
 function parseKeyBundle(
   bundle: KeyBundle,
   recipientX25519IdentityKey: Uint8Array,
+  recipientEd25519IdentityKey?: Uint8Array,
 ): X3DHBundle {
+  // Verify the signed pre-key (and one-time pre-key) signatures against the
+  // peer's long-term Ed25519 identity key before trusting any served key
+  // material. This is the X3DH binding that prevents a malicious or compromised
+  // relay/directory from substituting attacker-controlled pre-keys (MITM /
+  // unknown-key-share). The Ed25519 identity key must come from the caller's
+  // trusted addressing of the peer, never from the bundle itself.
+  if (!recipientEd25519IdentityKey) {
+    throw new Error(
+      "Key bundle rejected: peer Ed25519 identity key is required to verify the signed pre-key signature",
+    );
+  }
+  verifyPreKeySignature(
+    recipientEd25519IdentityKey,
+    bundle.signedPreKey.publicKey,
+    bundle.signedPreKey.signature,
+    "signed pre-key",
+  );
+
   const result: X3DHBundle = {
     identityKey: recipientX25519IdentityKey,
     signedPreKeyId: bundle.signedPreKey.keyId,
     signedPreKey: fromBase64(bundle.signedPreKey.publicKey),
   };
   if (bundle.oneTimePreKey) {
+    verifyPreKeySignature(
+      recipientEd25519IdentityKey,
+      bundle.oneTimePreKey.publicKey,
+      bundle.oneTimePreKey.signature,
+      "one-time pre-key",
+    );
     result.oneTimePreKeyId = bundle.oneTimePreKey.keyId;
     result.oneTimePreKey = fromBase64(bundle.oneTimePreKey.publicKey);
   }

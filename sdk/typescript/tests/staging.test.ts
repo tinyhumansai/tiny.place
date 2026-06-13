@@ -961,6 +961,7 @@ describe("staging: authenticated flows", () => {
         bobX25519Pub,
         new TextEncoder().encode("hello from SDK signal test!"),
         bundle,
+        secondSigner.publicKey,
       );
       expect(encrypted.type).toBe("PREKEY_BUNDLE");
 

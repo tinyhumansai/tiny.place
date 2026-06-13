@@ -1,15 +1,60 @@
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
+import { ed25519 } from "@noble/curves/ed25519.js";
 import {
   generateX25519KeyPair,
   x25519SharedSecret,
   toBase64,
+  fromBase64,
 } from "./crypto.js";
 import type { X25519KeyPair } from "./crypto.js";
 import type { SessionState } from "./store.js";
 
 const X3DH_INFO = new TextEncoder().encode("WhisperText");
 const PADDING = new Uint8Array(32).fill(0xff);
+
+/**
+ * Verifies that a fetched pre-key was signed by the peer's long-term Ed25519
+ * identity key, using the exact construction the backend uses:
+ *   ed25519.Verify(identityPubKey, base64(preKey.PublicKey), signature)
+ *
+ * The signed message is the UTF-8 bytes of the base64-encoded X25519 public key
+ * (see `signal/keys.ts`). Throws on a missing or invalid signature so a malicious
+ * relay/directory cannot substitute attacker-controlled pre-keys.
+ *
+ * @param identityEd25519PublicKey - The peer's long-term Ed25519 identity public
+ *   key (the addressing key), NOT the derived X25519 key. This must come from a
+ *   trusted source (the peer's handle/address), never from the served bundle.
+ * @param preKeyPublicKeyBase64 - The base64-encoded X25519 pre-key public key, as
+ *   carried verbatim in the fetched bundle.
+ * @param signatureBase64 - The base64-encoded Ed25519 signature over the pre-key.
+ * @param label - A human-readable label for the pre-key (for error messages).
+ */
+export function verifyPreKeySignature(
+  identityEd25519PublicKey: Uint8Array,
+  preKeyPublicKeyBase64: string,
+  signatureBase64: string | undefined,
+  label: string,
+): void {
+  if (!signatureBase64) {
+    throw new Error(
+      `Key bundle rejected: ${label} is missing its Ed25519 signature`,
+    );
+  }
+  const signedMessage = new TextEncoder().encode(preKeyPublicKeyBase64);
+  const signature = fromBase64(signatureBase64);
+  let valid = false;
+  try {
+    valid = ed25519.verify(signature, signedMessage, identityEd25519PublicKey);
+  } catch {
+    valid = false;
+  }
+  if (!valid) {
+    throw new Error(
+      `Key bundle rejected: invalid Ed25519 signature on ${label}`,
+    );
+  }
+}
 
 export interface X3DHBundle {
   identityKey: Uint8Array;

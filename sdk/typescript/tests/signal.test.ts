@@ -245,15 +245,21 @@ describe("SignalSession with MemorySessionStore", () => {
     const bobStore = new MemorySessionStore(bobIdentity);
 
     const signer = await LocalSigner.generate();
-    const bobSignedPreKeyPair = await generateSignedPreKey(signer, "spk_1");
+    // The backend signs base64(X25519 publicKey) with the Ed25519 identity key,
+    // so the bundle signatures must cover the exact pre-key bytes Alice consumes.
+    const signSpk = await signer.sign(
+      new TextEncoder().encode(toBase64(bobSignedPreKey.publicKey)),
+    );
+    const signOpk = await signer.sign(
+      new TextEncoder().encode(toBase64(bobOneTimePreKey.publicKey)),
+    );
 
     await bobStore.storeSignedPreKey({
       keyId: "spk_1",
       keyPair: bobSignedPreKey,
-      signature: bobSignedPreKeyPair.signature,
+      signature: signSpk,
     });
-    const dummySig = await signer.sign(bobOneTimePreKey.publicKey);
-    await bobStore.storePreKey({ keyId: "opk_1", keyPair: bobOneTimePreKey, signature: dummySig });
+    await bobStore.storePreKey({ keyId: "opk_1", keyPair: bobOneTimePreKey, signature: signOpk });
 
     const aliceSignal = new SignalSession(aliceStore, aliceIdentity.publicKey);
     const bobSignal = new SignalSession(bobStore, bobIdentity.publicKey);
@@ -264,10 +270,12 @@ describe("SignalSession with MemorySessionStore", () => {
       signedPreKey: {
         keyId: "spk_1",
         publicKey: toBase64(bobSignedPreKey.publicKey),
+        signature: toBase64(signSpk),
       },
       oneTimePreKey: {
         keyId: "opk_1",
         publicKey: toBase64(bobOneTimePreKey.publicKey),
+        signature: toBase64(signOpk),
       },
       updatedAt: new Date().toISOString(),
     };
@@ -277,6 +285,7 @@ describe("SignalSession with MemorySessionStore", () => {
       bobIdentity.publicKey,
       new TextEncoder().encode("hello bob!"),
       bundle,
+      signer.publicKey,
     );
 
     expect(encrypted.type).toBe("PREKEY_BUNDLE");
