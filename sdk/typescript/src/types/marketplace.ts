@@ -9,10 +9,7 @@ export type ProductCategory =
 
 export type ProductStatus = "active" | "sold-out" | "delisted";
 
-export type DeliveryMethod =
-  | "download"
-  | "a2a-task"
-  | "encrypted-message";
+export type DeliveryMethod = "download" | "a2a-task" | "encrypted-message";
 
 export type IdentityListingType = "fixed" | "auction";
 
@@ -43,6 +40,9 @@ export interface Product {
 }
 
 export interface ProductCreateRequest {
+  productId?: string;
+  seller?: string;
+  sellerCryptoId?: string;
   name: string;
   description: string;
   category: ProductCategory;

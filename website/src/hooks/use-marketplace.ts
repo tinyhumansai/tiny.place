@@ -14,6 +14,7 @@ import type {
 
 import { useApiClient } from "@src/common/api-context";
 import { queryKeys } from "@src/common/query-keys";
+import { useAuthStore } from "@src/store/auth";
 
 export function useProducts(
 	parameters?: ProductQueryParams
@@ -52,10 +53,20 @@ export function useCreateProduct(): UseMutationResult<
 	ProductCreateRequest
 > {
 	const client = useApiClient();
+	const agentId = useAuthStore((state) => state.agentId);
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: (request: ProductCreateRequest): Promise<Product> =>
-			client.marketplace.createProduct(request),
+		mutationFn: (request: ProductCreateRequest): Promise<Product> => {
+			if (!agentId) {
+				throw new Error("Connect your wallet first");
+			}
+
+			return client.marketplace.createProduct({
+				...request,
+				seller: request.seller ?? agentId,
+				sellerCryptoId: request.sellerCryptoId ?? agentId,
+			});
+		},
 		onSuccess: (): void => {
 			void queryClient.invalidateQueries({
 				queryKey: queryKeys.marketplace.products(),

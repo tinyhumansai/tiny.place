@@ -1,4 +1,7 @@
 import type { HttpClient } from "../http.js";
+import type { SigningKey } from "../auth.js";
+import { signCanonicalPayload } from "../auth.js";
+import { canonicalPayload } from "../crypto.js";
 import type { LedgerTransaction } from "../types/ledger.js";
 import type {
   IdentityBid,
@@ -15,7 +18,10 @@ import type {
 } from "../types/index.js";
 
 export class MarketplaceApi {
-  constructor(private readonly http: HttpClient) {}
+  constructor(
+    private readonly http: HttpClient,
+    private readonly signingKey?: SigningKey,
+  ) {}
 
   // --- Products ---
 
@@ -28,7 +34,18 @@ export class MarketplaceApi {
     );
   }
 
-  createProduct(product: ProductCreateRequest): Promise<Product> {
+  async createProduct(product: ProductCreateRequest): Promise<Product> {
+    if (this.signingKey && !product.signature) {
+      product = {
+        ...product,
+        productId: product.productId ?? nextMarketplaceId("prod"),
+      };
+      product.signature = await signCanonicalPayload(
+        this.signingKey,
+        productSignaturePayload(product),
+      );
+    }
+
     return this.http.postDirectoryAuth<Product>(
       "/marketplace/products",
       product,
@@ -230,4 +247,28 @@ export class MarketplaceApi {
       "/marketplace/recent",
     );
   }
+}
+
+function productSignaturePayload(product: ProductCreateRequest): string {
+  return canonicalPayload("marketplace.product", {
+    category: product.category,
+    deliveryMethod: product.deliveryMethod,
+    description: product.description,
+    name: product.name,
+    price: product.price,
+    productId: product.productId ?? "",
+    seller: product.seller ?? "",
+    sellerCryptoId: product.sellerCryptoId ?? "",
+    stock: product.stock ?? null,
+    tags: product.tags ?? null,
+  });
+}
+
+function nextMarketplaceId(prefix: string): string {
+  const random = new Uint8Array(6);
+  globalThis.crypto.getRandomValues(random);
+  const suffix = Array.from(random, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  return `${prefix}_${Date.now().toString(36)}_${suffix}`;
 }
