@@ -1,8 +1,11 @@
 import type { HttpClient } from "../http.js";
 import type {
   AdminAuditEntry,
+  AdminFeeMetrics,
   AgentPaymentStatus,
   FeeConfig,
+  FeeResolveParams,
+  FeeResolveResponse,
   SystemConfig,
 } from "../types/index.js";
 
@@ -36,17 +39,12 @@ export class AdminApi {
     return this.http.delete<void>(`/admin/fees/${encodeURIComponent(feeId)}`);
   }
 
-  resolveFee(
-    agent1: string,
-    agent2: string,
-  ): Promise<{ feeRate: string; resolved: boolean }> {
-    return this.http.getAuth<{ feeRate: string; resolved: boolean }>(
-      "/admin/fees/resolve",
-      {
-        agent1,
-        agent2,
-      },
-    );
+  resolveFee(params: FeeResolveParams): Promise<FeeResolveResponse> {
+    return this.http.getAuth<FeeResolveResponse>("/admin/fees/resolve", {
+      from: params.from,
+      to: params.to,
+      type: params.type,
+    });
   }
 
   // --- Agent Management ---
@@ -91,10 +89,14 @@ export class AdminApi {
     );
   }
 
-  setConfig(key: string, value: string): Promise<void> {
-    return this.http.put<void>(`/admin/config/${encodeURIComponent(key)}`, {
-      value,
-    });
+  setConfig(key: string, value: string, reason?: string): Promise<SystemConfig> {
+    return this.http.put<SystemConfig>(
+      `/admin/config/${encodeURIComponent(key)}`,
+      {
+        value,
+        reason,
+      },
+    );
   }
 
   // --- Audit ---
@@ -103,8 +105,9 @@ export class AdminApi {
     actor?: string;
     action?: string;
     limit?: number;
-  }): Promise<{ records: Array<AdminAuditEntry> }> {
-    return this.http.getAuth<{ records: Array<AdminAuditEntry> }>(
+    offset?: number;
+  }): Promise<{ audit: Array<AdminAuditEntry> }> {
+    return this.http.getAuth<{ audit: Array<AdminAuditEntry> }>(
       "/admin/audit",
       params as Record<string, unknown>,
     );
@@ -112,15 +115,9 @@ export class AdminApi {
 
   // --- Metrics ---
 
-  feeMetrics(period?: string): Promise<{
-    revenue: string;
-    byAgent: Record<string, string>;
-    byAsset: Record<string, string>;
-  }> {
-    return this.http.getAuth<{
-      revenue: string;
-      byAgent: Record<string, string>;
-      byAsset: Record<string, string>;
-    }>("/admin/metrics/fees", { period });
+  feeMetrics(period?: string): Promise<AdminFeeMetrics> {
+    return this.http.getAuth<AdminFeeMetrics>("/admin/metrics/fees", {
+      period,
+    });
   }
 }

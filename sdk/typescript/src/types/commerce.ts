@@ -165,6 +165,27 @@ export interface FeeConfig {
   updatedAt: string;
 }
 
+export interface FeeResolveParams {
+  from: string;
+  to: string;
+  type?: LedgerType;
+}
+
+export interface FeeResolveResponse {
+  fee: FeeConfig;
+}
+
+export interface AdminFeeMetrics {
+  count: number;
+  total: string;
+  last24h: string;
+  last30d: string;
+  byAsset: Record<string, string>;
+  byNetwork: Record<string, string>;
+  byTransactionType: Record<string, string>;
+  byAgent: Record<string, string>;
+}
+
 export interface AgentPaymentStatus {
   handle: string;
   status: string;
