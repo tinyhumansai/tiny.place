@@ -193,8 +193,9 @@ export class HttpClient {
   getDirectoryAuth<T>(
     path: string,
     query?: Record<string, unknown>,
+    headers?: Record<string, string>,
   ): Promise<T> {
-    return this.request<T>("GET", path, { query, directoryAuth: true });
+    return this.request<T>("GET", path, { query, headers, directoryAuth: true });
   }
 
   getDirectoryAuthAs<T>(

@@ -79,10 +79,34 @@ export function useBroadcastMessages(
 	}
 ): UseQueryResult<{ messages: Array<BroadcastMessage> }> {
 	const client = useApiClient();
+	const signer = useAuthStore((state) => state.signer);
 	return useQuery({
 		queryKey: queryKeys.broadcasts.messages(broadcastId, parameters),
-		queryFn: (): Promise<{ messages: Array<BroadcastMessage> }> =>
-			client.broadcasts.listMessages(broadcastId, parameters),
+		queryFn: async (): Promise<{ messages: Array<BroadcastMessage> }> => {
+			try {
+				return await client.broadcasts.listMessages(broadcastId, parameters);
+			} catch (error) {
+				const challenge = broadcastPaymentChallenge(error);
+				if (!challenge) {
+					throw error;
+				}
+				if (!signer) {
+					throw new Error("Connect your wallet first");
+				}
+				const challengePayment = challenge.payment;
+				const signedPayment = await signX402Authorization(signer, {
+					...challengePayment,
+					expiresAt: challengePayment.expiresAt ?? "",
+					from: challengePayment.from || parameters?.agentId || "",
+					metadata: challengePayment.metadata,
+					nonce: challengePayment.nonce ?? "",
+				});
+				return client.broadcasts.listMessages(broadcastId, {
+					...parameters,
+					paymentAuthorization: signedPayment.signature,
+				});
+			}
+		},
 		enabled: Boolean(broadcastId),
 	});
 }

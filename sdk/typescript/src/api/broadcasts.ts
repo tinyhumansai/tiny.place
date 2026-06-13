@@ -185,6 +185,7 @@ export class BroadcastsApi {
       }>(
         `/broadcasts/${encodeURIComponent(broadcastId)}/messages`,
         query as Record<string, unknown>,
+        headers,
       )
       .then((result) => ({ messages: result.messages ?? [] }));
   }
