@@ -4,6 +4,8 @@ use escrow::cpi::accounts::Disburse;
 use escrow::program::Escrow;
 use escrow::{Vault, VAULT_AUTHORITY_SEED};
 
+pub mod math;
+
 declare_id!("CATBJS1qmZCCHJzNmdEwXNsBn1QYJoBuCg7yi8FTL8mG");
 
 pub const BPS_DENOMINATOR: u64 = 10_000;
@@ -136,11 +138,8 @@ pub mod settlement_game_poker {
         );
 
         let pot = available(&ctx.accounts.vault)?;
-        let fee = (pot as u128)
-            .checked_mul(ctx.accounts.game.fee_bps as u128)
-            .and_then(|v| v.checked_div(BPS_DENOMINATOR as u128))
-            .ok_or(GameError::MathOverflow)? as u64;
-        let payout = pot.checked_sub(fee).ok_or(GameError::MathOverflow)?;
+        let (payout, fee) =
+            math::pot_split(pot, ctx.accounts.game.fee_bps).ok_or(GameError::MathOverflow)?;
 
         disburse_signed(
             &ctx.accounts.escrow_program,

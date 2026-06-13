@@ -1,6 +1,8 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
+pub mod math;
+
 declare_id!("FNCnjUKR1YbEJwcjWWHJzWxgp2vbSjjHcBZaAshybhLq");
 
 /// Seed a settlement program must use for the PDA that authorizes disbursement.
@@ -77,7 +79,10 @@ pub mod escrow {
         require!(payload.amount > 0, EscrowError::InvalidAmount);
 
         let tracker = &mut ctx.accounts.nonce_tracker;
-        require!(payload.nonce > tracker.last_nonce, EscrowError::NonceUsed);
+        require!(
+            math::nonce_ok(tracker.last_nonce, payload.nonce),
+            EscrowError::NonceUsed
+        );
         tracker.last_nonce = payload.nonce;
 
         token::transfer(
@@ -121,14 +126,13 @@ pub mod escrow {
             EscrowError::InvalidFeeAccount
         );
 
-        let total = amount.checked_add(fee).ok_or(EscrowError::MathOverflow)?;
-        let available = ctx
-            .accounts
-            .vault
-            .deposited
-            .checked_sub(ctx.accounts.vault.disbursed)
-            .ok_or(EscrowError::MathOverflow)?;
-        require!(total <= available, EscrowError::InsufficientFunds);
+        let new_disbursed = math::apply_disburse(
+            ctx.accounts.vault.deposited,
+            ctx.accounts.vault.disbursed,
+            amount,
+            fee,
+        )
+        .ok_or(EscrowError::InsufficientFunds)?;
 
         let vault_id = ctx.accounts.vault.vault_id;
         let seeds: &[&[u8]] = &[b"vault", vault_id.as_ref(), &[ctx.accounts.vault.bump]];
@@ -164,10 +168,7 @@ pub mod escrow {
         }
 
         let vault = &mut ctx.accounts.vault;
-        vault.disbursed = vault
-            .disbursed
-            .checked_add(total)
-            .ok_or(EscrowError::MathOverflow)?;
+        vault.disbursed = new_disbursed;
 
         emit!(Disbursed {
             vault: vault.key(),

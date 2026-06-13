@@ -4,6 +4,8 @@ use escrow::cpi::accounts::Disburse;
 use escrow::program::Escrow;
 use escrow::{Vault, VAULT_AUTHORITY_SEED};
 
+pub mod math;
+
 declare_id!("6SAJ45pSHykE984VqDL54GmakdaT7C55xCJJEZnFXcyg");
 
 pub const BPS_DENOMINATOR: u64 = 10_000;
@@ -195,15 +197,8 @@ fn release(ctx: &Context<Settle>, take_fee: bool) -> Result<()> {
         .checked_sub(ctx.accounts.vault.disbursed)
         .ok_or(JobError::MathOverflow)?;
 
-    let fee = if take_fee {
-        (available as u128)
-            .checked_mul(ctx.accounts.job.fee_bps as u128)
-            .and_then(|v| v.checked_div(BPS_DENOMINATOR as u128))
-            .ok_or(JobError::MathOverflow)? as u64
-    } else {
-        0
-    };
-    let amount = available.checked_sub(fee).ok_or(JobError::MathOverflow)?;
+    let (amount, fee) = math::rake(available, ctx.accounts.job.fee_bps, take_fee)
+        .ok_or(JobError::MathOverflow)?;
 
     let bump = ctx.bumps.vault_authority;
     let seeds: &[&[u8]] = &[VAULT_AUTHORITY_SEED, &[bump]];
