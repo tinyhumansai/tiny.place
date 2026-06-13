@@ -63,7 +63,14 @@ export class ModerationApi {
   createAppeal(appeal: {
     actionId: string;
     comment?: string;
-  }): Promise<ModerationAppeal> {
+  }, appellant?: string): Promise<ModerationAppeal> {
+    if (appellant) {
+      return this.http.postDirectoryAuthAs<ModerationAppeal>(
+        "/moderation/appeals",
+        appellant,
+        appeal,
+      );
+    }
     return this.http.postDirectoryAuth<ModerationAppeal>(
       "/moderation/appeals",
       appeal,

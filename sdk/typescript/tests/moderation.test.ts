@@ -73,4 +73,48 @@ describe("ModerationApi", () => {
       signer.publicKeyBase64,
     );
   });
+
+  it("signs moderation appeals as the appellant actor", async () => {
+    const requests: Array<Request> = [];
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(60));
+    const client = new TinyVerseClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json(
+          {
+            appealId: "appeal_1",
+            actionId: "action_1",
+            appellant: signer.agentId,
+            comment: "False positive",
+            status: "pending",
+            createdAt: "2026-06-13T00:00:00.000Z",
+          },
+          { status: 201 },
+        );
+      },
+    });
+
+    await client.moderation.createAppeal(
+      {
+        actionId: "action_1",
+        comment: "False positive",
+      },
+      signer.agentId,
+    );
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.method).toBe("POST");
+    expect(requests[0]!.url).toBe("https://example.test/moderation/appeals");
+    expect(requests[0]!.headers.get("X-Agent-ID")).toBe(signer.agentId);
+    expect(requests[0]!.headers.get("X-TinyPlace-Public-Key")).toBe(
+      signer.publicKeyBase64,
+    );
+    expect(requests[0]!.headers.get("X-TinyPlace-Signature")).toBeTruthy();
+    await expect(requests[0]!.json()).resolves.toEqual({
+      actionId: "action_1",
+      comment: "False positive",
+    });
+  });
 });

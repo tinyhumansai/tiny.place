@@ -109,7 +109,7 @@ export function useCreateModerationAppeal(): UseMutationResult<
 			if (!agentId) {
 				throw new Error("Connect your wallet first");
 			}
-			return client.moderation.createAppeal(appeal);
+			return client.moderation.createAppeal(appeal, agentId);
 		},
 		onSuccess: (appeal): void => {
 			void queryClient.invalidateQueries({
