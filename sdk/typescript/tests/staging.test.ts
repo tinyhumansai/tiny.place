@@ -201,6 +201,16 @@ describe("staging: unauthenticated endpoints", () => {
     expect(Array.isArray(result.sales)).toBe(true);
   });
 
+  it("marketplace.identityFloor returns floor metadata", async () => {
+    const result = await client.marketplace.identityFloor(6);
+    expect(result.length).toBe(6);
+  });
+
+  it("marketplace.identitySaleHistory returns history field", async () => {
+    const result = await client.marketplace.identitySaleHistory("@alpha");
+    expect(result).toHaveProperty("history");
+  });
+
   it("swap status route returns API errors through TinyVerseError", async () => {
     try {
       await client.pricing.getSwapStatus("missing-codex-status");

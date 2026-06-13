@@ -191,19 +191,16 @@ export class MarketplaceApi {
     );
   }
 
-  identitySaleHistory(name: string): Promise<{ sales: Array<IdentitySale> }> {
-    return this.http.get<{ sales: Array<IdentitySale> }>(
+  identitySaleHistory(
+    name: string,
+  ): Promise<{ history: Array<IdentitySale> | null }> {
+    return this.http.get<{ history: Array<IdentitySale> | null }>(
       `/marketplace/identities/history/${encodeURIComponent(name)}`,
     );
   }
 
-  identityFloor(
-    length?: number,
-  ): Promise<{ floorPrice: string; assetPerLength: Record<string, unknown> }> {
-    return this.http.get<{
-      floorPrice: string;
-      assetPerLength: Record<string, unknown>;
-    }>(
+  identityFloor(length?: number): Promise<IdentityFloor> {
+    return this.http.get<IdentityFloor>(
       "/marketplace/identities/floor",
       length != null ? { length } : undefined,
     );
