@@ -326,7 +326,10 @@ export class RegistryApi {
         signature: await signFreshCanonicalPayload(this.signingKey, payload),
       };
     }
-    return this.http.put<Identity>(
+    // directoryAuth presents the signing key in X-TinyPlace-Public-Key so the
+    // backend can authorize a delegated hot session key (the body signature is
+    // verified against it); for the identity's own key it is the owner key.
+    return this.http.putDirectoryAuth<Identity>(
       `/registry/names/${encodeURIComponent(name)}/profile`,
       update,
     );
@@ -351,7 +354,7 @@ export class RegistryApi {
         signature: await signFreshCanonicalPayload(this.signingKey, payload),
       };
     }
-    return this.http.put<ProfileVisibility>(
+    return this.http.putDirectoryAuth<ProfileVisibility>(
       `/registry/names/${encodeURIComponent(name)}/profile-visibility`,
       update,
     );
@@ -365,7 +368,7 @@ export class RegistryApi {
         signature: await signFreshCanonicalPayload(this.signingKey, payload),
       };
     }
-    return this.http.post<Identity>(
+    return this.http.postDirectoryAuth<Identity>(
       `/registry/names/${encodeURIComponent(name)}/renew`,
       request,
     );
@@ -405,7 +408,7 @@ export class RegistryApi {
         signature: await signFreshCanonicalPayload(this.signingKey, payload),
       };
     }
-    return this.http.post<Subname>(
+    return this.http.postDirectoryAuth<Subname>(
       `/registry/names/${encodeURIComponent(name)}/subnames`,
       request,
     );
@@ -422,6 +425,12 @@ export class RegistryApi {
         this.signingKey,
         payload,
       );
+      // Present the signing key so the backend can authorize a delegated hot
+      // session key (the X-TinyPlace-Signature above is the ownership proof).
+      const presentedKey = this.http.signingPublicKey();
+      if (presentedKey) {
+        headers["X-TinyPlace-Public-Key"] = presentedKey;
+      }
     }
     return this.http.deletePublic<Identity>(
       `/registry/names/${encodeURIComponent(name)}/subnames/${encodeURIComponent(subname)}`,

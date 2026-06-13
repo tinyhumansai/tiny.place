@@ -92,6 +92,16 @@ export class HttpClient {
     this._fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
+  /**
+   * The base64 Ed25519 public key presented for signed requests (the signing
+   * key's public key), if any. Used by callers that attach their own auth
+   * headers (e.g. a DELETE with the signature in X-TinyPlace-Signature) and
+   * need to also present the signing key for approved-signer delegation.
+   */
+  signingPublicKey(): string | undefined {
+    return this.publicKeyBase64;
+  }
+
   private async request<T>(
     method: string,
     path: string,
