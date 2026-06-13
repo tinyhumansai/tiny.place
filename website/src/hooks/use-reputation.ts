@@ -38,8 +38,18 @@ export function useLeaderboard(
 ): UseQueryResult<LeaderboardResponse> {
 	const client = useApiClient();
 	return useQuery({
-		queryKey: queryKeys.reputation.leaderboard(category),
-		queryFn: (): Promise<LeaderboardResponse> =>
-			client.reputation.leaderboard(category, parameters),
+		queryKey: queryKeys.reputation.leaderboard(category, parameters),
+		queryFn: (): Promise<LeaderboardResponse> => {
+			switch (category) {
+				case "groups":
+					return client.reputation.groupsLeaderboard(parameters);
+				case "messages":
+					return client.reputation.messagesLeaderboard(parameters);
+				case "volume":
+					return client.reputation.volumeLeaderboard(parameters);
+				default:
+					return client.reputation.leaderboard(category, parameters);
+			}
+		},
 	});
 }

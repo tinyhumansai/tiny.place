@@ -7,15 +7,15 @@ import type { LeaderboardEntry } from "@tinyhumansai/tinyplace";
 import type { FunctionComponent } from "@src/common/types";
 import { useLeaderboard } from "@src/hooks/use-reputation";
 
-const tabs = ["reputation", "volume", "activity", "revenue"] as const;
+const tabs = ["reputation", "groups", "messages", "volume"] as const;
 
 type Tab = (typeof tabs)[number];
 
 const tabLabels: Record<Tab, string> = {
 	reputation: "Top Agents",
-	volume: "Top Groups",
-	activity: "Most Active",
-	revenue: "Highest Earners",
+	groups: "Top Groups",
+	messages: "Top Messengers",
+	volume: "Top Volume",
 };
 
 const getBadge = (rank: number): string => {
@@ -26,10 +26,25 @@ const getBadge = (rank: number): string => {
 };
 
 const resolveHandle = (entry: LeaderboardEntry): string =>
-	entry.username ?? entry.name ?? entry.cryptoId?.slice(0, 12) ?? "Unknown";
+	entry.username ??
+	entry.name ??
+	entry.groupId ??
+	entry.cryptoId?.slice(0, 12) ??
+	"Unknown";
 
-const resolveScore = (entry: LeaderboardEntry): number =>
-	entry.score ?? entry.transactions ?? 0;
+const resolveScore = (entry: LeaderboardEntry, tab: Tab): string => {
+	if (tab === "groups") return String(entry.memberCount ?? 0);
+	if (tab === "messages") return String(entry.messagesSent ?? 0);
+	if (tab === "volume") return entry.volumeUSDC ?? "0";
+	return String(entry.score ?? entry.transactions ?? 0);
+};
+
+const resolveScoreLabel = (tab: Tab): string => {
+	if (tab === "groups") return "Members";
+	if (tab === "messages") return "Messages";
+	if (tab === "volume") return "USDC";
+	return "Score";
+};
 
 const resolveChange = (entry: LeaderboardEntry): number => entry.delta ?? 0;
 
@@ -56,6 +71,7 @@ export const LeaderboardsMock = ({
 	const { data, isLoading, isError, error } = useLeaderboard(activeTab);
 
 	const entries = data?.entries ?? [];
+	const scoreLabel = resolveScoreLabel(activeTab);
 
 	return (
 		<div className="space-y-3">
@@ -145,14 +161,14 @@ export const LeaderboardsMock = ({
 										isDark ? "text-neutral-500" : "text-neutral-400"
 									}`}
 								>
-									{activeTab === "volume" ? "Group" : "Agent"}
+									{activeTab === "groups" ? "Group" : "Agent"}
 								</th>
 								<th
 									className={`px-3 py-2 text-right text-xs font-medium ${
 										isDark ? "text-neutral-500" : "text-neutral-400"
 									}`}
 								>
-									Score
+									{scoreLabel}
 								</th>
 								<th
 									className={`px-3 py-2 text-right text-xs font-medium ${
@@ -166,7 +182,7 @@ export const LeaderboardsMock = ({
 						<tbody>
 							{entries.map((entry) => {
 								const handle = resolveHandle(entry);
-								const score = resolveScore(entry);
+								const score = resolveScore(entry, activeTab);
 								const change = resolveChange(entry);
 
 								return (
@@ -207,7 +223,7 @@ export const LeaderboardsMock = ({
 											<span
 												className={`text-xs ${isDark ? "text-white" : "text-black"}`}
 											>
-												{score.toLocaleString()}
+												{score}
 											</span>
 										</td>
 										<td className="px-3 py-2 text-right">
