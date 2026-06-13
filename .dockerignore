@@ -1,0 +1,21 @@
+# Keep the Docker build context small and reproducible. Excludes installed
+# deps and build outputs so `pnpm install --frozen-lockfile` runs clean.
+# NOTE: this only affects image builds; the solana service mounts
+# contracts-sol/target/deploy/*.so as a volume, which .dockerignore does not affect.
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/.turbo
+website/test-results
+website/playwright-report
+website/storybook-static
+
+# Rust / Anchor build artifacts (large, not needed for the web build).
+contracts-sol/target
+fuzz/target
+
+.git
+.github
+*.log
+.DS_Store
