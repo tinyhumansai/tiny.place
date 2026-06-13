@@ -12,6 +12,7 @@ import {
 	x402AuthorizationToPaymentMap,
 	type AvailabilityResponse,
 	type Identity,
+	type IdentityClaimRequest,
 	type RenewalRequest,
 	type X402AuthorizationFields,
 } from "@tinyhumansai/tinyplace";
@@ -118,6 +119,75 @@ export function useRenewIdentity(): UseMutationResult<
 				queryKey: queryKeys.registry.availability(
 					identity.username.trim().replace(/^@+/, "")
 				),
+			});
+		},
+	});
+}
+
+export function useClaimIdentity(): UseMutationResult<
+	Identity,
+	Error,
+	{ name: string; request?: Partial<IdentityClaimRequest> }
+> {
+	const client = useApiClient();
+	const signer = useAuthStore((state) => state.signer);
+	const agentId = useAuthStore((state) => state.agentId);
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({ name, request }): Promise<Identity> => {
+			const normalized = name.trim().replace(/^@+/, "");
+			if (!normalized) {
+				throw new Error("Identity name is required");
+			}
+			if (!signer || !agentId) {
+				throw new Error("Connect your wallet first");
+			}
+
+			const handle = `@${normalized}`;
+			const claimRequest: IdentityClaimRequest = {
+				cryptoId: request?.cryptoId ?? agentId,
+				publicKey: request?.publicKey ?? signer.publicKeyBase64,
+				...(request?.payment ? { payment: request.payment } : {}),
+				...(request?.signature ? { signature: request.signature } : {}),
+			};
+
+			try {
+				return await client.registry.claim(handle, claimRequest);
+			} catch (error) {
+				const challenge = registryPaymentChallenge(error);
+				if (!challenge) {
+					throw error;
+				}
+				const challengePayment = challenge.payment;
+				const signedPayment = await signX402Authorization(signer, {
+					...challengePayment,
+					expiresAt:
+						challengePayment.expiresAt ??
+						new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+					from: challengePayment.from || claimRequest.cryptoId,
+					metadata: {
+						...challengePayment.metadata,
+						domain: challengePayment.metadata?.["domain"] ?? "tiny.place",
+						identity: challengePayment.metadata?.["identity"] ?? handle,
+						purpose: challengePayment.metadata?.["purpose"] ?? "auction_claim",
+					},
+					nonce: challengePayment.nonce || generateNonce("claim"),
+				});
+				return client.registry.claim(handle, {
+					...claimRequest,
+					payment: x402AuthorizationToPaymentMap(signedPayment),
+				});
+			}
+		},
+		onSuccess: (identity): void => {
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.registry.availability(
+					identity.username.trim().replace(/^@+/, "")
+				),
+			});
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.directory.identities(),
 			});
 		},
 	});
