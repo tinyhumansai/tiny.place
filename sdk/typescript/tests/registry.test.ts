@@ -203,4 +203,50 @@ describe("RegistryApi", () => {
       ["POST", "https://example.test/registry/names/%40agent/claim"],
     ]);
   });
+
+  it("sends subname delete ownership signatures in the header", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(18));
+    const requests: Array<Request> = [];
+    const client = new TinyVerseClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json({
+          username: "@agent",
+          bio: "Agent",
+          cryptoId: signer.agentId,
+          publicKey: signer.publicKeyBase64,
+          subnames: [],
+          registeredAt: "2026-06-13T00:00:00Z",
+          expiresAt: "2027-06-13T00:00:00Z",
+          status: "active",
+          updatedAt: "2026-06-13T00:00:00Z",
+        });
+      },
+    });
+
+    const updated = await client.registry.deleteSubname("@agent", "@agent/v2");
+
+    expect(updated.subnames).toEqual([]);
+    expect(requests).toHaveLength(1);
+    const request = requests[0]!;
+    expect(request.method).toBe("DELETE");
+    expect(request.url).toBe(
+      "https://example.test/registry/names/%40agent/subnames/%40agent%2Fv2",
+    );
+    expect(request.headers.get("Authorization")).toBeNull();
+    expect(request.headers.get("X-TinyPlace-Signature")).toBeTruthy();
+    await expect(request.text()).resolves.toBe("");
+
+    const ok = await verifyFreshSignature(
+      signer,
+      request.headers.get("X-TinyPlace-Signature")!,
+      canonicalPayload("identity.subname.delete", {
+        subname: "@agent/v2",
+        username: "@agent",
+      }),
+    );
+    expect(ok).toBe(true);
+  });
 });

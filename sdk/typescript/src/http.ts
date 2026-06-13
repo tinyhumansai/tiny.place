@@ -316,8 +316,12 @@ export class HttpClient {
     return this.request<T>("DELETE", path, { body, signed: true });
   }
 
-  deletePublic<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("DELETE", path, { body });
+  deletePublic<T>(
+    path: string,
+    body?: unknown,
+    headers?: Record<string, string>,
+  ): Promise<T> {
+    return this.request<T>("DELETE", path, { body, headers });
   }
 
   deleteAdmin<T>(path: string, body?: unknown): Promise<T> {

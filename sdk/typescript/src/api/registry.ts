@@ -166,20 +166,22 @@ export class RegistryApi {
     );
   }
 
-  async deleteSubname(name: string, subname: string): Promise<void> {
-    let body: Record<string, string> | undefined;
+  async deleteSubname(name: string, subname: string): Promise<Identity> {
+    const headers: Record<string, string> = {};
     if (this.signingKey) {
       const payload = canonicalPayload("identity.subname.delete", {
         subname,
         username: name,
       });
-      body = {
-        signature: await signFreshCanonicalPayload(this.signingKey, payload),
-      };
+      headers["X-TinyPlace-Signature"] = await signFreshCanonicalPayload(
+        this.signingKey,
+        payload,
+      );
     }
-    return this.http.delete<void>(
+    return this.http.deletePublic<Identity>(
       `/registry/names/${encodeURIComponent(name)}/subnames/${encodeURIComponent(subname)}`,
-      body,
+      undefined,
+      headers,
     );
   }
 }
