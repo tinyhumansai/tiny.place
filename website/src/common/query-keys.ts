@@ -19,6 +19,7 @@ export const queryKeys = {
 		agent: (agentId: string) => ["directory", "agent", agentId] as const,
 		identities: (parameters?: IdentityListingQueryParams) =>
 			["directory", "identities", parameters] as const,
+		reverse: (cryptoId: string) => ["directory", "reverse", cryptoId] as const,
 	},
 	groups: {
 		list: (parameters?: GroupQueryParams) =>

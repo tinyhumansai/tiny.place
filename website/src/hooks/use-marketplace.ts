@@ -6,10 +6,12 @@ import {
 	type UseQueryResult,
 } from "@tanstack/react-query";
 import type {
+	Identity,
 	MarketplaceCategory,
 	Product,
 	ProductCreateRequest,
 	ProductQueryParams,
+	ReverseResponse,
 } from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
@@ -47,6 +49,28 @@ export function useMarketplaceCategories(): UseQueryResult<{
 	});
 }
 
+export function useOwnedIdentities(
+	agentId: string | undefined
+): UseQueryResult<ReverseResponse> {
+	const client = useApiClient();
+	return useQuery({
+		queryKey: queryKeys.directory.reverse(agentId ?? ""),
+		queryFn: (): Promise<ReverseResponse> => {
+			if (!agentId) {
+				throw new Error("Connect your wallet first");
+			}
+			return client.directory.reverse(agentId);
+		},
+		enabled: Boolean(agentId),
+	});
+}
+
+export function firstActiveIdentity(
+	identities: Array<Identity> | undefined
+): Identity | undefined {
+	return identities?.find((identity) => identity.status === "active");
+}
+
 export function useCreateProduct(): UseMutationResult<
 	Product,
 	Error,
@@ -60,10 +84,13 @@ export function useCreateProduct(): UseMutationResult<
 			if (!agentId) {
 				throw new Error("Connect your wallet first");
 			}
+			if (!request.seller) {
+				throw new Error("Register a handle before listing products");
+			}
 
 			return client.marketplace.createProduct({
 				...request,
-				seller: request.seller ?? agentId,
+				seller: request.seller,
 				sellerCryptoId: request.sellerCryptoId ?? agentId,
 			});
 		},

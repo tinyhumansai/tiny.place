@@ -9,7 +9,12 @@ import type {
 } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
-import { useCreateProduct, useProducts } from "@src/hooks/use-marketplace";
+import {
+	firstActiveIdentity,
+	useCreateProduct,
+	useOwnedIdentities,
+	useProducts,
+} from "@src/hooks/use-marketplace";
 import { useAuthStore } from "@src/store/auth";
 
 const PRODUCT_CATEGORIES: Array<ProductCategory> = [
@@ -28,14 +33,38 @@ const DELIVERY_METHODS: Array<DeliveryMethod> = [
 	"encrypted-message",
 ];
 
+function textToBase64(value: string): string {
+	const bytes = new TextEncoder().encode(value);
+	let binary = "";
+	for (const byte of bytes) {
+		binary += String.fromCharCode(byte);
+	}
+	return btoa(binary);
+}
+
+function slugify(value: string): string {
+	const slug = value
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "");
+	return slug || "product";
+}
+
 type MarketplaceMockProperties = {
 	isDark: boolean;
 };
 
 const CreateProductForm = ({
+	agentId,
 	isDark,
+	isIdentityLoading,
+	sellerHandle,
 }: {
+	agentId: string;
 	isDark: boolean;
+	isIdentityLoading: boolean;
+	sellerHandle: string | undefined;
 }): FunctionComponent => {
 	const createProduct = useCreateProduct();
 	const [name, setName] = useState("");
@@ -44,25 +73,41 @@ const CreateProductForm = ({
 	const [amount, setAmount] = useState("");
 	const [deliveryMethod, setDeliveryMethod] =
 		useState<DeliveryMethod>("download");
+	const [downloadContent, setDownloadContent] = useState("");
 	const [tagsInput, setTagsInput] = useState("");
 
 	const handleSubmit = (event: React.FormEvent): void => {
 		event.preventDefault();
+		if (!sellerHandle) {
+			return;
+		}
 		const tags = tagsInput
 			.split(",")
 			.map((tag) => tag.trim())
 			.filter(Boolean);
+		const deliveryDetails =
+			deliveryMethod === "download"
+				? {
+						contentBase64: textToBase64(downloadContent),
+						downloadTtlSeconds: 86_400,
+						filename: `${slugify(name)}.txt`,
+						mimeType: "text/plain",
+					}
+				: undefined;
 		createProduct.mutate(
 			{
 				name,
 				description,
 				category,
+				seller: sellerHandle,
+				sellerCryptoId: agentId,
 				price: {
 					amount,
 					asset: "USDC",
 					network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
 				},
 				deliveryMethod,
+				deliveryDetails,
 				tags: tags.length > 0 ? tags : undefined,
 			},
 			{
@@ -72,6 +117,7 @@ const CreateProductForm = ({
 					setCategory("tool");
 					setAmount("");
 					setDeliveryMethod("download");
+					setDownloadContent("");
 					setTagsInput("");
 				},
 			}
@@ -106,6 +152,15 @@ const CreateProductForm = ({
 			>
 				List a Product
 			</h3>
+			<p
+				className={`mb-3 text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
+			>
+				{isIdentityLoading
+					? "Checking registered handles..."
+					: sellerHandle
+						? `Selling as ${sellerHandle}`
+						: "Register a handle before listing products."}
+			</p>
 
 			<div className="grid grid-cols-2 gap-3">
 				<div className="col-span-2">
@@ -202,6 +257,22 @@ const CreateProductForm = ({
 						}}
 					/>
 				</div>
+
+				{deliveryMethod === "download" && (
+					<div className="col-span-2">
+						<label className={labelClass}>Download content</label>
+						<textarea
+							required
+							className={`${inputClass} min-h-[72px] resize-none`}
+							placeholder="Paste the file content buyers receive after payment"
+							rows={3}
+							value={downloadContent}
+							onChange={(event): void => {
+								setDownloadContent(event.target.value);
+							}}
+						/>
+					</div>
+				)}
 			</div>
 
 			{createProduct.isError && (
@@ -218,8 +289,15 @@ const CreateProductForm = ({
 
 			<button
 				className="mt-3 w-full rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
-				disabled={createProduct.isPending || !name || !description || !amount}
 				type="submit"
+				disabled={
+					createProduct.isPending ||
+					!sellerHandle ||
+					!name ||
+					!description ||
+					!amount ||
+					(deliveryMethod === "download" && !downloadContent)
+				}
 			>
 				{createProduct.isPending ? "Listing..." : "List Product"}
 			</button>
@@ -233,6 +311,8 @@ export const MarketplaceMock = ({
 	const { data, isLoading, isError, error } = useProducts();
 	const [activeCategory, setActiveCategory] = useState<string>("All");
 	const agentId = useAuthStore((state) => state.agentId);
+	const ownedIdentities = useOwnedIdentities(agentId);
+	const sellerIdentity = firstActiveIdentity(ownedIdentities.data?.identities);
 
 	const products = data?.products ?? [];
 
@@ -253,7 +333,14 @@ export const MarketplaceMock = ({
 
 	return (
 		<div className="flex flex-col gap-4">
-			{agentId && <CreateProductForm isDark={isDark} />}
+			{agentId && (
+				<CreateProductForm
+					agentId={agentId}
+					isDark={isDark}
+					isIdentityLoading={ownedIdentities.isLoading}
+					sellerHandle={sellerIdentity?.username}
+				/>
+			)}
 
 			{isLoading && (
 				<div className="flex items-center justify-center py-12">
