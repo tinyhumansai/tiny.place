@@ -32,6 +32,16 @@ export class DirectoryApi {
     );
   }
 
+  upsertExtendedAgent(
+    agentId: string,
+    card: ExtendedAgentCard,
+  ): Promise<ExtendedAgentCard> {
+    return this.http.putDirectoryAuth<ExtendedAgentCard>(
+      `/directory/agents/${encodeURIComponent(agentId)}/extended`,
+      card,
+    );
+  }
+
   upsertAgent(agentId: string, card: AgentCard): Promise<AgentCard> {
     return this.http.putDirectoryAuth<AgentCard>(
       `/directory/agents/${encodeURIComponent(agentId)}`,
