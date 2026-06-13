@@ -145,4 +145,44 @@ describe("RegistryApi", () => {
     );
     expect(ok).toBe(true);
   });
+
+  it("treats renewal and auction claim responses as identities", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(17));
+    const requests: Array<Request> = [];
+    const client = new TinyVerseClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json({
+          username: "@agent",
+          bio: "Agent",
+          cryptoId: signer.agentId,
+          publicKey: signer.publicKeyBase64,
+          registeredAt: "2026-06-13T00:00:00Z",
+          expiresAt: "2027-06-13T00:00:00Z",
+          status: "active",
+          updatedAt: "2026-06-13T00:00:00Z",
+        });
+      },
+    });
+
+    const renewed = await client.registry.renew("@agent", {
+      payment: { tx: "tx_renew" },
+    });
+    const claimed = await client.registry.claim("@agent", {
+      cryptoId: signer.agentId,
+      publicKey: signer.publicKeyBase64,
+      payment: { tx: "tx_claim" },
+    });
+
+    expect(renewed.username).toBe("@agent");
+    expect(claimed.publicKey).toBe(signer.publicKeyBase64);
+    expect(
+      requests.map((request) => [request.method, request.url]),
+    ).toEqual([
+      ["POST", "https://example.test/registry/names/%40agent/renew"],
+      ["POST", "https://example.test/registry/names/%40agent/claim"],
+    ]);
+  });
 });

@@ -9,7 +9,6 @@ import type {
   IdentityExport,
   IdentityMetadata,
   IdentityProfileUpdate,
-  LedgerTransaction,
   PaymentMethod,
   ProfileVisibility,
   ProfileVisibilityUpdate,
@@ -113,10 +112,7 @@ export class RegistryApi {
     );
   }
 
-  async renew(
-    name: string,
-    request: RenewalRequest,
-  ): Promise<LedgerTransaction> {
+  async renew(name: string, request: RenewalRequest): Promise<Identity> {
     if (this.signingKey && !request.signature) {
       const payload = canonicalPayload("identity.renew", { username: name });
       request = {
@@ -124,7 +120,7 @@ export class RegistryApi {
         signature: await signCanonicalPayload(this.signingKey, payload),
       };
     }
-    return this.http.post<LedgerTransaction>(
+    return this.http.post<Identity>(
       `/registry/names/${encodeURIComponent(name)}/renew`,
       request,
     );
@@ -133,7 +129,7 @@ export class RegistryApi {
   async claim(
     name: string,
     request: IdentityClaimRequest,
-  ): Promise<LedgerTransaction> {
+  ): Promise<Identity> {
     if (this.signingKey && !request.signature) {
       const payload = canonicalPayload("identity.claim", {
         cryptoId: request.cryptoId,
@@ -145,7 +141,7 @@ export class RegistryApi {
         signature: await signCanonicalPayload(this.signingKey, payload),
       };
     }
-    return this.http.post<LedgerTransaction>(
+    return this.http.post<Identity>(
       `/registry/names/${encodeURIComponent(name)}/claim`,
       request,
     );
