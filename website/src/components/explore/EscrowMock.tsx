@@ -11,6 +11,10 @@ import {
 	useDeliverEscrow,
 	useEscrows,
 } from "@src/hooks/use-escrow";
+import {
+	firstActiveIdentity,
+	useOwnedIdentities,
+} from "@src/hooks/use-marketplace";
 import { useAuthStore } from "@src/store/auth";
 
 type EscrowMockProperties = {
@@ -173,14 +177,15 @@ export const EscrowMock = ({
 	isDark,
 }: EscrowMockProperties): FunctionComponent => {
 	const agentId = useAuthStore((state) => state.agentId);
+	const ownedIdentities = useOwnedIdentities(agentId);
+	const escrowIdentity = firstActiveIdentity(ownedIdentities.data?.identities);
+	const actor = escrowIdentity?.username ?? "";
 	const { data, error, isError, isLoading } = useEscrows({ limit: 10 });
 	const createEscrow = useCreateEscrow();
 	const acceptEscrow = useAcceptEscrow();
 	const cancelEscrow = useCancelEscrow();
 	const deliverEscrow = useDeliverEscrow();
-	const [client, setClient] = useState("");
 	const [provider, setProvider] = useState("");
-	const [actor, setActor] = useState("");
 	const [amount, setAmount] = useState("1000000");
 	const [description, setDescription] = useState("Deliver a research report");
 	const [deliveryDescription, setDeliveryDescription] = useState(
@@ -196,11 +201,11 @@ export const EscrowMock = ({
 
 	const handleCreate = (event: FormEvent): void => {
 		event.preventDefault();
-		if (!client || !provider || !deadline) {
+		if (!actor || !provider || !deadline) {
 			return;
 		}
 		createEscrow.mutate({
-			client,
+			client: actor,
 			clientCryptoId: agentId,
 			provider,
 			amount,
@@ -226,23 +231,33 @@ export const EscrowMock = ({
 					</h3>
 					<span className="text-xs text-neutral-500">Signed funding flow</span>
 				</div>
-				{!agentId ? (
-					<p className="mt-2 text-xs text-neutral-500">
+				{agentId ? (
+					<p
+						className={`mt-2 text-xs ${actor ? (isDark ? "text-neutral-500" : "text-neutral-400") : "text-red-500"}`}
+					>
+						{actor
+							? `Client and action signer: ${actor}`
+							: ownedIdentities.isLoading
+								? "Checking your active handle..."
+								: "Register an active handle before creating or acting on escrows."}
+					</p>
+				) : (
+					<p className="mt-2 text-xs text-red-500">
 						Connect your wallet to sign escrow requests.
 					</p>
-				) : null}
+				)}
 				<div className="mt-3 grid gap-3 md:grid-cols-2">
 					<div>
 						<label className={labelClass(isDark)}>Client handle</label>
-						<input
-							className={`${inputClass(isDark)} w-full`}
-							placeholder="@buyer"
-							type="text"
-							value={client}
-							onChange={(event): void => {
-								setClient(event.target.value);
-							}}
-						/>
+						<p
+							className={`mt-1 rounded-md border px-2.5 py-1.5 text-xs ${
+								isDark
+									? "border-neutral-700 bg-neutral-900 text-neutral-300"
+									: "border-neutral-300 bg-white text-neutral-600"
+							}`}
+						>
+							{actor || "Connect wallet"}
+						</p>
 					</div>
 					<div>
 						<label className={labelClass(isDark)}>Provider handle</label>
@@ -292,7 +307,7 @@ export const EscrowMock = ({
 				</div>
 				<button
 					className="mt-3 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-					disabled={createEscrow.isPending || !client || !provider || !deadline}
+					disabled={createEscrow.isPending || !actor || !provider || !deadline}
 					type="submit"
 				>
 					{createEscrow.isPending ? "Creating..." : "Create Escrow"}
@@ -306,15 +321,11 @@ export const EscrowMock = ({
 					>
 						Live Escrows
 					</h3>
-					<input
-						className={inputClass(isDark)}
-						placeholder="@actor for actions"
-						type="text"
-						value={actor}
-						onChange={(event): void => {
-							setActor(event.target.value);
-						}}
-					/>
+					<span
+						className={`text-xs ${actor ? (isDark ? "text-neutral-500" : "text-neutral-400") : "text-red-500"}`}
+					>
+						{actor || "Wallet identity required"}
+					</span>
 				</div>
 				<div className="mt-3">
 					<label className={labelClass(isDark)}>Delivery note</label>
