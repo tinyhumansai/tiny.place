@@ -6,6 +6,7 @@ import type { MarketplacePrice } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
 import {
+	useIdentityFloor,
 	useIdentityListings,
 	useIdentityRecentSales,
 } from "@src/hooks/use-identity-market";
@@ -40,6 +41,55 @@ function formatPrice(price: MarketplacePrice): string {
 	return `${price.amount} ${price.asset}`;
 }
 
+function floorLabel(length: number): string {
+	if (length >= 5) return "5+ chars";
+	return `${String(length)} char${length === 1 ? "" : "s"}`;
+}
+
+function floorDescription(length: number): string {
+	if (length === 3) return "Short handles";
+	if (length === 4) return "Compact handles";
+	return "Long-form identities";
+}
+
+const floorLengths = [3, 4, 5] as const;
+
+type FloorCardProperties = {
+	isDark: boolean;
+	length: number;
+};
+
+function FloorCard({
+	isDark,
+	length,
+}: FloorCardProperties): FunctionComponent {
+	const floorQuery = useIdentityFloor(length);
+	const secondaryClass = isDark ? "text-neutral-500" : "text-neutral-400";
+	const headingClass = isDark ? "text-white" : "text-black";
+	const cardClass = isDark
+		? "border-neutral-800 bg-neutral-950"
+		: "border-neutral-200 bg-neutral-50";
+	const price = floorQuery.data?.price;
+
+	return (
+		<div className={`rounded-lg border p-3 ${cardClass}`}>
+			<div className={`text-xs ${secondaryClass}`}>{floorLabel(length)}</div>
+			<div className={`mt-1 text-sm font-semibold ${headingClass}`}>
+				{floorQuery.isLoading
+					? "Loading..."
+					: price
+						? formatPrice(price)
+						: "No floor"}
+			</div>
+			<div className={`mt-1 text-xs ${secondaryClass}`}>
+				{floorQuery.isError
+					? "Unavailable"
+					: floorDescription(length)}
+			</div>
+		</div>
+	);
+}
+
 type IdentityTradingMockProperties = {
 	isDark: boolean;
 };
@@ -64,6 +114,19 @@ export const IdentityTradingMock = ({
 
 	return (
 		<div className="space-y-4">
+			<div>
+				<h3
+					className={`mb-2 text-xs font-semibold uppercase tracking-wider ${secondaryClass}`}
+				>
+					Floor Prices
+				</h3>
+				<div className="grid grid-cols-3 gap-2">
+					{floorLengths.map((length) => (
+						<FloorCard key={length} isDark={isDark} length={length} />
+					))}
+				</div>
+			</div>
+
 			<div>
 				<h3
 					className={`mb-2 text-xs font-semibold uppercase tracking-wider ${secondaryClass}`}

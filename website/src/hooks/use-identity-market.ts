@@ -1,5 +1,9 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import type { IdentityListing, IdentitySale } from "@tinyhumansai/tinyplace";
+import type {
+	IdentityFloor,
+	IdentityListing,
+	IdentitySale,
+} from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
 import { queryKeys } from "@src/common/query-keys";
@@ -29,5 +33,15 @@ export function useIdentityRecentSales(): UseQueryResult<{
 			const result = await client.marketplace.recent();
 			return { recent: result.sales };
 		},
+	});
+}
+
+/** Floor price for listed identities of a given label length. */
+export function useIdentityFloor(length: number): UseQueryResult<IdentityFloor> {
+	const client = useApiClient();
+	return useQuery({
+		queryKey: queryKeys.marketplace.identityFloor(length),
+		queryFn: (): Promise<IdentityFloor> =>
+			client.marketplace.identityFloor(length),
 	});
 }
