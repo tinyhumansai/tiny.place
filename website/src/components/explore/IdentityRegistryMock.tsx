@@ -1,86 +1,31 @@
 "use client";
 
 import { useState } from "react";
+import type { IdentityListing } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
+import { useDirectoryIdentities } from "@src/hooks/use-directory";
 import { useHandleAvailability } from "@src/hooks/use-registry";
-
-type RegistryEntry = {
-	handle: string;
-	cryptoId: string;
-	createdDate: string;
-	status: "Active" | "Transferring" | "Reserved";
-	valueEstimate: string;
-};
-
-const registryEntries: Array<RegistryEntry> = [
-	{
-		handle: "@atlas",
-		cryptoId: "0x7a3f…e91c",
-		createdDate: "2025-01-12",
-		status: "Active",
-		valueEstimate: "$2,400",
-	},
-	{
-		handle: "@cipher",
-		cryptoId: "0x4b2d…f03a",
-		createdDate: "2025-02-03",
-		status: "Active",
-		valueEstimate: "$3,100",
-	},
-	{
-		handle: "@nova",
-		cryptoId: "0x91cf…a8b2",
-		createdDate: "2025-03-18",
-		status: "Transferring",
-		valueEstimate: "$1,800",
-	},
-	{
-		handle: "@meridian",
-		cryptoId: "0x5e8a…c47d",
-		createdDate: "2025-04-01",
-		status: "Active",
-		valueEstimate: "$2,900",
-	},
-	{
-		handle: "@echo",
-		cryptoId: "0xd12e…6f5b",
-		createdDate: "2025-04-22",
-		status: "Reserved",
-		valueEstimate: "$950",
-	},
-	{
-		handle: "@flux",
-		cryptoId: "0x3c7b…d2e8",
-		createdDate: "2025-05-10",
-		status: "Active",
-		valueEstimate: "$1,600",
-	},
-	{
-		handle: "@drift",
-		cryptoId: "0xa9f4…1b3c",
-		createdDate: "2025-06-01",
-		status: "Active",
-		valueEstimate: "$1,200",
-	},
-	{
-		handle: "@sage",
-		cryptoId: "0x6d0e…8a4f",
-		createdDate: "2025-06-15",
-		status: "Reserved",
-		valueEstimate: "$4,500",
-	},
-];
-
-const statusStyles: Record<RegistryEntry["status"], string> = {
-	Active: "bg-green-500/10 text-green-500",
-	Transferring: "bg-amber-500/10 text-amber-500",
-	Reserved: "bg-blue-500/10 text-blue-500",
-};
 
 type IdentityRegistryMockProperties = {
 	isDark: boolean;
 };
+
+function formatPrice(listing: IdentityListing): string {
+	return `${listing.price.amount} ${listing.price.asset}`;
+}
+
+function formatDate(value: string): string {
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) {
+		return value;
+	}
+	return date.toLocaleDateString(undefined, {
+		day: "numeric",
+		month: "short",
+		year: "numeric",
+	});
+}
 
 export const IdentityRegistryMock = ({
 	isDark,
@@ -96,6 +41,8 @@ export const IdentityRegistryMock = ({
 	const [input, setInput] = useState<string>("");
 	const [checked, setChecked] = useState<string>("");
 	const { data, isFetching, isError, refetch } = useHandleAvailability(checked);
+	const identitiesQuery = useDirectoryIdentities({ limit: 20 });
+	const listings = identitiesQuery.data?.identities ?? [];
 
 	return (
 		<div className="space-y-3">
@@ -160,44 +107,73 @@ export const IdentityRegistryMock = ({
 			</form>
 
 			<div className={`overflow-hidden rounded-lg border ${cardClass}`}>
+				<div
+					className={`flex items-center justify-between border-b px-3 py-2 ${
+						isDark ? "border-neutral-800" : "border-neutral-200"
+					}`}
+				>
+					<span className={`text-xs font-medium ${headingClass}`}>
+						Directory identities
+					</span>
+					<span className={`text-xs ${secondaryClass}`}>Live from staging</span>
+				</div>
+				{identitiesQuery.isLoading ? (
+					<p className={`px-3 py-4 text-xs ${secondaryClass}`}>
+						Loading identities...
+					</p>
+				) : null}
+				{identitiesQuery.isError ? (
+					<p className="px-3 py-4 text-xs text-rose-500">
+						Failed to load identities
+					</p>
+				) : null}
+				{!identitiesQuery.isLoading &&
+				!identitiesQuery.isError &&
+				listings.length === 0 ? (
+					<p className={`px-3 py-4 text-xs ${secondaryClass}`}>
+						No directory identities are currently listed.
+					</p>
+				) : null}
 				<table className="w-full text-left text-xs">
 					<thead>
 						<tr
 							className={`border-b ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
 						>
 							<th className={`px-3 py-2 font-medium ${headerClass}`}>Handle</th>
+							<th className={`px-3 py-2 font-medium ${headerClass}`}>Seller</th>
 							<th className={`px-3 py-2 font-medium ${headerClass}`}>
-								Crypto ID
-							</th>
-							<th className={`px-3 py-2 font-medium ${headerClass}`}>
-								Created
+								Updated
 							</th>
 							<th className={`px-3 py-2 font-medium ${headerClass}`}>Status</th>
 							<th className={`px-3 py-2 text-right font-medium ${headerClass}`}>
-								Value
+								Price
 							</th>
 						</tr>
 					</thead>
 					<tbody>
-						{registryEntries.map((entry, index) => (
+						{listings.map((entry, index) => (
 							<tr
-								key={entry.handle}
+								key={entry.listingId}
 								className={`border-b last:border-b-0 ${isDark ? "border-neutral-800" : "border-neutral-200"} ${
 									index % 2 === 1 ? rowEvenClass : ""
 								}`}
 							>
 								<td className={`px-3 py-2 font-medium ${headingClass}`}>
-									{entry.handle}
+									{entry.name}
 								</td>
 								<td className={`px-3 py-2 font-mono ${secondaryClass}`}>
-									{entry.cryptoId}
+									{entry.seller}
 								</td>
 								<td className={`px-3 py-2 ${secondaryClass}`}>
-									{entry.createdDate}
+									{formatDate(entry.updatedAt)}
 								</td>
 								<td className="px-3 py-2">
 									<span
-										className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[entry.status]}`}
+										className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+											entry.status === "active"
+												? "bg-green-500/10 text-green-500"
+												: "bg-amber-500/10 text-amber-500"
+										}`}
 									>
 										{entry.status}
 									</span>
@@ -205,7 +181,7 @@ export const IdentityRegistryMock = ({
 								<td
 									className={`px-3 py-2 text-right font-medium ${headingClass}`}
 								>
-									{entry.valueEstimate}
+									{formatPrice(entry)}
 								</td>
 							</tr>
 						))}

@@ -1,5 +1,10 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import type { AgentCard, AgentQueryParams } from "@tinyhumansai/tinyplace";
+import type {
+	AgentCard,
+	AgentQueryParams,
+	DirectoryIdentityListingsResponse,
+	IdentityListingQueryParams,
+} from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
 import { queryKeys } from "@src/common/query-keys";
@@ -21,5 +26,16 @@ export function useAgent(agentId: string): UseQueryResult<AgentCard> {
 		queryKey: queryKeys.directory.agent(agentId),
 		queryFn: (): Promise<AgentCard> => client.directory.getAgent(agentId),
 		enabled: Boolean(agentId),
+	});
+}
+
+export function useDirectoryIdentities(
+	parameters?: IdentityListingQueryParams
+): UseQueryResult<DirectoryIdentityListingsResponse> {
+	const client = useApiClient();
+	return useQuery({
+		queryKey: queryKeys.directory.identities(parameters),
+		queryFn: (): Promise<DirectoryIdentityListingsResponse> =>
+			client.directory.listIdentities(parameters),
 	});
 }
