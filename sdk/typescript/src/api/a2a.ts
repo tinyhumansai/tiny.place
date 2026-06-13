@@ -25,7 +25,18 @@ export class A2AApi {
     private readonly wsFactory?: (path: string) => TinyVerseWebSocket,
   ) {}
 
-  sendTask(agentId: string, request: A2ATaskRequest): Promise<A2ATaskResponse> {
+  sendTask(
+    agentId: string,
+    request: A2ATaskRequest,
+    senderId?: string,
+  ): Promise<A2ATaskResponse> {
+    if (senderId) {
+      return this.http.postDirectoryAuthAs<A2ATaskResponse>(
+        `/a2a/${encodeURIComponent(agentId)}`,
+        senderId,
+        request,
+      );
+    }
     return this.http.postDirectoryAuth<A2ATaskResponse>(
       `/a2a/${encodeURIComponent(agentId)}`,
       request,

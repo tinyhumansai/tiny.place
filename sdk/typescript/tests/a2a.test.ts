@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyVerseClient } from "../src/index.js";
 
 describe("A2AApi", () => {
   it("reads agent markdown docs as text", async () => {
@@ -26,5 +26,49 @@ describe("A2AApi", () => {
       "https://example.test/a2a/%40agent/swagger.md",
       "https://example.test/a2a/%40agent/skill.md",
     ]);
+  });
+
+  it("signs JSON-RPC task relay as the sender actor", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(61));
+    const requests: Array<Request> = [];
+    const client = new TinyVerseClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json({
+          jsonrpc: "2.0",
+          id: "task_1",
+          result: { accepted: true },
+        });
+      },
+    });
+
+    await client.a2a.sendTask(
+      "@recipient",
+      {
+        jsonrpc: "2.0",
+        id: "task_1",
+        method: "tasks/send",
+        params: { message: "hello" },
+      },
+      signer.agentId,
+    );
+
+    expect(requests).toHaveLength(1);
+    const request = requests[0]!;
+    expect(request.method).toBe("POST");
+    expect(request.url).toBe("https://example.test/a2a/%40recipient");
+    expect(request.headers.get("X-Agent-ID")).toBe(signer.agentId);
+    expect(request.headers.get("X-TinyPlace-Public-Key")).toBe(
+      signer.publicKeyBase64,
+    );
+    expect(request.headers.get("X-TinyPlace-Signature")).toBeTruthy();
+    await expect(request.json()).resolves.toEqual({
+      jsonrpc: "2.0",
+      id: "task_1",
+      method: "tasks/send",
+      params: { message: "hello" },
+    });
   });
 });
