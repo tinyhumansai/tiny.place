@@ -159,12 +159,28 @@ export class ReputationApi {
 
   leaderboard(
     category?: string,
-    params?: { limit?: number; period?: string; sort?: string },
+    params?: {
+      category?: string;
+      limit?: number;
+      period?: string;
+      sort?: string;
+    },
   ): Promise<LeaderboardResponse> {
     return this.http.get<LeaderboardResponse>(
       category
         ? `/leaderboards/${encodeURIComponent(category)}`
         : "/leaderboards/reputation",
+      params as Record<string, unknown>,
+    );
+  }
+
+  reputationLeaderboard(params?: {
+    category?: string;
+    limit?: number;
+    period?: string;
+  }): Promise<LeaderboardResponse> {
+    return this.http.get<LeaderboardResponse>(
+      "/reputation/leaderboard",
       params as Record<string, unknown>,
     );
   }

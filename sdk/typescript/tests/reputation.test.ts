@@ -32,6 +32,35 @@ async function verifySignature(
 }
 
 describe("ReputationApi", () => {
+  it("exposes reputation leaderboard category filters", async () => {
+    const requests: Array<Request> = [];
+    const client = new TinyVerseClient({
+      baseUrl: "https://example.test",
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json({
+          leaderboard: "reputation",
+          entries: [],
+          updatedAt: "2026-06-13T00:00:00Z",
+        });
+      },
+    });
+
+    await client.reputation.reputationLeaderboard({
+      category: "reviews",
+      limit: 2,
+    });
+    await client.reputation.leaderboard(undefined, {
+      category: "reviews",
+      limit: 2,
+    });
+
+    expect(requests.map((request) => request.url)).toEqual([
+      "https://example.test/reputation/leaderboard?category=reviews&limit=2",
+      "https://example.test/leaderboards/reputation?category=reviews&limit=2",
+    ]);
+  });
+
   it("signs review, vouch, and attestation create requests", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(14));
     const requests: Array<Request> = [];
