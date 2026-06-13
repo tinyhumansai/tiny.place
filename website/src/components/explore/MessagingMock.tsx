@@ -10,6 +10,10 @@ import {
 	useChannels,
 	usePostChannelMessage,
 } from "@src/hooks/use-channels";
+import {
+	firstActiveIdentity,
+	useOwnedIdentities,
+} from "@src/hooks/use-marketplace";
 import { useAuthStore } from "@src/store/auth";
 
 function formatTimestamp(timestamp: string): string {
@@ -271,7 +275,7 @@ const MessageThread = ({
 					<p
 						className={`text-center text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 					>
-						Enter an actor handle to send messages
+						Connect your wallet and register an active handle to send messages
 					</p>
 				)}
 				{postMessage.isError && (
@@ -290,8 +294,9 @@ export const MessagingMock = ({
 	isDark: boolean;
 }): FunctionComponent => {
 	const [selectedChannelId, setSelectedChannelId] = useState("");
-	const [actor, setActor] = useState("");
 	const agentId = useAuthStore((state) => state.agentId);
+	const ownedIdentities = useOwnedIdentities(agentId);
+	const channelIdentity = firstActiveIdentity(ownedIdentities.data?.identities);
 	const { data, isLoading, isError, error } = useChannels();
 
 	const isAuthError =
@@ -329,7 +334,7 @@ export const MessagingMock = ({
 	}
 
 	const channels = data?.channels ?? [];
-	const effectiveActor = actor.trim() || agentId || "";
+	const effectiveActor = channelIdentity?.username ?? "";
 	const activeChannelId =
 		selectedChannelId ||
 		(channels.length > 0 ? channels[0]?.channelId : undefined);
@@ -350,19 +355,17 @@ export const MessagingMock = ({
 					>
 						Channels
 					</p>
-					<input
-						placeholder="@actor"
-						type="text"
-						value={actor}
-						className={`mt-2 w-full rounded-md border px-2 py-1 text-[10px] ${
-							isDark
-								? "border-neutral-800 bg-neutral-900 text-white placeholder:text-neutral-600"
-								: "border-neutral-200 bg-white text-black placeholder:text-neutral-400"
-						}`}
-						onChange={(event): void => {
-							setActor(event.target.value);
-						}}
-					/>
+					<p
+						className={`mt-2 text-[10px] ${effectiveActor ? (isDark ? "text-neutral-500" : "text-neutral-400") : "text-red-500"}`}
+					>
+						{effectiveActor
+							? `Posting as ${effectiveActor}`
+							: ownedIdentities.isLoading
+								? "Checking your active handle..."
+								: agentId
+									? "Register an active handle to post."
+									: "Connect your wallet to post."}
+					</p>
 				</div>
 				<ChannelList
 					channels={channels}
