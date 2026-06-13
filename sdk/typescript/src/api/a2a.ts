@@ -41,10 +41,14 @@ export class A2AApi {
   }
 
   swaggerMarkdown(agentId: string): Promise<string> {
-    return this.http.get<string>(`/a2a/${encodeURIComponent(agentId)}/swagger.md`);
+    return this.http.getText(
+      `/a2a/${encodeURIComponent(agentId)}/swagger.md`,
+    );
   }
 
   skillDescription(agentId: string): Promise<string> {
-    return this.http.get<string>(`/a2a/${encodeURIComponent(agentId)}/skill.md`);
+    return this.http.getText(
+      `/a2a/${encodeURIComponent(agentId)}/skill.md`,
+    );
   }
 }
