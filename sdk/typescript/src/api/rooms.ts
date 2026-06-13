@@ -47,7 +47,10 @@ export class RoomsApi {
    * @param room - Room configuration (game, variant, stakes, buy-in, seats, ...).
    * @returns The created room.
    */
-  create(room: Partial<GameRoom>): Promise<GameRoom> {
+  create(room: Partial<GameRoom>, creatorId = room.creator): Promise<GameRoom> {
+    if (creatorId) {
+      return this.http.postDirectoryAuthAs<GameRoom>("/rooms", creatorId, room);
+    }
     return this.http.postDirectoryAuth<GameRoom>("/rooms", room);
   }
 
@@ -57,7 +60,13 @@ export class RoomsApi {
    * @param roomId - The room id.
    * @returns The room.
    */
-  get(roomId: string): Promise<GameRoom> {
+  get(roomId: string, actorId?: string): Promise<GameRoom> {
+    if (actorId) {
+      return this.http.getDirectoryAuthAs<GameRoom>(
+        `/rooms/${encodeURIComponent(roomId)}`,
+        actorId,
+      );
+    }
     return this.http.get<GameRoom>(`/rooms/${encodeURIComponent(roomId)}`);
   }
 
@@ -67,7 +76,18 @@ export class RoomsApi {
    * @param body - Join details (cryptoId, buy-in, payment authorization, txHash).
    * @returns The updated room and the assigned seat.
    */
-  join(roomId: string, body?: GameJoinRequest): Promise<GameJoinResponse> {
+  join(
+    roomId: string,
+    body?: GameJoinRequest,
+    actorId = body?.agentId,
+  ): Promise<GameJoinResponse> {
+    if (actorId) {
+      return this.http.postDirectoryAuthAs<GameJoinResponse>(
+        `/rooms/${encodeURIComponent(roomId)}/join`,
+        actorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<GameJoinResponse>(
       `/rooms/${encodeURIComponent(roomId)}/join`,
       body,
@@ -80,7 +100,18 @@ export class RoomsApi {
    * @param body - Leave details (agentId, txHash).
    * @returns The updated room and the returned stack.
    */
-  leave(roomId: string, body?: GameLeaveRequest): Promise<GameLeaveResponse> {
+  leave(
+    roomId: string,
+    body?: GameLeaveRequest,
+    actorId = body?.agentId,
+  ): Promise<GameLeaveResponse> {
+    if (actorId) {
+      return this.http.postDirectoryAuthAs<GameLeaveResponse>(
+        `/rooms/${encodeURIComponent(roomId)}/leave`,
+        actorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<GameLeaveResponse>(
       `/rooms/${encodeURIComponent(roomId)}/leave`,
       body,
@@ -93,7 +124,18 @@ export class RoomsApi {
    * @param body - Optional operator id. Defaults server-side from X-Agent-ID.
    * @returns The closed room and any cashout ledger entries.
    */
-  close(roomId: string, body?: GameOperatorRequest): Promise<GameCloseResponse> {
+  close(
+    roomId: string,
+    body?: GameOperatorRequest,
+    operatorId = body?.operator,
+  ): Promise<GameCloseResponse> {
+    if (operatorId) {
+      return this.http.postDirectoryAuthAs<GameCloseResponse>(
+        `/rooms/${encodeURIComponent(roomId)}/close`,
+        operatorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<GameCloseResponse>(
       `/rooms/${encodeURIComponent(roomId)}/close`,
       body,
@@ -109,7 +151,15 @@ export class RoomsApi {
   emergencyWithdrawal(
     roomId: string,
     body: GameEmergencyWithdrawalRequest,
+    operatorId = body.operator,
   ): Promise<GameEmergencyWithdrawalResponse> {
+    if (operatorId) {
+      return this.http.postDirectoryAuthAs<GameEmergencyWithdrawalResponse>(
+        `/rooms/${encodeURIComponent(roomId)}/emergency-withdrawals`,
+        operatorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<GameEmergencyWithdrawalResponse>(
       `/rooms/${encodeURIComponent(roomId)}/emergency-withdrawals`,
       body,
@@ -122,7 +172,18 @@ export class RoomsApi {
    * @param body - The action (fold, check, call, raise, all-in, post_blind) and amount.
    * @returns The updated hand (hole cards redacted per requester) and the recorded action.
    */
-  action(roomId: string, body: GameActionRequest): Promise<GameActionResponse> {
+  action(
+    roomId: string,
+    body: GameActionRequest,
+    actorId = body.agentId,
+  ): Promise<GameActionResponse> {
+    if (actorId) {
+      return this.http.postDirectoryAuthAs<GameActionResponse>(
+        `/rooms/${encodeURIComponent(roomId)}/action`,
+        actorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<GameActionResponse>(
       `/rooms/${encodeURIComponent(roomId)}/action`,
       body,
@@ -138,7 +199,15 @@ export class RoomsApi {
   timeout(
     roomId: string,
     body?: GameOperatorRequest,
+    operatorId = body?.operator,
   ): Promise<GameTimeoutResponse> {
+    if (operatorId) {
+      return this.http.postDirectoryAuthAs<GameTimeoutResponse>(
+        `/rooms/${encodeURIComponent(roomId)}/timeout`,
+        operatorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<GameTimeoutResponse>(
       `/rooms/${encodeURIComponent(roomId)}/timeout`,
       body,
@@ -150,7 +219,16 @@ export class RoomsApi {
    * @param roomId - The room id.
    * @returns The hands, with hole cards redacted per requester.
    */
-  listHands(roomId: string): Promise<{ hands: Array<GameHand> }> {
+  listHands(
+    roomId: string,
+    actorId?: string,
+  ): Promise<{ hands: Array<GameHand> }> {
+    if (actorId) {
+      return this.http.getDirectoryAuthAs<{ hands: Array<GameHand> }>(
+        `/rooms/${encodeURIComponent(roomId)}/hands`,
+        actorId,
+      );
+    }
     return this.http.get<{ hands: Array<GameHand> }>(
       `/rooms/${encodeURIComponent(roomId)}/hands`,
     );
@@ -165,7 +243,15 @@ export class RoomsApi {
   startHand(
     roomId: string,
     body?: GameOperatorRequest,
+    operatorId = body?.operator,
   ): Promise<GameStartHandResponse> {
+    if (operatorId) {
+      return this.http.postDirectoryAuthAs<GameStartHandResponse>(
+        `/rooms/${encodeURIComponent(roomId)}/hands`,
+        operatorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<GameStartHandResponse>(
       `/rooms/${encodeURIComponent(roomId)}/hands`,
       body,
@@ -178,7 +264,13 @@ export class RoomsApi {
    * @param handId - The hand id.
    * @returns The hand, with hole cards redacted per requester.
    */
-  getHand(roomId: string, handId: string): Promise<GameHand> {
+  getHand(roomId: string, handId: string, actorId?: string): Promise<GameHand> {
+    if (actorId) {
+      return this.http.getDirectoryAuthAs<GameHand>(
+        `/rooms/${encodeURIComponent(roomId)}/hands/${encodeURIComponent(handId)}`,
+        actorId,
+      );
+    }
     return this.http.get<GameHand>(
       `/rooms/${encodeURIComponent(roomId)}/hands/${encodeURIComponent(handId)}`,
     );
@@ -195,7 +287,15 @@ export class RoomsApi {
     roomId: string,
     handId: string,
     body: GameSettleRequest,
+    operatorId = body.operator,
   ): Promise<GameHand> {
+    if (operatorId) {
+      return this.http.postDirectoryAuthAs<GameHand>(
+        `/rooms/${encodeURIComponent(roomId)}/hands/${encodeURIComponent(handId)}/settle`,
+        operatorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<GameHand>(
       `/rooms/${encodeURIComponent(roomId)}/hands/${encodeURIComponent(handId)}/settle`,
       body,

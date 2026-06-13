@@ -36,7 +36,10 @@ export function useArtifact(
 	const client = useApiClient();
 	const agentId = useAuthStore((state) => state.agentId);
 	return useQuery({
-		queryKey: [...queryKeys.artifacts.detail(artifactId ?? ""), agentId] as const,
+		queryKey: [
+			...queryKeys.artifacts.detail(artifactId ?? ""),
+			agentId,
+		] as const,
 		queryFn: (): Promise<Artifact> => {
 			if (!agentId || !artifactId) {
 				throw new Error("Artifact ID is required");
