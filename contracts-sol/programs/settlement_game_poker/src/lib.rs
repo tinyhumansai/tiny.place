@@ -6,7 +6,7 @@ use escrow::{Vault, VAULT_AUTHORITY_SEED};
 
 pub mod math;
 
-declare_id!("CATBJS1qmZCCHJzNmdEwXNsBn1QYJoBuCg7yi8FTL8mG");
+declare_id!("Ah7UYiQHzQ3T8D5PZpfbYttSras4t5dQyxevuEL1rHaY");
 
 /// Basis-points denominator: a `fee_bps` of 500 means a 5.00% rake.
 pub const BPS_DENOMINATOR: u64 = 10_000;
@@ -80,7 +80,7 @@ pub mod settlement_game_poker {
 
         escrow::cpi::deposit(
             CpiContext::new(
-                ctx.accounts.escrow_program.to_account_info(),
+                ctx.accounts.escrow_program.key(),
                 escrow::cpi::accounts::Deposit {
                     vault: ctx.accounts.vault.to_account_info(),
                     nonce_tracker: ctx.accounts.nonce_tracker.to_account_info(),
@@ -203,7 +203,7 @@ pub mod settlement_game_poker {
             &ctx.accounts.vault_authority,
             &ctx.accounts.vault_token,
             &ctx.accounts.player_token,
-            &ctx.accounts.player_token,
+            &ctx.accounts.fee_token,
             &ctx.accounts.token_program,
             ctx.bumps.vault_authority,
             amount,
@@ -247,7 +247,7 @@ fn disburse_signed<'info>(
     let signer_seeds = &[seeds];
     escrow::cpi::disburse(
         CpiContext::new_with_signer(
-            escrow_program.to_account_info(),
+            escrow_program.key(),
             Disburse {
                 vault: vault.to_account_info(),
                 authority: vault_authority.to_account_info(),
@@ -471,6 +471,11 @@ pub struct ClaimRefund<'info> {
     /// The player's token account; must be owned by `player_entry.player`.
     #[account(mut)]
     pub player_token: Account<'info, TokenAccount>,
+    /// The vault's fee account — required by `escrow::disburse` even though a
+    /// refund withholds zero fee. Must differ from `player_token` (Anchor
+    /// forbids duplicate mutable accounts).
+    #[account(mut)]
+    pub fee_token: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
     /// The escrow program, invoked via CPI.
     pub escrow_program: Program<'info, Escrow>,

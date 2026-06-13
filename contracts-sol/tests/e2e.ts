@@ -234,6 +234,7 @@ describe("e2e — fund conservation across the full lifecycle", () => {
           vaultAuthority: vaultAuthorityPda(pokerProgram.programId),
           vaultToken,
           playerToken: pToken,
+          feeToken: feeAccount,
           tokenProgram: TOKEN_PROGRAM_ID,
           escrowProgram: escrowProgram.programId,
         })

@@ -1,20 +1,19 @@
 [toolchain]
 
 [features]
-seeds = false
+resolution = true
 skip-lint = false
 
 [programs.localnet]
-escrow = "FNCnjUKR1YbEJwcjWWHJzWxgp2vbSjjHcBZaAshybhLq"
-settlement_job = "6SAJ45pSHykE984VqDL54GmakdaT7C55xCJJEZnFXcyg"
-settlement_game_poker = "CATBJS1qmZCCHJzNmdEwXNsBn1QYJoBuCg7yi8FTL8mG"
-
-[registry]
-url = "https://api.apr.dev"
+escrow = "6s1cWEMcWjWZ3ut6aDD5g4CFBxpKBz5S4DLkrZdy5jR2"
+settlement_game_poker = "Ah7UYiQHzQ3T8D5PZpfbYttSras4t5dQyxevuEL1rHaY"
+settlement_job = "7vXRCMe8jBcHT3zrgnW5mXLxBpWWKsBpn5XCCCnQpot8"
 
 [provider]
-cluster = "Localnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test = "NODE_OPTIONS=--no-experimental-strip-types yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[hooks]

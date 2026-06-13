@@ -131,6 +131,7 @@ describe("settlement_game_poker", () => {
           vaultAuthority: vaultAuthority(),
           vaultToken,
           playerToken: await ata(mint, p.publicKey),
+          feeToken: feeAccount,
           tokenProgram: TOKEN_PROGRAM_ID,
           escrowProgram: escrowProgram.programId,
         })

@@ -6,7 +6,7 @@ use escrow::{Vault, VAULT_AUTHORITY_SEED};
 
 pub mod math;
 
-declare_id!("6SAJ45pSHykE984VqDL54GmakdaT7C55xCJJEZnFXcyg");
+declare_id!("7vXRCMe8jBcHT3zrgnW5mXLxBpWWKsBpn5XCCCnQpot8");
 
 /// Basis-points denominator: a `fee_bps` of 250 means a 2.50% rake.
 pub const BPS_DENOMINATOR: u64 = 10_000;
@@ -71,7 +71,7 @@ pub mod settlement_job {
 
         escrow::cpi::deposit(
             CpiContext::new(
-                ctx.accounts.escrow_program.to_account_info(),
+                ctx.accounts.escrow_program.key(),
                 escrow::cpi::accounts::Deposit {
                     vault: ctx.accounts.vault.to_account_info(),
                     nonce_tracker: ctx.accounts.nonce_tracker.to_account_info(),
@@ -207,7 +207,7 @@ fn release(ctx: &Context<Settle>, take_fee: bool) -> Result<()> {
 
     escrow::cpi::disburse(
         CpiContext::new_with_signer(
-            ctx.accounts.escrow_program.to_account_info(),
+            ctx.accounts.escrow_program.key(),
             Disburse {
                 vault: ctx.accounts.vault.to_account_info(),
                 authority: ctx.accounts.vault_authority.to_account_info(),

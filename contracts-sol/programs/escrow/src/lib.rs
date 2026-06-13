@@ -3,7 +3,7 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
 pub mod math;
 
-declare_id!("FNCnjUKR1YbEJwcjWWHJzWxgp2vbSjjHcBZaAshybhLq");
+declare_id!("6s1cWEMcWjWZ3ut6aDD5g4CFBxpKBz5S4DLkrZdy5jR2");
 
 /// Seed a settlement program must use for the PDA that authorizes disbursement.
 /// Escrow recomputes `PDA([VAULT_AUTHORITY_SEED], settlement_program)` and
@@ -88,7 +88,7 @@ pub mod escrow {
 
         token::transfer(
             CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.token_program.key(),
                 Transfer {
                     from: ctx.accounts.payer_token.to_account_info(),
                     to: ctx.accounts.vault_token.to_account_info(),
@@ -108,7 +108,7 @@ pub mod escrow {
             vault: vault.key(),
             payer: payload.payer,
             amount: payload.amount,
-            payment_id: payment_id(&payload),
+            nonce: payload.nonce,
             deposited: vault.deposited,
         });
         Ok(())
@@ -142,7 +142,7 @@ pub mod escrow {
         if amount > 0 {
             token::transfer(
                 CpiContext::new_with_signer(
-                    ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.token_program.key(),
                     Transfer {
                         from: ctx.accounts.vault_token.to_account_info(),
                         to: ctx.accounts.recipient_token.to_account_info(),
@@ -156,7 +156,7 @@ pub mod escrow {
         if fee > 0 {
             token::transfer(
                 CpiContext::new_with_signer(
-                    ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.token_program.key(),
                     Transfer {
                         from: ctx.accounts.vault_token.to_account_info(),
                         to: ctx.accounts.fee_token.to_account_info(),
@@ -180,17 +180,6 @@ pub mod escrow {
         });
         Ok(())
     }
-}
-
-/// Deterministic id for an x402 payment, for off-chain reconciliation.
-fn payment_id(payload: &PaymentPayload) -> [u8; 32] {
-    let mut data = Vec::new();
-    data.extend_from_slice(&payload.amount.to_le_bytes());
-    data.extend_from_slice(payload.payer.as_ref());
-    data.extend_from_slice(payload.payee.as_ref());
-    data.extend_from_slice(&payload.nonce.to_le_bytes());
-    data.extend_from_slice(&payload.expiry.to_le_bytes());
-    anchor_lang::solana_program::keccak::hash(&data).to_bytes()
 }
 
 // --- State ---
@@ -409,14 +398,14 @@ pub struct VaultOpened {
     pub mint: Pubkey,
 }
 
-/// Emitted on every successful deposit; carries the running `deposited` total
-/// and the deterministic `payment_id` for off-chain reconciliation.
+/// Emitted on every successful deposit; carries the payment `nonce` and the
+/// running `deposited` total for off-chain reconciliation.
 #[event]
 pub struct Deposited {
     pub vault: Pubkey,
     pub payer: Pubkey,
     pub amount: u64,
-    pub payment_id: [u8; 32],
+    pub nonce: u64,
     pub deposited: u64,
 }
 
