@@ -913,6 +913,42 @@ describe("staging: authenticated flows", () => {
     });
   });
 
+  describe("rooms operator endpoints", () => {
+    it("routes room close errors through TinyVerseError", async () => {
+      try {
+        await client.rooms.close("missing-codex-room", { operator: cryptoId });
+        expect.fail("should have thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(TinyVerseError);
+        expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+      }
+    });
+
+    it("routes room hand start errors through TinyVerseError", async () => {
+      try {
+        await client.rooms.startHand("missing-codex-room", { operator: cryptoId });
+        expect.fail("should have thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(TinyVerseError);
+        expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+      }
+    });
+
+    it("routes room hand settlement errors through TinyVerseError", async () => {
+      try {
+        await client.rooms.settleHand("missing-codex-room", "missing-codex-hand", {
+          operator: cryptoId,
+          winners: [],
+          txHash: "test-tx-" + Date.now(),
+        });
+        expect.fail("should have thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(TinyVerseError);
+        expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+      }
+    });
+  });
+
   describe("search (authenticated)", () => {
     it("search.agents works", async () => {
       const result = await client.search.agents({ q: "test" });

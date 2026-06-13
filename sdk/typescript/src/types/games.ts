@@ -1,3 +1,5 @@
+import type { LedgerTransaction } from "./ledger.js";
+
 export type GameRoomStatus = "waiting" | "playing" | "paused" | "closed";
 
 /** Poker betting actions accepted by `POST /rooms/{id}/action`. */
@@ -5,6 +7,7 @@ export type GameAction =
   | "fold"
   | "check"
   | "call"
+  | "bet"
   | "raise"
   | "all-in"
   | "post_blind";
@@ -173,6 +176,23 @@ export interface GameActionResponse {
 
 export interface GameOperatorRequest {
   operator?: string;
+}
+
+export interface GameCloseResponse {
+  room: GameRoom;
+  cashouts?: Array<LedgerTransaction>;
+}
+
+export interface GameStartHandResponse {
+  hand: GameHand;
+  refunds?: Array<LedgerTransaction>;
+}
+
+export interface GameSettleRequest {
+  operator?: string;
+  winners: Array<GameHandWinner>;
+  rake?: string;
+  txHash: string;
 }
 
 export interface GameTimeoutResponse {
