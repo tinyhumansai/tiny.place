@@ -28,69 +28,143 @@ export class EventsApi {
     );
   }
 
-  create(event: Partial<Event>): Promise<Event> {
-    return this.http.postDirectoryAuth<Event>("/events", {
+  create(event: Partial<Event>, hostId = event.host): Promise<Event> {
+    const body = {
       ...event,
       eventId: event.eventId ?? nextClientId("evt"),
-    });
+    };
+    if (hostId) {
+      return this.http.postDirectoryAuthAs<Event>("/events", hostId, body);
+    }
+    return this.http.postDirectoryAuth<Event>("/events", body);
   }
 
   get(eventId: string): Promise<Event> {
     return this.http.get<Event>(`/events/${encodeURIComponent(eventId)}`);
   }
 
-  update(eventId: string, event: Partial<Event>): Promise<Event> {
+  update(eventId: string, event: Partial<Event>, hostId?: string): Promise<Event> {
+    if (hostId) {
+      return this.http.putDirectoryAuthAs<Event>(
+        `/events/${encodeURIComponent(eventId)}`,
+        hostId,
+        event,
+      );
+    }
     return this.http.putDirectoryAuth<Event>(
       `/events/${encodeURIComponent(eventId)}`,
       event,
     );
   }
 
-  remove(eventId: string): Promise<void> {
+  remove(eventId: string, hostId?: string): Promise<void> {
+    if (hostId) {
+      return this.http.deleteDirectoryAuthAs<void>(
+        `/events/${encodeURIComponent(eventId)}`,
+        hostId,
+      );
+    }
     return this.http.deleteDirectoryAuth<void>(
       `/events/${encodeURIComponent(eventId)}`,
     );
   }
 
-  rsvp(eventId: string, tier?: string): Promise<EventAttendee> {
+  rsvp(
+    eventId: string,
+    tier?: string,
+    agentId?: string,
+  ): Promise<EventAttendee> {
+    const body = { ...(tier ? { tier } : {}), ...(agentId ? { agentId } : {}) };
+    const requestBody = Object.keys(body).length > 0 ? body : undefined;
+    if (agentId) {
+      return this.http.postDirectoryAuthAs<EventAttendee>(
+        `/events/${encodeURIComponent(eventId)}/rsvp`,
+        agentId,
+        requestBody,
+      );
+    }
     return this.http.postDirectoryAuth<EventAttendee>(
       `/events/${encodeURIComponent(eventId)}/rsvp`,
-      tier ? { tier } : undefined,
+      requestBody,
     );
   }
 
-  cancelRsvp(eventId: string): Promise<void> {
+  cancelRsvp(eventId: string, agentId?: string): Promise<void> {
+    const path = agentId
+      ? `/events/${encodeURIComponent(eventId)}/rsvp?${new URLSearchParams({ agentId }).toString()}`
+      : `/events/${encodeURIComponent(eventId)}/rsvp`;
+    if (agentId) {
+      return this.http.deleteDirectoryAuthAs<void>(path, agentId);
+    }
     return this.http.deleteDirectoryAuth<void>(
-      `/events/${encodeURIComponent(eventId)}/rsvp`,
+      path,
     );
   }
 
-  attendees(eventId: string): Promise<{ attendees: Array<EventAttendee> }> {
+  attendees(
+    eventId: string,
+    actorId?: string,
+  ): Promise<{ attendees: Array<EventAttendee> }> {
+    if (actorId) {
+      return this.http.getDirectoryAuthAs<{ attendees: Array<EventAttendee> }>(
+        `/events/${encodeURIComponent(eventId)}/attendees`,
+        actorId,
+      );
+    }
     return this.http.getDirectoryAuth<{ attendees: Array<EventAttendee> }>(
       `/events/${encodeURIComponent(eventId)}/attendees`,
     );
   }
 
-  removeAttendee(eventId: string, agentId: string): Promise<void> {
+  removeAttendee(
+    eventId: string,
+    agentId: string,
+    moderatorId?: string,
+  ): Promise<void> {
+    if (moderatorId) {
+      return this.http.deleteDirectoryAuthAs<void>(
+        `/events/${encodeURIComponent(eventId)}/attendees/${encodeURIComponent(agentId)}`,
+        moderatorId,
+      );
+    }
     return this.http.deleteDirectoryAuth<void>(
       `/events/${encodeURIComponent(eventId)}/attendees/${encodeURIComponent(agentId)}`,
     );
   }
 
-  invite(eventId: string, agentId: string): Promise<void> {
+  invite(eventId: string, agentId: string, hostId?: string): Promise<void> {
+    if (hostId) {
+      return this.http.postDirectoryAuthAs<void>(
+        `/events/${encodeURIComponent(eventId)}/invite`,
+        hostId,
+        { agentId },
+      );
+    }
     return this.http.postDirectoryAuth<void>(
       `/events/${encodeURIComponent(eventId)}/invite`,
       { agentId },
     );
   }
 
-  start(eventId: string): Promise<Event> {
+  start(eventId: string, hostId?: string): Promise<Event> {
+    if (hostId) {
+      return this.http.postDirectoryAuthAs<Event>(
+        `/events/${encodeURIComponent(eventId)}/start`,
+        hostId,
+      );
+    }
     return this.http.postDirectoryAuth<Event>(
       `/events/${encodeURIComponent(eventId)}/start`,
     );
   }
 
-  end(eventId: string): Promise<Event> {
+  end(eventId: string, hostId?: string): Promise<Event> {
+    if (hostId) {
+      return this.http.postDirectoryAuthAs<Event>(
+        `/events/${encodeURIComponent(eventId)}/end`,
+        hostId,
+      );
+    }
     return this.http.postDirectoryAuth<Event>(
       `/events/${encodeURIComponent(eventId)}/end`,
     );
@@ -114,21 +188,41 @@ export class EventsApi {
 
   postToStage(
     eventId: string,
-    body: { speaker?: string; message: string },
+    body: { speaker?: string; sender?: string; message?: string; body?: string },
+    actorId = body.sender ?? body.speaker,
   ): Promise<EventStageMessage> {
+    if (actorId) {
+      return this.http.postDirectoryAuthAs<EventStageMessage>(
+        `/events/${encodeURIComponent(eventId)}/stage`,
+        actorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<EventStageMessage>(
       `/events/${encodeURIComponent(eventId)}/stage`,
       body,
     );
   }
 
-  pauseStage(eventId: string): Promise<Event> {
+  pauseStage(eventId: string, moderatorId?: string): Promise<Event> {
+    if (moderatorId) {
+      return this.http.postDirectoryAuthAs<Event>(
+        `/events/${encodeURIComponent(eventId)}/stage/pause`,
+        moderatorId,
+      );
+    }
     return this.http.postDirectoryAuth<Event>(
       `/events/${encodeURIComponent(eventId)}/stage/pause`,
     );
   }
 
-  resumeStage(eventId: string): Promise<Event> {
+  resumeStage(eventId: string, moderatorId?: string): Promise<Event> {
+    if (moderatorId) {
+      return this.http.postDirectoryAuthAs<Event>(
+        `/events/${encodeURIComponent(eventId)}/stage/resume`,
+        moderatorId,
+      );
+    }
     return this.http.postDirectoryAuth<Event>(
       `/events/${encodeURIComponent(eventId)}/stage/resume`,
     );
@@ -138,7 +232,15 @@ export class EventsApi {
     eventId: string,
     messageId: string,
     body?: Record<string, unknown>,
+    moderatorId?: string,
   ): Promise<Record<string, unknown>> {
+    if (moderatorId) {
+      return this.http.postDirectoryAuthAs<Record<string, unknown>>(
+        `/events/${encodeURIComponent(eventId)}/stage/${encodeURIComponent(messageId)}/pin`,
+        moderatorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<Record<string, unknown>>(
       `/events/${encodeURIComponent(eventId)}/stage/${encodeURIComponent(messageId)}/pin`,
       body,
@@ -149,7 +251,15 @@ export class EventsApi {
     eventId: string,
     messageId: string,
     body?: Record<string, unknown>,
+    moderatorId?: string,
   ): Promise<Record<string, unknown>> {
+    if (moderatorId) {
+      return this.http.postDirectoryAuthAs<Record<string, unknown>>(
+        `/events/${encodeURIComponent(eventId)}/stage/${encodeURIComponent(messageId)}/unpin`,
+        moderatorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<Record<string, unknown>>(
       `/events/${encodeURIComponent(eventId)}/stage/${encodeURIComponent(messageId)}/unpin`,
       body,
@@ -184,7 +294,15 @@ export class EventsApi {
     eventId: string,
     speakerId: string,
     body?: Record<string, unknown>,
+    moderatorId?: string,
   ): Promise<Record<string, unknown>> {
+    if (moderatorId) {
+      return this.http.postDirectoryAuthAs<Record<string, unknown>>(
+        `/events/${encodeURIComponent(eventId)}/speakers/${encodeURIComponent(speakerId)}/mute`,
+        moderatorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<Record<string, unknown>>(
       `/events/${encodeURIComponent(eventId)}/speakers/${encodeURIComponent(speakerId)}/mute`,
       body,
@@ -195,7 +313,15 @@ export class EventsApi {
     eventId: string,
     speakerId: string,
     body?: Record<string, unknown>,
+    moderatorId?: string,
   ): Promise<Record<string, unknown>> {
+    if (moderatorId) {
+      return this.http.postDirectoryAuthAs<Record<string, unknown>>(
+        `/events/${encodeURIComponent(eventId)}/speakers/${encodeURIComponent(speakerId)}/unmute`,
+        moderatorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<Record<string, unknown>>(
       `/events/${encodeURIComponent(eventId)}/speakers/${encodeURIComponent(speakerId)}/unmute`,
       body,
@@ -206,7 +332,15 @@ export class EventsApi {
     eventId: string,
     agendaItemId: string,
     body?: Record<string, unknown>,
+    moderatorId?: string,
   ): Promise<Record<string, unknown>> {
+    if (moderatorId) {
+      return this.http.postDirectoryAuthAs<Record<string, unknown>>(
+        `/events/${encodeURIComponent(eventId)}/agenda/${encodeURIComponent(agendaItemId)}/activate`,
+        moderatorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<Record<string, unknown>>(
       `/events/${encodeURIComponent(eventId)}/agenda/${encodeURIComponent(agendaItemId)}/activate`,
       body,
@@ -222,7 +356,15 @@ export class EventsApi {
   postQuestion(
     eventId: string,
     question: Record<string, unknown>,
+    askerId = typeof question.asker === "string" ? question.asker : undefined,
   ): Promise<Record<string, unknown>> {
+    if (askerId) {
+      return this.http.postDirectoryAuthAs<Record<string, unknown>>(
+        `/events/${encodeURIComponent(eventId)}/questions`,
+        askerId,
+        question,
+      );
+    }
     return this.http.postDirectoryAuth<Record<string, unknown>>(
       `/events/${encodeURIComponent(eventId)}/questions`,
       question,
@@ -233,7 +375,15 @@ export class EventsApi {
     eventId: string,
     questionId: string,
     body?: Record<string, unknown>,
+    voterId?: string,
   ): Promise<Record<string, unknown>> {
+    if (voterId) {
+      return this.http.postDirectoryAuthAs<Record<string, unknown>>(
+        `/events/${encodeURIComponent(eventId)}/questions/${encodeURIComponent(questionId)}/upvote`,
+        voterId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<Record<string, unknown>>(
       `/events/${encodeURIComponent(eventId)}/questions/${encodeURIComponent(questionId)}/upvote`,
       body,
@@ -244,7 +394,15 @@ export class EventsApi {
     eventId: string,
     questionId: string,
     body?: Record<string, unknown>,
+    moderatorId?: string,
   ): Promise<Record<string, unknown>> {
+    if (moderatorId) {
+      return this.http.postDirectoryAuthAs<Record<string, unknown>>(
+        `/events/${encodeURIComponent(eventId)}/questions/${encodeURIComponent(questionId)}/promote`,
+        moderatorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<Record<string, unknown>>(
       `/events/${encodeURIComponent(eventId)}/questions/${encodeURIComponent(questionId)}/promote`,
       body,
@@ -255,7 +413,15 @@ export class EventsApi {
     eventId: string,
     questionId: string,
     body?: Record<string, unknown>,
+    moderatorId?: string,
   ): Promise<Record<string, unknown>> {
+    if (moderatorId) {
+      return this.http.postDirectoryAuthAs<Record<string, unknown>>(
+        `/events/${encodeURIComponent(eventId)}/questions/${encodeURIComponent(questionId)}/dismiss`,
+        moderatorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<Record<string, unknown>>(
       `/events/${encodeURIComponent(eventId)}/questions/${encodeURIComponent(questionId)}/dismiss`,
       body,
@@ -266,7 +432,15 @@ export class EventsApi {
     eventId: string,
     questionId: string,
     body?: Record<string, unknown>,
+    moderatorId?: string,
   ): Promise<EventQuestion> {
+    if (moderatorId) {
+      return this.http.postDirectoryAuthAs<EventQuestion>(
+        `/events/${encodeURIComponent(eventId)}/questions/${encodeURIComponent(questionId)}/answered`,
+        moderatorId,
+        body,
+      );
+    }
     return this.http.postDirectoryAuth<EventQuestion>(
       `/events/${encodeURIComponent(eventId)}/questions/${encodeURIComponent(questionId)}/answered`,
       body,
@@ -282,7 +456,15 @@ export class EventsApi {
   createPoll(
     eventId: string,
     poll: Partial<EventPoll>,
+    actorId = poll.createdBy,
   ): Promise<EventPoll> {
+    if (actorId) {
+      return this.http.postDirectoryAuthAs<EventPoll>(
+        `/events/${encodeURIComponent(eventId)}/polls`,
+        actorId,
+        poll,
+      );
+    }
     return this.http.postDirectoryAuth<EventPoll>(
       `/events/${encodeURIComponent(eventId)}/polls`,
       poll,
@@ -293,14 +475,28 @@ export class EventsApi {
     eventId: string,
     pollId: string,
     option: string,
+    voterId?: string,
   ): Promise<EventPoll> {
+    if (voterId) {
+      return this.http.postDirectoryAuthAs<EventPoll>(
+        `/events/${encodeURIComponent(eventId)}/polls/${encodeURIComponent(pollId)}/vote`,
+        voterId,
+        { option },
+      );
+    }
     return this.http.postDirectoryAuth<EventPoll>(
       `/events/${encodeURIComponent(eventId)}/polls/${encodeURIComponent(pollId)}/vote`,
       { option },
     );
   }
 
-  closePoll(eventId: string, pollId: string): Promise<EventPoll> {
+  closePoll(eventId: string, pollId: string, actorId?: string): Promise<EventPoll> {
+    if (actorId) {
+      return this.http.postDirectoryAuthAs<EventPoll>(
+        `/events/${encodeURIComponent(eventId)}/polls/${encodeURIComponent(pollId)}/close`,
+        actorId,
+      );
+    }
     return this.http.postDirectoryAuth<EventPoll>(
       `/events/${encodeURIComponent(eventId)}/polls/${encodeURIComponent(pollId)}/close`,
     );
@@ -315,7 +511,15 @@ export class EventsApi {
   updateRecording(
     eventId: string,
     body: { visibility: EventVisibility },
+    hostId?: string,
   ): Promise<Event> {
+    if (hostId) {
+      return this.http.putDirectoryAuthAs<Event>(
+        `/events/${encodeURIComponent(eventId)}/recording`,
+        hostId,
+        body,
+      );
+    }
     return this.http.putDirectoryAuth<Event>(
       `/events/${encodeURIComponent(eventId)}/recording`,
       body,
@@ -326,7 +530,17 @@ export class EventsApi {
     return this.http.get<{ series: Array<EventSeries> }>("/events/series");
   }
 
-  createSeries(series: Partial<EventSeries>): Promise<EventSeries> {
+  createSeries(
+    series: Partial<EventSeries>,
+    hostId = series.host,
+  ): Promise<EventSeries> {
+    if (hostId) {
+      return this.http.postDirectoryAuthAs<EventSeries>(
+        "/events/series",
+        hostId,
+        series,
+      );
+    }
     return this.http.postDirectoryAuth<EventSeries>("/events/series", series);
   }
 
@@ -336,13 +550,25 @@ export class EventsApi {
     );
   }
 
-  followSeries(seriesId: string): Promise<void> {
+  followSeries(seriesId: string, agentId?: string): Promise<void> {
+    if (agentId) {
+      return this.http.postDirectoryAuthAs<void>(
+        `/events/series/${encodeURIComponent(seriesId)}/follow`,
+        agentId,
+      );
+    }
     return this.http.postDirectoryAuth<void>(
       `/events/series/${encodeURIComponent(seriesId)}/follow`,
     );
   }
 
-  unfollowSeries(seriesId: string): Promise<void> {
+  unfollowSeries(seriesId: string, agentId?: string): Promise<void> {
+    if (agentId) {
+      return this.http.deleteDirectoryAuthAs<void>(
+        `/events/series/${encodeURIComponent(seriesId)}/follow`,
+        agentId,
+      );
+    }
     return this.http.deleteDirectoryAuth<void>(
       `/events/series/${encodeURIComponent(seriesId)}/follow`,
     );

@@ -97,6 +97,63 @@ describe("EventsApi", () => {
     expect(requests[1]!.headers.get("X-TinyPlace-Signature")).toBeTruthy();
   });
 
+  it("signs event actor requests with host, speaker, attendee, and moderator actors", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(25));
+    const requests: Array<Request> = [];
+    const client = new TinyVerseClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json({});
+      },
+    });
+
+    await client.events.create({ host: "@host", title: "Townhall" });
+    await client.events.update("evt 1", { title: "Updated" }, "@host");
+    await client.events.start("evt 1", "@host");
+    await client.events.rsvp("evt 1", "vip", "@attendee");
+    await client.events.cancelRsvp("evt 1", "@attendee");
+    await client.events.postToStage("evt 1", {
+      sender: "@speaker",
+      body: "hello",
+    });
+    await client.events.createPoll(
+      "evt 1",
+      { createdBy: "@speaker", question: "Pick?" },
+    );
+    await client.events.votePoll("evt 1", "poll 1", "A", "@attendee");
+    await client.events.pauseStage("evt 1", "@moderator");
+    await client.events.promoteQuestion(
+      "evt 1",
+      "q 1",
+      undefined,
+      "@moderator",
+    );
+
+    expect(requests.map((request) => request.headers.get("X-Agent-ID"))).toEqual(
+      [
+        "@host",
+        "@host",
+        "@host",
+        "@attendee",
+        "@attendee",
+        "@speaker",
+        "@speaker",
+        "@attendee",
+        "@moderator",
+        "@moderator",
+      ],
+    );
+    await expect(requests[3]!.json()).resolves.toEqual({
+      tier: "vip",
+      agentId: "@attendee",
+    });
+    expect(requests[4]!.url).toBe(
+      "https://example.test/events/evt%201/rsvp?agentId=%40attendee",
+    );
+  });
+
   it("opens restricted event streams with directory query auth", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(20));
     const openedUrls: Array<string> = [];
