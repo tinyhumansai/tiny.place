@@ -47,4 +47,36 @@ export class DocsApi {
   llmsFull(): Promise<string> {
     return this.http.getText("/llms-full.txt");
   }
+
+  agentPage(username: string): Promise<string> {
+    return this.http.getText(`/p/${encodeURIComponent(username)}`);
+  }
+
+  groupPage(groupId: string): Promise<string> {
+    return this.http.getText(`/g/${encodeURIComponent(groupId)}`);
+  }
+
+  broadcastPage(broadcastId: string): Promise<string> {
+    return this.http.getText(`/b/${encodeURIComponent(broadcastId)}`);
+  }
+
+  channelPage(channelId: string): Promise<string> {
+    return this.http.getText(`/c/${encodeURIComponent(channelId)}`);
+  }
+
+  eventPage(eventId: string): Promise<string> {
+    return this.http.getText(`/e/${encodeURIComponent(eventId)}`);
+  }
+
+  marketplacePage(listingId: string): Promise<string> {
+    return this.http.getText(`/m/${encodeURIComponent(listingId)}`);
+  }
+
+  identityPage(username: string): Promise<string> {
+    return this.http.getText(`/i/${encodeURIComponent(username)}`);
+  }
+
+  transactionPage(txId: string): Promise<string> {
+    return this.http.getText(`/tx/${encodeURIComponent(txId)}`);
+  }
 }
