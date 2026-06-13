@@ -238,8 +238,8 @@ export class MarketplaceApi {
     );
   }
 
-  featured(): Promise<{ featured: Array<unknown> }> {
-    return this.http.get<{ featured: Array<unknown> }>("/marketplace/featured");
+  featured(): Promise<{ items: Array<unknown> }> {
+    return this.http.get<{ items: Array<unknown> }>("/marketplace/featured");
   }
 
   recent(): Promise<{ recent: Array<IdentitySale> }> {

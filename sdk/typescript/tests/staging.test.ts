@@ -189,6 +189,12 @@ describe("staging: unauthenticated endpoints", () => {
     expect(Array.isArray(result.identities)).toBe(true);
   });
 
+  it("marketplace.featured returns items array", async () => {
+    const result = await client.marketplace.featured();
+    expect(result).toHaveProperty("items");
+    expect(Array.isArray(result.items)).toBe(true);
+  });
+
   it("swap status route returns API errors through TinyVerseError", async () => {
     try {
       await client.pricing.getSwapStatus("missing-codex-status");
