@@ -39,4 +39,9 @@ export class WalletSigner extends Signer {
 	public x402PaymentMetadata(): Record<string, string> {
 		return { publicKey: this.publicKeyBase64 };
 	}
+
+	/** The wallet's own key is both its signing key and its identity key. */
+	public get identityPublicKeyBase64(): string {
+		return this.publicKeyBase64;
+	}
 }

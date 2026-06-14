@@ -112,6 +112,17 @@ export class SessionWalletSigner extends Signer {
 		};
 	}
 
+	/**
+	 * The wallet (grantor) public key — the key the backend has on record for
+	 * this wallet's registered identities. Distinct from {@link publicKeyBase64}
+	 * (the session key): use this wherever a request must carry the *identity's*
+	 * key (e.g. a marketplace buyer proving ownership of their @handle), not the
+	 * ephemeral session key that merely signs the request.
+	 */
+	public get identityPublicKeyBase64(): string {
+		return this.walletSigner.publicKeyBase64;
+	}
+
 	/** RFC 3339 timestamp at which the session grant expires. */
 	public get expiresAt(): string {
 		return this.grant.expiresAt;

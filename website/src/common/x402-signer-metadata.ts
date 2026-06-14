@@ -29,3 +29,27 @@ function hasX402Metadata(
 export function signerPaymentMetadata(signer: Signer): Record<string, string> {
 	return hasX402Metadata(signer) ? signer.x402PaymentMetadata() : {};
 }
+
+type IdentityKeySigner = { identityPublicKeyBase64: string };
+
+function hasIdentityKey(
+	signer: Signer
+): signer is Signer & IdentityKeySigner {
+	return (
+		typeof (signer as Partial<IdentityKeySigner>).identityPublicKeyBase64 ===
+		"string"
+	);
+}
+
+/**
+ * Returns the public key the backend has on record for the signer's *identity*
+ * (the wallet/grantor key), as opposed to its request-signing key. For a
+ * delegated session signer these differ: the request is signed by the session
+ * key, but the identity is owned by the wallet. Use this when a request must
+ * carry the identity's registered key (e.g. a marketplace buyer's publicKey).
+ */
+export function identityPublicKey(signer: Signer): string {
+	return hasIdentityKey(signer)
+		? signer.identityPublicKeyBase64
+		: signer.publicKeyBase64;
+}

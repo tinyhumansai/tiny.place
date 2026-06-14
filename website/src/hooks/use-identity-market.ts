@@ -27,7 +27,10 @@ import {
 	assertValidX402Challenge,
 	type ExpectedX402Payment,
 } from "@src/common/x402-challenge";
-import { signerPaymentMetadata } from "@src/common/x402-signer-metadata";
+import {
+	identityPublicKey,
+	signerPaymentMetadata,
+} from "@src/common/x402-signer-metadata";
 import { useAuthStore } from "@src/store/auth";
 
 /** Lists identities currently listed for sale on the marketplace. */
@@ -208,7 +211,7 @@ export function useBuyIdentityListing(): UseMutationResult<
 			const request: IdentityBuyRequest = {
 				buyer,
 				buyerCryptoId,
-				buyerPublicKey: buyerPublicKey ?? signer.publicKeyBase64,
+				buyerPublicKey: buyerPublicKey ?? identityPublicKey(signer),
 			};
 
 			try {
