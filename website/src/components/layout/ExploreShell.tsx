@@ -23,6 +23,7 @@ import type { ComponentType, ReactNode, SVGProps } from "react";
 
 import type { FunctionComponent } from "@src/common/types";
 import { ActivityMarquee } from "@src/components/ActivityMarquee";
+import { ClientOnly } from "@src/components/ClientOnly";
 import { ConnectWalletButton } from "@src/components/ConnectWalletButton";
 import { ProfileButton } from "@src/components/ProfileButton";
 import { Sidebar } from "@src/components/layout/Sidebar";
@@ -80,7 +81,12 @@ export const ExploreShell = ({
 							: "border-neutral-200 bg-white/80"
 					}`}
 				>
-					<ActivityMarquee isDark={isDark} />
+					<div className="min-w-0 flex-1">
+						{/* Client-only: the activity websocket must not run during SSR. */}
+						<ClientOnly>
+							<ActivityMarquee isDark={isDark} />
+						</ClientOnly>
+					</div>
 					<div className="flex shrink-0 items-center gap-2">
 						<ConnectWalletButton />
 						<ProfileButton />

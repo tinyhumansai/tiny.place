@@ -88,11 +88,11 @@ export const ActivityMarquee = ({
 	const itemColor = isDark ? "text-neutral-400" : "text-neutral-500";
 	const dotColor = isDark ? "text-neutral-700" : "text-neutral-300";
 
-	// Always flex-fill the header so the connect buttons stay right-aligned, even
-	// before any activity has streamed in.
+	// The parent supplies the flex-1 fill (see ExploreShell), so this just spans
+	// the available width. Shows a placeholder until activity streams in.
 	if (items.length === 0) {
 		return (
-			<div className="min-w-0 flex-1 overflow-hidden">
+			<div className="w-full overflow-hidden">
 				<span className={`text-xs ${dotColor}`}>Live activity…</span>
 			</div>
 		);
@@ -101,7 +101,7 @@ export const ActivityMarquee = ({
 	const track = [...items, ...items];
 
 	return (
-		<div className="relative min-w-0 flex-1 overflow-hidden">
+		<div className="relative w-full overflow-hidden">
 			<style>{MARQUEE_KEYFRAMES}</style>
 			<div
 				className="flex w-max items-center gap-6 whitespace-nowrap"
