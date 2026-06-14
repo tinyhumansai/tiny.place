@@ -30,7 +30,7 @@ interface UseSessionPayments {
 	 * prompt: the session key authorizes it and the facilitator fee-pays.
 	 */
 	pay: (
-		options: Omit<SessionPaymentOptions, "rpcUrl">,
+		options: Omit<SessionPaymentOptions, "rpcUrl">
 	) => Promise<X402SettleResponse>;
 }
 
@@ -51,7 +51,7 @@ export function useSessionPayments(): UseSessionPayments {
 				throw new Error("connect a wallet with an active session first");
 			}
 			const delegate = new PublicKey(
-				Buffer.from(session.publicKeyBase64, "base64"),
+				Buffer.from(session.publicKeyBase64, "base64")
 			).toBase58();
 			return enableDelegatedSpending({
 				rpcUrl: RPC_URL,
@@ -62,12 +62,12 @@ export function useSessionPayments(): UseSessionPayments {
 				signTransaction,
 			});
 		},
-		[session, publicKey, signTransaction],
+		[session, publicKey, signTransaction]
 	);
 
 	const pay = useCallback(
 		async (
-			options: Omit<SessionPaymentOptions, "rpcUrl">,
+			options: Omit<SessionPaymentOptions, "rpcUrl">
 		): Promise<X402SettleResponse> => {
 			if (!session) {
 				throw new Error("no active session wallet");
@@ -78,11 +78,11 @@ export function useSessionPayments(): UseSessionPayments {
 				rpcUrl: RPC_URL,
 			});
 		},
-		[session],
+		[session]
 	);
 
 	return useMemo(
 		() => ({ ready, enableSpending, pay }),
-		[ready, enableSpending, pay],
+		[ready, enableSpending, pay]
 	);
 }

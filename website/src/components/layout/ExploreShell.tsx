@@ -93,10 +93,10 @@ export const ExploreShell = ({
 					}}
 				/>
 				<header
-					className={`sticky top-0 z-20 flex items-center gap-4 border-b pl-14 pr-4 md:px-4 py-2 backdrop-blur transition-colors ${
+					className={`sticky top-0 z-20 flex items-center gap-4 border-b pl-14 pr-4 md:px-4 py-2 transition-colors ${
 						isDark
-							? "border-neutral-800 bg-black/80"
-							: "border-neutral-200 bg-white/80"
+							? "border-neutral-800 bg-black"
+							: "border-neutral-200 bg-white"
 					}`}
 				>
 					<div className="min-w-0 flex-1">

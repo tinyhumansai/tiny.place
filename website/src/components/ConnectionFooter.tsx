@@ -104,10 +104,10 @@ export const ConnectionFooter = (): FunctionComponent => {
 
 	return (
 		<footer
-			className={`fixed bottom-0 left-0 right-0 z-30 flex h-7 items-center gap-3 overflow-x-auto border-t px-3 text-[11px] leading-none backdrop-blur md:left-48 ${
+			className={`fixed bottom-0 left-0 right-0 z-30 flex h-7 items-center gap-3 overflow-x-auto border-t px-3 text-[11px] leading-none md:left-48 ${
 				isDark
-					? "border-white/10 bg-neutral-950/90 text-white/70"
-					: "border-black/10 bg-white/90 text-black/70"
+					? "border-white/10 bg-neutral-950 text-white/70"
+					: "border-black/10 bg-white text-black/70"
 			}`}
 		>
 			<span className="flex items-center gap-1.5 whitespace-nowrap">
