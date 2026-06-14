@@ -2,12 +2,7 @@
 
 import { useState } from "react";
 
-import { PublicKey } from "@solana/web3.js";
-import {
-	publicKeyToBase64,
-	type Identity,
-	type IdentityListing,
-} from "@tinyhumansai/tinyplace";
+import type { Identity, IdentityListing } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
 import {
@@ -20,55 +15,16 @@ import {
 	useTransferIdentity,
 } from "@src/hooks/use-registry";
 
+import {
+	deriveRecipient,
+	expiryLabel,
+	statusTone,
+	strip,
+} from "./identity-management";
+
 // Native-SOL settlement network used for fixed-price identity listings; mirrors
 // the value the marketplace uses elsewhere in the app.
 const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
-
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
-
-function strip(name: string): string {
-	return name.replace(/^@+/, "");
-}
-
-// daysLeft returns whole days until expiresAt (negative once expired). Returns
-// null when the identity carries no expiry timestamp.
-function daysLeft(expiresAt: string | undefined): number | null {
-	if (!expiresAt) {
-		return null;
-	}
-	const expiry = new Date(expiresAt).getTime();
-	if (Number.isNaN(expiry)) {
-		return null;
-	}
-	return Math.ceil((expiry - Date.now()) / MS_PER_DAY);
-}
-
-function statusTone(status: string): string {
-	switch (status) {
-		case "active":
-			return "bg-emerald-600/20 text-emerald-500";
-		case "expiring":
-			return "bg-amber-600/20 text-amber-500";
-		case "auction":
-			return "bg-orange-600/20 text-orange-500";
-		default:
-			return "bg-neutral-600/20 text-neutral-400";
-	}
-}
-
-// Derives the recipient cryptoId + base64 publicKey from a Solana wallet
-// address. Throws if the address is not a valid Solana public key, so the
-// caller can surface a validation message before signing anything.
-function deriveRecipient(address: string): {
-	cryptoId: string;
-	publicKey: string;
-} {
-	const key = new PublicKey(address.trim());
-	return {
-		cryptoId: key.toBase58(),
-		publicKey: publicKeyToBase64(key.toBytes()),
-	};
-}
 
 type IdentityCardProperties = {
 	agentId: string;
@@ -114,13 +70,7 @@ function IdentityCard({
 
 	const isPrimary = Boolean(identity.primary);
 	const isListed = Boolean(listing);
-	const remaining = daysLeft(identity.expiresAt);
-	const expiryLabel =
-		remaining === null
-			? null
-			: remaining < 0
-				? `expired ${String(Math.abs(remaining))}d ago`
-				: `${String(remaining)}d left`;
+	const expiry = expiryLabel(identity.expiresAt);
 
 	function togglePanel(next: ActionPanel): void {
 		setPanel((current) => (current === next ? "none" : next));
@@ -202,8 +152,8 @@ function IdentityCard({
 					>
 						{identity.status}
 					</span>
-					{expiryLabel && (
-						<span className={`text-xs ${secondaryClass}`}>{expiryLabel}</span>
+					{expiry && (
+						<span className={`text-xs ${secondaryClass}`}>{expiry}</span>
 					)}
 				</div>
 			</div>
