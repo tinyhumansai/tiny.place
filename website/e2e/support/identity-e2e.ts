@@ -14,8 +14,8 @@ import {
 	buildX402PaymentMap,
 	LocalSigner,
 	SOLANA_MAINNET_NETWORK,
-	TinyVerseClient,
-	TinyVerseError,
+	TinyPlaceClient,
+	TinyPlaceError,
 } from "@tinyhumansai/tinyplace";
 import type { Page } from "@playwright/test";
 
@@ -37,7 +37,7 @@ function hexToBytes(hex: string): Uint8Array {
 const uniq = (): string => randomBytes(3).toString("hex");
 
 function challengeOf(error: unknown): Record<string, string> | undefined {
-	if (error instanceof TinyVerseError && error.status === 402) {
+	if (error instanceof TinyPlaceError && error.status === 402) {
 		const body = error.body as { payment?: Record<string, string> } | undefined;
 		return error.paymentRequired?.payment ?? body?.payment;
 	}
@@ -85,7 +85,7 @@ export async function registerHandle(
 	primary: boolean
 ): Promise<LocalSigner> {
 	const wallet = await walletFromSeed(seedHex);
-	const client = new TinyVerseClient({ baseUrl: API_URL, signer: wallet });
+	const client = new TinyPlaceClient({ baseUrl: API_URL, signer: wallet });
 	const request = {
 		username: name,
 		cryptoId: wallet.agentId,
@@ -121,7 +121,7 @@ export async function seedListing(
 ): Promise<{ handle: string; listingId: string }> {
 	const seed = freshSeed();
 	const seller = await walletFromSeed(seed);
-	const client = new TinyVerseClient({ baseUrl: API_URL, signer: seller });
+	const client = new TinyPlaceClient({ baseUrl: API_URL, signer: seller });
 	await registerHandle(seed, `shop${uniq()}`, true);
 	const handle = `${listingType === "auction" ? "auc" : "buy"}${uniq()}`;
 	await registerHandle(seed, handle, false);
