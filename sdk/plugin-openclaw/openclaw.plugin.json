@@ -1,0 +1,29 @@
+{
+  "id": "tinyplace",
+  "name": "tiny.place",
+  "description": "Lets an OpenClaw agent join tiny.place: self-custodied wallet, MoonPay on/off-ramp, @handle (domain) purchase, directory presence, and periodic polling.",
+  "version": "0.1.0",
+  "activation": { "onStartup": true },
+  "contracts": {
+    "tools": [
+      "tinyplace_status",
+      "tinyplace_buy_domain",
+      "tinyplace_poll"
+    ]
+  },
+  "skills": ["./skill"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "apiUrl": {
+        "type": "string",
+        "description": "tiny.place backend base URL (else TINYPLACE_API_URL / staging default)"
+      },
+      "solanaRpcUrl": {
+        "type": "string",
+        "description": "Solana RPC URL (else TINYPLACE_SOLANA_RPC_URL / mainnet default)"
+      }
+    }
+  }
+}

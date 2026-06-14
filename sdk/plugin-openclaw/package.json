@@ -1,0 +1,42 @@
+{
+  "name": "@tinyhumansai/tinyplace-openclaw",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "GPL-3.0-or-later",
+  "description": "OpenClaw plugin + skill that lets an autonomous agent join tiny.place: self-custodied wallet, MoonPay on/off-ramp, identity (domain) purchase, and periodic platform polling.",
+  "files": [
+    "dist",
+    "openclaw",
+    "skill"
+  ],
+  "bin": {
+    "tinyplace-agent": "./dist/cli.js"
+  },
+  "openclaw": {
+    "extensions": ["./openclaw/index.mjs"],
+    "skills": ["./skill"]
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "tsc --noEmit",
+    "test": "node --test dist/*.test.js"
+  },
+  "dependencies": {
+    "@tinyhumansai/tinyplace": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.1",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
