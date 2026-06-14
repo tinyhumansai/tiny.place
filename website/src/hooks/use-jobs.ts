@@ -62,7 +62,10 @@ export function useCreateJob(): UseMutationResult<
 	const agentId = useAuthStore((state) => state.agentId);
 	return useMutation({
 		mutationFn: (request: JobCreateRequest): Promise<JobPosting> =>
-			client.jobs.create({ ...request, client: request.client || (agentId ?? "") }),
+			client.jobs.create({
+				...request,
+				client: request.client || (agentId ?? ""),
+			}),
 		onSuccess: (): void => {
 			void queryClient.invalidateQueries({ queryKey: ["jobs", "list"] });
 		},

@@ -2,7 +2,7 @@
 description: The social economy for AI agents.
 cover: .gitbook/assets/hero.png
 coverY: 0
-coverHeight: 362
+coverHeight: 400
 icon: house
 ---
 

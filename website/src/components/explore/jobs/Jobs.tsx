@@ -35,7 +35,10 @@ import {
 	strongClass,
 } from "../marketplace/shared";
 
-type View = { kind: "browse" } | { kind: "post" } | { kind: "detail"; jobId: string };
+type View =
+	| { kind: "browse" }
+	| { kind: "post" }
+	| { kind: "detail"; jobId: string };
 
 function statusTone(status: string): string {
 	switch (status) {
@@ -76,14 +79,18 @@ export const Jobs = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 					<Chip
 						active={view.kind === "browse"}
 						isDark={isDark}
-						onClick={(): void => { setView({ kind: "browse" }); }}
+						onClick={(): void => {
+							setView({ kind: "browse" });
+						}}
 					>
 						Browse
 					</Chip>
 					<Chip
 						active={view.kind === "post"}
 						isDark={isDark}
-						onClick={(): void => { setView({ kind: "post" }); }}
+						onClick={(): void => {
+							setView({ kind: "post" });
+						}}
 					>
 						Post a job
 					</Chip>
@@ -93,20 +100,26 @@ export const Jobs = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 			{view.kind === "browse" ? (
 				<BrowseJobs
 					isDark={isDark}
-					onOpen={(jobId): void => { setView({ kind: "detail", jobId }); }}
+					onOpen={(jobId): void => {
+						setView({ kind: "detail", jobId });
+					}}
 				/>
 			) : null}
 			{view.kind === "post" ? (
 				<PostJob
 					isDark={isDark}
-					onCreated={(jobId): void => { setView({ kind: "detail", jobId }); }}
+					onCreated={(jobId): void => {
+						setView({ kind: "detail", jobId });
+					}}
 				/>
 			) : null}
 			{view.kind === "detail" ? (
 				<JobDetail
 					isDark={isDark}
 					jobId={view.jobId}
-					onBack={(): void => { setView({ kind: "browse" }); }}
+					onBack={(): void => {
+						setView({ kind: "browse" });
+					}}
 				/>
 			) : null}
 		</div>
@@ -139,7 +152,9 @@ const BrowseJobs = ({
 					key={job.jobId}
 					className={`${cardClass(isDark)} w-full text-left transition-colors hover:border-blue-500`}
 					type="button"
-					onClick={(): void => { onOpen(job.jobId); }}
+					onClick={(): void => {
+						onOpen(job.jobId);
+					}}
 				>
 					<div className="flex items-center justify-between gap-2">
 						<span className={`text-sm font-semibold ${strongClass(isDark)}`}>
@@ -192,7 +207,11 @@ const PostJob = ({
 					.filter(Boolean),
 				budget: { amount, asset, chain: "solana" },
 			},
-			{ onSuccess: (job): void => { onCreated(job.jobId); } },
+			{
+				onSuccess: (job): void => {
+					onCreated(job.jobId);
+				},
+			}
 		);
 	};
 
@@ -211,7 +230,9 @@ const PostJob = ({
 				<input
 					className={inputClass(isDark)}
 					value={title}
-					onChange={(event): void => { setTitle(event.target.value); }}
+					onChange={(event): void => {
+						setTitle(event.target.value);
+					}}
 				/>
 			</div>
 			<div>
@@ -220,7 +241,9 @@ const PostJob = ({
 					className={inputClass(isDark)}
 					rows={3}
 					value={description}
-					onChange={(event): void => { setDescription(event.target.value); }}
+					onChange={(event): void => {
+						setDescription(event.target.value);
+					}}
 				/>
 			</div>
 			<div>
@@ -229,7 +252,9 @@ const PostJob = ({
 					className={inputClass(isDark)}
 					placeholder="go, solana, design"
 					value={skills}
-					onChange={(event): void => { setSkills(event.target.value); }}
+					onChange={(event): void => {
+						setSkills(event.target.value);
+					}}
 				/>
 			</div>
 			<div className="flex gap-2">
@@ -239,7 +264,9 @@ const PostJob = ({
 						className={inputClass(isDark)}
 						placeholder="10"
 						value={amount}
-						onChange={(event): void => { setAmount(event.target.value); }}
+						onChange={(event): void => {
+							setAmount(event.target.value);
+						}}
 					/>
 				</div>
 				<div className="w-24">
@@ -247,7 +274,9 @@ const PostJob = ({
 					<input
 						className={inputClass(isDark)}
 						value={asset}
-						onChange={(event): void => { setAsset(event.target.value); }}
+						onChange={(event): void => {
+							setAsset(event.target.value);
+						}}
 					/>
 				</div>
 			</div>
@@ -374,7 +403,9 @@ const ApplyForm = ({
 				placeholder="Why you're a good fit, your approach, links to past work…"
 				rows={3}
 				value={coverLetter}
-				onChange={(event): void => { setCoverLetter(event.target.value); }}
+				onChange={(event): void => {
+					setCoverLetter(event.target.value);
+				}}
 			/>
 			<div className="w-32">
 				<label className={labelClass(isDark)}>Your bid</label>
@@ -382,7 +413,9 @@ const ApplyForm = ({
 					className={inputClass(isDark)}
 					placeholder="9"
 					value={bidAmount}
-					onChange={(event): void => { setBidAmount(event.target.value); }}
+					onChange={(event): void => {
+						setBidAmount(event.target.value);
+					}}
 				/>
 			</div>
 			{apply.isError ? (
@@ -394,9 +427,9 @@ const ApplyForm = ({
 				className={primaryButtonClass()}
 				disabled={apply.isPending || !coverLetter}
 				type="button"
-				onClick={(): void =>
-					{ apply.mutate({ candidate: agentId, coverLetter, bidAmount }); }
-				}
+				onClick={(): void => {
+					apply.mutate({ candidate: agentId, coverLetter, bidAmount });
+				}}
 			>
 				{apply.isPending ? "Submitting…" : "Submit proposal"}
 			</button>
@@ -426,7 +459,9 @@ const ClientProposals = ({
 					className={secondaryButtonClass(isDark)}
 					disabled={cancel.isPending}
 					type="button"
-					onClick={(): void => { cancel.mutate(); }}
+					onClick={(): void => {
+						cancel.mutate();
+					}}
 				>
 					Cancel posting
 				</button>
@@ -438,7 +473,10 @@ const ClientProposals = ({
 				<p className={`text-xs ${mutedClass(isDark)}`}>No proposals yet.</p>
 			) : null}
 			{proposals.map((proposal: Proposal) => (
-				<div key={proposal.proposalId} className={`${cardClass(isDark)} space-y-1`}>
+				<div
+					key={proposal.proposalId}
+					className={`${cardClass(isDark)} space-y-1`}
+				>
 					<div className="flex items-center justify-between gap-2">
 						<span className={`text-xs font-semibold ${strongClass(isDark)}`}>
 							{proposal.candidate}
@@ -461,11 +499,13 @@ const ClientProposals = ({
 							className={primaryButtonClass()}
 							disabled={select.isPending}
 							type="button"
-							onClick={(): void =>
-								{ select.mutate({ proposalId: proposal.proposalId }); }
-							}
+							onClick={(): void => {
+								select.mutate({ proposalId: proposal.proposalId });
+							}}
 						>
-							{select.isPending ? "Starting contract…" : "Select & start contract"}
+							{select.isPending
+								? "Starting contract…"
+								: "Select & start contract"}
 						</button>
 					) : (
 						<StatusBadge status={proposal.status} />
@@ -499,8 +539,8 @@ const ContractPanel = ({
 			</span>
 			<p className={`text-xs ${mutedClass(isDark)}`}>
 				Escrow contract {job.contractEscrowId}. Deliver work and upload
-				proof-of-work artifacts (7-day expiry) from the Artifacts tab; accept the
-				delivery to release funds, or open a dispute for the AI judge panel.
+				proof-of-work artifacts (7-day expiry) from the Artifacts tab; accept
+				the delivery to release funds, or open a dispute for the AI judge panel.
 			</p>
 
 			{job.status === "contracted" ? (
@@ -511,13 +551,17 @@ const ContractPanel = ({
 						placeholder="Describe the problem for the judge panel…"
 						rows={2}
 						value={reason}
-						onChange={(event): void => { setReason(event.target.value); }}
+						onChange={(event): void => {
+							setReason(event.target.value);
+						}}
 					/>
 					<button
 						className={secondaryButtonClass(isDark)}
 						disabled={dispute.isPending || !reason}
 						type="button"
-						onClick={(): void => { dispute.mutate({ reason }); }}
+						onClick={(): void => {
+							dispute.mutate({ reason });
+						}}
 					>
 						{dispute.isPending ? "Opening…" : "Open dispute"}
 					</button>
@@ -534,7 +578,9 @@ const ContractPanel = ({
 							className={primaryButtonClass()}
 							disabled={adjudicate.isPending}
 							type="button"
-							onClick={(): void => { adjudicate.mutate(); }}
+							onClick={(): void => {
+								adjudicate.mutate();
+							}}
 						>
 							{adjudicate.isPending
 								? "Convening panel…"
@@ -577,13 +623,16 @@ const Verdict = ({
 				</span>
 			</div>
 			{dispute.reasoning ? (
-				<p className={`text-[11px] ${mutedClass(isDark)}`}>{dispute.reasoning}</p>
+				<p className={`text-[11px] ${mutedClass(isDark)}`}>
+					{dispute.reasoning}
+				</p>
 			) : null}
 			{dispute.jury && dispute.jury.length > 0 ? (
 				<ul className={`space-y-0.5 text-[11px] ${mutedClass(isDark)}`}>
 					{dispute.jury.map((vote) => (
 						<li key={vote.model}>
-							• {vote.model}: {vote.error ? `error (${vote.error})` : vote.outcome}
+							• {vote.model}:{" "}
+							{vote.error ? `error (${vote.error})` : vote.outcome}
 						</li>
 					))}
 				</ul>

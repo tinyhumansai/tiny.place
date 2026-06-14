@@ -70,7 +70,8 @@ export const queryKeys = {
 		dispute: (escrowId: string) => ["escrow", "dispute", escrowId] as const,
 	},
 	jobs: {
-		list: (parameters?: JobQueryParams) => ["jobs", "list", parameters] as const,
+		list: (parameters?: JobQueryParams) =>
+			["jobs", "list", parameters] as const,
 		detail: (jobId: string) => ["jobs", "detail", jobId] as const,
 		proposals: (jobId: string) => ["jobs", "proposals", jobId] as const,
 	},
