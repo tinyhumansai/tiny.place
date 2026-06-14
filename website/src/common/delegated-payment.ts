@@ -19,6 +19,18 @@ const TOKEN_APPROVE_CHECKED_INSTRUCTION = 13;
 const ATA_CREATE_IDEMPOTENT_INSTRUCTION = 1;
 const USDC_DECIMALS = 6;
 
+// The escrow program and its `deposit_for` Anchor discriminator
+// (sha256("global:deposit_for")[:8]).
+const ESCROW_PROGRAM_ID = "6s1cWEMcWjWZ3ut6aDD5g4CFBxpKBz5S4DLkrZdy5jR2";
+const DEPOSIT_FOR_DISCRIMINATOR = new Uint8Array([
+	193, 39, 228, 88, 160, 254, 92, 53,
+]);
+// Byte offsets into the escrow Vault account (8-byte discriminator + fields).
+const VAULT_MINT_OFFSET = 136;
+const VAULT_TOKEN_ACCOUNT_OFFSET = 168;
+// Byte offset of last_nonce in the NonceTracker account (disc + owner[32]).
+const NONCE_TRACKER_LAST_NONCE_OFFSET = 40;
+
 /** Encodes amount (base units) as a little-endian u64. */
 function encodeU64LittleEndian(amount: string): Uint8Array {
 	let value = BigInt(amount);
@@ -218,6 +230,119 @@ export async function buildDelegatedTransferTx(options: {
 	);
 
 	// Session-sign the message; leave the facilitator (fee-payer) slot empty.
+	const message = transaction.serializeMessage();
+	const signature = await options.signSession(new Uint8Array(message));
+	transaction.addSignature(sessionKey, Buffer.from(signature));
+
+	const wire = transaction.serialize({
+		requireAllSignatures: false,
+		verifySignatures: false,
+	});
+	return wire.toString("base64");
+}
+
+/** Derives the escrow per-payer nonce tracker PDA. */
+function nonceTrackerAddress(payer: string): PublicKey {
+	const [address] = PublicKey.findProgramAddressSync(
+		[Buffer.from("nonce"), new PublicKey(payer).toBuffer()],
+		new PublicKey(ESCROW_PROGRAM_ID),
+	);
+	return address;
+}
+
+/**
+ * Reads the payer's escrow nonce tracker and returns the next monotonic nonce
+ * (last + 1), or 1 when the tracker does not exist yet (it must be initialized
+ * once via the escrow `init_nonce` instruction before the first deposit).
+ */
+export async function readEscrowNextNonce(
+	rpcUrl: string,
+	payer: string,
+): Promise<bigint> {
+	const connection = new Connection(rpcUrl, "confirmed");
+	const info = await connection.getAccountInfo(nonceTrackerAddress(payer));
+	if (!info || info.data.length < NONCE_TRACKER_LAST_NONCE_OFFSET + 8) {
+		return 1n;
+	}
+	const last = info.data.readBigUInt64LE(NONCE_TRACKER_LAST_NONCE_OFFSET);
+	return last + 1n;
+}
+
+/**
+ * Builds and session-signs a delegated escrow deposit (`deposit_for`): the
+ * session delegate authorizes moving the payer's funds into the named vault,
+ * with the facilitator as fee payer (slot left empty). The vault's pinned token
+ * account and mint are read on-chain so they match what the backend validates.
+ * Returns the base64 wire transaction for `POST /payments/settle`.
+ */
+export async function buildDelegatedDepositTx(options: {
+	rpcUrl: string;
+	facilitator: string;
+	payer: string;
+	vault: string;
+	amount: string;
+	escrowNonce: bigint | number;
+	sessionPublicKeyBase64: string;
+	signSession: (message: Uint8Array) => Promise<Uint8Array>;
+	payee?: string;
+	expiryUnixSeconds?: number;
+}): Promise<string> {
+	const connection = new Connection(options.rpcUrl, "confirmed");
+	const vaultInfo = await connection.getAccountInfo(new PublicKey(options.vault));
+	if (!vaultInfo) {
+		throw new Error(`escrow vault not found: ${options.vault}`);
+	}
+	const mint = new PublicKey(
+		vaultInfo.data.subarray(VAULT_MINT_OFFSET, VAULT_MINT_OFFSET + 32),
+	);
+	const vaultToken = new PublicKey(
+		vaultInfo.data.subarray(
+			VAULT_TOKEN_ACCOUNT_OFFSET,
+			VAULT_TOKEN_ACCOUNT_OFFSET + 32,
+		),
+	);
+	const payerAccount = associatedTokenAddress(options.payer, mint.toBase58());
+	const sessionKey = new PublicKey(
+		Buffer.from(options.sessionPublicKeyBase64, "base64"),
+	);
+	const expiry =
+		options.expiryUnixSeconds ?? Math.floor(Date.now() / 1000) + 5 * 60;
+
+	// PaymentPayload (Borsh): amount u64, payer Pubkey, payee Pubkey, nonce u64,
+	// expiry i64 — prefixed by the 8-byte Anchor discriminator.
+	const data = Buffer.concat([
+		Buffer.from(DEPOSIT_FOR_DISCRIMINATOR),
+		Buffer.from(encodeU64LittleEndian(options.amount)),
+		new PublicKey(options.payer).toBuffer(),
+		new PublicKey(options.payee ?? options.payer).toBuffer(),
+		Buffer.from(encodeU64LittleEndian(String(BigInt(options.escrowNonce)))),
+		Buffer.from(encodeU64LittleEndian(String(expiry))),
+	]);
+
+	const instruction = new TransactionInstruction({
+		programId: new PublicKey(ESCROW_PROGRAM_ID),
+		keys: [
+			{ pubkey: new PublicKey(options.vault), isSigner: false, isWritable: true },
+			{ pubkey: nonceTrackerAddress(options.payer), isSigner: false, isWritable: true },
+			{ pubkey: sessionKey, isSigner: true, isWritable: false },
+			{ pubkey: payerAccount, isSigner: false, isWritable: true },
+			{ pubkey: vaultToken, isSigner: false, isWritable: true },
+			{
+				pubkey: new PublicKey(SOLANA_TOKEN_PROGRAM_ID),
+				isSigner: false,
+				isWritable: false,
+			},
+		],
+		data,
+	});
+
+	const transaction = new Transaction();
+	transaction.feePayer = new PublicKey(options.facilitator);
+	transaction.recentBlockhash = (
+		await connection.getLatestBlockhash("confirmed")
+	).blockhash;
+	transaction.add(instruction);
+
 	const message = transaction.serializeMessage();
 	const signature = await options.signSession(new Uint8Array(message));
 	transaction.addSignature(sessionKey, Buffer.from(signature));
