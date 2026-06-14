@@ -40,3 +40,4 @@ storybook-static
 /coverage/
 contracts-sol/.test-ledger
 website/test-results
+website/playwright-report
