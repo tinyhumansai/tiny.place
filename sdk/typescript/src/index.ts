@@ -166,6 +166,8 @@ export {
   ed25519PubToX25519Pub,
   toBase64,
   fromBase64,
+  GroupSenderKey,
+  GroupSenderKeyReceiver,
 } from "./signal/index.js";
 export type {
   SessionStore,
@@ -174,4 +176,8 @@ export type {
   SignedPreKeyPair,
   X25519KeyPair,
   EncryptedMessage,
+  SenderKeyDistribution,
+  SenderKeyMessage,
+  SenderKeyOwnState,
+  SenderKeyReceiverState,
 } from "./signal/index.js";
