@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { ExplorerTransactionSummary } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
+import { Chip } from "@src/components/ui/Chip";
 import { useExplorerOverview } from "@src/hooks/use-explorer";
 
 type FilterType = string;
@@ -139,24 +140,16 @@ export const Explorer = ({
 
 			<div className="flex items-center gap-2">
 				{filterOptions.map((filter) => (
-					<button
+					<Chip
 						key={filter}
-						type="button"
-						className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
-							activeFilter === filter
-								? isDark
-									? "bg-neutral-800 text-white"
-									: "bg-neutral-200 text-black"
-								: isDark
-									? "text-neutral-500 hover:text-neutral-300"
-									: "text-neutral-400 hover:text-neutral-600"
-						}`}
+						active={activeFilter === filter}
+						isDark={isDark}
 						onClick={(): void => {
 							setActiveFilter(filter);
 						}}
 					>
 						{filter}
-					</button>
+					</Chip>
 				))}
 			</div>
 

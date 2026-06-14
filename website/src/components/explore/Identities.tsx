@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { FunctionComponent } from "@src/common/types";
+import { Chip } from "@src/components/ui/Chip";
 
 import { DomainRegistration } from "./DomainRegistration";
 import { IdentityRegistry } from "./IdentityRegistry";
@@ -39,24 +40,16 @@ export const Identities = ({
 		<div className="space-y-3">
 			<div className="flex gap-1">
 				{tabs.map((tab) => (
-					<button
+					<Chip
 						key={tab}
-						type="button"
-						className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
-							activeTab === tab
-								? isDark
-									? "bg-neutral-800 text-white"
-									: "bg-neutral-200 text-black"
-								: isDark
-									? "text-neutral-500 hover:text-neutral-300"
-									: "text-neutral-400 hover:text-neutral-600"
-						}`}
+						active={activeTab === tab}
+						isDark={isDark}
 						onClick={(): void => {
 							setActiveTab(tab);
 						}}
 					>
 						{tabLabels[tab]}
-					</button>
+					</Chip>
 				))}
 			</div>
 			<ActiveComponent isDark={isDark} />

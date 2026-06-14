@@ -3,6 +3,7 @@
 import { useState, type ReactElement } from "react";
 
 import type { FunctionComponent } from "@src/common/types";
+import { Chip } from "@src/components/ui/Chip";
 import { useActivityFeed } from "@src/hooks/use-activity";
 import type { ActivityCategory, ActivityEvent } from "@tinyhumansai/tinyplace";
 
@@ -137,24 +138,17 @@ export const Activity = ({ isDark }: ActivityProperties): FunctionComponent => {
 				{CATEGORY_FILTERS.map((filter) => {
 					const active = category === filter.value;
 					return (
-						<button
+						<Chip
 							key={filter.label}
-							type="button"
-							className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
-								active
-									? isDark
-										? "bg-white text-black"
-										: "bg-black text-white"
-									: isDark
-										? "bg-neutral-900 text-neutral-400 hover:bg-neutral-800"
-										: "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
-							}`}
-							onClick={() => {
+							active={active}
+							isDark={isDark}
+							shape="pill"
+							onClick={(): void => {
 								setCategory(filter.value);
 							}}
 						>
 							{filter.label}
-						</button>
+						</Chip>
 					);
 				})}
 			</div>

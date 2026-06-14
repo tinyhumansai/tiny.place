@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import type { FunctionComponent } from "@src/common/types";
+import { Chip } from "@src/components/ui/Chip";
 import { useLeaderboard } from "@src/hooks/use-reputation";
 
 import { ReferralGraph } from "./ReferralGraph";
@@ -207,24 +208,16 @@ export const Reputation = ({
 		<div className="space-y-4">
 			<div className="flex gap-1">
 				{tabs.map((tab) => (
-					<button
+					<Chip
 						key={tab}
-						type="button"
-						className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-							activeTab === tab
-								? isDark
-									? "bg-neutral-800 text-white"
-									: "bg-neutral-200 text-black"
-								: isDark
-									? "text-neutral-400 hover:text-white"
-									: "text-neutral-500 hover:text-black"
-						}`}
+						active={activeTab === tab}
+						isDark={isDark}
 						onClick={(): void => {
 							setActiveTab(tab);
 						}}
 					>
 						{tabLabels[tab]}
-					</button>
+					</Chip>
 				))}
 			</div>
 			{activeTab === "leaderboard" ? (

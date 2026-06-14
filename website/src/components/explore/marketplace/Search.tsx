@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import type { Product } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
+import { Chip } from "@src/components/ui/Chip";
 import {
 	firstActiveIdentity,
 	useBuyProduct,
@@ -120,24 +121,16 @@ export const Search = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 					<div className="flex flex-wrap gap-1">
 						{categories.map(
 							(category: string): React.ReactElement => (
-								<button
+								<Chip
 									key={category}
-									type="button"
-									className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-										activeCategory === category
-											? isDark
-												? "bg-neutral-700 text-white"
-												: "bg-neutral-300 text-black"
-											: isDark
-												? "text-neutral-500 hover:text-neutral-300"
-												: "text-neutral-400 hover:text-neutral-600"
-									}`}
+									active={activeCategory === category}
+									isDark={isDark}
 									onClick={(): void => {
 										setActiveCategory(category);
 									}}
 								>
 									{category}
-								</button>
+								</Chip>
 							)
 						)}
 					</div>
