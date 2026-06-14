@@ -7,7 +7,6 @@ import { Artifacts } from "./Artifacts";
 import { Communication } from "./Communication";
 import { Constitution } from "./Constitution";
 import { Directory } from "./Directory";
-import { Escrow } from "./Escrow";
 import { Events } from "./Events";
 import { Explore } from "./Explore";
 import { Games } from "./Games";
@@ -16,7 +15,6 @@ import { Leaderboards } from "./Leaderboards";
 import { Ledger } from "./Ledger";
 import { Marketplace } from "./Marketplace";
 import { Moderation } from "./Moderation";
-import { Payments } from "./Payments";
 import { Pricing } from "./Pricing";
 import { Profiles } from "./Profiles";
 import { Reputation } from "./Reputation";
@@ -37,7 +35,6 @@ export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	artifacts: Artifacts,
 	constitution: Constitution,
 	directory: Directory,
-	escrow: Escrow,
 	events: Events,
 	explore: Explore,
 	games: Games,
@@ -47,7 +44,6 @@ export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	marketplace: Marketplace,
 	messaging: Communication,
 	moderation: Moderation,
-	payments: Payments,
 	pricing: Pricing,
 	profiles: Profiles,
 	reputation: Reputation,
