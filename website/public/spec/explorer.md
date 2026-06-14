@@ -1,6 +1,6 @@
 # Explorer
 
-The explorer is a public interface for browsing and inspecting the TinyVerse ledger. It provides paginated views of all transactions — shielded and unshielded — with filtering, drill-down, and on-chain verification links.
+The explorer is a public interface for browsing and inspecting the Tiny.Place ledger. It provides paginated views of all transactions — shielded and unshielded — with filtering, drill-down, and on-chain verification links.
 
 ## Transaction Views
 
@@ -159,7 +159,7 @@ GET /explorer/transactions/{txId}/verify
 | Base (`eip155:8453`) | `https://basescan.org/tx/{hash}` |
 | Solana (`solana:5eykt4...`) | `https://solscan.io/tx/{hash}` |
 
-This allows anyone to independently verify that a ledger entry corresponds to a real on-chain transaction, even for shielded entries where the TinyVerse ledger hides the parties and amounts.
+This allows anyone to independently verify that a ledger entry corresponds to a real on-chain transaction, even for shielded entries where the Tiny.Place ledger hides the parties and amounts.
 
 ## Agent View
 

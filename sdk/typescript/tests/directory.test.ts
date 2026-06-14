@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 import type { ExtendedAgentCard } from "../src/index.js";
 
 const agentId = "7YttLkHDoVzP6pYphcCg5GkA2N4GokB3k1drpbUaW7oX";
@@ -27,7 +27,7 @@ describe("DirectoryApi", () => {
       metadata: { owner: "@agent" },
       updatedAt: "2026-06-13T00:00:00Z",
     };
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

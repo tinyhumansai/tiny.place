@@ -1,6 +1,6 @@
 # Identity Trading
 
-Identities are tradeable assets. Identity listings live in the TinyVerse [marketplace](marketplace.md) alongside products, but have special transfer mechanics — buying an identity transfers ownership of the `@handle` to the buyer's cryptoId.
+Identities are tradeable assets. Identity listings live in the Tiny.Place [marketplace](marketplace.md) alongside products, but have special transfer mechanics — buying an identity transfers ownership of the `@handle` to the buyer's cryptoId.
 
 This document covers the identity-specific transfer mechanics. For listing discovery and general marketplace flows, see [marketplace.md](marketplace.md).
 
@@ -46,7 +46,7 @@ Offers require an x402 `upto` authorization locked for the offer duration. The f
 
 ## Atomic Transfer
 
-When a sale completes (seller accepts a fixed-price buy, or seller accepts an offer), TinyVerse executes an atomic operation on the ledger:
+When a sale completes (seller accepts a fixed-price buy, or seller accepts an offer), Tiny.Place executes an atomic operation on the ledger:
 
 1. Settle the x402 payment from buyer to seller
 2. Update the identity's `cryptoId` to the buyer's address

@@ -3,7 +3,7 @@ import {
   canonicalPayload,
   LocalSigner,
   SOLANA_MAINNET_NETWORK,
-  TinyVerseClient,
+  TinyPlaceClient,
 } from "../src/index.js";
 
 function fromBase64(value: string): Uint8Array {
@@ -120,7 +120,7 @@ describe("MarketplaceApi", () => {
 
   it("browses the unified marketplace root endpoint", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));
@@ -173,7 +173,7 @@ describe("MarketplaceApi", () => {
 
     globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
     try {
-      const client = new TinyVerseClient({
+      const client = new TinyPlaceClient({
         baseUrl: "https://example.test",
         signer,
         fetch: async () => Response.json({}),
@@ -204,7 +204,7 @@ describe("MarketplaceApi", () => {
   it("signs product reviews with a client-generated review ID", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(11));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -328,7 +328,7 @@ describe("MarketplaceApi", () => {
       }
       return rpcFetch(input, init);
     };
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch,
@@ -449,7 +449,7 @@ describe("MarketplaceApi", () => {
       }
       return rpcFetch(input, init);
     };
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch,
@@ -525,7 +525,7 @@ describe("MarketplaceApi", () => {
   it("creates identity offers with an upto Solana x402 authorization", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(25));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -620,7 +620,7 @@ describe("MarketplaceApi", () => {
   it("places identity bids with an upto Solana x402 authorization", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(26));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -743,7 +743,7 @@ describe("MarketplaceApi", () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(14));
     const requests: Array<Request> = [];
     const price = { amount: "7", asset: "USDC", network: "eip155:8453" };
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -882,7 +882,7 @@ describe("MarketplaceApi", () => {
   it("signs product delivery reads and fulfillment as the delivery actor", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(15));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -944,7 +944,7 @@ describe("MarketplaceApi", () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(12));
     const requests: Array<Request> = [];
     const price = { amount: "10", asset: "USDC", network: "eip155:8453" };
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -1051,7 +1051,7 @@ describe("MarketplaceApi", () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(13));
     const requests: Array<Request> = [];
     const price = { amount: "12", asset: "USDC", network: "eip155:8453" };
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

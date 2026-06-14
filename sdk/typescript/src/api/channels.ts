@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import type { TinyVerseWebSocket } from "../websocket.js";
+import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
   Channel,
   ChannelCategory,
@@ -14,7 +14,7 @@ export class ChannelsApi {
     private readonly wsFactory?: (
       path: string,
       options?: { directoryAuth?: boolean },
-    ) => TinyVerseWebSocket,
+    ) => TinyPlaceWebSocket,
   ) {}
 
   list(params?: ChannelQueryParams): Promise<{ channels: Array<Channel> }> {
@@ -214,7 +214,7 @@ export class ChannelsApi {
   stream(
     channelId: string,
     options?: { agentId?: string; limit?: number },
-  ): TinyVerseWebSocket | undefined {
+  ): TinyPlaceWebSocket | undefined {
     const query = streamQuery({
       "X-Agent-ID": options?.agentId,
       limit: options?.limit,

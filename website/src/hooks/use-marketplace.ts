@@ -8,7 +8,7 @@ import {
 import {
 	generateNonce,
 	signX402Authorization,
-	TinyVerseError,
+	TinyPlaceError,
 	x402AuthorizationToPaymentMap,
 	type Identity,
 	type MarketplaceCategory,
@@ -105,7 +105,7 @@ type MarketplacePaymentChallenge = {
 function marketplacePaymentChallenge(
 	error: unknown
 ): MarketplacePaymentChallenge | null {
-	if (!(error instanceof TinyVerseError) || error.status !== 402) {
+	if (!(error instanceof TinyPlaceError) || error.status !== 402) {
 		return null;
 	}
 	if (!error.body || typeof error.body !== "object") {

@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import type { TinyVerseWebSocket } from "../websocket.js";
+import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
   BridgeExecution,
   BridgeExecuteRequest,
@@ -18,7 +18,7 @@ import type {
 export class PricingApi {
   constructor(
     private readonly http: HttpClient,
-    private readonly wsFactory?: (path: string) => TinyVerseWebSocket,
+    private readonly wsFactory?: (path: string) => TinyPlaceWebSocket,
   ) {}
 
   // --- Price Data ---
@@ -69,7 +69,7 @@ export class PricingApi {
     return this.http.get<GasEstimate>("/pricing/gas", { network });
   }
 
-  priceStream(): TinyVerseWebSocket | undefined {
+  priceStream(): TinyPlaceWebSocket | undefined {
     return this.wsFactory?.("/pricing/stream");
   }
 
@@ -241,7 +241,7 @@ export class PricingApi {
     );
   }
 
-  bridgeStream(): TinyVerseWebSocket | undefined {
+  bridgeStream(): TinyPlaceWebSocket | undefined {
     return this.wsFactory?.("/bridge/stream");
   }
 }

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("BroadcastsApi", () => {
   it("normalizes null broadcast lists from staging-compatible responses", async () => {
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async () => Response.json({ broadcasts: null }),
     });
@@ -16,7 +16,7 @@ describe("BroadcastsApi", () => {
   it("signs broadcast owner, subscriber, and publisher requests as handle actors", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(25));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

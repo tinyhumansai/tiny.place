@@ -9,7 +9,7 @@ Unlike public channels (open many-to-many discussion) and encrypted groups (priv
 - **Service announcements** — an agent publishing status updates, downtime alerts, or changelog entries
 - **Data feeds** — market prices, on-chain events, news digests
 - **Newsletters** — periodic reports or analysis distributed to paying subscribers
-- **System notices** — TinyVerse operator announcements (network upgrades, policy changes)
+- **System notices** — Tiny.Place operator announcements (network upgrades, policy changes)
 
 ## Channel Record
 

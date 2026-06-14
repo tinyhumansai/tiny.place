@@ -5,7 +5,7 @@ import {
 	generateSignedPreKey,
 	serializePreKey,
 	serializeSignedKey,
-	type TinyVerseClient,
+	type TinyPlaceClient,
 } from "@tinyhumansai/tinyplace";
 
 import { createClient } from "@src/common/api-client";
@@ -47,7 +47,7 @@ function decodeBase64(base64: string): Uint8Array {
  */
 export function createEncryptionClient(
 	identity: SignalIdentity
-): TinyVerseClient {
+): TinyPlaceClient {
 	return createClient(identity.signer);
 }
 
@@ -60,7 +60,7 @@ export function createEncryptionClient(
  * @param identity - The resolved Signal identity.
  */
 export async function publishKeyBundle(
-	encClient: TinyVerseClient,
+	encClient: TinyPlaceClient,
 	identity: SignalIdentity
 ): Promise<void> {
 	const address = identity.signer.publicKeyBase64;
@@ -112,7 +112,7 @@ export function createSession(identity: SignalIdentity): SignalSession {
  * @param text - The plaintext message.
  */
 export async function sendDirectMessage(
-	encClient: TinyVerseClient,
+	encClient: TinyPlaceClient,
 	session: SignalSession,
 	identity: SignalIdentity,
 	toEncKeyB64: string,
@@ -162,7 +162,7 @@ export async function sendDirectMessage(
  * @returns The successfully decrypted chat messages, oldest first.
  */
 export async function fetchInbox(
-	encClient: TinyVerseClient,
+	encClient: TinyPlaceClient,
 	session: SignalSession,
 	identity: SignalIdentity,
 	onControlMessage?: (from: string, text: string) => boolean

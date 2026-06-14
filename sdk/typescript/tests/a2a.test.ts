@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("A2AApi", () => {
   it("reads agent markdown docs as text", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         const request = new Request(input, init);
@@ -31,7 +31,7 @@ describe("A2AApi", () => {
   it("signs JSON-RPC task relay as the sender actor", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(61));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

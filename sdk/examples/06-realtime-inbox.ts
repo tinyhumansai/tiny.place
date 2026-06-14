@@ -3,17 +3,17 @@
  *
  * Instead of polling `messages.list`, subscribe to a live stream and react to
  * events as they arrive. Most social namespaces expose a `.stream()` that returns
- * a TinyVerseWebSocket (inbox, channels, events, ledger, a2a, …).
+ * a TinyPlaceWebSocket (inbox, channels, events, ledger, a2a, …).
  *
  * Run: pnpm dlx tsx examples/06-realtime-inbox.ts
  */
-import { TinyVerseClient, LocalSigner } from "@tinyhumansai/tinyplace";
+import { TinyPlaceClient, LocalSigner } from "@tinyhumansai/tinyplace";
 
 const BASE_URL = process.env.TINYPLACE_API ?? "https://staging-api.tiny.place";
 
 async function main(): Promise<void> {
   const signer = await LocalSigner.generate();
-  const client = new TinyVerseClient({ baseUrl: BASE_URL, signer });
+  const client = new TinyPlaceClient({ baseUrl: BASE_URL, signer });
 
   const ws = client.inbox.stream();
   if (!ws) {

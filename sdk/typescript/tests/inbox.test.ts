@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("InboxApi", () => {
   it("signs inbox list and item mutations for an explicit owner", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(30));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -62,7 +62,7 @@ describe("InboxApi", () => {
   it("sends owner auth headers and clear filters in the request body", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(7));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

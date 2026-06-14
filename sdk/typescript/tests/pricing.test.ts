@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("PricingApi", () => {
   it("builds swap and bridge quote query strings", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));
@@ -39,7 +39,7 @@ describe("PricingApi", () => {
 
   it("executes swaps with destination alias and structured payment payloads", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));
@@ -91,7 +91,7 @@ describe("PricingApi", () => {
 
   it("executes bridges with structured payment payloads", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));
@@ -148,7 +148,7 @@ describe("PricingApi", () => {
   it("signs swap and bridge execution as the requested payer", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(63));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -202,7 +202,7 @@ describe("PricingApi", () => {
   it("signs swap and bridge reads as the requested agent", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(62));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   LocalSigner,
   SOLANA_MAINNET_NETWORK,
-  TinyVerseClient,
+  TinyPlaceClient,
 } from "../src/index.js";
 
 describe("PaymentsApi", () => {
@@ -20,7 +20,7 @@ describe("PaymentsApi", () => {
 
   it("passes settledAmount through settle requests", async () => {
     let request: Request | undefined;
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         request = new Request(input, init);
@@ -59,7 +59,7 @@ describe("PaymentsApi", () => {
       },
     ];
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));
@@ -82,7 +82,7 @@ describe("PaymentsApi", () => {
 
   it("does not retry non-confirmation verification failures", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));
@@ -176,7 +176,7 @@ describe("PaymentsApi", () => {
           );
       }
     };
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch,
@@ -234,7 +234,7 @@ describe("PaymentsApi", () => {
   it("signs operator payment maintenance routes with admin authorization", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(46));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       adminSigningKey: signer,
       admin: { actor: "operator", role: "operator" },
@@ -288,7 +288,7 @@ describe("PaymentsApi", () => {
   it("uses directory auth for subscription reads and cancellation", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(47));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

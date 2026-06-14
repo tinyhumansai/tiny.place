@@ -1,13 +1,13 @@
 export const SDK_VERSION = "0.1.0";
 
-export { TinyVerseClient } from "./client.js";
-export type { TinyVerseClientOptions } from "./client.js";
+export { TinyPlaceClient } from "./client.js";
+export type { TinyPlaceClientOptions } from "./client.js";
 
-export { TinyVerseError } from "./http.js";
+export { TinyPlaceError } from "./http.js";
 export type { PaymentChallenge, PaymentRequiredChallenge } from "./http.js";
-export { TinyVerseWebSocket } from "./websocket.js";
+export { TinyPlaceWebSocket } from "./websocket.js";
 export type {
-  TinyVerseWebSocketOptions,
+  TinyPlaceWebSocketOptions,
   WebSocketEventHandler,
 } from "./websocket.js";
 

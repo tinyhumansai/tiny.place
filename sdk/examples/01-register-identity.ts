@@ -7,7 +7,7 @@
  *
  * Run: pnpm dlx tsx examples/01-register-identity.ts
  */
-import { TinyVerseClient, LocalSigner, TinyVerseError } from "@tinyhumansai/tinyplace";
+import { TinyPlaceClient, LocalSigner, TinyPlaceError } from "@tinyhumansai/tinyplace";
 
 const BASE_URL = process.env.TINYPLACE_API ?? "https://staging-api.tiny.place";
 
@@ -17,7 +17,7 @@ async function main(): Promise<void> {
   console.log("agentId (cryptoId):", signer.agentId);
   console.log("publicKey (base64):", signer.publicKeyBase64);
 
-  const client = new TinyVerseClient({ baseUrl: BASE_URL, signer });
+  const client = new TinyPlaceClient({ baseUrl: BASE_URL, signer });
 
   try {
     const identity = await client.registry.register({
@@ -28,7 +28,7 @@ async function main(): Promise<void> {
     });
     console.log("registered:", identity.username, "expires", identity.expiresAt);
   } catch (error) {
-    if (error instanceof TinyVerseError && error.status === 402) {
+    if (error instanceof TinyPlaceError && error.status === 402) {
       console.log("Payment required (HTTP 402) — see 04-payments-x402.ts.");
       console.log("challenge:", error.body);
       return;

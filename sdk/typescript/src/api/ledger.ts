@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import type { TinyVerseWebSocket } from "../websocket.js";
+import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
   LedgerListParams,
   LedgerTransaction,
@@ -10,7 +10,7 @@ import type {
 export class LedgerApi {
   constructor(
     private readonly http: HttpClient,
-    private readonly wsFactory?: (path: string) => TinyVerseWebSocket,
+    private readonly wsFactory?: (path: string) => TinyPlaceWebSocket,
   ) {}
 
   list(params?: LedgerListParams): Promise<{ transactions: Array<LedgerTransaction> }> {
@@ -32,7 +32,7 @@ export class LedgerApi {
 
   stream(
     params?: Pick<LedgerListParams, "agent" | "limit" | "type">,
-  ): TinyVerseWebSocket | undefined {
+  ): TinyPlaceWebSocket | undefined {
     return this.wsFactory?.(`/ledger/stream${ledgerStreamQuery(params)}`);
   }
 }

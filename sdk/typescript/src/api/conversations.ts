@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import type { TinyVerseWebSocket } from "../websocket.js";
+import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
   Conversation,
   ConversationCreateRequest,
@@ -17,7 +17,7 @@ export class ConversationsApi {
     private readonly wsFactory?: (
       path: string,
       options?: { directoryAuth?: boolean },
-    ) => TinyVerseWebSocket,
+    ) => TinyPlaceWebSocket,
   ) {}
 
   list(
@@ -307,7 +307,7 @@ export class ConversationsApi {
   stream(
     conversationId: string,
     options?: { agentId?: string; limit?: number },
-  ): TinyVerseWebSocket | undefined {
+  ): TinyPlaceWebSocket | undefined {
     const query = streamQuery({
       "X-Agent-ID": options?.agentId,
       limit: options?.limit,

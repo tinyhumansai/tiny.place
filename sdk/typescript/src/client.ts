@@ -2,7 +2,7 @@ import type { SigningKey } from "./auth.js";
 import type { AdminSigningOptions } from "./auth.js";
 import { Signer } from "./signer.js";
 import { HttpClient } from "./http.js";
-import { TinyVerseWebSocket } from "./websocket.js";
+import { TinyPlaceWebSocket } from "./websocket.js";
 import { A2AApi } from "./api/a2a.js";
 import { AdminApi } from "./api/admin.js";
 import { ArtifactsApi } from "./api/artifacts.js";
@@ -38,7 +38,7 @@ import { StatsApi } from "./api/stats.js";
 import { SwapApi } from "./api/swap.js";
 import { UsersApi } from "./api/users.js";
 
-export interface TinyVerseClientOptions {
+export interface TinyPlaceClientOptions {
   baseUrl: string;
   signer?: Signer;
   /** @deprecated Use `signer` instead. */
@@ -57,7 +57,7 @@ export interface TinyVerseClientOptions {
   onAuthInvalid?: (status: number, body: unknown) => void;
 }
 
-export class TinyVerseClient {
+export class TinyPlaceClient {
   private readonly http: HttpClient;
   private readonly baseUrl: string;
   private readonly signingKey?: SigningKey;
@@ -97,7 +97,7 @@ export class TinyVerseClient {
   readonly artifacts: ArtifactsApi;
   readonly docs: DocsApi;
 
-  constructor(options: TinyVerseClientOptions) {
+  constructor(options: TinyPlaceClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
 
     const signingKey = options.signer ?? options.signingKey;
@@ -118,9 +118,9 @@ export class TinyVerseClient {
     const wsFactory = (
       path: string,
       options?: { directoryAuth?: boolean },
-    ): TinyVerseWebSocket => {
+    ): TinyPlaceWebSocket => {
       const wsBase = this.baseUrl.replace(/^http/, "ws");
-      return new TinyVerseWebSocket({
+      return new TinyPlaceWebSocket({
         url: `${wsBase}${path}`,
         signingKey: this.signingKey,
         directoryAuth:

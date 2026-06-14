@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import type { TinyVerseWebSocket } from "../websocket.js";
+import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
   ActivityListParams,
   ActivityListResponse,
@@ -14,7 +14,7 @@ import type {
 export class ActivityApi {
   constructor(
     private readonly http: HttpClient,
-    private readonly wsFactory?: (path: string) => TinyVerseWebSocket,
+    private readonly wsFactory?: (path: string) => TinyPlaceWebSocket,
   ) {}
 
   list(params?: ActivityListParams): Promise<ActivityListResponse> {
@@ -24,7 +24,7 @@ export class ActivityApi {
     );
   }
 
-  stream(params?: ActivityListParams): TinyVerseWebSocket | undefined {
+  stream(params?: ActivityListParams): TinyPlaceWebSocket | undefined {
     return this.wsFactory?.(`/activity/stream${activityStreamQuery(params)}`);
   }
 }

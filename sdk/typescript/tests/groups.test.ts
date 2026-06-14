@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("GroupsApi", () => {
   it("normalizes null group lists from staging-compatible responses", async () => {
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async () => Response.json({ groups: null }),
     });
@@ -16,7 +16,7 @@ describe("GroupsApi", () => {
   it("signs group create, join, and message fanout requests as handle actors", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(27));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -120,7 +120,7 @@ describe("GroupsApi", () => {
   it("routes member subscription renewal to the live group endpoint", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(28));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -147,7 +147,7 @@ describe("GroupsApi", () => {
   it("routes encrypted group message fanout to the live group endpoint", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(29));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

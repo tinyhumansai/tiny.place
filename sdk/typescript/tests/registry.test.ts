@@ -3,8 +3,8 @@ import {
   canonicalPayload,
   LocalSigner,
   SOLANA_MAINNET_NETWORK,
-  TinyVerseClient,
-  TinyVerseError,
+  TinyPlaceClient,
+  TinyPlaceError,
 } from "../src/index.js";
 
 function fromBase64(value: string): Uint8Array {
@@ -60,7 +60,7 @@ describe("RegistryApi", () => {
   it("signs registration over cryptoId, publicKey, username and null payment methods", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(19));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -111,7 +111,7 @@ describe("RegistryApi", () => {
   it("forwards actorType and primary unsigned and omits them from the signature", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(21));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -163,7 +163,7 @@ describe("RegistryApi", () => {
   it("signs assign and unassign primary requests", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(22));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -215,7 +215,7 @@ describe("RegistryApi", () => {
   it("normalizes bare registration names before signing", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(20));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -354,7 +354,7 @@ describe("RegistryApi", () => {
           );
       }
     };
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch,
@@ -522,7 +522,7 @@ describe("RegistryApi", () => {
           );
       }
     };
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch,
@@ -653,7 +653,7 @@ describe("RegistryApi", () => {
           );
       }
     };
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch,
@@ -689,7 +689,7 @@ describe("RegistryApi", () => {
     const registryRequests: Array<Request> = [];
     const onChainTx =
       "5q22im1eoEeoJMhsshDkoh4tNV1WPUfyaJXHwyGqcpfmtpY1ZCC665nc5chyEwwau4JoR7BUnCbxWn5BW5WzR3NC";
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -757,7 +757,7 @@ describe("RegistryApi", () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(26));
     const onChainTx =
       "5q22im1eoEeoJMhsshDkoh4tNV1WPUfyaJXHwyGqcpfmtpY1ZCC665nc5chyEwwau4JoR7BUnCbxWn5BW5WzR3NC";
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async () =>
@@ -783,8 +783,8 @@ describe("RegistryApi", () => {
       );
       expect.fail("should have thrown");
     } catch (error) {
-      expect(error).toBeInstanceOf(TinyVerseError);
-      const failure = error as TinyVerseError & {
+      expect(error).toBeInstanceOf(TinyPlaceError);
+      const failure = error as TinyPlaceError & {
         onChainTx?: string;
         registrationPayment?: Record<string, string>;
       };
@@ -868,7 +868,7 @@ describe("RegistryApi", () => {
           );
       }
     };
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch,
@@ -893,8 +893,8 @@ describe("RegistryApi", () => {
       );
       expect.fail("should have thrown");
     } catch (error) {
-      expect(error).toBeInstanceOf(TinyVerseError);
-      const failure = error as TinyVerseError & {
+      expect(error).toBeInstanceOf(TinyPlaceError);
+      const failure = error as TinyPlaceError & {
         onChainTx?: string;
         registrationPayment?: { signature?: string };
       };
@@ -904,7 +904,7 @@ describe("RegistryApi", () => {
     }
   });
 
-  it("exposes x402 payment challenges on TinyVerseError", async () => {
+  it("exposes x402 payment challenges on TinyPlaceError", async () => {
     const challenge = {
       error: "x402 payment is required",
       payment: {
@@ -917,7 +917,7 @@ describe("RegistryApi", () => {
         metadata: { domain: "tiny.place" },
       },
     };
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async () =>
         Response.json(
@@ -946,13 +946,13 @@ describe("RegistryApi", () => {
           to: "recipient",
         },
       },
-    } satisfies Partial<TinyVerseError>);
+    } satisfies Partial<TinyPlaceError>);
   });
 
   it("signs registration payment methods in backend struct field order", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(21));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -999,7 +999,7 @@ describe("RegistryApi", () => {
   it("signs profile visibility updates with null omitted fields", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(16));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -1061,7 +1061,7 @@ describe("RegistryApi", () => {
   it("treats renewal and auction claim responses as identities", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(17));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -1099,7 +1099,7 @@ describe("RegistryApi", () => {
   it("sends subname delete ownership signatures in the header", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(18));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

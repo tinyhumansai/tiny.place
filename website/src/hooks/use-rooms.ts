@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query";
 import {
 	signX402Authorization,
-	TinyVerseError,
+	TinyPlaceError,
 	type GameActionRequest,
 	type GameActionResponse,
 	type GameCloseResponse,
@@ -39,7 +39,7 @@ type RoomPaymentChallenge = {
 };
 
 function roomPaymentChallenge(error: unknown): RoomPaymentChallenge | null {
-	if (!(error instanceof TinyVerseError) || error.status !== 402) {
+	if (!(error instanceof TinyPlaceError) || error.status !== 402) {
 		return null;
 	}
 	if (!error.body || typeof error.body !== "object") {

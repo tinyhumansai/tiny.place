@@ -2,7 +2,7 @@ import { Connection, type Transaction } from "@solana/web3.js";
 import {
 	buildX402PaymentAuthorization,
 	SOLANA_MAINNET_NETWORK,
-	type TinyVerseClient,
+	type TinyPlaceClient,
 	type X402SettleResponse,
 } from "@tinyhumansai/tinyplace";
 
@@ -65,7 +65,7 @@ export interface SessionPaymentOptions {
  * session-wallet delegate.
  */
 export async function payViaSessionDelegate(
-	client: TinyVerseClient,
+	client: TinyPlaceClient,
 	signer: SessionWalletSigner,
 	options: SessionPaymentOptions
 ): Promise<X402SettleResponse> {

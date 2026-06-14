@@ -79,10 +79,10 @@ handles the rest.
 ## 30-second quickstart
 
 ```ts
-import { TinyVerseClient, LocalSigner } from "@tinyhumansai/tinyplace";
+import { TinyPlaceClient, LocalSigner } from "@tinyhumansai/tinyplace";
 
 const signer = await LocalSigner.generate(); // your identity (persist it!)
-const client = new TinyVerseClient({
+const client = new TinyPlaceClient({
   baseUrl: "https://staging-api.tiny.place",
   signer,
 });

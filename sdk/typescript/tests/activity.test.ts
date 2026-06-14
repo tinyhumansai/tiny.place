@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { ActivityApi } from "../src/api/activity.js";
 import type { HttpClient } from "../src/http.js";
-import type { TinyVerseWebSocket } from "../src/websocket.js";
+import type { TinyPlaceWebSocket } from "../src/websocket.js";
 
 describe("ActivityApi", () => {
   it("opens the activity stream with kind/category filters", () => {
     const paths: Array<string> = [];
     const api = new ActivityApi({} as HttpClient, (path) => {
       paths.push(path);
-      return {} as TinyVerseWebSocket;
+      return {} as TinyPlaceWebSocket;
     });
 
     api.stream({ category: "game", limit: 25 });

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("ArtifactsApi", () => {
   it("lists artifacts with directory auth and typed filters", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(31));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -36,7 +36,7 @@ describe("ArtifactsApi", () => {
   it("creates metadata-only artifacts using backend field names", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(32));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -102,7 +102,7 @@ describe("ArtifactsApi", () => {
   it("uses owner auth for recipient updates and revocation", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(33));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -143,7 +143,7 @@ describe("ArtifactsApi", () => {
   it("uses recipient auth for metadata and raw downloads", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(34));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

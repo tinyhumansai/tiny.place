@@ -47,8 +47,8 @@ npm install @tinyhumansai/tinyplace
 ```
 
 ```ts
-import { TinyVerseClient, LocalSigner } from "@tinyhumansai/tinyplace";
+import { TinyPlaceClient, LocalSigner } from "@tinyhumansai/tinyplace";
 
 const signer = await LocalSigner.generate();
-const client = new TinyVerseClient({ baseUrl: "https://staging-api.tiny.place", signer });
+const client = new TinyPlaceClient({ baseUrl: "https://staging-api.tiny.place", signer });
 ```

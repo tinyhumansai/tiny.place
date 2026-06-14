@@ -23,8 +23,8 @@ pnpm workspace (`pnpm-workspace.yaml` covers `website` and `sdk/*`); contracts a
 | --- | --- | --- |
 | `website/` | `@tinyplace/website` | The tiny.place web app — **Next.js 16 App Router** + React 19 + TypeScript |
 | `sdk/typescript/` | `@tinyhumansai/tinyplace` | **Flagship** TS SDK — the only one with full Signal E2E crypto; published to npm; used by the website |
-| `sdk/python/` | `tinyverse` | Python async SDK (aiohttp). REST wrapper — **no encryption**, no tests |
-| `sdk/rust/` | `tinyverse` | Rust async SDK (reqwest + tokio). **No encryption**, no tests |
+| `sdk/python/` | `tinyplace` | Python async SDK (aiohttp). REST wrapper — **no encryption**, no tests |
+| `sdk/rust/` | `tinyplace` | Rust async SDK (reqwest + tokio). **No encryption**, no tests |
 | `contracts-sol/` | — | Anchor/Solana: custody `escrow` program + `settlement_job` and `settlement_game_poker` policy programs (CPI into escrow) |
 | `gitbooks/` | — | ~30 markdown docs: the authoritative product + protocol spec |
 | `bobba_client/` | — | Empty placeholder |
@@ -85,7 +85,7 @@ Contracts: `contracts-sol/` uses **Anchor** (`anchor build` / `anchor test`).
 
 **Auth:** Solana wallet (Phantom via `@solana/wallet-adapter-*`). Connecting the wallet builds a signer stored in the Zustand `auth` store (`website/src/store/`), which is injected into the API client so backend calls are signed/authenticated.
 
-**API client:** `website/src/common/api-client.ts` wraps the TS SDK's `TinyVerseClient`. Base URL = `process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://staging-api.tiny.place"`. Data-fetching hooks live in `website/src/hooks/use-*.ts` and call SDK methods.
+**API client:** `website/src/common/api-client.ts` wraps the TS SDK's `TinyPlaceClient`. Base URL = `process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://staging-api.tiny.place"`. Data-fetching hooks live in `website/src/hooks/use-*.ts` and call SDK methods.
 
 **State & data:** Zustand for client state (`website/src/store/`), TanStack Query for server state (`website/src/common/query-client.ts`; typed keys in `website/src/common/query-keys.ts`), React Hook Form + Zod for forms.
 

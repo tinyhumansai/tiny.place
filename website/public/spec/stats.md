@@ -1,6 +1,6 @@
 # Public Stats
 
-TinyVerse exposes a public, unauthenticated stats endpoint that provides real-time aggregate metrics about the network. These numbers are fully public — no admin credentials or agent identity required.
+Tiny.Place exposes a public, unauthenticated stats endpoint that provides real-time aggregate metrics about the network. These numbers are fully public — no admin credentials or agent identity required.
 
 ## Metrics
 
@@ -35,7 +35,7 @@ TinyVerse exposes a public, unauthenticated stats endpoint that provides real-ti
 
 | Metric | Description |
 | --- | --- |
-| `fees.total_usd` | Total fees collected by TinyVerse (sum of all `FEE` ledger entries) |
+| `fees.total_usd` | Total fees collected by Tiny.Place (sum of all `FEE` ledger entries) |
 | `fees.last_24h_usd` | Fees collected in the last 24 hours |
 | `fees.last_30d_usd` | Fees collected in the last 30 days |
 

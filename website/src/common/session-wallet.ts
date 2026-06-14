@@ -7,7 +7,7 @@ import {
 	Signer,
 	SOLANA_MAINNET_NETWORK,
 	type StoredSession,
-	type TinyVerseClient,
+	type TinyPlaceClient,
 	type X25519KeyPair,
 } from "@tinyhumansai/tinyplace";
 
@@ -16,7 +16,7 @@ import { WalletSigner } from "@src/common/wallet-signer";
 type SignMessageFunction = (message: Uint8Array) => Promise<Uint8Array>;
 
 /** Builds a client; pass the session signer to make authenticated calls. */
-type ClientFactory = (signer?: Signer) => TinyVerseClient;
+type ClientFactory = (signer?: Signer) => TinyPlaceClient;
 
 // How long a session grant stays valid before the wallet must re-approve.
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -226,7 +226,7 @@ export class SessionWalletSigner extends Signer {
 	public static async establish(
 		walletPublicKey: Uint8Array,
 		walletSignMessage: SignMessageFunction,
-		client: TinyVerseClient
+		client: TinyPlaceClient
 	): Promise<SessionWalletSigner> {
 		const grantor = new WalletSigner(walletPublicKey, walletSignMessage);
 		const session = await BrowserSessionSigner.create();

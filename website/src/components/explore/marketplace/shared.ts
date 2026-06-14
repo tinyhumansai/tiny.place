@@ -1,4 +1,4 @@
-import type { Identity, TinyVerseError } from "@tinyhumansai/tinyplace";
+import type { Identity, TinyPlaceError } from "@tinyhumansai/tinyplace";
 
 // Native SOL on the Solana mainnet caip-2 chain id; matches the value the rest
 // of the explore UI uses for marketplace + escrow flows.
@@ -65,10 +65,10 @@ export function errorMessage(error: unknown, fallback: string): string {
 export function paymentChallengeMessage(
 	error: Error | null
 ): string | undefined {
-	if (!error || error.name !== "TinyVerseError") {
+	if (!error || error.name !== "TinyPlaceError") {
 		return undefined;
 	}
-	const typed = error as TinyVerseError;
+	const typed = error as TinyPlaceError;
 	if (typed.status !== 402) {
 		return undefined;
 	}

@@ -2,7 +2,7 @@ import type { SigningKey } from "../auth.js";
 import { signFreshCanonicalPayload } from "../auth.js";
 import { canonicalPayload } from "../crypto.js";
 import {
-  TinyVerseError,
+  TinyPlaceError,
   type HttpClient,
   type PaymentChallenge,
 } from "../http.js";
@@ -256,7 +256,7 @@ export class RegistryApi {
     try {
       await this.register(request);
     } catch (error) {
-      if (error instanceof TinyVerseError && error.status === 402) {
+      if (error instanceof TinyPlaceError && error.status === 402) {
         return error.paymentRequired?.payment;
       }
       throw error;
@@ -298,7 +298,7 @@ export class RegistryApi {
     username: string,
     error: unknown,
   ): Promise<Identity | undefined> {
-    if (!(error instanceof TinyVerseError) || error.status < 500) {
+    if (!(error instanceof TinyPlaceError) || error.status < 500) {
       return undefined;
     }
     try {
@@ -542,7 +542,7 @@ function isRetryablePaymentError(
   error: unknown,
   retryErrors: Array<string>,
 ): boolean {
-  if (!(error instanceof TinyVerseError) || error.status !== 402) {
+  if (!(error instanceof TinyPlaceError) || error.status !== 402) {
     return false;
   }
   const message = paymentErrorMessage(error.body);

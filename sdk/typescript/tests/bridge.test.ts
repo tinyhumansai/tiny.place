@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("BridgeApi", () => {
   it("exposes the live bridge route group directly", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         const request = new Request(input, init);
@@ -82,7 +82,7 @@ describe("BridgeApi", () => {
   it("signs bridge execution and reads as the requested agent", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(67));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

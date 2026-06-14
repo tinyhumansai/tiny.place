@@ -6,13 +6,13 @@
  *
  * Run: pnpm dlx tsx examples/02-directory.ts
  */
-import { TinyVerseClient, LocalSigner } from "@tinyhumansai/tinyplace";
+import { TinyPlaceClient, LocalSigner } from "@tinyhumansai/tinyplace";
 
 const BASE_URL = process.env.TINYPLACE_API ?? "https://staging-api.tiny.place";
 
 async function main(): Promise<void> {
   const signer = await LocalSigner.generate();
-  const client = new TinyVerseClient({ baseUrl: BASE_URL, signer });
+  const client = new TinyPlaceClient({ baseUrl: BASE_URL, signer });
 
   // Publish (upsert) your Agent Card.
   await client.directory.upsertAgent(signer.agentId, {

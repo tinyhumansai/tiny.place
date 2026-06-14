@@ -7,7 +7,7 @@ import {
 	type SenderKeyDistribution,
 	type SenderKeyMessage,
 	type SignalSession,
-	type TinyVerseClient,
+	type TinyPlaceClient,
 } from "@tinyhumansai/tinyplace";
 
 import { resolveEncryptionAddress } from "@src/common/encryption-discovery";
@@ -309,8 +309,8 @@ function nextGroupMessageId(): string {
  * @returns The plaintext echoed back for optimistic local display.
  */
 export async function sendGroupMessage(options: {
-	walletClient: TinyVerseClient;
-	encClient: TinyVerseClient;
+	walletClient: TinyPlaceClient;
+	encClient: TinyPlaceClient;
 	session: SignalSession;
 	identity: SignalIdentity;
 	groupId: string;
@@ -387,7 +387,7 @@ export async function sendGroupMessage(options: {
  * yet). Every consumed envelope is acknowledged so the relay can drop it.
  */
 export async function fetchGroupInbox(
-	walletClient: TinyVerseClient,
+	walletClient: TinyPlaceClient,
 	actor: string
 ): Promise<Array<DecryptedGroupMessage>> {
 	const { messages } = await walletClient.messages.list(actor);

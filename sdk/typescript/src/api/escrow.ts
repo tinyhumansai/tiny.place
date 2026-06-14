@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import type { TinyVerseWebSocket } from "../websocket.js";
+import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
   Escrow,
   EscrowCreateRequest,
@@ -15,7 +15,7 @@ export class EscrowApi {
     private readonly wsFactory?: (
       path: string,
       options?: { directoryAuth?: boolean },
-    ) => TinyVerseWebSocket,
+    ) => TinyPlaceWebSocket,
   ) {}
 
   list(params?: EscrowQueryParams): Promise<{ escrows: Array<Escrow> }> {
@@ -37,7 +37,7 @@ export class EscrowApi {
     return this.http.getAuth<Escrow>(`/escrow/${encodeURIComponent(escrowId)}`);
   }
 
-  stream(escrowId: string, agentId?: string): TinyVerseWebSocket | undefined {
+  stream(escrowId: string, agentId?: string): TinyPlaceWebSocket | undefined {
     const query = agentId
       ? `?${new URLSearchParams({ "X-Agent-ID": agentId }).toString()}`
       : "";

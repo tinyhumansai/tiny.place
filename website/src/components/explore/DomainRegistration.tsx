@@ -6,7 +6,7 @@ import { useMutation } from "@tanstack/react-query";
 import {
 	generateNonce,
 	signX402Authorization,
-	TinyVerseError,
+	TinyPlaceError,
 	x402AuthorizationToPaymentMap,
 	type X402AuthorizationFields,
 } from "@tinyhumansai/tinyplace";
@@ -45,7 +45,7 @@ type RegistryPaymentChallenge = {
 function registryPaymentChallenge(
 	error: unknown
 ): RegistryPaymentChallenge | null {
-	if (!(error instanceof TinyVerseError) || error.status !== 402) {
+	if (!(error instanceof TinyPlaceError) || error.status !== 402) {
 		return null;
 	}
 	if (!error.body || typeof error.body !== "object") {

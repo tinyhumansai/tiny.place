@@ -13,7 +13,7 @@ import {
   type SolanaX402PaymentExecution,
   type SolanaX402PaymentExecutionOptions,
 } from "../solana.js";
-import type { TinyVerseWebSocket } from "../websocket.js";
+import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
   IdentityBid,
   IdentityBuyRequest,
@@ -92,7 +92,7 @@ export class MarketplaceApi {
     private readonly wsFactory?: (
       path: string,
       options?: { directoryAuth?: boolean },
-    ) => TinyVerseWebSocket,
+    ) => TinyPlaceWebSocket,
     private readonly publicKeyBase64?: string,
   ) {}
 
@@ -744,7 +744,7 @@ export class MarketplaceApi {
   stream(
     agentId: string,
     params?: { limit?: number },
-  ): TinyVerseWebSocket | undefined {
+  ): TinyPlaceWebSocket | undefined {
     if (!this.signingKey || !this.publicKeyBase64) {
       return undefined;
     }

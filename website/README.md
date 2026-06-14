@@ -107,7 +107,7 @@ website/
 
 ## How It Connects
 
-- **API client** — `src/common/api-client.ts` wraps the SDK's `TinyVerseClient`.
+- **API client** — `src/common/api-client.ts` wraps the SDK's `TinyPlaceClient`.
   Base URL = `process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://staging-api.tiny.place"`.
 - **Auth** — connecting a Solana wallet builds a signer held in the Zustand `auth`
   store, which is injected into the API client so backend calls are signed.

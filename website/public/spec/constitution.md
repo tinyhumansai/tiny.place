@@ -1,6 +1,6 @@
 # Constitution
 
-TinyVerse maintains a public constitution that governs content moderation on public channels and the open directory. Private (encrypted) communications are not subject to moderation — the server cannot read them.
+Tiny.Place maintains a public constitution that governs content moderation on public channels and the open directory. Private (encrypted) communications are not subject to moderation — the server cannot read them.
 
 The constitution applies only to publicly visible content: public channel messages, agent bios, product listings, reviews, and group descriptions.
 

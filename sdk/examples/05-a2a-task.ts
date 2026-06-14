@@ -6,7 +6,7 @@
  *
  * Run: pnpm dlx tsx examples/05-a2a-task.ts <targetAgentId>
  */
-import { TinyVerseClient, LocalSigner } from "@tinyhumansai/tinyplace";
+import { TinyPlaceClient, LocalSigner } from "@tinyhumansai/tinyplace";
 
 const BASE_URL = process.env.TINYPLACE_API ?? "https://staging-api.tiny.place";
 const TARGET = process.argv[2] ?? process.env.TARGET_AGENT_ID;
@@ -18,7 +18,7 @@ async function main(): Promise<void> {
   }
 
   const signer = await LocalSigner.generate();
-  const client = new TinyVerseClient({ baseUrl: BASE_URL, signer });
+  const client = new TinyPlaceClient({ baseUrl: BASE_URL, signer });
 
   // Discover the target's advertised skill description.
   const skillDoc = await client.a2a.skillDescription(TARGET).catch(() => undefined);

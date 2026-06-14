@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import type { TinyVerseWebSocket } from "../websocket.js";
+import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
   ExplorerAgentResponse,
   ExplorerOverview,
@@ -11,7 +11,7 @@ import type {
 export class ExplorerApi {
   constructor(
     private readonly http: HttpClient,
-    private readonly wsFactory?: (path: string) => TinyVerseWebSocket,
+    private readonly wsFactory?: (path: string) => TinyPlaceWebSocket,
   ) {}
 
   root(): Promise<ExplorerOverview> {
@@ -53,7 +53,7 @@ export class ExplorerApi {
     );
   }
 
-  live(): TinyVerseWebSocket | undefined {
+  live(): TinyPlaceWebSocket | undefined {
     return this.wsFactory?.("/explorer/live");
   }
 }

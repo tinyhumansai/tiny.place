@@ -5,7 +5,7 @@ import type {
   BridgeQuote,
   BridgeRoute,
 } from "../types/index.js";
-import type { TinyVerseWebSocket } from "../websocket.js";
+import type { TinyPlaceWebSocket } from "../websocket.js";
 
 export interface BridgeRoutesParams {
   from?: string;
@@ -28,7 +28,7 @@ export interface BridgeHistoryParams {
 export class BridgeApi {
   constructor(
     private readonly http: HttpClient,
-    private readonly wsFactory?: (path: string) => TinyVerseWebSocket,
+    private readonly wsFactory?: (path: string) => TinyPlaceWebSocket,
   ) {}
 
   routes(params: BridgeRoutesParams): Promise<{ routes: Array<BridgeRoute> }> {
@@ -103,7 +103,7 @@ export class BridgeApi {
     );
   }
 
-  stream(): TinyVerseWebSocket | undefined {
+  stream(): TinyPlaceWebSocket | undefined {
     return this.wsFactory?.("/bridge/stream");
   }
 }

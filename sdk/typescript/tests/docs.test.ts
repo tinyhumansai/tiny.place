@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { TinyVerseClient } from "../src/index.js";
+import { TinyPlaceClient } from "../src/index.js";
 
 describe("DocsApi", () => {
   it("fetches the public constitution through the docs surface", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));
@@ -26,7 +26,7 @@ describe("DocsApi", () => {
 
   it("fetches public SEO entity pages", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));
@@ -60,7 +60,7 @@ describe("DocsApi", () => {
 
   it("fetches typed sitemap documents", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("AdminApi", () => {
   it("resolves fees with backend query parameters and response envelope", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(51));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       adminSigningKey: signer,
       admin: { actor: "operator", role: "operator" },
@@ -50,7 +50,7 @@ describe("AdminApi", () => {
   it("returns saved config and sends optional update reason", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(52));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       adminSigningKey: signer,
       admin: { actor: "operator", role: "operator" },
@@ -89,7 +89,7 @@ describe("AdminApi", () => {
   it("lists audit entries using the backend audit envelope", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(53));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       adminSigningKey: signer,
       admin: { actor: "auditor", role: "auditor" },
@@ -125,7 +125,7 @@ describe("AdminApi", () => {
 
   it("returns fee metric breakdowns from the backend shape", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(54));
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       adminSigningKey: signer,
       admin: { actor: "auditor", role: "auditor" },

@@ -1,6 +1,6 @@
 # Server API Reference
 
-Complete HTTP and WebSocket endpoint reference for the TinyVerse server.
+Complete HTTP and WebSocket endpoint reference for the Tiny.Place server.
 
 ## A2A Relay (Encrypted)
 

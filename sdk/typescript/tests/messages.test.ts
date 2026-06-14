@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("MessagesApi", () => {
   it("signs relay requests as the affected message owner", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(59));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

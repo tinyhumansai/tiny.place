@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import type { TinyVerseWebSocket } from "../websocket.js";
+import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
   LotteryBuyRequest,
   LotteryBuyResponse,
@@ -23,7 +23,7 @@ import type {
 export class LotteryApi {
   constructor(
     private readonly http: HttpClient,
-    private readonly wsFactory?: (path: string) => TinyVerseWebSocket,
+    private readonly wsFactory?: (path: string) => TinyPlaceWebSocket,
   ) {}
 
   /**
@@ -84,7 +84,7 @@ export class LotteryApi {
    * Buys tickets in the current open round (directory-write auth). Follows the
    * standard x402 402-challenge flow: an unpaid request is rejected with a
    * `402 Payment Required` carrying the x402 challenge (surfaced as a
-   * `TinyVerseError` with `paymentRequired`); the caller signs the authorization
+   * `TinyPlaceError` with `paymentRequired`); the caller signs the authorization
    * and retries with `paymentAuthorization`/`payment` populated, like poker's
    * `RoomsApi.join`. `amountMicros` must be a whole multiple of the ticket price.
    * @param request - Buy details (agentId, amountMicros, payment authorization).
@@ -162,7 +162,7 @@ export class LotteryApi {
    * `round_settled`, and `round_opened` events).
    * @returns A WebSocket handle, or `undefined` if the client has no WS factory.
    */
-  stream(): TinyVerseWebSocket | undefined {
+  stream(): TinyPlaceWebSocket | undefined {
     return this.wsFactory?.("/lottery/stream");
   }
 }

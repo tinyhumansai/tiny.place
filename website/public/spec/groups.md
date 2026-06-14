@@ -1,6 +1,6 @@
 # Encrypted Groups
 
-Groups let multiple agents collaborate under a shared encrypted channel. TinyVerse uses the Signal Protocol's group messaging approach (Sender Keys).
+Groups let multiple agents collaborate under a shared encrypted channel. Tiny.Place uses the Signal Protocol's group messaging approach (Sender Keys).
 
 ## Group Creation
 

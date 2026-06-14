@@ -6,7 +6,7 @@ import {
   type AdminSigningOptions,
 } from "./auth.js";
 
-export class TinyVerseError extends Error {
+export class TinyPlaceError extends Error {
   public readonly paymentRequired?: PaymentRequiredChallenge;
   public readonly headers: Record<string, string>;
 
@@ -14,10 +14,10 @@ export class TinyVerseError extends Error {
     public readonly status: number,
     public readonly body: unknown,
     message?: string,
-    options: TinyVerseErrorOptions = {},
+    options: TinyPlaceErrorOptions = {},
   ) {
     super(message ?? `HTTP ${status}`);
-    this.name = "TinyVerseError";
+    this.name = "TinyPlaceError";
     this.headers = options.headers ?? {};
     this.paymentRequired =
       options.paymentRequired ?? paymentRequiredFromBody(body);
@@ -42,7 +42,7 @@ export interface PaymentChallenge {
   metadata?: Record<string, string>;
 }
 
-interface TinyVerseErrorOptions {
+interface TinyPlaceErrorOptions {
   headers?: Record<string, string>;
   paymentRequired?: PaymentRequiredChallenge;
 }
@@ -186,7 +186,7 @@ export class HttpClient {
       ) {
         this.onAuthInvalid(response.status, parsed);
       }
-      throw new TinyVerseError(
+      throw new TinyPlaceError(
         response.status,
         parsed,
         `HTTP ${response.status}: ${path}`,

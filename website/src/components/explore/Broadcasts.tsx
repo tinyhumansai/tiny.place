@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 
-import type { BroadcastChannel, TinyVerseError } from "@tinyhumansai/tinyplace";
+import type { BroadcastChannel, TinyPlaceError } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
 import {
@@ -39,8 +39,8 @@ function buttonClass(isDark: boolean): string {
 
 function errorMessage(error: unknown): string {
 	if (error instanceof Error) {
-		const typed = error as TinyVerseError;
-		if (typed.name === "TinyVerseError" && typed.status === 402) {
+		const typed = error as TinyPlaceError;
+		if (typed.name === "TinyPlaceError" && typed.status === 402) {
 			return "Payment required for this paid channel action.";
 		}
 		return error.message;

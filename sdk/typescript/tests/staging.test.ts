@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
-  TinyVerseClient,
-  TinyVerseError,
+  TinyPlaceClient,
+  TinyPlaceError,
   LocalSigner,
   SignalSession,
   MemorySessionStore,
@@ -19,8 +19,8 @@ const BASE_NETWORK = "eip155:8453";
 const RATE_LIMIT_RETRY_PADDING_MS = 250;
 const MAX_RATE_LIMIT_RETRIES = 2;
 
-function makeClient(signer?: Signer): TinyVerseClient {
-  return new TinyVerseClient({
+function makeClient(signer?: Signer): TinyPlaceClient {
+  return new TinyPlaceClient({
     baseUrl: BASE_URL,
     fetch: fetchWithRateLimitRetry,
     signer,
@@ -146,13 +146,13 @@ describe("staging: unauthenticated endpoints", () => {
     expect(result).toHaveProperty("allTime");
   });
 
-  it("explorer.verifyTransaction routes verification errors through TinyVerseError", async () => {
+  it("explorer.verifyTransaction routes verification errors through TinyPlaceError", async () => {
     try {
       await client.explorer.verifyTransaction("missing-codex-transaction");
       expect.fail("should have thrown");
     } catch (error) {
-      expect(error).toBeInstanceOf(TinyVerseError);
-      expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+      expect(error).toBeInstanceOf(TinyPlaceError);
+      expect((error as TinyPlaceError).status).toBeGreaterThanOrEqual(400);
     }
   });
 
@@ -232,7 +232,7 @@ describe("staging: unauthenticated endpoints", () => {
     expect(result.error).toBeDefined();
   });
 
-  it("payments.settle routes invalid x402 payments through TinyVerseError", async () => {
+  it("payments.settle routes invalid x402 payments through TinyPlaceError", async () => {
     try {
       await client.payments.settle({
         payment: {
@@ -249,8 +249,8 @@ describe("staging: unauthenticated endpoints", () => {
       });
       expect.fail("should have thrown");
     } catch (error) {
-      expect(error).toBeInstanceOf(TinyVerseError);
-      expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+      expect(error).toBeInstanceOf(TinyPlaceError);
+      expect((error as TinyPlaceError).status).toBeGreaterThanOrEqual(400);
     }
   });
 
@@ -282,23 +282,23 @@ describe("staging: unauthenticated endpoints", () => {
     expect(result).toHaveProperty("history");
   });
 
-  it("swap status route returns API errors through TinyVerseError", async () => {
+  it("swap status route returns API errors through TinyPlaceError", async () => {
     try {
       await client.pricing.getSwapStatus("missing-codex-status");
       expect.fail("should have thrown");
     } catch (error) {
-      expect(error).toBeInstanceOf(TinyVerseError);
-      expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+      expect(error).toBeInstanceOf(TinyPlaceError);
+      expect((error as TinyPlaceError).status).toBeGreaterThanOrEqual(400);
     }
   });
 
-  it("bridge status route returns API errors through TinyVerseError", async () => {
+  it("bridge status route returns API errors through TinyPlaceError", async () => {
     try {
       await client.pricing.getBridgeStatus("missing-codex-status");
       expect.fail("should have thrown");
     } catch (error) {
-      expect(error).toBeInstanceOf(TinyVerseError);
-      expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+      expect(error).toBeInstanceOf(TinyPlaceError);
+      expect((error as TinyPlaceError).status).toBeGreaterThanOrEqual(400);
     }
   });
 
@@ -444,13 +444,13 @@ describe("staging: unauthenticated endpoints", () => {
     expect(result).toHaveProperty("actions");
   });
 
-  it("handles 404 errors as TinyVerseError", async () => {
+  it("handles 404 errors as TinyPlaceError", async () => {
     try {
       await client.directory.getAgent("nonexistent-agent-id-xyz");
       expect.fail("should have thrown");
     } catch (error) {
-      expect(error).toBeInstanceOf(TinyVerseError);
-      expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+      expect(error).toBeInstanceOf(TinyPlaceError);
+      expect((error as TinyPlaceError).status).toBeGreaterThanOrEqual(400);
     }
   });
 });
@@ -459,7 +459,7 @@ describe("staging: authenticated flows", () => {
   let signer: LocalSigner;
   let cryptoId: string;
   let publicKeyB64: string;
-  let client: TinyVerseClient;
+  let client: TinyPlaceClient;
 
   beforeAll(async () => {
     signer = await LocalSigner.generate();
@@ -500,8 +500,8 @@ describe("staging: authenticated flows", () => {
           payment: { tx: "test-tx-" + Date.now() },
         });
       } catch (error) {
-        expect(error).toBeInstanceOf(TinyVerseError);
-        const tvError = error as TinyVerseError;
+        expect(error).toBeInstanceOf(TinyPlaceError);
+        const tvError = error as TinyPlaceError;
         expect(tvError.status).toBe(402);
         expect(tvError.body).toHaveProperty("payment");
       }
@@ -523,8 +523,8 @@ describe("staging: authenticated flows", () => {
         );
         expect.fail("should have thrown");
       } catch (error) {
-        expect(error).toBeInstanceOf(TinyVerseError);
-        expect((error as TinyVerseError).status).toBe(404);
+        expect(error).toBeInstanceOf(TinyPlaceError);
+        expect((error as TinyPlaceError).status).toBe(404);
       }
     });
   });
@@ -535,8 +535,8 @@ describe("staging: authenticated flows", () => {
         await client.inbox.markAllRead({ before: "bad-date" });
         expect.fail("should have thrown");
       } catch (error) {
-        expect(error).toBeInstanceOf(TinyVerseError);
-        expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+        expect(error).toBeInstanceOf(TinyPlaceError);
+        expect((error as TinyPlaceError).status).toBeGreaterThanOrEqual(400);
       }
     });
 
@@ -545,8 +545,8 @@ describe("staging: authenticated flows", () => {
         await client.inbox.clear({ before: "bad-date" });
         expect.fail("should have thrown");
       } catch (error) {
-        expect(error).toBeInstanceOf(TinyVerseError);
-        expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+        expect(error).toBeInstanceOf(TinyPlaceError);
+        expect((error as TinyPlaceError).status).toBeGreaterThanOrEqual(400);
       }
     });
   });
@@ -888,7 +888,7 @@ describe("staging: authenticated flows", () => {
 
   describe("relay messages (Signal encrypted)", () => {
     let secondSigner: LocalSigner;
-    let secondClient: TinyVerseClient;
+    let secondClient: TinyPlaceClient;
     let secondPubKeyB64: string;
     let aliceSignal: SignalSession;
     let bobSignal: SignalSession;
@@ -1038,27 +1038,27 @@ describe("staging: authenticated flows", () => {
   });
 
   describe("rooms operator endpoints", () => {
-    it("routes room close errors through TinyVerseError", async () => {
+    it("routes room close errors through TinyPlaceError", async () => {
       try {
         await client.rooms.close("missing-codex-room", { operator: cryptoId });
         expect.fail("should have thrown");
       } catch (error) {
-        expect(error).toBeInstanceOf(TinyVerseError);
-        expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+        expect(error).toBeInstanceOf(TinyPlaceError);
+        expect((error as TinyPlaceError).status).toBeGreaterThanOrEqual(400);
       }
     });
 
-    it("routes room hand start errors through TinyVerseError", async () => {
+    it("routes room hand start errors through TinyPlaceError", async () => {
       try {
         await client.rooms.startHand("missing-codex-room", { operator: cryptoId });
         expect.fail("should have thrown");
       } catch (error) {
-        expect(error).toBeInstanceOf(TinyVerseError);
-        expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+        expect(error).toBeInstanceOf(TinyPlaceError);
+        expect((error as TinyPlaceError).status).toBeGreaterThanOrEqual(400);
       }
     });
 
-    it("routes room hand settlement errors through TinyVerseError", async () => {
+    it("routes room hand settlement errors through TinyPlaceError", async () => {
       try {
         await client.rooms.settleHand("missing-codex-room", "missing-codex-hand", {
           operator: cryptoId,
@@ -1067,8 +1067,8 @@ describe("staging: authenticated flows", () => {
         });
         expect.fail("should have thrown");
       } catch (error) {
-        expect(error).toBeInstanceOf(TinyVerseError);
-        expect((error as TinyVerseError).status).toBeGreaterThanOrEqual(400);
+        expect(error).toBeInstanceOf(TinyPlaceError);
+        expect((error as TinyPlaceError).status).toBeGreaterThanOrEqual(400);
       }
     });
   });

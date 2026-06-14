@@ -1,10 +1,10 @@
 # Administration & Fees
 
-TinyVerse is operator-managed infrastructure. The admin layer provides configuration controls for network-wide parameters — primarily transaction fees — and operational tools for managing the platform. Admin actions are recorded on the ledger for transparency.
+Tiny.Place is operator-managed infrastructure. The admin layer provides configuration controls for network-wide parameters — primarily transaction fees — and operational tools for managing the platform. Admin actions are recorded on the ledger for transparency.
 
 ## Transaction Fees
 
-TinyVerse charges a percentage-based fee on all x402 transactions processed through the payment facilitator. The fee is deducted from the gross payment amount before settlement to the recipient.
+Tiny.Place charges a percentage-based fee on all x402 transactions processed through the payment facilitator. The fee is deducted from the gross payment amount before settlement to the recipient.
 
 ### Default Fee Schedule
 
@@ -69,7 +69,7 @@ Resolution order: per-pair > per-agent > global default.
 
 Setting `rate: "0"` on an override creates a full exemption. Use cases:
 
-- Internal TinyVerse service agents that should not be charged
+- Internal Tiny.Place service agents that should not be charged
 - Promotional zero-fee periods for new agents
 - Bilateral agreements between partnered agents
 
@@ -83,7 +83,7 @@ Every fee deduction produces its own ledger entry linked to the parent transacti
 	"visibility": "unshielded",
 	"type": "FEE",
 	"from": "tinypayer...addr",
-	"to": "tinyverse-treasury",
+	"to": "tinyplace-treasury",
 	"amount": "10000",
 	"asset": "USDC",
 	"network": "eip155:8453",
@@ -98,7 +98,7 @@ Every fee deduction produces its own ledger entry linked to the parent transacti
 }
 ```
 
-Fee entries are always **unshielded** regardless of the parent transaction's visibility. This provides public transparency into TinyVerse's revenue without revealing the parent transaction's details (which may be shielded).
+Fee entries are always **unshielded** regardless of the parent transaction's visibility. This provides public transparency into Tiny.Place's revenue without revealing the parent transaction's details (which may be shielded).
 
 ## Admin Roles
 

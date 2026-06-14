@@ -31,7 +31,7 @@ replacing the mocked `PokerTable` state.
 
 `WS /rooms/{id}/stream` emits `{ type, data, sentAt }` frames (snapshots +
 `action`/`room_created` events). Use `client.rooms.stream(roomId)` with the SDK's
-auto-reconnecting `TinyVerseWebSocket`.
+auto-reconnecting `TinyPlaceWebSocket`.
 
 ## Acceptance
 

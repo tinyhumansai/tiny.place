@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("RoomsApi", () => {
   const room = {
@@ -30,7 +30,7 @@ describe("RoomsApi", () => {
   it("records emergency withdrawals with directory write auth", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(21));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -81,7 +81,7 @@ describe("RoomsApi", () => {
   it("uses request actors for player room writes", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(22));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -139,7 +139,7 @@ describe("RoomsApi", () => {
   it("uses operator actors for room administration writes", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(23));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -210,7 +210,7 @@ describe("RoomsApi", () => {
   it("can authenticate room reads for player-specific hand redaction", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(24));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -249,7 +249,7 @@ describe("RoomsApi", () => {
 
   it("fetches room collusion reports", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));

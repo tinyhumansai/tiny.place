@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("SignersApi", () => {
   it("lists approved signers for the authenticated grantor", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(41));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -62,7 +62,7 @@ describe("SignersApi", () => {
       status: "active",
       createdAt: "2026-06-13T00:00:00.000Z",
     };
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

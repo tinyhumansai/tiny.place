@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 async function captureStreamUrl(
-  openStream: (client: TinyVerseClient) => Promise<void>,
+  openStream: (client: TinyPlaceClient) => Promise<void>,
 ): Promise<{ signerPublicKey: string; url: URL }> {
   const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(22));
   const openedUrls: Array<string> = [];
@@ -32,7 +32,7 @@ async function captureStreamUrl(
 
   globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
   try {
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async () => Response.json({}),

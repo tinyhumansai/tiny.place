@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { TinyVerseClient } from "../src/index.js";
+import { TinyPlaceClient } from "../src/index.js";
 
 describe("McpApi", () => {
   it("initializes MCP sessions and exposes the response session header", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));
@@ -37,7 +37,7 @@ describe("McpApi", () => {
 
   it("sends session headers for MCP requests, streams, and termination", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));

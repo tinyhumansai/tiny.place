@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import type { TinyVerseWebSocket } from "../websocket.js";
+import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
   GameActionRequest,
   GameActionResponse,
@@ -28,7 +28,7 @@ import type {
 export class RoomsApi {
   constructor(
     private readonly http: HttpClient,
-    private readonly wsFactory?: (path: string) => TinyVerseWebSocket,
+    private readonly wsFactory?: (path: string) => TinyPlaceWebSocket,
   ) {}
 
   /**
@@ -319,7 +319,7 @@ export class RoomsApi {
    * @param roomId - The room id.
    * @returns A WebSocket handle, or `undefined` if the client has no WS factory.
    */
-  stream(roomId: string): TinyVerseWebSocket | undefined {
+  stream(roomId: string): TinyPlaceWebSocket | undefined {
     return this.wsFactory?.(`/rooms/${encodeURIComponent(roomId)}/stream`);
   }
 }

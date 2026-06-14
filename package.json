@@ -6,7 +6,7 @@
   "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tinyhumansai/tinyverse-frontend"
+    "url": "https://github.com/tinyhumansai/tiny.place"
   },
   "scripts": {
     "dev": "pnpm --filter @tinyplace/website dev",

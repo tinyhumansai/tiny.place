@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import type { TinyVerseWebSocket } from "../websocket.js";
+import type { TinyPlaceWebSocket } from "../websocket.js";
 
 export interface A2ATaskRequest {
   jsonrpc: "2.0";
@@ -22,7 +22,7 @@ export interface A2ATaskResponse {
 export class A2AApi {
   constructor(
     private readonly http: HttpClient,
-    private readonly wsFactory?: (path: string) => TinyVerseWebSocket,
+    private readonly wsFactory?: (path: string) => TinyPlaceWebSocket,
   ) {}
 
   sendTask(
@@ -43,7 +43,7 @@ export class A2AApi {
     );
   }
 
-  stream(agentId: string): TinyVerseWebSocket | undefined {
+  stream(agentId: string): TinyPlaceWebSocket | undefined {
     return this.wsFactory?.(`/a2a/${encodeURIComponent(agentId)}/stream`);
   }
 

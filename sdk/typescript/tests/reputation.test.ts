@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canonicalPayload, LocalSigner, TinyVerseClient } from "../src/index.js";
+import { canonicalPayload, LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 function fromBase64(value: string): Uint8Array {
   const binary = atob(value);
@@ -34,7 +34,7 @@ async function verifySignature(
 describe("ReputationApi", () => {
   it("exposes reputation leaderboard category filters", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));
@@ -63,7 +63,7 @@ describe("ReputationApi", () => {
 
   it("exposes dedicated leaderboard endpoint query options", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));
@@ -103,7 +103,7 @@ describe("ReputationApi", () => {
   it("signs review, vouch, and attestation create requests", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(14));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -207,7 +207,7 @@ describe("ReputationApi", () => {
   it("signs vouch and attestation revocations in the query string", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(15));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

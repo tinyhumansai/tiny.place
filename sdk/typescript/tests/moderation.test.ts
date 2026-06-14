@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("ModerationApi", () => {
   it("lists moderation actions with pagination and target filters", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));
@@ -40,7 +40,7 @@ describe("ModerationApi", () => {
   it("signs moderation reports as the reporter actor", async () => {
     const requests: Array<Request> = [];
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(57));
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -77,7 +77,7 @@ describe("ModerationApi", () => {
   it("signs moderation appeals as the appellant actor", async () => {
     const requests: Array<Request> = [];
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(60));
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

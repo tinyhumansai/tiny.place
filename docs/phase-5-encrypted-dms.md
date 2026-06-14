@@ -19,7 +19,7 @@ Two backend facts decide it:
 2. **The relay authorizes `/keys` + `/messages` by the address**, not the wallet
    (`send` → `envelope.From`; `list`/`ack` → `agentId`; `keys PUT` → URL address).
 
-**Therefore:** a **second `TinyVerseClient` authenticated with the derived signer**
+**Therefore:** a **second `TinyPlaceClient` authenticated with the derived signer**
 owns all `/keys` + `/messages` (addressed by the derived pubkey). The wallet client
 keeps directory/payments. No backend changes.
 

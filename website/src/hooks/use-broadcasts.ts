@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query";
 import {
 	signX402Authorization,
-	TinyVerseError,
+	TinyPlaceError,
 	type BroadcastChannel,
 	type BroadcastCreateRequest,
 	type BroadcastMessage,
@@ -30,7 +30,7 @@ type BroadcastPaymentChallenge = {
 function broadcastPaymentChallenge(
 	error: unknown
 ): BroadcastPaymentChallenge | null {
-	if (!(error instanceof TinyVerseError) || error.status !== 402) {
+	if (!(error instanceof TinyPlaceError) || error.status !== 402) {
 		return null;
 	}
 	if (!error.body || typeof error.body !== "object") {

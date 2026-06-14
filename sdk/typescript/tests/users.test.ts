@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("UsersApi", () => {
   it("fetches a wallet profile by cryptoId", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));
@@ -33,7 +33,7 @@ describe("UsersApi", () => {
   it("signs a profile update over the canonical user.profile payload", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(7));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

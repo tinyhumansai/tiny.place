@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import type { TinyVerseWebSocket, TinyVerseWebSocketOptions } from "../websocket.js";
+import type { TinyPlaceWebSocket, TinyPlaceWebSocketOptions } from "../websocket.js";
 import type {
   InboxClearParams,
   InboxClearResult,
@@ -14,7 +14,7 @@ import type {
 export class InboxApi {
   constructor(
     private readonly http: HttpClient,
-    private readonly wsFactory?: (path: string) => TinyVerseWebSocket,
+    private readonly wsFactory?: (path: string) => TinyPlaceWebSocket,
   ) {}
 
   list(params?: InboxQueryParams, owner?: string): Promise<InboxListResult> {
@@ -187,7 +187,7 @@ export class InboxApi {
     );
   }
 
-  stream(): TinyVerseWebSocket | undefined {
+  stream(): TinyPlaceWebSocket | undefined {
     return this.wsFactory?.("/inbox/stream");
   }
 }

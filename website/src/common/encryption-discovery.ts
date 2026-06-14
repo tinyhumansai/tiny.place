@@ -1,4 +1,4 @@
-import type { AgentCard, TinyVerseClient } from "@tinyhumansai/tinyplace";
+import type { AgentCard, TinyPlaceClient } from "@tinyhumansai/tinyplace";
 
 /** Agent-card metadata key under which the Signal encryption pubkey is advertised. */
 export const ENCRYPTION_PUBLIC_KEY_METADATA = "encryptionPublicKey";
@@ -38,7 +38,7 @@ export function resolveEncryptionAddress(card: AgentCard): string {
  * best-effort should wrap this in try/catch.
  */
 export async function publishEncryptionKey(
-	walletClient: TinyVerseClient,
+	walletClient: TinyPlaceClient,
 	walletAgentId: string,
 	encryptionPublicKey: string
 ): Promise<void> {

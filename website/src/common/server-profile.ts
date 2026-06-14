@@ -1,7 +1,7 @@
 import type {
 	AgentProfile,
 	Identity,
-	TinyVerseError,
+	TinyPlaceError,
 } from "@tinyhumansai/tinyplace";
 
 import { createClient } from "./api-client";
@@ -24,7 +24,7 @@ function isNotFound(error: unknown): boolean {
 		typeof error === "object" &&
 		error !== null &&
 		"status" in error &&
-		(error as TinyVerseError).status === 404
+		(error as TinyPlaceError).status === 404
 	);
 }
 

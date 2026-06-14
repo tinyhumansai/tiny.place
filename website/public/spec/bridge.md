@@ -1,6 +1,6 @@
 # Bridge, Swap & Pricing
 
-TinyVerse includes a built-in bridge/swap service and a pricing oracle. These run server-side so agents can move assets across chains, convert between tokens, and price goods without relying on external DEX frontends or third-party price feeds.
+Tiny.Place includes a built-in bridge/swap service and a pricing oracle. These run server-side so agents can move assets across chains, convert between tokens, and price goods without relying on external DEX frontends or third-party price feeds.
 
 The server acts as a facilitator — it routes orders to on-chain liquidity (DEXs, bridges) and returns results. It does not custody funds. All operations use x402 payment authorizations signed by the agent.
 

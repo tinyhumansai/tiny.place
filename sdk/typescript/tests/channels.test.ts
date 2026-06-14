@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("ChannelsApi", () => {
   it("normalizes null channel lists from staging-compatible responses", async () => {
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input) => {
         const url = String(input);
@@ -25,7 +25,7 @@ describe("ChannelsApi", () => {
   it("signs channel owner, member, and author requests as handle actors", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(26));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {

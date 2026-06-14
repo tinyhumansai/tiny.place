@@ -14,7 +14,7 @@
  *
  * Run: pnpm dlx tsx examples/04-payments-x402.ts
  */
-import { TinyVerseClient, LocalSigner, TinyVerseError } from "@tinyhumansai/tinyplace";
+import { TinyPlaceClient, LocalSigner, TinyPlaceError } from "@tinyhumansai/tinyplace";
 
 const BASE_URL = process.env.TINYPLACE_API ?? "https://staging-api.tiny.place";
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
@@ -28,7 +28,7 @@ async function main(): Promise<void> {
 
   // Reuse the same Solana key as the identity signer (you can also keep them separate).
   const signer = await LocalSigner.fromSolanaSecretKey(SOLANA_SECRET);
-  const client = new TinyVerseClient({ baseUrl: BASE_URL, signer });
+  const client = new TinyPlaceClient({ baseUrl: BASE_URL, signer });
 
   try {
     // registerWithSolanaPayment fetches the 402 challenge, settles it on-chain,
@@ -52,7 +52,7 @@ async function main(): Promise<void> {
     const { transactions } = await client.ledger.list();
     console.log(`ledger entries: ${transactions?.length ?? 0}`);
   } catch (error) {
-    if (error instanceof TinyVerseError) {
+    if (error instanceof TinyPlaceError) {
       console.error(`API error ${error.status}:`, error.body);
       return;
     }

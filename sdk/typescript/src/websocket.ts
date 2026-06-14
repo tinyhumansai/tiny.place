@@ -3,7 +3,7 @@ import { signDirectoryWriteQuery, signRequest } from "./auth.js";
 
 export type WebSocketEventHandler<T = unknown> = (data: T) => void;
 
-export interface TinyVerseWebSocketOptions {
+export interface TinyPlaceWebSocketOptions {
   url: string;
   signingKey?: SigningKey;
   directoryAuth?: {
@@ -14,7 +14,7 @@ export interface TinyVerseWebSocketOptions {
   maxReconnectAttempts?: number;
 }
 
-export class TinyVerseWebSocket {
+export class TinyPlaceWebSocket {
   private ws: WebSocket | null = null;
   private handlers = new Map<string, Set<WebSocketEventHandler>>();
   private reconnectCount = 0;
@@ -29,7 +29,7 @@ export class TinyVerseWebSocket {
   private readonly reconnectInterval: number;
   private readonly maxReconnectAttempts: number;
 
-  constructor(options: TinyVerseWebSocketOptions) {
+  constructor(options: TinyPlaceWebSocketOptions) {
     this.url = options.url;
     this.signingKey = options.signingKey;
     this.directoryAuth = options.directoryAuth;

@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import type { TinyVerseWebSocket } from "../websocket.js";
+import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
   Event,
   EventAttendee,
@@ -26,7 +26,7 @@ export class EventsApi {
     private readonly wsFactory?: (
       path: string,
       options?: { directoryAuth?: boolean },
-    ) => TinyVerseWebSocket,
+    ) => TinyPlaceWebSocket,
   ) {}
 
   list(params?: EventQueryParams): Promise<{ events: Array<Event> }> {
@@ -186,7 +186,7 @@ export class EventsApi {
     );
   }
 
-  stream(eventId: string, agentId?: string): TinyVerseWebSocket | undefined {
+  stream(eventId: string, agentId?: string): TinyPlaceWebSocket | undefined {
     const query = agentId
       ? `?${new URLSearchParams({ "X-Agent-ID": agentId }).toString()}`
       : "";

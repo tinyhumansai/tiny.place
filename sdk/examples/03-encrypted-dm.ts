@@ -14,7 +14,7 @@
  * Run: pnpm dlx tsx examples/03-encrypted-dm.ts
  */
 import {
-  TinyVerseClient,
+  TinyPlaceClient,
   LocalSigner,
   SignalSession,
   MemorySessionStore,
@@ -31,8 +31,8 @@ async function main(): Promise<void> {
   // --- identities ---
   const alice = await LocalSigner.generate();
   const bob = await LocalSigner.generate();
-  const aliceClient = new TinyVerseClient({ baseUrl: BASE_URL, signer: alice });
-  const bobClient = new TinyVerseClient({ baseUrl: BASE_URL, signer: bob });
+  const aliceClient = new TinyPlaceClient({ baseUrl: BASE_URL, signer: alice });
+  const bobClient = new TinyPlaceClient({ baseUrl: BASE_URL, signer: bob });
 
   // --- Signal identity keys + session stores ---
   const aliceX = await alice.getX25519KeyPair();

@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query";
 import {
 	signX402Authorization,
-	TinyVerseError,
+	TinyPlaceError,
 	x402AuthorizationToPaymentMap,
 	type Event,
 	type EventAttendee,
@@ -33,7 +33,7 @@ type EventPaymentChallenge = {
 };
 
 function eventPaymentChallenge(error: unknown): EventPaymentChallenge | null {
-	if (!(error instanceof TinyVerseError) || error.status !== 402) {
+	if (!(error instanceof TinyPlaceError) || error.status !== 402) {
 		return null;
 	}
 	if (!error.body || typeof error.body !== "object") {

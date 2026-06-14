@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TinyVerseClient } from "../src/index.js";
+import { TinyPlaceClient } from "../src/index.js";
 
 function explorerOverview(): Record<string, unknown> {
   return {
@@ -24,7 +24,7 @@ function explorerOverview(): Record<string, unknown> {
 describe("ExplorerApi", () => {
   it("exposes both root and overview explorer endpoints", async () => {
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       fetch: async (input, init) => {
         requests.push(new Request(input, init));

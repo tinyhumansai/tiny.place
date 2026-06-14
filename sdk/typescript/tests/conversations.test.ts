@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyVerseClient } from "../src/index.js";
+import { LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("ConversationsApi", () => {
   it("signs conversation actor and manager requests as handle actors", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(28));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
@@ -108,7 +108,7 @@ describe("ConversationsApi", () => {
   it("signs conversation delete requests as the supplied actor", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(29));
     const requests: Array<Request> = [];
-    const client = new TinyVerseClient({
+    const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
