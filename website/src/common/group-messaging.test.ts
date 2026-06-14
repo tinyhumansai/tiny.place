@@ -79,16 +79,34 @@ describe("group key distribution payload", () => {
 	});
 });
 
+// ed25519 signatures are 64 bytes; the body codec splits at that fixed offset.
+const SIG64 = btoa(
+	String.fromCharCode(...Array.from({ length: 64 }, (): number => 7))
+);
+
 describe("group message body codec", () => {
 	it("round-trips ciphertext + signature, taking iteration from metadata", () => {
 		const message: SenderKeyMessage = {
 			iteration: 7,
 			ciphertext: "Y2lwaGVy",
-			signature: "c2lnbmF0dXJl",
+			signature: SIG64,
 		};
 		const body = encodeGroupBody(message);
 		// The body itself does not carry the iteration; the envelope's signal does.
 		expect(decodeGroupBody(body, 7)).toEqual(message);
+	});
+
+	it("produces an opaque body that never looks like JSON (backend invariant)", () => {
+		// The backend rejects bodies whose decoded bytes start with '{' or '['.
+		const body = encodeGroupBody({
+			iteration: 0,
+			ciphertext: "Y2lwaGVy",
+			signature: SIG64,
+		});
+		const firstByte = atob(body).charCodeAt(0);
+		expect(firstByte).toBe(0x01);
+		expect(firstByte).not.toBe("{".charCodeAt(0));
+		expect(firstByte).not.toBe("[".charCodeAt(0));
 	});
 
 	it("returns null for non-group bodies", () => {
@@ -122,7 +140,7 @@ describe("buildGroupEnvelope", () => {
 		const envelope = buildGroupEnvelope("mid", "grp_1", "@alice", 4, {
 			iteration: 9,
 			ciphertext: "Y2lwaGVy",
-			signature: "c2ln",
+			signature: SIG64,
 		});
 		expect(envelope.to).toBe("grp_1");
 		expect(envelope.from).toBe("@alice");
@@ -133,7 +151,7 @@ describe("buildGroupEnvelope", () => {
 		expect(decodeGroupBody(envelope.body, 9)).toEqual({
 			iteration: 9,
 			ciphertext: "Y2lwaGVy",
-			signature: "c2ln",
+			signature: SIG64,
 		});
 	});
 });

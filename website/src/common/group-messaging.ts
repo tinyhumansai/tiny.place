@@ -132,13 +132,25 @@ export function parseGroupKeyDistribution(
 	return candidate;
 }
 
-/** Serialises an encrypted group message into an envelope body (base64 JSON). */
+/** Version byte prefixing a group body; also keeps it from ever looking like JSON. */
+const GROUP_BODY_VERSION = 0x01;
+/** ed25519 signatures are a fixed 64 bytes, so the body splits at a known offset. */
+const SIGNATURE_BYTES = 64;
+
+/**
+ * Serialises an encrypted group message into an envelope body. The backend
+ * rejects bodies whose decoded bytes look like JSON (`looksLikeJSON`), so this
+ * is an opaque binary layout — `[version byte][64-byte signature][ciphertext]` —
+ * not a JSON blob. The iteration travels in the envelope's signal metadata.
+ */
 export function encodeGroupBody(message: SenderKeyMessage): string {
-	return toBase64(
-		new TextEncoder().encode(
-			JSON.stringify({ c: message.ciphertext, s: message.signature })
-		)
-	);
+	const signature = fromBase64(message.signature);
+	const ciphertext = fromBase64(message.ciphertext);
+	const bytes = new Uint8Array(1 + signature.length + ciphertext.length);
+	bytes[0] = GROUP_BODY_VERSION;
+	bytes.set(signature, 1);
+	bytes.set(ciphertext, 1 + signature.length);
+	return toBase64(bytes);
 }
 
 /**
@@ -149,20 +161,22 @@ export function decodeGroupBody(
 	body: string,
 	iteration: number
 ): SenderKeyMessage | null {
-	let json: unknown;
+	let bytes: Uint8Array;
 	try {
-		json = JSON.parse(new TextDecoder().decode(fromBase64(body)));
+		bytes = fromBase64(body);
 	} catch {
 		return null;
 	}
-	if (typeof json !== "object" || json === null) {
+	if (bytes.length < 1 + SIGNATURE_BYTES || bytes[0] !== GROUP_BODY_VERSION) {
 		return null;
 	}
-	const { c, s } = json as { c?: unknown; s?: unknown };
-	if (typeof c !== "string" || typeof s !== "string") {
-		return null;
-	}
-	return { iteration, ciphertext: c, signature: s };
+	const signature = bytes.slice(1, 1 + SIGNATURE_BYTES);
+	const ciphertext = bytes.slice(1 + SIGNATURE_BYTES);
+	return {
+		iteration,
+		ciphertext: toBase64(ciphertext),
+		signature: toBase64(signature),
+	};
 }
 
 /** True when an envelope is a backend hint placeholder rather than a real message. */
