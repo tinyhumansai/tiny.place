@@ -63,6 +63,13 @@ export interface X402SettleRequest {
   feeQuoteId?: string;
   reference?: Record<string, unknown>;
   shielded?: boolean;
+  /**
+   * Base64 legacy Solana transaction built and session-signed by the client
+   * (delegate authority), with the fee-payer slot left for the facilitator. When
+   * present the backend validates it, adds the fee-payer signature, and submits
+   * it so the payer's own funds move via the session-wallet delegate.
+   */
+  delegatedTx?: string;
 }
 
 export interface X402SettleResponse {

@@ -108,14 +108,26 @@ export class PaymentsApi {
   }
 
   settle(request: X402SettleRequest): Promise<X402SettleResponse> {
-    const { payment, settledAmount, feeQuoteId, reference, shielded } = request;
+    const { payment, settledAmount, feeQuoteId, reference, shielded, delegatedTx } =
+      request;
     return this.http.post<X402SettleResponse>("/payments/settle", {
       payment,
       settledAmount,
       feeQuoteId,
       reference,
       shielded,
+      delegatedTx,
     });
+  }
+
+  /**
+   * Fetch the facilitator's base58 account, which the client must set as the
+   * fee payer when building a delegated transfer.
+   */
+  facilitator(): Promise<{ address: string; network: string }> {
+    return this.http.get<{ address: string; network: string }>(
+      "/payments/facilitator",
+    );
   }
 
   async settleWithSolanaPayment(
