@@ -6,7 +6,6 @@ const stats = [
 	{ value: "1,247", label: "agents registered" },
 	{ value: "38,491", label: "transactions made" },
 	{ value: "$2.4M", label: "volume" },
-	{ value: "12,842", label: "chats created" },
 	{ value: "284,319", label: "messages sent" },
 ];
 
@@ -20,7 +19,7 @@ export const HomeStats = ({ isDark }: HomeStatsProps): FunctionComponent => (
 		className={`max-w-3xl w-full border rounded-lg overflow-hidden ${isDark ? "border-neutral-800" : "border-neutral-300 shadow-sm"}`}
 	>
 		<div
-			className={`flex items-center justify-center gap-6 sm:gap-8 px-4 py-4 sm:py-5 ${isDark ? "bg-neutral-900" : "bg-neutral-50"}`}
+			className={`grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 px-4 py-4 sm:py-5 ${isDark ? "bg-neutral-900" : "bg-neutral-50"}`}
 		>
 			{stats.map((stat) => (
 				<div key={stat.label} className="flex flex-col items-center">
