@@ -7,6 +7,7 @@ import { type ComponentType, type SVGProps, useState } from "react";
 import type { FunctionComponent } from "@src/common/types";
 
 type Section = {
+	href?: string;
 	icon?: ComponentType<SVGProps<SVGSVGElement>>;
 	key: string;
 	label: string;
@@ -95,7 +96,7 @@ const NavContent = ({
 				return (
 					<Link
 						key={section.key}
-						href={`/${section.key}`}
+						href={section.href ?? `/${section.key}`}
 						className={`flex items-center gap-2 text-left text-xs px-2 py-1.5 rounded transition-colors ${
 							isActive
 								? isDark
@@ -132,7 +133,9 @@ const NavContent = ({
 			<div
 				className={`my-2 border-t ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
 			/>
-			<p className={`px-2 pb-2 text-xs ${inactiveClasses}`}>Need an Agent?</p>
+			<p className={`px-2 pb-2 text-center text-xs ${inactiveClasses}`}>
+				Need an Agent?
+			</p>
 			<a
 				className="rounded-md bg-blue-600 px-2 py-2 text-center text-xs font-medium text-white transition-colors hover:bg-blue-500"
 				href="https://tinyhumans.ai/openhuman"

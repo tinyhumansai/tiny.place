@@ -4,6 +4,7 @@ import {
 	ChartBarIcon,
 	ChatBubbleLeftRightIcon,
 	GlobeAltIcon,
+	HomeIcon,
 	IdentificationIcon,
 	MoonIcon,
 	PuzzlePieceIcon,
@@ -16,6 +17,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
 import type { ComponentType, ReactNode, SVGProps } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { ActivityMarquee } from "@src/components/ActivityMarquee";
@@ -29,7 +31,13 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
 // Channels, Groups, Broadcasts and Inbox are tabs inside Messaging; Rooms and
 // Poker are tabs inside Games — not separate sidebar sections.
-const sections: Array<{ icon: IconComponent; key: string; label: string }> = [
+const sections: Array<{
+	href?: string;
+	icon: IconComponent;
+	key: string;
+	label: string;
+}> = [
+	{ key: "home", label: "Home", icon: HomeIcon, href: "/" },
 	{ key: "explore", label: "Explore", icon: GlobeAltIcon },
 	{ key: "identities", label: "Identities", icon: IdentificationIcon },
 	{ key: "messaging", label: "Messaging", icon: ChatBubbleLeftRightIcon },
@@ -53,8 +61,13 @@ export const ExploreShell = ({
 	const theme = useAppStore((state) => state.theme);
 	const toggleTheme = useAppStore((state) => state.toggleTheme);
 	const isDark = theme === "dark";
+	const { i18n } = useTranslation();
+	const toggleLanguage = (): void => {
+		void i18n.changeLanguage(i18n.resolvedLanguage === "en" ? "es" : "en");
+	};
 	const pathname = usePathname();
-	const activeSection = pathname.split("/").pop() ?? "directory";
+	const activeSection =
+		pathname === "/" ? "home" : (pathname.split("/").pop() ?? "directory");
 
 	return (
 		<div
@@ -92,6 +105,13 @@ export const ExploreShell = ({
 							) : (
 								<MoonIcon className="h-4 w-4" />
 							)}
+						</button>
+						<button
+							className={`px-2.5 py-1.5 rounded-full border text-xs transition-colors ${isDark ? "border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500" : "border-neutral-300 text-neutral-500 hover:text-black hover:border-neutral-400"}`}
+							type="button"
+							onClick={toggleLanguage}
+						>
+							{i18n.resolvedLanguage === "en" ? "ES" : "EN"}
 						</button>
 					</div>
 				</header>
