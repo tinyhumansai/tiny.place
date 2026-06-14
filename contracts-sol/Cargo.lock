@@ -561,6 +561,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "solana-security-txt",
 ]
 
 [[package]]
@@ -1112,6 +1113,7 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "escrow",
+ "solana-security-txt",
 ]
 
 [[package]]
@@ -1121,6 +1123,7 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "escrow",
+ "solana-security-txt",
 ]
 
 [[package]]
@@ -1130,6 +1133,7 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "escrow",
+ "solana-security-txt",
 ]
 
 [[package]]
@@ -1567,6 +1571,12 @@ dependencies = [
  "quote",
  "syn 2.0.117",
 ]
+
+[[package]]
+name = "solana-security-txt"
+version = "1.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c94a02d486b28f219a4f8f5d7dd93cbfbb93c9f466cb7871c22e50cd5ae9a7a2"
 
 [[package]]
 name = "solana-seed-derivable"

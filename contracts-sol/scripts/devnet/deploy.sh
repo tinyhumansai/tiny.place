@@ -29,8 +29,19 @@ for entry in "${PROGRAMS[@]}"; do
   pid="$(program_id "$keypair")"
   [ -f "$so" ] || die "missing artifact $so (run without SKIP_BUILD)"
 
-  if solana program show "$pid" --url "$DEVNET_RPC_URL" >/dev/null 2>&1; then
+  if info="$(solana program show "$pid" --url "$DEVNET_RPC_URL" 2>/dev/null)"; then
     echo "==> upgrading $name ($pid)"
+    # An upgrade fails if the new binary is larger than the programdata the
+    # account was allocated for (we deployed at 1x with no headroom). Grow it
+    # first by the size delta so the upgrade fits.
+    deployed_len="$(printf '%s\n' "$info" | awk -F': *' '/Data Length/{gsub(/[^0-9].*/,"",$2); print $2; exit}')"
+    new_len="$(wc -c < "$so" | tr -d ' ')"
+    if [ -n "$deployed_len" ] && [ "$new_len" -gt "$deployed_len" ]; then
+      delta=$((new_len - deployed_len))
+      echo "    new binary is $delta bytes larger; extending programdata"
+      solana program extend "$pid" "$delta" \
+        --keypair "$DEPLOYER_KEYPAIR" --url "$DEVNET_RPC_URL"
+    fi
   else
     echo "==> deploying $name ($pid) [$(wc -c < "$so") bytes]"
   fi
