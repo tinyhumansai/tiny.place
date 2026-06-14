@@ -32,9 +32,7 @@ export function signerPaymentMetadata(signer: Signer): Record<string, string> {
 
 type IdentityKeySigner = { identityPublicKeyBase64: string };
 
-function hasIdentityKey(
-	signer: Signer
-): signer is Signer & IdentityKeySigner {
+function hasIdentityKey(signer: Signer): signer is Signer & IdentityKeySigner {
 	return (
 		typeof (signer as Partial<IdentityKeySigner>).identityPublicKeyBase64 ===
 		"string"
