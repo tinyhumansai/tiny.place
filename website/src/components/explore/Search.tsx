@@ -54,10 +54,20 @@ function mapResult(result: ApiSearchResult): MappedResult | undefined {
 
 type SearchProperties = {
 	isDark: boolean;
+	/**
+	 * When provided, the search query is controlled by the parent and this
+	 * component renders no input of its own (a shared search bar drives it).
+	 */
+	query?: string;
 };
 
-export const Search = ({ isDark }: SearchProperties): FunctionComponent => {
-	const [query, setQuery] = useState("");
+export const Search = ({
+	isDark,
+	query: externalQuery,
+}: SearchProperties): FunctionComponent => {
+	const [internalQuery, setInternalQuery] = useState("");
+	const controlled = externalQuery !== undefined;
+	const query = externalQuery ?? internalQuery;
 	const [activeFilters, setActiveFilters] = useState<Array<FilterType>>([]);
 
 	const { data, isLoading, isError, error } = useSearch(query);
@@ -81,19 +91,21 @@ export const Search = ({ isDark }: SearchProperties): FunctionComponent => {
 
 	return (
 		<div className="space-y-3">
-			<input
-				placeholder="Search agents, groups, products..."
-				type="text"
-				value={query}
-				className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${
-					isDark
-						? "border-neutral-800 bg-neutral-950 text-white placeholder-neutral-500"
-						: "border-neutral-200 bg-neutral-50 text-black placeholder-neutral-400"
-				}`}
-				onChange={(event): void => {
-					setQuery(event.target.value);
-				}}
-			/>
+			{!controlled && (
+				<input
+					placeholder="Search agents, groups, products..."
+					type="text"
+					value={internalQuery}
+					className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${
+						isDark
+							? "border-neutral-800 bg-neutral-950 text-white placeholder-neutral-500"
+							: "border-neutral-200 bg-neutral-50 text-black placeholder-neutral-400"
+					}`}
+					onChange={(event): void => {
+						setInternalQuery(event.target.value);
+					}}
+				/>
+			)}
 
 			<div className="flex gap-1.5">
 				{filters.map((filter) => (

@@ -51,10 +51,20 @@ const filterOptions: Array<FilterType> = [
 
 type ExplorerProperties = {
 	isDark: boolean;
+	/**
+	 * When provided, the search query is controlled by the parent and this
+	 * component renders no input of its own (a shared search bar drives it).
+	 */
+	query?: string;
 };
 
-export const Explorer = ({ isDark }: ExplorerProperties): FunctionComponent => {
-	const [searchQuery, setSearchQuery] = useState("");
+export const Explorer = ({
+	isDark,
+	query: externalQuery,
+}: ExplorerProperties): FunctionComponent => {
+	const [internalQuery, setInternalQuery] = useState("");
+	const controlled = externalQuery !== undefined;
+	const searchQuery = externalQuery ?? internalQuery;
 	const [activeFilter, setActiveFilter] = useState<FilterType>("All");
 	const [selectedTransaction, setSelectedTransaction] = useState<string | null>(
 		null
@@ -105,25 +115,27 @@ export const Explorer = ({ isDark }: ExplorerProperties): FunctionComponent => {
 
 	return (
 		<div className="space-y-3">
-			<div
-				className={`rounded-lg border ${
-					isDark ? "border-neutral-800" : "border-neutral-200"
-				}`}
-			>
-				<input
-					placeholder="Search by tx hash, agent..."
-					type="text"
-					value={searchQuery}
-					className={`w-full rounded-lg px-3 py-2 text-xs outline-none ${
-						isDark
-							? "bg-neutral-950 text-white placeholder:text-neutral-600"
-							: "bg-neutral-50 text-black placeholder:text-neutral-400"
+			{!controlled && (
+				<div
+					className={`rounded-lg border ${
+						isDark ? "border-neutral-800" : "border-neutral-200"
 					}`}
-					onChange={(event): void => {
-						setSearchQuery(event.target.value);
-					}}
-				/>
-			</div>
+				>
+					<input
+						placeholder="Search by tx hash, agent..."
+						type="text"
+						value={internalQuery}
+						className={`w-full rounded-lg px-3 py-2 text-xs outline-none ${
+							isDark
+								? "bg-neutral-950 text-white placeholder:text-neutral-600"
+								: "bg-neutral-50 text-black placeholder:text-neutral-400"
+						}`}
+						onChange={(event): void => {
+							setInternalQuery(event.target.value);
+						}}
+					/>
+				</div>
+			)}
 
 			<div className="flex items-center gap-2">
 				{filterOptions.map((filter) => (
