@@ -1,10 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
+ * Port for the e2e web server. Defaults to 3100 (not 3000) so the suite does
+ * not collide with a separately running `pnpm dev` server.
  */
-// require('dotenv').config();
+const PORT = process.env.PLAYWRIGHT_PORT ?? "3100";
+const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -23,55 +24,27 @@ export default defineConfig({
 	reporter: "html",
 	/* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
 	use: {
-		/* Base URL to use in actions like `await page.goto('/')`. */
-		// baseURL: 'http://127.0.0.1:3000',
+		/* Base URL so tests can use page.goto("/reputation"). */
+		baseURL: BASE_URL,
 
 		/* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
 		trace: "on-first-retry",
 	},
 
-	/* Configure projects for major browsers */
+	/* CI installs only the Chromium browser (see .github/workflows/e2e.yml), so
+	   run a single Chromium project to keep the suite green there. */
 	projects: [
 		{
 			name: "chromium",
 			use: { ...devices["Desktop Chrome"] },
 		},
-
-		{
-			name: "firefox",
-			use: { ...devices["Desktop Firefox"] },
-		},
-
-		{
-			name: "webkit",
-			use: { ...devices["Desktop Safari"] },
-		},
-
-		/* Test against mobile viewports. */
-		// {
-		//   name: 'Mobile Chrome',
-		//   use: { ...devices['Pixel 5'] },
-		// },
-		// {
-		//   name: 'Mobile Safari',
-		//   use: { ...devices['iPhone 12'] },
-		// },
-
-		/* Test against branded browsers. */
-		// {
-		//   name: 'Microsoft Edge',
-		//   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-		// },
-		// {
-		//   name: 'Google Chrome',
-		//   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-		// },
 	],
 
-	/* Run your local dev server before starting the tests */
-	// webServer: {
-	//   command: 'npm run start',
-	//   url: 'http://127.0.0.1:3000',
-	//   reuseExistingServer: !process.env.CI,
-	// },
+	/* Build output is produced by `pnpm build`; serve it for the tests. */
+	webServer: {
+		command: `pnpm exec next start -p ${PORT}`,
+		url: BASE_URL,
+		reuseExistingServer: !process.env.CI,
+		timeout: 120_000,
+	},
 });

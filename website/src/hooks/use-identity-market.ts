@@ -124,7 +124,10 @@ async function signIdentityPaymentChallenge(
 			challengePayment.expiresAt ??
 			new Date(Date.now() + 5 * 60 * 1000).toISOString(),
 		from: challengePayment.from || fallbackFrom,
-		metadata: { ...challengePayment.metadata, ...signerPaymentMetadata(signer) },
+		metadata: {
+			...challengePayment.metadata,
+			...signerPaymentMetadata(signer),
+		},
 		nonce: challengePayment.nonce || generateNonce(noncePrefix),
 	});
 
@@ -242,7 +245,10 @@ export function useBuyIdentityListing(): UseMutationResult<
 						challengePayment.expiresAt ??
 						new Date(Date.now() + 5 * 60 * 1000).toISOString(),
 					from: challengePayment.from || buyer,
-					metadata: { ...challengePayment.metadata, ...signerPaymentMetadata(signer) },
+					metadata: {
+						...challengePayment.metadata,
+						...signerPaymentMetadata(signer),
+					},
 					nonce: challengePayment.nonce || generateNonce("identity"),
 				});
 
@@ -497,7 +503,10 @@ export function useCreateIdentityOffer(): UseMutationResult<
 						challengePayment.expiresAt ??
 						new Date(Date.now() + 5 * 60 * 1000).toISOString(),
 					from: challengePayment.from || offer.buyer,
-					metadata: { ...challengePayment.metadata, ...signerPaymentMetadata(signer) },
+					metadata: {
+						...challengePayment.metadata,
+						...signerPaymentMetadata(signer),
+					},
 					nonce: challengePayment.nonce || generateNonce("identity-offer"),
 				});
 

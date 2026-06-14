@@ -1,4 +1,4 @@
-import { type Signer } from "@tinyhumansai/tinyplace";
+import type { Signer } from "@tinyhumansai/tinyplace";
 
 /**
  * Signers that can contribute x402 payment metadata (the public key the backend
@@ -10,7 +10,9 @@ type X402MetadataSigner = {
 	x402PaymentMetadata(): Record<string, string>;
 };
 
-function hasX402Metadata(signer: Signer): signer is Signer & X402MetadataSigner {
+function hasX402Metadata(
+	signer: Signer
+): signer is Signer & X402MetadataSigner {
 	return (
 		typeof (signer as Partial<X402MetadataSigner>).x402PaymentMetadata ===
 		"function"
