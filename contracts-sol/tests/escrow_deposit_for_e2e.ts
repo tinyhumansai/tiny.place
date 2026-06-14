@@ -44,7 +44,7 @@ describe("escrow deposit_for e2e (delegate deposits payer funds, gasless)", () =
 			jobProgram.programId,
 			mint,
 			feeAccount,
-			"e2e-deposit-for",
+			`e2e-deposit-for-${Date.now()}`,
 		);
 
 		const owner = Keypair.generate(); // payer's wallet
@@ -104,7 +104,7 @@ describe("escrow deposit_for e2e (delegate deposits payer funds, gasless)", () =
 			jobProgram.programId,
 			mint,
 			feeAccount,
-			"e2e-deposit-for-cap",
+			`e2e-deposit-for-cap-${Date.now()}`,
 		);
 		const owner = Keypair.generate();
 		const session = Keypair.generate();
