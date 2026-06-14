@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 
-import type {
-	Identity,
-	IdentityListing,
-	MarketplacePrice,
+import {
+	compareAmount,
+	minimumIdentityBid,
+	type Identity,
+	type IdentityListing,
+	type MarketplacePrice,
 } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
@@ -101,6 +103,13 @@ export function IdentityListingCard({
 	);
 	const expired = isExpired(listing.expiresAt);
 	const highest = listing.highestBid?.price;
+	// Minimum acceptable next bid (base units), matching the backend's rule, so
+	// we can label the field and block sub-minimum submissions client-side.
+	const minBid = isAuction ? minimumIdentityBid(listing) : "0";
+	// Amounts are integer base units; reject blanks/decimals before BigInt math.
+	const bidBelowMinimum =
+		!/^\d+$/.test(bidAmount.trim()) ||
+		compareAmount(bidAmount.trim(), minBid) < 0;
 
 	function togglePanel(next: Panel): void {
 		setPanel((current) => (current === next ? "none" : next));
@@ -108,7 +117,7 @@ export function IdentityListingCard({
 
 	function handleBid(event: React.FormEvent): void {
 		event.preventDefault();
-		if (!buyerIdentity) {
+		if (!buyerIdentity || bidBelowMinimum) {
 			return;
 		}
 		placeBid.mutate(
@@ -268,15 +277,19 @@ export function IdentityListingCard({
 					<input
 						required
 						className={inputClass}
-						min="0"
-						placeholder={`Bid more than ${highest ? formatPrice(highest) : formatPrice(listing.price)}`}
-						step="0.01"
+						min={minBid}
+						placeholder={`At least ${minBid} ${listing.price.asset}`}
+						step="1"
 						type="number"
 						value={bidAmount}
 						onChange={(event): void => {
 							setBidAmount(event.target.value);
 						}}
 					/>
+					<p className={`text-xs ${secondaryClass}`}>
+						Minimum bid: {minBid} {listing.price.asset}
+						{highest ? " (5% above the current bid)" : ""}
+					</p>
 					{placeBid.isError && (
 						<p className="text-xs text-rose-500">
 							{placeBid.error instanceof Error
@@ -286,7 +299,7 @@ export function IdentityListingCard({
 					)}
 					<button
 						className={`${accentButtonClass(isDark, "orange")} w-full px-3 py-1.5`}
-						disabled={placeBid.isPending || !bidAmount}
+						disabled={placeBid.isPending || bidBelowMinimum}
 						type="submit"
 					>
 						{placeBid.isPending ? "Bidding…" : "Place bid"}

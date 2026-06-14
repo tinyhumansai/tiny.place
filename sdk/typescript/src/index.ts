@@ -119,6 +119,11 @@ export { ConversationsApi } from "./api/conversations.js";
 export { BroadcastsApi } from "./api/broadcasts.js";
 export { EventsApi } from "./api/events.js";
 export { MarketplaceApi } from "./api/marketplace.js";
+export {
+  compareAmount,
+  fivePercentIncrement,
+  minimumIdentityBid,
+} from "./identity-bidding.js";
 export type {
   IdentityBidPaymentOptions,
   IdentityBidPaymentResult,

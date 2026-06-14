@@ -1,5 +1,10 @@
 import { Keypair } from "@solana/web3.js";
-import { publicKeyToBase64 } from "@tinyhumansai/tinyplace";
+import {
+	fivePercentIncrement,
+	minimumIdentityBid,
+	publicKeyToBase64,
+	type IdentityListing,
+} from "@tinyhumansai/tinyplace";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -78,5 +83,63 @@ describe("identity management helpers", () => {
 	it("throws on an invalid Solana address so the UI can show an error", () => {
 		expect(() => deriveRecipient("not-a-valid-address")).toThrow();
 		expect(() => deriveRecipient("")).toThrow();
+	});
+});
+
+describe("identity auction minimum bid", () => {
+	const network = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
+	const price = (
+		amount: string
+	): { amount: string; asset: string; network: string } => ({
+		amount,
+		asset: "USDC",
+		network,
+	});
+	const listing = (over: Partial<IdentityListing>): IdentityListing => ({
+		listingId: "L",
+		type: "identity",
+		name: "@x",
+		seller: "@x",
+		sellerCryptoId: "x",
+		category: "identity",
+		price: price("100000"),
+		listingType: "auction",
+		status: "active",
+		createdAt: "",
+		updatedAt: "",
+		...over,
+	});
+
+	it("rounds the 5% increment up (matches the backend)", () => {
+		expect(fivePercentIncrement("100000")).toBe("105000");
+		expect(fivePercentIncrement("150000")).toBe("157500");
+		expect(fivePercentIncrement("1")).toBe("2"); // ceil(1.05)
+	});
+
+	it("uses the start price when there are no bids", () => {
+		expect(minimumIdentityBid(listing({}))).toBe("100000");
+	});
+
+	it("uses the reserve when it is higher than the start price", () => {
+		expect(minimumIdentityBid(listing({ reservePrice: price("250000") }))).toBe(
+			"250000"
+		);
+	});
+
+	it("requires 5% over the standing high bid", () => {
+		expect(
+			minimumIdentityBid(
+				listing({
+					highestBid: {
+						bidId: "b",
+						listingId: "L",
+						bidder: "@b",
+						price: price("200000"),
+						status: "pending",
+						createdAt: "",
+					},
+				})
+			)
+		).toBe("210000");
 	});
 });
