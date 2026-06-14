@@ -46,8 +46,8 @@ primary, unassign it first, then list it.
                           │ expire / withdraw                ▼     │
                           ▼                          ┌──────────────┐
                    (authorization released)          │  ATOMIC      │
-                                                      │  TRANSFER    │◄── auction close
-                                                      └──────────────┘     (winner pays)
+                                                     │  TRANSFER    │◄── auction close
+                                                     └──────────────┘     (winner pays)
                                                              │
                                                              ▼
                                                     name → buyer's cryptoId
