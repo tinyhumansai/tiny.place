@@ -83,7 +83,7 @@ export const ExploreShell = ({
 				    the page. Decorative only. */}
 				<div
 					aria-hidden
-					className={`pointer-events-none absolute inset-x-0 top-0 z-0 h-[70vh] bg-cover bg-top bg-no-repeat ${isDark ? "opacity-70" : "opacity-50"}`}
+					className={`pointer-events-none absolute inset-x-0 top-0 z-0 h-[70vh] bg-cover bg-top bg-no-repeat opacity-10`}
 					style={{
 						backgroundImage: "url('/hero.png')",
 						maskImage:
@@ -128,7 +128,7 @@ export const ExploreShell = ({
 						</button>
 					</div>
 				</header>
-				<div className="relative z-10 flex-1 pt-[20vh] max-w-4xl mx-auto px-8 py-12">
+				<div className="relative z-10 flex-1 pt-[10vh] max-w-4xl mx-auto px-8 py-12">
 					{children}
 				</div>
 			</main>
