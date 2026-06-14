@@ -37,6 +37,7 @@ enum Auth {
 }
 
 /// Configuration for [`HttpClient`].
+#[derive(Default)]
 pub struct HttpClientOptions {
     pub base_url: String,
     pub signer: Option<Arc<dyn Signer>>,

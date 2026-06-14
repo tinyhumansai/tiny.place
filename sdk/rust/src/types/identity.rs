@@ -67,7 +67,7 @@ pub struct RenewalRequest {
 }
 
 /// Request body for claiming a name.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentityClaimRequest {
     pub crypto_id: String,
@@ -81,7 +81,7 @@ pub struct IdentityClaimRequest {
 /// Request body for a direct, no-payment transfer of a `@handle` to another
 /// wallet. `crypto_id`/`public_key` identify the recipient; `signature` is the
 /// CURRENT owner's authorization over the `identity.transfer` payload.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentityTransferRequest {
     pub crypto_id: String,
@@ -91,7 +91,7 @@ pub struct IdentityTransferRequest {
 }
 
 /// Request body for creating a subname.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubnameCreateRequest {
     pub subname: String,
