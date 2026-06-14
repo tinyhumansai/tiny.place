@@ -1,15 +1,9 @@
 "use client";
 
-import { useState } from "react";
-
-import type {
-	IdentityListing,
-	MarketplacePrice,
-} from "@tinyhumansai/tinyplace";
+import type { MarketplacePrice } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
 import {
-	useBuyIdentityListing,
 	useIdentityFloor,
 	useIdentityListings,
 	useIdentityRecentSales,
@@ -20,33 +14,8 @@ import {
 } from "@src/hooks/use-marketplace";
 import { useAuthStore } from "@src/store/auth";
 
+import { IdentityListingCard } from "./IdentityListingCard";
 import { IdentityManager } from "./IdentityManager";
-
-const avatarColors = [
-	"bg-indigo-600",
-	"bg-teal-600",
-	"bg-orange-600",
-	"bg-rose-600",
-	"bg-emerald-600",
-	"bg-blue-600",
-	"bg-purple-600",
-];
-
-function strip(name: string): string {
-	return name.replace(/^@+/, "");
-}
-
-function initialsFor(name: string): string {
-	return strip(name).slice(0, 2).toUpperCase();
-}
-
-function colorFor(name: string): string {
-	let hash = 0;
-	for (const char of strip(name)) {
-		hash = (hash + char.charCodeAt(0)) % avatarColors.length;
-	}
-	return avatarColors[hash] ?? "bg-indigo-600";
-}
 
 function formatPrice(price: MarketplacePrice): string {
 	return `${price.amount} ${price.asset}`;
@@ -103,14 +72,12 @@ type IdentityTradingProperties = {
 export const IdentityTrading = ({
 	isDark,
 }: IdentityTradingProperties): FunctionComponent => {
-	const [selectedListing, setSelectedListing] = useState<string | null>(null);
 	const agentId = useAuthStore((state) => state.agentId);
 
 	const listingsQuery = useIdentityListings();
 	const salesQuery = useIdentityRecentSales();
 	const ownedIdentities = useOwnedIdentities(agentId);
 	const buyerIdentity = firstActiveIdentity(ownedIdentities.data?.identities);
-	const buyListing = useBuyIdentityListing();
 	const listings = listingsQuery.data?.listings ?? [];
 	const sales = salesQuery.data?.recent ?? [];
 
@@ -121,15 +88,6 @@ export const IdentityTrading = ({
 	const secondaryClass = isDark ? "text-neutral-500" : "text-neutral-400";
 	const headerClass = isDark ? "text-neutral-500" : "text-neutral-400";
 	const rowEvenClass = isDark ? "bg-neutral-900/50" : "bg-neutral-100/50";
-
-	function canBuyListing(listing: IdentityListing): boolean {
-		return Boolean(
-			agentId &&
-			buyerIdentity &&
-			listing.status === "active" &&
-			listing.seller !== buyerIdentity.username
-		);
-	}
 
 	// Owner-controllable names: active or in the grace/expiring window (an
 	// auctioned/released name is no longer the owner's to manage).
@@ -182,90 +140,15 @@ export const IdentityTrading = ({
 					)}
 				<div className="grid grid-cols-2 gap-2">
 					{listings.map((listing) => (
-						<div
+						<IdentityListingCard
 							key={listing.listingId}
-							className={`rounded-lg border p-3 transition-colors ${cardClass} ${
-								selectedListing === listing.listingId ? "border-blue-500" : ""
-							}`}
-						>
-							<div className="flex items-center gap-2">
-								<div
-									className={`${colorFor(listing.name)} flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium text-white`}
-								>
-									{initialsFor(listing.name)}
-								</div>
-								<span className={`text-sm font-medium ${headingClass}`}>
-									{listing.name}
-								</span>
-							</div>
-							<div className="mt-2 flex items-center justify-between">
-								<div>
-									<div className={`text-xs font-semibold ${headingClass}`}>
-										{formatPrice(listing.price)}
-									</div>
-									<div className={`text-xs ${secondaryClass}`}>
-										by {listing.seller}
-									</div>
-								</div>
-								<div className="flex gap-1">
-									<button
-										type="button"
-										className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-											selectedListing === listing.listingId
-												? "bg-blue-600 text-white"
-												: isDark
-													? "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
-													: "bg-neutral-200 text-neutral-600 hover:bg-neutral-300"
-										}`}
-										onClick={(): void => {
-											setSelectedListing(
-												selectedListing === listing.listingId
-													? null
-													: listing.listingId
-											);
-										}}
-									>
-										Details
-									</button>
-									<button
-										className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-neutral-700 disabled:opacity-50"
-										disabled={!canBuyListing(listing) || buyListing.isPending}
-										type="button"
-										onClick={(): void => {
-											if (!agentId || !buyerIdentity) {
-												return;
-											}
-											buyListing.mutate({
-												buyer: buyerIdentity.username,
-												buyerCryptoId: agentId,
-												listingId: listing.listingId,
-											});
-										}}
-									>
-										{buyListing.isPending ? "Buying..." : "Buy"}
-									</button>
-								</div>
-							</div>
-							{selectedListing === listing.listingId && (
-								<p className={`mt-2 text-xs ${secondaryClass}`}>
-									{listing.description || "Fixed-price identity listing"}
-								</p>
-							)}
-						</div>
+							agentId={agentId}
+							buyerIdentity={buyerIdentity}
+							isDark={isDark}
+							listing={listing}
+						/>
 					))}
 				</div>
-				{buyListing.isError && (
-					<p className="mt-2 text-xs text-rose-500">
-						{buyListing.error instanceof Error
-							? buyListing.error.message
-							: "Failed to buy identity"}
-					</p>
-				)}
-				{buyListing.isSuccess && (
-					<p className="mt-2 text-xs text-emerald-500">
-						Identity purchase recorded.
-					</p>
-				)}
 			</div>
 
 			<div>

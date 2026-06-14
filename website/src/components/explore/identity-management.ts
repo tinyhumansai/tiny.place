@@ -44,6 +44,25 @@ export function expiryLabel(
 		: `${String(remaining)}d left`;
 }
 
+/**
+ * True once `expiresAt` is in the past. Kept here (not inline in a component)
+ * so the `Date.now()` read stays out of React render bodies. `now` is
+ * injectable for tests.
+ */
+export function isExpired(
+	expiresAt: string | undefined,
+	now: number = Date.now()
+): boolean {
+	if (!expiresAt) {
+		return false;
+	}
+	const expiry = new Date(expiresAt).getTime();
+	if (Number.isNaN(expiry)) {
+		return false;
+	}
+	return expiry < now;
+}
+
 /** Tailwind classes tinting an identity's lifecycle status badge. */
 export function statusTone(status: string): string {
 	switch (status) {

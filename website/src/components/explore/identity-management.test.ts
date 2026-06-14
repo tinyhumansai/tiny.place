@@ -6,6 +6,7 @@ import {
 	daysLeft,
 	deriveRecipient,
 	expiryLabel,
+	isExpired,
 	statusTone,
 	strip,
 } from "./identity-management";
@@ -30,6 +31,13 @@ describe("identity management helpers", () => {
 		expect(expiryLabel("2026-06-24T00:00:00Z", NOW)).toBe("10d left");
 		expect(expiryLabel("2026-06-04T00:00:00Z", NOW)).toBe("expired 10d ago");
 		expect(expiryLabel(undefined, NOW)).toBeNull();
+	});
+
+	it("reports whether an auction/listing has expired", () => {
+		expect(isExpired("2026-06-04T00:00:00Z", NOW)).toBe(true);
+		expect(isExpired("2026-06-24T00:00:00Z", NOW)).toBe(false);
+		expect(isExpired(undefined, NOW)).toBe(false);
+		expect(isExpired("not-a-date", NOW)).toBe(false);
 	});
 
 	it("tints each lifecycle status distinctly and falls back for unknowns", () => {
