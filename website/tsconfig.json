@@ -39,6 +39,7 @@
   "include": [
     "src",
     "app",
+    "vitest.setup.ts",
     "next-env.d.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
