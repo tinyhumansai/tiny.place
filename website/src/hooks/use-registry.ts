@@ -167,6 +167,55 @@ export function useSetPrimaryIdentity(): UseMutationResult<
 	});
 }
 
+/**
+ * Directly transfers a name the connected wallet owns to another wallet, with
+ * no payment (a gift or account move). The current owner's signing key
+ * authorizes the move; the recipient is identified by their cryptoId + the
+ * publicKey it derives from. Invalidates the old owner's reverse lookup, the
+ * name's availability, and the directory listing so the UI reflects the new
+ * owner.
+ */
+export function useTransferIdentity(): UseMutationResult<
+	Identity,
+	Error,
+	{ cryptoId: string; name: string; publicKey: string }
+> {
+	const client = useApiClient();
+	const agentId = useAuthStore((state) => state.agentId);
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({ cryptoId, name, publicKey }): Promise<Identity> => {
+			const normalized = name.trim().replace(/^@+/, "");
+			if (!normalized) {
+				throw new Error("Identity name is required");
+			}
+			if (!cryptoId || !publicKey) {
+				throw new Error("Recipient wallet is required");
+			}
+			return client.registry.transfer(`@${normalized}`, {
+				cryptoId,
+				publicKey,
+			});
+		},
+		onSuccess: (identity): void => {
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.registry.availability(
+					identity.username.trim().replace(/^@+/, "")
+				),
+			});
+			if (agentId) {
+				void queryClient.invalidateQueries({
+					queryKey: queryKeys.directory.reverse(agentId),
+				});
+			}
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.directory.identities(),
+			});
+		},
+	});
+}
+
 export function useClaimIdentity(): UseMutationResult<
 	Identity,
 	Error,

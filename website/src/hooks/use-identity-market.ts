@@ -184,6 +184,31 @@ export function useCreateIdentityListing(): UseMutationResult<
 	});
 }
 
+/**
+ * Cancels an active identity listing. Only the listing's seller may cancel it
+ * (the backend enforces the signed seller authorization through the SDK client).
+ */
+export function useDeleteIdentityListing(): UseMutationResult<
+	void,
+	Error,
+	string
+> {
+	const client = useApiClient();
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (listingId): Promise<void> =>
+			client.marketplace.deleteIdentityListing(listingId),
+		onSuccess: (): void => {
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.marketplace.identityListings(),
+			});
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.directory.identities(),
+			});
+		},
+	});
+}
+
 export function useBuyIdentityListing(): UseMutationResult<
 	IdentitySale,
 	Error,
