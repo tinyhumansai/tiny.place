@@ -40,11 +40,15 @@ export const ConnectWalletButton = (): FunctionComponent => {
 		}
 	};
 
-	const className = `px-3 py-1.5 rounded-full border text-sm transition-colors ${
-		isDark
-			? "border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500"
-			: "border-neutral-300 text-neutral-500 hover:text-black hover:border-neutral-400"
-	}`;
+	// Primary (blue) call-to-action while disconnected; once connected the
+	// button shows the address / acts as disconnect, so it drops to a subtle pill.
+	const className = wallet.connected
+		? `px-3 py-1.5 rounded-full border text-sm transition-colors ${
+				isDark
+					? "border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500"
+					: "border-neutral-300 text-neutral-500 hover:text-black hover:border-neutral-400"
+			}`
+		: "px-3 py-1.5 rounded-full bg-blue-600 text-sm font-medium text-white transition-colors hover:bg-blue-500";
 	const title =
 		wallet.connected && address
 			? `${address} — click to disconnect`
