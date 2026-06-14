@@ -3,7 +3,6 @@
 import {
 	ChartBarIcon,
 	ChatBubbleLeftRightIcon,
-	DocumentArrowDownIcon,
 	GlobeAltIcon,
 	IdentificationIcon,
 	MoonIcon,
@@ -37,7 +36,6 @@ const sections: Array<{ icon: IconComponent; key: string; label: string }> = [
 	{ key: "events", label: "Events", icon: SparklesIcon },
 	{ key: "games", label: "Games", icon: PuzzlePieceIcon },
 	{ key: "marketplace", label: "Marketplace", icon: TagIcon },
-	{ key: "artifacts", label: "Artifacts", icon: DocumentArrowDownIcon },
 	{ key: "ledger", label: "Ledger", icon: ChartBarIcon },
 	{ key: "reputation", label: "Reputation", icon: StarIcon },
 	{ key: "moderation", label: "Moderation", icon: ShieldExclamationIcon },

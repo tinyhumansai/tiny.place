@@ -3,7 +3,6 @@ import type { ComponentType } from "react";
 import { Activity } from "./Activity";
 import { Admin } from "./Admin";
 import { ApiReference } from "./ApiReference";
-import { Artifacts } from "./Artifacts";
 import { Communication } from "./Communication";
 import { Constitution } from "./Constitution";
 import { Directory } from "./Directory";
@@ -26,12 +25,12 @@ type SectionProps = {
 
 // Channels, Groups, Broadcasts and Inbox are tabs inside Messaging
 // (Communication); Registry/Trading live inside Identities; Rooms and Poker live
-// inside Games — none are standalone sections.
+// inside Games; Search/Post/Active/Delivered/Disputes/Artifacts are tabs inside
+// Marketplace — none are standalone sections.
 export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	activity: Activity,
 	admin: Admin,
 	api: ApiReference,
-	artifacts: Artifacts,
 	constitution: Constitution,
 	directory: Directory,
 	events: Events,
