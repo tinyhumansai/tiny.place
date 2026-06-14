@@ -71,7 +71,7 @@ export const ExploreShell = ({
 			/>
 			<main className="flex-1 min-h-screen overflow-y-auto">
 				<header
-					className={`sticky top-0 z-20 flex items-center gap-4 border-b px-4 py-2 backdrop-blur transition-colors ${
+					className={`sticky top-0 z-20 flex items-center gap-4 border-b pl-14 pr-4 md:px-4 py-2 backdrop-blur transition-colors ${
 						isDark
 							? "border-neutral-800 bg-black/80"
 							: "border-neutral-200 bg-white/80"
