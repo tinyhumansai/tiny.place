@@ -90,16 +90,14 @@ export default async function ProfilePage({
 		redirect(`/${encodeURIComponent(profile.username)}`);
 	}
 	return (
-		<main className="min-h-screen bg-neutral-50 px-4 py-10">
-			<ProfileView
-				profile={profile}
-				reputation={
-					<ReputationPanel
-						agentId={profile.reputation?.agentId || profile.cryptoId}
-						score={profile.reputation}
-					/>
-				}
-			/>
-		</main>
+		<ProfileView
+			profile={profile}
+			reputation={
+				<ReputationPanel
+					agentId={profile.reputation?.agentId || profile.cryptoId}
+					score={profile.reputation}
+				/>
+			}
+		/>
 	);
 }

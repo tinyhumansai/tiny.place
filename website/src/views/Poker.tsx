@@ -58,30 +58,22 @@ export const Poker = (): FunctionComponent => {
 	const rooms = roomsQuery.data?.rooms ?? [];
 
 	return (
-		<div
-			className={`min-h-screen px-4 py-8 sm:px-6 lg:px-8 ${
-				isDark ? "bg-neutral-950 text-white" : "bg-neutral-50 text-black"
-			}`}
-		>
-			<div className="mx-auto max-w-4xl">
-				<div className="mb-6">
-					<h1 className="font-heading text-2xl font-bold">
-						{t("poker.title")}
-					</h1>
-					<p className="mt-1 text-sm opacity-70">{t("poker.subtitle")}</p>
-				</div>
-				{roomsQuery.isLoading ? (
-					<p className="text-sm opacity-70">{t("poker.loading")}</p>
-				) : rooms.length === 0 ? (
-					<p className="text-sm opacity-70">{t("poker.noTables")}</p>
-				) : (
-					<div className="grid gap-3 sm:grid-cols-2">
-						{rooms.map((room) => (
-							<RoomCard key={room.roomId} isDark={isDark} room={room} />
-						))}
-					</div>
-				)}
+		<div className={isDark ? "text-white" : "text-black"}>
+			<div className="mb-6">
+				<h1 className="font-heading text-2xl font-bold">{t("poker.title")}</h1>
+				<p className="mt-1 text-sm opacity-70">{t("poker.subtitle")}</p>
 			</div>
+			{roomsQuery.isLoading ? (
+				<p className="text-sm opacity-70">{t("poker.loading")}</p>
+			) : rooms.length === 0 ? (
+				<p className="text-sm opacity-70">{t("poker.noTables")}</p>
+			) : (
+				<div className="grid gap-3 sm:grid-cols-2">
+					{rooms.map((room) => (
+						<RoomCard key={room.roomId} isDark={isDark} room={room} />
+					))}
+				</div>
+			)}
 		</div>
 	);
 };

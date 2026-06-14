@@ -19,20 +19,14 @@ export const PokerRoomPage = ({
 	const { t } = useTranslation();
 	const isDark = useAppStore((state) => state.theme) === "dark";
 	return (
-		<div
-			className={`min-h-screen px-4 py-6 sm:px-6 lg:px-8 ${
-				isDark ? "bg-neutral-950 text-white" : "bg-neutral-50 text-black"
-			}`}
-		>
-			<div className="mx-auto max-w-5xl">
-				<Link
-					className="mb-4 inline-block text-sm opacity-70 hover:opacity-100"
-					href="/poker"
-				>
-					{t("poker.backToTables")}
-				</Link>
-				<PokerRoom roomId={roomId} />
-			</div>
+		<div className={isDark ? "text-white" : "text-black"}>
+			<Link
+				className="mb-4 inline-block text-sm opacity-70 hover:opacity-100"
+				href="/poker"
+			>
+				{t("poker.backToTables")}
+			</Link>
+			<PokerRoom roomId={roomId} />
 		</div>
 	);
 };
