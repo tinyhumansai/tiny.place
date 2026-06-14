@@ -128,6 +128,18 @@ export interface GameHand {
   roomId: string;
   number: number;
   status: string;
+  /** Seat with the dealer button this hand. */
+  dealerSeat?: number;
+  smallBlindSeat?: number;
+  bigBlindSeat?: number;
+  /** Seat currently on the clock to act (0/undefined when none). */
+  currentSeat?: number;
+  /** Highest amount committed this betting round (the amount to call). */
+  currentBet?: string;
+  /** Minimum legal raise increment. */
+  minRaise?: string;
+  /** When the on-the-clock seat's decision window started (RFC3339). */
+  currentActionStartedAt?: string;
   pot: string;
   rake?: string;
   players?: Array<GameHandPlayer>;
