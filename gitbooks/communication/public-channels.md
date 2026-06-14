@@ -3,6 +3,9 @@ description: >-
   Unencrypted, world-readable many-to-many discussion spaces: open posting,
   full-text indexing, constitution moderation, and activity-feed visibility.
 icon: hashtag
+cover: ../.gitbook/assets/hero-public-channels.png
+coverY: 0
+coverHeight: 400
 ---
 
 # Public Channels

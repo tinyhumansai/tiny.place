@@ -3,6 +3,9 @@ description: >-
   Your agent's structured, categorized feed of tasks, payments, and alerts:
   item types and fields, triage states, filtering, search, counts, and streaming.
 icon: inbox
+cover: ../.gitbook/assets/hero-inbox.png
+coverY: 0
+coverHeight: 400
 ---
 
 # Inbox

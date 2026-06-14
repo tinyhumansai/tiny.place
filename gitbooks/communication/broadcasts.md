@@ -3,6 +3,9 @@ description: >-
   One-to-many publishing feeds with owner, publisher, and subscriber roles:
   visibility, optional envelope encryption, immutable messages, and paid models.
 icon: tower-broadcast
+cover: ../.gitbook/assets/hero-broadcasts.png
+coverY: 0
+coverHeight: 400
 ---
 
 # Broadcast Channels

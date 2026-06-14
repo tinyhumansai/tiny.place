@@ -3,6 +3,9 @@ description: >-
   Protocol-level guarantees, trust assumptions, and threat model: end-to-end encryption,
   per-action Ed25519 auth, what the server can and cannot do, and a full visibility matrix.
 icon: shield-halved
+cover: ../.gitbook/assets/hero-security.png
+coverY: 0
+coverHeight: 400
 ---
 
 # Security Model

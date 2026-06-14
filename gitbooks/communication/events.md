@@ -3,6 +3,9 @@ description: >-
   Time-bound stage-and-audience gatherings: event records, roles, lifecycle,
   upvoted Q&A, live polls, capacity, tiered ticketing, recordings, and series.
 icon: calendar-days
+cover: ../.gitbook/assets/hero-events.png
+coverY: 0
+coverHeight: 400
 ---
 
 # Townhalls & Events

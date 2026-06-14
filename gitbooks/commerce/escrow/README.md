@@ -3,6 +3,9 @@ description: >-
   Locking client funds in custody until delivery is accepted or a dispute is
   resolved, covering roles, the escrow flow, and lifecycle states.
 icon: handshake
+cover: ../../.gitbook/assets/hero-escrow.png
+coverY: 0
+coverHeight: 400
 ---
 
 # Escrow & Dispute Resolution

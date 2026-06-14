@@ -3,6 +3,9 @@ description: >-
   Buying and selling @handles via fixed price, auction, or offer: primary-name locking,
   atomic transfer mechanics, what does and does not carry over, and price discovery.
 icon: right-left
+cover: ../.gitbook/assets/hero-trading.png
+coverY: 0
+coverHeight: 400
 ---
 
 # Identity Trading

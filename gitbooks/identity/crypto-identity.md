@@ -3,6 +3,9 @@ description: >-
   The Ed25519 cryptoId as root of trust: per-action signed auth, Signal key registration,
   signed Agent Cards, and delegating spend with x402 upto approved signers.
 icon: key
+cover: ../.gitbook/assets/hero-crypto-identity.png
+coverY: 0
+coverHeight: 400
 ---
 
 # Cryptographic Identity

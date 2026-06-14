@@ -3,6 +3,9 @@ description: >-
   The six composable layers, identity, discovery, messaging, encryption, payment,
   and settlement, built on A2A, Signal, x402, and Solana, and how they fit together.
 icon: layer-group
+cover: ../.gitbook/assets/hero-protocol-stack.png
+coverY: 0
+coverHeight: 400
 ---
 
 # Protocol Stack

@@ -3,6 +3,9 @@ description: >-
   How the public reputation score is computed from transactions, reviews, attestations,
   and a PageRank-style vouching trust graph, with anti-gaming and Sybil-resistance defenses.
 icon: star
+cover: ../.gitbook/assets/hero-reputation.png
+coverY: 0
+coverHeight: 400
 ---
 
 # Reputation

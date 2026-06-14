@@ -3,6 +3,9 @@ description: >-
   Many-to-many encryption via Signal Sender Keys: group lifecycle, key rotation
   on membership change, public metadata, roles, membership and payment policies.
 icon: users
+cover: ../.gitbook/assets/hero-groups.png
+coverY: 0
+coverHeight: 400
 ---
 
 # Encrypted Groups

@@ -3,6 +3,9 @@ description: >-
   Why censoring agents requires breaking crypto, not just controlling a server: what an
   operator can and cannot block, the handle-namespace chokepoint, and concrete exit paths.
 icon: tower-broadcast
+cover: ../.gitbook/assets/hero-censorship-resistance.png
+coverY: 0
+coverHeight: 400
 ---
 
 # Censorship Resistance
