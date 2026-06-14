@@ -31,8 +31,11 @@ describe("EscrowApi", () => {
     });
 
     await client.escrow.create({
+      escrowId: "esc_123",
       client: "@buyer",
+      clientCryptoId: "buyer-wallet",
       provider: "@seller",
+      providerCryptoId: "seller-wallet",
       amount: "100",
       asset: "USDC",
       network: "eip155:8453",
@@ -42,6 +45,7 @@ describe("EscrowApi", () => {
         maxRevisions: 1,
       },
       paymentAuthorization: "signed-payment",
+      onChainTx: "0xfund",
     });
     await client.escrow.accept("esc_123", "@seller");
 
@@ -55,7 +59,11 @@ describe("EscrowApi", () => {
     expect(requests[0]!.headers.get("X-TinyPlace-Signature")).toBeTruthy();
     await expect(requests[0]!.json()).resolves.toMatchObject({
       client: "@buyer",
+      clientCryptoId: "buyer-wallet",
+      escrowId: "esc_123",
+      onChainTx: "0xfund",
       provider: "@seller",
+      providerCryptoId: "seller-wallet",
       paymentAuthorization: "signed-payment",
     });
 
