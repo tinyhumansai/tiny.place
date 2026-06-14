@@ -9,6 +9,7 @@ import type {
 	GroupQueryParams,
 	IdentityListingQueryParams,
 	InboxQueryParams,
+	JobQueryParams,
 	LotteryRoundQueryParams,
 	ProductQueryParams,
 } from "@tinyhumansai/tinyplace";
@@ -67,6 +68,11 @@ export const queryKeys = {
 			["escrow", "list", parameters] as const,
 		detail: (escrowId: string) => ["escrow", "detail", escrowId] as const,
 		dispute: (escrowId: string) => ["escrow", "dispute", escrowId] as const,
+	},
+	jobs: {
+		list: (parameters?: JobQueryParams) => ["jobs", "list", parameters] as const,
+		detail: (jobId: string) => ["jobs", "detail", jobId] as const,
+		proposals: (jobId: string) => ["jobs", "proposals", jobId] as const,
 	},
 	marketplace: {
 		products: (parameters?: ProductQueryParams) =>

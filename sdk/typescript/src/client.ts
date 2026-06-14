@@ -13,6 +13,7 @@ import { ConversationsApi } from "./api/conversations.js";
 import { DirectoryApi } from "./api/directory.js";
 import { DocsApi } from "./api/docs.js";
 import { EscrowApi } from "./api/escrow.js";
+import { JobsApi } from "./api/jobs.js";
 import { EventsApi } from "./api/events.js";
 import { ActivityApi } from "./api/activity.js";
 import { ExplorerApi } from "./api/explorer.js";
@@ -78,6 +79,7 @@ export class TinyVerseClient {
   readonly events: EventsApi;
   readonly marketplace: MarketplaceApi;
   readonly escrow: EscrowApi;
+  readonly jobs: JobsApi;
   readonly search: SearchApi;
   readonly signers: SignersApi;
   readonly profiles: ProfilesApi;
@@ -150,6 +152,7 @@ export class TinyVerseClient {
       publicKeyBase64,
     );
     this.escrow = new EscrowApi(this.http, wsFactory);
+    this.jobs = new JobsApi(this.http);
     this.search = new SearchApi(this.http);
     this.signers = new SignersApi(this.http);
     this.profiles = new ProfilesApi(this.http);
