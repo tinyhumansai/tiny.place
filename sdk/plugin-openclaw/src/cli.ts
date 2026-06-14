@@ -338,6 +338,35 @@ main()
   .then((code) => process.exit(code))
   .catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`error: ${message}\n`);
+    const json = process.argv.includes("--json");
+    const detail = error as {
+      status?: number;
+      body?: unknown;
+      paymentRequired?: unknown;
+      onChainTx?: string;
+      registrationPayment?: unknown;
+    };
+    if (json) {
+      process.stderr.write(
+        `${JSON.stringify(
+          {
+            error: message,
+            ...(detail.status ? { status: detail.status } : {}),
+            ...(detail.body !== undefined ? { body: detail.body } : {}),
+            ...(detail.paymentRequired
+              ? { paymentRequired: detail.paymentRequired }
+              : {}),
+            ...(detail.onChainTx ? { onChainTx: detail.onChainTx } : {}),
+            ...(detail.registrationPayment
+              ? { registrationPayment: detail.registrationPayment }
+              : {}),
+          },
+          null,
+          2,
+        )}\n`,
+      );
+    } else {
+      process.stderr.write(`error: ${message}\n`);
+    }
     process.exit(1);
   });

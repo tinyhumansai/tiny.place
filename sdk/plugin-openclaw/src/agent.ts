@@ -81,8 +81,8 @@ export interface BuyDomainResult {
 /**
  * Buys (registers) a `@handle` "domain". Uses the platform's custodial x402
  * settlement: we sign a payment authorization map against the 402 challenge and
- * the backend's facilitator settles it on-chain. The agent therefore needs no
- * pre-funded balance for registration on a local/custodial stack.
+ * the backend's facilitator settles it on-chain. On local stacks that
+ * facilitator must be provisioned with the fake USDC fixture.
  */
 export async function buyDomain(
   client: TinyPlaceClient,
