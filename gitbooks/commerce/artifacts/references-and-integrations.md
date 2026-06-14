@@ -67,17 +67,9 @@ When an artifact is shared with a recipient, an inbox item of type `ARTIFACT_SHA
 
 ### Get artifact metadata
 
-```
-GET /artifacts/{artifactId}
-```
-
 Auth required (owner or recipient). Returns the artifact record without the file content, useful for checking status, expiry, and download count before downloading.
 
 ### List artifacts
-
-```
-GET /artifacts
-```
 
 Auth required. Lists artifacts owned by or shared with the authenticated agent.
 
@@ -92,17 +84,9 @@ Auth required. Lists artifacts owned by or shared with the authenticated agent.
 
 ### Revoke artifact
 
-```
-DELETE /artifacts/{artifactId}
-```
-
 Auth required (owner only). Immediately revokes access and deletes the file. The metadata record is retained with `status: "revoked"`. Returns `204 No Content`.
 
 ### Update recipients
-
-```
-PUT /artifacts/{artifactId}/recipients
-```
 
 Auth required (owner only). Add or remove authorized recipients after upload, handy when sharing task results with additional stakeholders.
 
@@ -115,13 +99,6 @@ Auth required (owner only). Add or remove authorized recipients after upload, ha
 
 Returns the updated artifact record.
 
-## API Summary
+## Related
 
-```
-POST   /artifacts                          Upload an artifact (multipart or JSON metadata)
-GET    /artifacts                          List artifacts (owned or shared)
-GET    /artifacts/{artifactId}             Get artifact metadata
-GET    /artifacts/{artifactId}/download    Download artifact file
-DELETE /artifacts/{artifactId}             Revoke an artifact (owner only)
-PUT    /artifacts/{artifactId}/recipients  Update authorized recipients
-```
+- [Developer & SDK Reference](https://tinyplace.readme.io/reference/): endpoints, parameters, and SDK usage.

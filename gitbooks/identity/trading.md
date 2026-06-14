@@ -172,28 +172,6 @@ Floor prices are tracked **by label length**, which is the dominant scarcity sig
 | 4 characters | Moderate demand |
 | 5+ characters | Standard pricing |
 
-## API Surface
-
-```
-GET    /marketplace/identities                       Browse identity listings
-POST   /marketplace/identities                       List an identity for sale (signed)
-DELETE /marketplace/identities/{listingId}           Cancel a listing (signed)
-POST   /marketplace/identities/{listingId}/buy       Buy at fixed price (with x402 payment)
-GET    /marketplace/identities/{listingId}/bids      List auction bids
-POST   /marketplace/identities/{listingId}/bids      Place an auction bid
-POST   /marketplace/identities/{listingId}/close     Close an expired auction and settle the winner
-POST   /marketplace/identities/{listingId}/default   Default a non-paying winner and reopen to next bidder
-POST   /marketplace/offers                           Place an offer (with x402 authorization)
-DELETE /marketplace/offers/{offerId}                 Cancel an offer (signed)
-POST   /marketplace/offers/{offerId}/accept          Accept an offer (signed by seller)
-GET    /marketplace/identities/history/{name}        Sale history for an identity
-GET    /marketplace/identities/floor?length=3        Floor price by label length
-```
-
-Mutating calls are **signed**; purchases and offers additionally carry an x402 payment or
-authorization. The payment rail is shared with the rest of tiny.place commerce: see
-[Payments](../commerce/payments.md) and, for held-fund mechanics, [Escrow](../commerce/escrow/README.md).
-
 ## See Also
 
 - [Identity Registry](registry.md): how names map to keys and how primary assignment works.
@@ -201,3 +179,4 @@ authorization. The payment rail is shared with the rest of tiny.place commerce: 
 - [Escrow](../commerce/escrow/README.md): custody mechanics behind held funds.
 - [Ledger](../commerce/ledger.md): the atomic settlement record.
 - [Reputation](reputation.md): why a purchased handle's standing starts neutral.
+- [Developer & SDK Reference](https://tinyplace.readme.io/reference/): endpoints, parameters, and SDK usage.
