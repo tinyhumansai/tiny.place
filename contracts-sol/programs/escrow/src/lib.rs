@@ -117,6 +117,65 @@ pub mod escrow {
         Ok(())
     }
 
+    /// Delegated deposit: move `payload.amount` from the payer's token account
+    /// into the vault, authorized by a session-wallet **delegate** rather than
+    /// the payer. The payer never signs — they `approve`d the delegate once, and
+    /// the SPL token program enforces that approval (delegate + delegated_amount)
+    /// on the transfer. The deposit is recorded against `payload.payer` (the
+    /// source token account's owner), and a server fee-payer pays the gas. This
+    /// is the escrow counterpart of an off-chain x402 session/delegate payment.
+    pub fn deposit_for(ctx: Context<DepositFor>, payload: PaymentPayload) -> Result<()> {
+        let clock = Clock::get()?;
+        require!(clock.unix_timestamp <= payload.expiry, EscrowError::Expired);
+        require!(
+            ctx.accounts.vault.state == VaultState::Open,
+            EscrowError::VaultClosed
+        );
+        // The deposit is credited to the source token account's owner; the
+        // payload must name that same owner so it cannot be misattributed.
+        require!(
+            payload.payer == ctx.accounts.payer_token.owner,
+            EscrowError::Unauthorized
+        );
+        require!(payload.amount > 0, EscrowError::InvalidAmount);
+
+        let tracker = &mut ctx.accounts.nonce_tracker;
+        require!(
+            math::nonce_ok(tracker.last_nonce, payload.nonce),
+            EscrowError::NonceUsed
+        );
+        tracker.last_nonce = payload.nonce;
+
+        // authority is the delegate; the token program rejects this unless the
+        // payer approved it on payer_token for at least payload.amount.
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.key(),
+                Transfer {
+                    from: ctx.accounts.payer_token.to_account_info(),
+                    to: ctx.accounts.vault_token.to_account_info(),
+                    authority: ctx.accounts.authority.to_account_info(),
+                },
+            ),
+            payload.amount,
+        )?;
+
+        let vault = &mut ctx.accounts.vault;
+        vault.deposited = vault
+            .deposited
+            .checked_add(payload.amount)
+            .ok_or(EscrowError::MathOverflow)?;
+
+        emit!(Deposited {
+            vault: vault.key(),
+            payer: payload.payer,
+            amount: payload.amount,
+            nonce: payload.nonce,
+            deposited: vault.deposited,
+        });
+        Ok(())
+    }
+
     /// Release `amount` to a recipient and `fee` to the vault's fee account.
     /// Authorized only by the settlement program's `vault_authority` PDA signer.
     /// The escrow signs the actual SPL transfer with its own vault PDA.
@@ -365,6 +424,38 @@ pub struct Deposit<'info> {
     pub payer: Signer<'info>,
     /// Source token account, owned by the payer.
     #[account(mut, constraint = payer_token.owner == payer.key() @ EscrowError::Unauthorized)]
+    pub payer_token: Account<'info, TokenAccount>,
+    /// Destination — must be the vault's pinned token account.
+    #[account(
+        mut,
+        constraint = vault_token.key() == vault.token_account @ EscrowError::InvalidVault,
+    )]
+    pub vault_token: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
+
+/// Accounts for [`escrow::deposit_for`]. Identical to [`Deposit`] except the
+/// signer is the session-wallet **delegate** (`authority`), not the payer — the
+/// payer never signs. The SPL token program enforces that `authority` is an
+/// approved delegate of `payer_token` for at least `payload.amount`.
+#[derive(Accounts)]
+#[instruction(payload: PaymentPayload)]
+pub struct DepositFor<'info> {
+    /// Vault being funded; its `deposited` total is incremented.
+    #[account(mut)]
+    pub vault: Account<'info, Vault>,
+    /// The payer's replay guard, keyed by `payload.payer` (NOT the delegate).
+    #[account(
+        mut,
+        seeds = [b"nonce", payload.payer.as_ref()],
+        bump = nonce_tracker.bump,
+    )]
+    pub nonce_tracker: Account<'info, NonceTracker>,
+    /// The session-wallet delegate authorizing the transfer. Signs the tx; the
+    /// token program checks it was `approve`d on `payer_token`.
+    pub authority: Signer<'info>,
+    /// Source token account, owned by `payload.payer` (the recorded depositor).
+    #[account(mut, constraint = payer_token.owner == payload.payer @ EscrowError::Unauthorized)]
     pub payer_token: Account<'info, TokenAccount>,
     /// Destination — must be the vault's pinned token account.
     #[account(
