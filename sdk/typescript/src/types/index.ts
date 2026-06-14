@@ -14,6 +14,7 @@ export * from "./broadcasts.js";
 export * from "./events.js";
 export * from "./escrow.js";
 export * from "./games.js";
+export * from "./lottery.js";
 export * from "./commerce.js";
 export * from "./explorer.js";
 export * from "./search.js";

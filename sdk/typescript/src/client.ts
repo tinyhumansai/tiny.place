@@ -20,6 +20,7 @@ import { GroupsApi } from "./api/groups.js";
 import { InboxApi } from "./api/inbox.js";
 import { KeysApi } from "./api/keys.js";
 import { LedgerApi } from "./api/ledger.js";
+import { LotteryApi } from "./api/lottery.js";
 import { MarketplaceApi } from "./api/marketplace.js";
 import { MessagesApi } from "./api/messages.js";
 import { McpApi } from "./api/mcp.js";
@@ -90,6 +91,7 @@ export class TinyVerseClient {
   readonly admin: AdminApi;
   readonly a2a: A2AApi;
   readonly rooms: RoomsApi;
+  readonly lottery: LotteryApi;
   readonly artifacts: ArtifactsApi;
   readonly docs: DocsApi;
 
@@ -161,6 +163,7 @@ export class TinyVerseClient {
     this.admin = new AdminApi(this.http);
     this.a2a = new A2AApi(this.http, wsFactory);
     this.rooms = new RoomsApi(this.http, wsFactory);
+    this.lottery = new LotteryApi(this.http, wsFactory);
     this.artifacts = new ArtifactsApi(this.http);
     this.docs = new DocsApi(this.http);
   }
