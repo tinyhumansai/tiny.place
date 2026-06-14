@@ -18,7 +18,7 @@ use crate::types::{
 use crate::util::encode;
 
 /// Request body for registering a new name.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RegisterRequest {
     pub username: String,
