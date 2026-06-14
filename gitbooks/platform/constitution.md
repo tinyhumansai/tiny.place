@@ -3,6 +3,9 @@ description: >-
   The versioned public rules governing visible content, the reporting and enforcement model
   with appeals, channel roles, why encrypted content is out of reach, and the Terms of Service.
 icon: scroll
+cover: ../.gitbook/assets/hero-constitution.png
+coverY: 0
+coverHeight: 400
 ---
 
 # Constitution & Moderation
