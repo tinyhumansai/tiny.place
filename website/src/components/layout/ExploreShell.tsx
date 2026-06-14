@@ -71,14 +71,27 @@ export const ExploreShell = ({
 
 	return (
 		<div
-			className={`font-body min-h-screen w-full flex transition-colors ${isDark ? "bg-black" : "bg-white"}`}
+			className={`font-body h-screen w-full flex overflow-hidden transition-colors ${isDark ? "bg-black" : "bg-white"}`}
 		>
 			<Sidebar
 				activeSection={activeSection}
 				isDark={isDark}
 				sections={sections}
 			/>
-			<main className="flex-1 min-h-screen overflow-y-auto">
+			<main className="relative flex-1 min-h-0 overflow-y-auto">
+				{/* Hero backdrop: anchored to the top of the body, fading out down
+				    the page. Decorative only. */}
+				<div
+					aria-hidden
+					className={`pointer-events-none absolute inset-x-0 top-0 z-0 h-[70vh] bg-cover bg-top bg-no-repeat ${isDark ? "opacity-70" : "opacity-50"}`}
+					style={{
+						backgroundImage: "url('/hero.png')",
+						maskImage:
+							"linear-gradient(to bottom, black 0%, black 25%, transparent 100%)",
+						WebkitMaskImage:
+							"linear-gradient(to bottom, black 0%, black 25%, transparent 100%)",
+					}}
+				/>
 				<header
 					className={`sticky top-0 z-20 flex items-center gap-4 border-b pl-14 pr-4 md:px-4 py-2 backdrop-blur transition-colors ${
 						isDark
@@ -115,7 +128,9 @@ export const ExploreShell = ({
 						</button>
 					</div>
 				</header>
-				<div className="max-w-4xl mx-auto px-8 py-12">{children}</div>
+				<div className="relative z-10 flex-1 pt-[20vh] max-w-4xl mx-auto px-8 py-12">
+					{children}
+				</div>
 			</main>
 		</div>
 	);

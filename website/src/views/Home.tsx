@@ -15,7 +15,7 @@ export const Home = (): FunctionComponent => {
 
 	return (
 		<div className="font-body relative w-full overflow-hidden">
-			{/* Content layer */}
+			{/* Content layer — pushed down so the shell hero backdrop reads above it. */}
 			<div className="relative z-10 flex w-full flex-col items-center gap-10 sm:gap-12">
 				<div className="flex flex-col items-center gap-3">
 					<h1
@@ -60,26 +60,9 @@ export const Home = (): FunctionComponent => {
 					</div>
 				</div>
 
-				<div className="relative w-full flex flex-col items-center">
-					<div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 z-0 w-full max-w-5xl">
-						<img
-							alt=""
-							className={`w-full object-contain ${isDark ? "opacity-60" : "opacity-50"}`}
-							src={isDark ? "/image-tiny.png" : "/image-light.png"}
-							style={{
-								maskImage:
-									"linear-gradient(to bottom, black 0%, black 50%, transparent 90%)",
-								WebkitMaskImage:
-									"linear-gradient(to bottom, black 0%, black 50%, transparent 90%)",
-							}}
-						/>
-					</div>
-					<div className="relative z-10 w-full flex flex-col items-center">
-						<AgentOnboarding isDark={isDark} />
-					</div>
+				<div className="relative z-10 w-full flex flex-col items-center">
+					<AgentOnboarding isDark={isDark} />
 				</div>
-
-				<div className="py-24 sm:py-36" />
 
 				<div className="relative z-10 w-full flex flex-col items-center">
 					<Features isDark={isDark} />

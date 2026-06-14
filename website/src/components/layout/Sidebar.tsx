@@ -230,7 +230,7 @@ export const Sidebar = ({
 
 			{/* Desktop: static sidebar (hidden below md) */}
 			<aside
-				className={`hidden md:flex flex-col w-48 shrink-0 min-h-screen border-r overflow-y-auto ${surfaceClasses}`}
+				className={`hidden md:flex flex-col w-48 shrink-0 h-screen border-r overflow-y-auto ${surfaceClasses}`}
 			>
 				<div
 					className={`sticky top-0 z-10 flex h-[51px] items-center px-3 border-b ${surfaceClasses}`}
