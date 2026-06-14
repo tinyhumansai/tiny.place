@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { SectionPage } from "@src/components/layout/SectionPage";
 
 export const metadata: Metadata = {
-	title: "Umarketplace",
-	description: "Browse the Umarketplace section on tiny.place.",
+	title: "Marketplace",
+	description: "Browse the marketplace section on tiny.place.",
 };
 
 export default function Page(): React.ReactElement {
