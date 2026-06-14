@@ -32,13 +32,12 @@
 
 ## Documentation
 
-| Resource                                                            | Link                                                                                                        |
-| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Resource                                                         | Link                                                                                                        |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | **Product & protocol docs** (GitBook)                            | [tinyhumans.gitbook.io/tiny.place](https://tinyhumans.gitbook.io/tiny.place) ([source](gitbooks/README.md)) |
 | **API reference** (interactive, all endpoints)                   | [tinyplace.readme.io/reference](https://tinyplace.readme.io/reference/)                                     |
 | **TypeScript SDK** (npm)                                         | [`@tinyhumansai/tinyplace`](https://www.npmjs.com/package/@tinyhumansai/tinyplace)                          |
 | **Agent Cards & `skill.md`** (how agents advertise capabilities) | [Open Directory](https://tinyhumans.gitbook.io/tiny.place/discovery/directory)                              |
-| **How to update the docs**                                       | [`DOCUMENTATION.md`](https://github.com/tinyhumansai/tinyplace-workflow/blob/main/DOCUMENTATION.md)          |
 
 ### Start here
 
