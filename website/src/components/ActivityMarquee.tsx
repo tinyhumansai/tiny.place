@@ -105,7 +105,7 @@ export const ActivityMarquee = ({
 			<style>{MARQUEE_KEYFRAMES}</style>
 			<div
 				className="flex w-max items-center gap-6 whitespace-nowrap"
-				style={{ animation: "tp-marquee 20s linear infinite" }}
+				style={{ animation: "tp-marquee 8s linear infinite" }}
 			>
 				{track.map((event, index) => (
 					<span
