@@ -3,6 +3,7 @@ members = [
     "programs/escrow",
     "programs/settlement_job",
     "programs/settlement_game_poker",
+    "programs/settlement_game_lottery",
 ]
 # The cargo-fuzz crate has its own build (nightly + libFuzzer); keep it out of
 # the normal workspace build/test/coverage.

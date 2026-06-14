@@ -6,6 +6,7 @@ skip-lint = false
 
 [programs.localnet]
 escrow = "6s1cWEMcWjWZ3ut6aDD5g4CFBxpKBz5S4DLkrZdy5jR2"
+settlement_game_lottery = "MfwLo55Nkv3SCQ2uFuoWXmAe7zJR6t3rMdm9K8Lr5Me"
 settlement_game_poker = "Ah7UYiQHzQ3T8D5PZpfbYttSras4t5dQyxevuEL1rHaY"
 settlement_job = "7vXRCMe8jBcHT3zrgnW5mXLxBpWWKsBpn5XCCCnQpot8"
 
