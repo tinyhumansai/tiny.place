@@ -39,3 +39,4 @@ storybook-static
 # tests
 /coverage/
 contracts-sol/.test-ledger
+website/test-results

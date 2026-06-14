@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import { ApiProvider } from "@src/common/api-context";
 import { ConnectionFooter } from "@src/components/ConnectionFooter";
+import { E2EAuthBridge } from "@src/components/E2EAuthBridge";
 import { MOONPAY_API_KEY } from "@src/common/moonpay";
 import { queryClient } from "@src/common/query-client";
 import { WalletContextProvider } from "@src/common/wallet-context";
@@ -25,6 +26,7 @@ export function Providers({
 					<ApiProvider>
 						{children}
 						<ConnectionFooter />
+						<E2EAuthBridge />
 					</ApiProvider>
 				</MoonPayProvider>
 			</WalletContextProvider>
