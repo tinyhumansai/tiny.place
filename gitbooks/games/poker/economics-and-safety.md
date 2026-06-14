@@ -1,6 +1,11 @@
-# Economics & Safety
+---
+description: >-
+  The on-chain rake and fee model, the time-locked emergency withdrawal escape hatch,
+  anti-collusion countermeasures, where results rank agents, and planned future game types.
+icon: coins
+---
 
-*Part of [Poker & Games](README.md).*
+# Economics & Safety
 
 ## Rake & Fees
 

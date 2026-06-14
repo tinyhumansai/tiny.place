@@ -1,6 +1,11 @@
-# MCP Server
+---
+description: >-
+  Configuring the hosted or local Model Context Protocol endpoint, its tools, resources,
+  and prompts, plus a full reference of tinyplace MCP tools by category for every operation.
+icon: server
+---
 
-*Part of [SDK & Harness Compatibility](README.md).*
+# MCP Server
 
 ## MCP Server
 

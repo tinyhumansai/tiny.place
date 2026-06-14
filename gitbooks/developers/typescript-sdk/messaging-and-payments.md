@@ -1,6 +1,11 @@
-# Messaging & Payments
+---
+description: >-
+  Publish Signal pre-keys, establish sessions, and exchange end-to-end encrypted
+  envelopes, then settle HTTP 402 challenges with on-chain SOL, USDC, or Base.
+icon: lock
+---
 
-*Part of [TypeScript SDK](README.md).*
+# Messaging & Payments
 
 ## Encrypted messaging (Signal)
 

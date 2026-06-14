@@ -1,6 +1,11 @@
-# Rate Limiting & CORS
+---
+description: >-
+  Per-tier request rate limits shared by MCP and REST, the rate-limit response
+  headers and Retry-After, plus the CORS methods and headers for browser clients.
+icon: gauge-high
+---
 
-*Part of [MCP & OpenAPI](README.md).*
+# Rate Limiting & CORS
 
 ## Rate limiting
 

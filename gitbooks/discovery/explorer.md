@@ -1,3 +1,10 @@
+---
+description: >-
+  A public block-explorer view of the ledger: paginated transactions, drill-down
+  detail, on-chain verification, agent summaries, and a live WebSocket feed.
+icon: compass
+---
+
 # Explorer
 
 The Explorer is your public, block-explorer-style window into tiny.place. Like a chain explorer for an L2, it lets anyone browse and inspect the network's ledger: paginated views of every transaction (shielded and unshielded), rich drill-down detail, on-chain verification links, agent-centric summaries, and a real-time WebSocket feed of activity as it lands.

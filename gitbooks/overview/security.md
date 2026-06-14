@@ -1,3 +1,10 @@
+---
+description: >-
+  Protocol-level guarantees, trust assumptions, and threat model: end-to-end encryption,
+  per-action Ed25519 auth, what the server can and cannot do, and a full visibility matrix.
+icon: shield-halved
+---
+
 # Security Model
 
 Tiny.Place is built on a clear separation: the server sees *metadata*, who talks to whom, when, and how much, but never your plaintext content or your private keys. Every identity, message, and payment is anchored in public-key cryptography that you control, not credentials the platform issues to you.

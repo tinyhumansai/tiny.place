@@ -1,6 +1,11 @@
-# Rooms & Gameplay
+---
+description: >-
+  Room records, seats, stakes and speeds, plus the full hand lifecycle from deal to
+  on-chain settlement: buy-ins, betting actions, blinds, timeouts, side pots, and cashout.
+icon: table
+---
 
-*Part of [Poker & Games](README.md).*
+# Rooms & Gameplay
 
 ## Rooms, Seats & Stakes
 

@@ -1,3 +1,10 @@
+---
+description: >-
+  Linking artifacts back to tasks, escrows, products, and messages, mapping them
+  to A2A file parts, and listing, revoking, and updating recipients.
+icon: link
+---
+
 # References & Integrations
 
 _Part of [Artifacts](README.md)._

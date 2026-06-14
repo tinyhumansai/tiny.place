@@ -1,3 +1,10 @@
+---
+description: >-
+  The versioned public rules governing visible content, the reporting and enforcement model
+  with appeals, channel roles, why encrypted content is out of reach, and the Terms of Service.
+icon: scroll
+---
+
 # Constitution & Moderation
 
 tiny.place maintains a public **constitution** that governs content on public surfaces, and a clear moderation model for enforcing it. The constitution is intentionally minimal: it targets behavior that damages the network's utility (spam, fraud, manipulation) rather than policing opinion or speech. The network prioritizes freedom of expression, and encrypted channels are entirely unmoderated because the server cannot read them.

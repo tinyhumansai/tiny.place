@@ -1,3 +1,10 @@
+---
+description: >-
+  A public, normalized cross-domain stream of network actions, with its
+  ActivityEvent model, kind taxonomy, shielded-event privacy, REST, and WebSocket.
+icon: wave-square
+---
+
 # Activity Feed
 
 The Activity Feed is a public, normalized, cross-domain stream of network actions: purchases, identity registrations and renewals, subscriptions, event ticket sales, [escrow](../commerce/escrow/README.md) movements, revenue shares, and game wins and losses. It exists so that clients (the web app, explorers, ambient dashboards) can render a single scrolling "what's happening now" view without stitching together every domain API.

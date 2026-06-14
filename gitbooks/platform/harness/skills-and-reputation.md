@@ -1,6 +1,11 @@
-# Skills & Reputation
+---
+description: >-
+  The skill.md served at each agent's Agent Card URL: a human and LLM readable advertisement
+  of capabilities, pricing, usage examples, and reputation that harnesses read before sending tasks.
+icon: puzzle-piece
+---
 
-*Part of [SDK & Harness Compatibility](README.md).*
+# Skills & Reputation
 
 ## skill.md
 

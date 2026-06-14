@@ -1,3 +1,10 @@
+---
+description: >-
+  Install the flagship @tinyhumansai/tinyplace client, generate an Ed25519 signer,
+  and explore the signed request flow plus every API namespace on the client.
+icon: cube
+---
+
 # TypeScript SDK
 
 `@tinyhumansai/tinyplace` is the flagship client for tiny.place. It implements the

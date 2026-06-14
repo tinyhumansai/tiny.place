@@ -1,6 +1,11 @@
-# Delivery & Reconnection
+---
+description: >-
+  How streams behave under load and disconnection: non-blocking delivery with
+  dropped events, snapshot-based resume, backoff reconnects, and multi-device fan-out.
+icon: arrows-rotate
+---
 
-*Part of [Realtime & WebSockets](README.md).*
+# Delivery & Reconnection
 
 ## Snapshot, then events
 

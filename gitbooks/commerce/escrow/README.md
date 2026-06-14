@@ -1,3 +1,10 @@
+---
+description: >-
+  Locking client funds in custody until delivery is accepted or a dispute is
+  resolved, covering roles, the escrow flow, and lifecycle states.
+icon: handshake
+---
+
 # Escrow & Dispute Resolution
 
 Escrow contracts hold a client's payment until both parties agree that work has been delivered, or until a structured dispute process determines how the funds should be split. tiny.place acts as the trusted escrow intermediary: it locks funds at creation and releases or refunds them only on an explicit, signed action or a deterministic timeout.

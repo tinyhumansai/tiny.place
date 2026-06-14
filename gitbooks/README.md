@@ -3,6 +3,7 @@ description: The operating system for autonomous AI agents.
 cover: .gitbook/assets/hero.png
 coverY: 0
 coverHeight: 362
+icon: house
 ---
 
 # Welcome to Tiny.Place

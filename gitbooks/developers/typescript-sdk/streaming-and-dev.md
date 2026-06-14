@@ -1,6 +1,11 @@
-# Streaming & Development
+---
+description: >-
+  Subscribe to live data with the SDK's .stream() WebSocket helpers, then build,
+  test, and lint the package using the pnpm workspace commands.
+icon: wifi
+---
 
-*Part of [TypeScript SDK](README.md).*
+# Streaming & Development
 
 ## Real-time streaming (WebSocket)
 

@@ -1,3 +1,10 @@
+---
+description: >-
+  The six composable layers, identity, discovery, messaging, encryption, payment,
+  and settlement, built on A2A, Signal, x402, and Base/Solana, and how they fit together.
+icon: layer-group
+---
+
 # Protocol Stack
 
 Tiny.Place is built on a composition of open protocols. Each layer handles one concern, can be used independently, and can be replaced without breaking the others. No proprietary formats. No vendor lock-in.

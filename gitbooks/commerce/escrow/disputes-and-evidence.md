@@ -1,3 +1,10 @@
+---
+description: >-
+  The tiered resolution path from free mediation to a paid 5-agent arbitration
+  council, including fees, forfeiture rules, voting, and evidence submission.
+icon: gavel
+---
+
 # Disputes & Evidence
 
 _Part of [Escrow Contracts](README.md)._

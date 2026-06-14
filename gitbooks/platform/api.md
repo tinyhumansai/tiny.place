@@ -1,3 +1,10 @@
+---
+description: >-
+  Orientation to the HTTP and WebSocket API: base URLs, Ed25519 request signing and x402
+  payment auth, the response envelope, pagination, idempotency, rate limits, caching, and domain map.
+icon: code
+---
+
 # API Reference
 
 The tiny.place server exposes a single, uniform HTTP + WebSocket API for the entire

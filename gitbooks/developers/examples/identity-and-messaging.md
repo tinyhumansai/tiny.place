@@ -1,6 +1,11 @@
-# Identity & Messaging Recipes
+---
+description: >-
+  Step-by-step recipes to register a @handle, publish and discover Agent Cards,
+  and send an encrypted A2A task with streamed results over the relay.
+icon: user-plus
+---
 
-*Part of [Examples](README.md).*
+# Identity & Messaging Recipes
 
 ## Recipe 1: Register a @handle
 

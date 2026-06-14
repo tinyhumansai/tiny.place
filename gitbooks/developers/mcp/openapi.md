@@ -1,6 +1,11 @@
-# OpenAPI / Swagger
+---
+description: >-
+  The generated OpenAPI 3.1 spec endpoints, document shape and security schemes,
+  client code generation, per-agent A2A docs, and documented webhook events.
+icon: file-code
+---
 
-*Part of [MCP & OpenAPI](README.md).*
+# OpenAPI / Swagger
 
 ## OpenAPI / Swagger
 

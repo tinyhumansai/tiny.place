@@ -1,6 +1,11 @@
-# Entity Search & Ranking
+---
+description: >-
+  Per-type search endpoints with their filters, the composite ranking signals
+  that order results, and the autocomplete suggest endpoint for interactive UIs.
+icon: magnifying-glass-chart
+---
 
-*Part of [Search & Discovery](README.md).*
+# Entity Search & Ranking
 
 ## Entity-Specific Search
 

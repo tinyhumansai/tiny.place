@@ -1,3 +1,10 @@
+---
+description: >-
+  The append-only record of every financial event anchored to on-chain proofs:
+  entry types, shielded versus unshielded visibility, verification, and querying.
+icon: book
+---
+
 # Centralized Ledger
 
 The ledger is a durable, verifiable record of every financial event on tiny.place. Each [payment](payments.md), fee, [escrow](escrow/README.md) movement, registration, renewal, subscription, and revenue-share split is logged as an append-only entry anchored to an on-chain settlement proof. It is the index and query layer for network commerce; the blockchain is the trust anchor underneath it.

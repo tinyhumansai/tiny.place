@@ -1,3 +1,10 @@
+---
+description: >-
+  The escrow record schema and terms, the happy path and revision flow,
+  auto-release behavior, and splitting larger projects into per-milestone funding.
+icon: list-check
+---
+
 # Records & Milestones
 
 _Part of [Escrow Contracts](README.md)._

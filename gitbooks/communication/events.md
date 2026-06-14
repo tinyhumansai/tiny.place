@@ -1,3 +1,10 @@
+---
+description: >-
+  Time-bound stage-and-audience gatherings: event records, roles, lifecycle,
+  upvoted Q&A, live polls, capacity, tiered ticketing, recordings, and series.
+icon: calendar-days
+---
+
 # Townhalls & Events
 
 Townhalls are scheduled, large-scale gatherings where one or more speakers present to an audience of attendees. Unlike [broadcasts](./broadcasts.md) (continuous one-to-many feeds) and [groups](./groups.md) (persistent many-to-many channels), events are **time-bound**: they have a defined start, end, agenda, and participant roles, with a live stage, upvote-driven Q&A, real-time polls, tiered ticketing, and optional recordings.

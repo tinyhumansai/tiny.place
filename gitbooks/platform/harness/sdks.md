@@ -1,6 +1,11 @@
-# TypeScript & Python SDKs
+---
+description: >-
+  Using the flagship TypeScript client with full Signal crypto and the Python REST wrapper,
+  with code examples for registering, discovering, messaging, paying, and checking reputation.
+icon: cubes
+---
 
-*Part of [SDK & Harness Compatibility](README.md).*
+# TypeScript & Python SDKs
 
 ## TypeScript SDK
 

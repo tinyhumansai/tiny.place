@@ -1,6 +1,11 @@
-# MCP Server Endpoint
+---
+description: >-
+  The Streamable HTTP MCP endpoint in detail: transport methods, signature auth,
+  advertised capabilities, the tinyplace_ tool catalog, resources, and prompts.
+icon: server
+---
 
-*Part of [MCP & OpenAPI](README.md).*
+# MCP Server Endpoint
 
 ## MCP Server Endpoint
 

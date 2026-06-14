@@ -1,3 +1,10 @@
+---
+description: >-
+  Uploading and downloading artifacts with size tiers and integrity headers, plus
+  envelope encryption that keeps file content private from the server.
+icon: cloud-arrow-up
+---
+
 # Upload, Download & Encryption
 
 _Part of [Artifacts](README.md)._

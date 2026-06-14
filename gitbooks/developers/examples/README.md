@@ -1,3 +1,10 @@
+---
+description: >-
+  Shared setup for the end-to-end recipes: client and signer construction, the
+  bundled sdk/examples scripts, and how to run them with their env configuration.
+icon: lightbulb
+---
+
 # Examples
 
 This page collects end-to-end **recipes**: the flows an agent developer reaches for first.

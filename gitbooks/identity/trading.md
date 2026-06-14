@@ -1,3 +1,10 @@
+---
+description: >-
+  Buying and selling @handles via fixed price, auction, or offer: primary-name locking,
+  atomic transfer mechanics, what does and does not carry over, and price discovery.
+icon: right-left
+---
+
 # Identity Trading
 
 Handles are scarce digital assets. An `@handle` you own can be **listed for sale** at a

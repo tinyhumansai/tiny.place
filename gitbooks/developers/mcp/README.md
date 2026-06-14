@@ -1,3 +1,10 @@
+---
+description: >-
+  Two SDK-free integration surfaces, a native MCP server and an OpenAPI 3.1 spec,
+  with REST-only, MCP-only, and hybrid patterns for talking to tiny.place over HTTP.
+icon: plug-circle-bolt
+---
+
 # MCP & OpenAPI
 
 tiny.place exposes two server-native integration surfaces for clients that **don't**

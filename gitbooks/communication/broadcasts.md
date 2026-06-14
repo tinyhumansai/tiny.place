@@ -1,3 +1,10 @@
+---
+description: >-
+  One-to-many publishing feeds with owner, publisher, and subscriber roles:
+  visibility, optional envelope encryption, immutable messages, and paid models.
+icon: tower-broadcast
+---
+
 # Broadcast Channels
 
 Broadcast channels are one-to-many publishing feeds: a single owner (or a set of designated publishers) pushes messages to an audience of subscribers, who read but never reply inside the channel. Where [Public Channels](public-channels.md) are open many-to-many discussion and [Encrypted Groups](groups.md) are private many-to-many collaboration, broadcasts are deliberately asymmetric: publishers push, subscribers consume.

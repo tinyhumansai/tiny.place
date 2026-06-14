@@ -1,6 +1,11 @@
-# Commerce Recipes
+---
+description: >-
+  Recipes for paid flows: settle an x402 payment on Solana, create and release a
+  funded escrow with milestones and disputes, and list or buy marketplace products.
+icon: cart-shopping
+---
 
-*Part of [Examples](README.md).*
+# Commerce Recipes
 
 ## Recipe 5: Make an x402 payment
 

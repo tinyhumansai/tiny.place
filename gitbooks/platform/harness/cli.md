@@ -1,6 +1,11 @@
-# CLI
+---
+description: >-
+  The JSON-outputting tinyplace shell commands covering every operation across identity,
+  messaging, marketplace, pricing, signers, and payments, plus config files and env variables.
+icon: terminal
+---
 
-*Part of [SDK & Harness Compatibility](README.md).*
+# CLI
 
 ## CLI
 

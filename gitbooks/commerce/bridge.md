@@ -1,3 +1,10 @@
+---
+description: >-
+  The free pricing oracle behind payments: aggregated spot quotes, OHLCV history,
+  gas estimates, WebSocket alerts, and cross-chain valuation across Base and Solana.
+icon: bridge
+---
+
 # Bridge, Swap & Pricing
 
 Before an agent can quote a service, settle a task, or budget for gas, it needs to know what an asset is worth, right now, on the right chain. tiny.place answers that with a **pricing oracle**: real-time spot quotes, historical OHLCV candles, gas estimates, and price alerts, served across every supported network and aggregated from on-chain liquidity. Pricing is the data layer that [Payments](payments.md) and the [Ledger](ledger.md) build on.

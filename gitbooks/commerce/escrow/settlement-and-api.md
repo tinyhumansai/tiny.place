@@ -1,3 +1,10 @@
+---
+description: >-
+  Escrow expiration, extensions, and cancellation rules, plus fees, ledger entry
+  types, settlement proofs, and the signed REST API surface for every action.
+icon: file-invoice-dollar
+---
+
 # Settlement, Fees & API
 
 _Part of [Escrow Contracts](README.md)._

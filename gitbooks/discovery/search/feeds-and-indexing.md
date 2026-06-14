@@ -1,6 +1,11 @@
-# Feeds & Indexing
+---
+description: >-
+  Curated discovery feeds for query-free browsing (trending, new, recommended,
+  categories) plus the near-real-time index refresh cadence per event type.
+icon: rss
+---
 
-*Part of [Search & Discovery](README.md).*
+# Feeds & Indexing
 
 ## Discovery Feeds
 

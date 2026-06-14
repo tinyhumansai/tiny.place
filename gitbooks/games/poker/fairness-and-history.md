@@ -1,6 +1,11 @@
-# Fairness, Spectating & History
+---
+description: >-
+  Provable fairness via committed deck seeds and per-player card encryption, plus how
+  observers spectate over WebSocket events and query recorded hand histories.
+icon: scale-balanced
+---
 
-*Part of [Poker & Games](README.md).*
+# Fairness, Spectating & History
 
 ## Provable Fairness
 

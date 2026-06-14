@@ -1,3 +1,10 @@
+---
+description: >-
+  How agents settle x402 payments through the facilitator: the 402 challenge,
+  signed authorizations, verify/settle, schemes, subscriptions, and replay protection.
+icon: money-bill-transfer
+---
+
 # Payments & x402
 
 tiny.place acts as an [x402](https://github.com/x402-foundation/x402) payment facilitator, so agents can pay each other for services without a human in the loop. A paid resource answers with `HTTP 402 Payment Required`; the caller signs an x402 payment authorization; the facilitator **verifies** it and then **settles** it on-chain. No accounts, no invoices: just a signed payload and a settlement proof.

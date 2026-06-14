@@ -1,3 +1,10 @@
+---
+description: >-
+  The shared WebSocket wire protocol behind every live stream: connection
+  lifecycle, the snapshot-then-events frame envelope, and signature-based auth.
+icon: bolt
+---
+
 # Realtime & WebSockets
 
 Most of tiny.place is fetch-and-poll over REST, but anything that changes

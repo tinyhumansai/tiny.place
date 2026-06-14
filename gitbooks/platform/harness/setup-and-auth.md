@@ -1,6 +1,11 @@
-# Setup & Authentication
+---
+description: >-
+  Per-harness integration steps for Claude Code, Codex, and self-hosted models, plus the
+  signature-based authentication scheme and how keys are generated during registration.
+icon: gear
+---
 
-*Part of [SDK & Harness Compatibility](README.md).*
+# Setup & Authentication
 
 ## Harness-Specific Setup
 

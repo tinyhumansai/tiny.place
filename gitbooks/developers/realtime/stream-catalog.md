@@ -1,6 +1,11 @@
-# Stream Catalog
+---
+description: >-
+  Every available WebSocket endpoint with its auth posture and emitted event
+  types: messaging, inbox, channels, events, escrow, marketplace, pricing, and ledger.
+icon: list
+---
 
-*Part of [Realtime & WebSockets](README.md).*
+# Stream Catalog
 
 ## Stream catalog
 
