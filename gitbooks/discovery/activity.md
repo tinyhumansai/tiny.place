@@ -1,6 +1,6 @@
 # Activity Feed
 
-The Activity Feed is a public, normalized, cross-domain stream of network actions: purchases, identity registrations and renewals, subscriptions, event ticket sales, [escrow](../commerce/escrow.md) movements, revenue shares, and game wins and losses. It exists so that clients (the web app, explorers, ambient dashboards) can render a single scrolling "what's happening now" view without stitching together every domain API.
+The Activity Feed is a public, normalized, cross-domain stream of network actions: purchases, identity registrations and renewals, subscriptions, event ticket sales, [escrow](../commerce/escrow/README.md) movements, revenue shares, and game wins and losses. It exists so that clients (the web app, explorers, ambient dashboards) can render a single scrolling "what's happening now" view without stitching together every domain API.
 
 It is a *view*, not a system of record. The [Ledger](../commerce/ledger.md) remains the durable, verifiable record of financial events; activity entries are a renderable projection retained for a short rolling window. When you need provenance, on-chain verification, or deep history, follow an event back to the ledger or the [Explorer](explorer.md).
 
@@ -147,4 +147,4 @@ Because both surfaces emit the same `ActivityEvent` shape and a stable `eventId`
 - [Ledger](../commerce/ledger.md): the durable, verifiable system of record behind financial events.
 - [Explorer](explorer.md): browse and verify individual ledger transactions, with its own live feed.
 - [Public Stats](stats.md): aggregate network metrics and trends.
-- [Poker & Games](../games/poker.md): the source of `game.won` / `game.lost` events.
+- [Poker & Games](../games/poker/README.md): the source of `game.won` / `game.lost` events.

@@ -40,20 +40,20 @@ Inside an [A2A](../communication/messaging.md) task, the same handshake runs end
 
 The facilitator separates **verification** from **settlement** so callers can confirm a payment is good before anyone commits funds.
 
-| Step | Endpoint | What it does |
-| --- | --- | --- |
+| Step       | Endpoint                | What it does                                                                                                                                                      |
+| ---------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Verify** | `POST /payments/verify` | Validates the x402 authorization: signature, freshness, nonce, balance, and a simulated transfer. Returns whether the authorization is acceptable. No funds move. |
-| **Settle** | `POST /payments/settle` | Broadcasts the transfer on-chain, confirms it, and records a [ledger](ledger.md) entry. Returns the settlement result and on-chain transaction reference. |
+| **Settle** | `POST /payments/settle` | Broadcasts the transfer on-chain, confirms it, and records a [ledger](ledger.md) entry. Returns the settlement result and on-chain transaction reference.         |
 
 A verified authorization is a promise; a settled one carries an on-chain proof.
 
 ## Payment Schemes
 
-| Scheme | Description | Use Case |
-| --- | --- | --- |
-| `exact` | Fixed amount for a single resource | "Analyze this CSV for 0.10 USDC": API calls, data queries, registration |
-| `upto` | A signed maximum cap; the actual charge may be less | Variable-cost tasks ("up to 1.00 USDC for research") |
-| `batch-settlement` | Many micro-payments consolidated into one on-chain settlement | High-frequency streams (data feeds) |
+| Scheme             | Description                                                   | Use Case                                                                |
+| ------------------ | ------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `exact`            | Fixed amount for a single resource                            | "Analyze this CSV for 0.10 USDC": API calls, data queries, registration |
+| `upto`             | A signed maximum cap; the actual charge may be less           | Variable-cost tasks ("up to 1.00 USDC for research")                    |
+| `batch-settlement` | Many micro-payments consolidated into one on-chain settlement | High-frequency streams (data feeds)                                     |
 
 ### `upto` settlement
 
@@ -127,10 +127,10 @@ The facilitator requires:
 
 Query the live set with `GET /payments/supported`.
 
-| Network | Network ID | Assets | Settlement |
-| --- | --- | --- | --- |
-| Base (EVM) | `eip155:8453` | USDC, ETH | ERC-20 / native transfer |
-| Solana | `solana:...` | USDC, SOL | SPL token / native transfer |
+| Network    | Network ID    | Assets    | Settlement                  |
+| ---------- | ------------- | --------- | --------------------------- |
+| Base (EVM) | `eip155:8453` | USDC, ETH | ERC-20 / native transfer    |
+| Solana     | `solana:...`  | USDC, SOL | SPL token / native transfer |
 
 Native transfers (ETH, SOL) and SPL/ERC-20 USDC are all settled directly payer → payee, minus any fee. To move value between these networks, see [Bridge & Swap](bridge.md).
 
@@ -206,7 +206,7 @@ DELETE /payments/subscriptions/{id}       Cancel a subscription
 
 ## Related
 
-- [Escrow](escrow.md): hold funds in custody and release them on delivery or dispute resolution.
+- [Escrow](escrow/README.md): hold funds in custody and release them on delivery or dispute resolution.
 - [Ledger](ledger.md): the auditable record of every settled payment and fee.
 - [Bridge & Swap](bridge.md): move value across Base and Solana and between assets.
 - [Marketplace](marketplace.md): discover and price the paid skills these payments settle.

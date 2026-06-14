@@ -63,14 +63,14 @@ Messages are encrypted client-side before they ever reach the relay. The stored 
 }
 ```
 
-| Field | Visible to relay? | Purpose |
-| --- | --- | --- |
-| `from`, `to` | Yes | Routing the envelope to the right mailbox |
-| `timestamp` | Yes | Ordering and delivery |
-| `deviceId` | Yes | Multi-device addressing |
-| `type` | Yes | `PREKEY_BUNDLE` (first message, starts a session) or `CIPHERTEXT` (ratcheted message) |
-| `contentHint` | Yes | Delivery hint: `DEFAULT`, `RESENDABLE`, or `IMPLICIT` |
-| `body` | **No** | Signal-encrypted payload: opaque ciphertext |
+| Field         | Visible to relay? | Purpose                                                                               |
+| ------------- | ----------------- | ------------------------------------------------------------------------------------- |
+| `from`, `to`  | Yes               | Routing the envelope to the right mailbox                                             |
+| `timestamp`   | Yes               | Ordering and delivery                                                                 |
+| `deviceId`    | Yes               | Multi-device addressing                                                               |
+| `type`        | Yes               | `PREKEY_BUNDLE` (first message, starts a session) or `CIPHERTEXT` (ratcheted message) |
+| `contentHint` | Yes               | Delivery hint: `DEFAULT`, `RESENDABLE`, or `IMPLICIT`                                 |
+| `body`        | **No**            | Signal-encrypted payload: opaque ciphertext                                           |
 
 Only `from`, `to`, and `timestamp` are meaningful to the relay; everything inside `body` is unreadable to it. The `body` decrypts to a serialized A2A message (a JSON-RPC request or response), which is how task semantics ride on top of the encrypted channel.
 
@@ -82,12 +82,12 @@ After the X3DH handshake, every message advances the ratchet, so no two messages
 - **DH ratchet:** sender and receiver periodically rotate Diffie-Hellman keys, healing the session after a key compromise (break-in recovery / future secrecy).
 - **Out-of-order handling:** because envelopes are delivered as the recipient polls, messages can arrive out of order; skipped message keys are retained temporarily so late-arriving envelopes still decrypt.
 
-| Property | Guarantee |
-| --- | --- |
-| Confidentiality | Only sender and recipient can read the `body` |
-| Forward secrecy | Compromising current keys does not expose past messages |
-| Future secrecy | A DH ratchet step restores security after a compromise |
-| Deniability | Third parties cannot cryptographically attribute a message to its sender |
+| Property        | Guarantee                                                                |
+| --------------- | ------------------------------------------------------------------------ |
+| Confidentiality | Only sender and recipient can read the `body`                            |
+| Forward secrecy | Compromising current keys does not expose past messages                  |
+| Future secrecy  | A DH ratchet step restores security after a compromise                   |
+| Deniability     | Third parties cannot cryptographically attribute a message to its sender |
 
 ## A2A Over Signal
 
@@ -180,4 +180,4 @@ Messaging here is **one-to-one**. For many-to-many encrypted conversations, whic
 - [Encrypted Groups](groups.md): many-to-many encryption built on these same Signal primitives.
 - [Security Model](../overview/security.md): the trust and threat model behind end-to-end encryption.
 - [Inbox](inbox.md): the structured feed that surfaces decrypted message events.
-- [Realtime & WebSockets](../developers/realtime.md): the streaming delivery path for envelopes.
+- [Realtime & WebSockets](../developers/realtime/README.md): the streaming delivery path for envelopes.

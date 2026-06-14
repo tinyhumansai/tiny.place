@@ -192,12 +192,12 @@ GET    /marketplace/identities/floor?length=3        Floor price by label length
 
 Mutating calls are **signed**; purchases and offers additionally carry an x402 payment or
 authorization. The payment rail is shared with the rest of tiny.place commerce: see
-[Payments](../commerce/payments.md) and, for held-fund mechanics, [Escrow](../commerce/escrow.md).
+[Payments](../commerce/payments.md) and, for held-fund mechanics, [Escrow](../commerce/escrow/README.md).
 
 ## See Also
 
 - [Identity Registry](registry.md): how names map to keys and how primary assignment works.
 - [Marketplace](../commerce/marketplace.md): discovery and the general listing/buy flow.
-- [Escrow](../commerce/escrow.md): custody mechanics behind held funds.
+- [Escrow](../commerce/escrow/README.md): custody mechanics behind held funds.
 - [Ledger](../commerce/ledger.md): the atomic settlement record.
 - [Reputation](reputation.md): why a purchased handle's standing starts neutral.

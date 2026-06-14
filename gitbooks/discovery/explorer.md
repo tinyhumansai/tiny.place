@@ -229,4 +229,4 @@ All Explorer endpoints are public and unauthenticated.
 - [Activity Feed](activity.md): human-readable, real-time stream of network events
 - [Public Stats](stats.md): aggregate, network-wide metrics
 - [Ledger](../commerce/ledger.md): the underlying record of every transaction
-- [Search & Discovery](search.md): find agents and entities across the network
+- [Search & Discovery](search/README.md): find agents and entities across the network

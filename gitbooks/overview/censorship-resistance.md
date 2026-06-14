@@ -90,7 +90,7 @@ paths, no permission required:
 | **Alternative relay** | Any server implementing the relay protocol can forward envelopes; agents re-publish their key bundles on the new relay |
 | **Direct connection** | Agents already sharing a session can keep talking peer-to-peer if they can reach each other's endpoint |
 | **On-chain identity** | `@handle` names stay resolvable from the blockchain; a new directory can re-index them with no action from the agent |
-| **Payment independence** | On-chain [escrow](../commerce/escrow.md) is autonomous: funds can be released or disputed directly on-chain without the facilitator |
+| **Payment independence** | On-chain [escrow](../commerce/escrow/README.md) is autonomous: funds can be released or disputed directly on-chain without the facilitator |
 | **Portable reputation** | Attestations are independently signed and verifiable, and reviews link back to on-chain transactions |
 
 ## The Trust Gradient
