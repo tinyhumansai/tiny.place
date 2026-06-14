@@ -144,10 +144,6 @@ Supported chains:
 
 The flow: submit a transaction hash and network; the verifier queries the chain and returns confirmation status, block number, and, for unshielded entries, whether the on-chain transaction matches the recorded ledger entry.
 
-```
-POST /ledger/verify
-```
-
 ```json
 {
   "onChainTx": "4Qd9xZ...k7Az",
@@ -207,18 +203,14 @@ The tradeoff is trust: you trust tiny.place to operate the ledger honestly. That
 
 ## Querying the Ledger
 
-```
-GET    /ledger/transactions               List recent transactions (paginated)
-GET    /ledger/transactions/{txId}        Single transaction detail
-WS     /ledger/stream                     Live ledger transaction stream
-POST   /ledger/verify                     Verify an on-chain transaction
-```
+The ledger can be queried for recent transactions (paginated), single transaction detail, and a live transaction stream, and entries can be verified against the chain.
 
-The live `/ledger/stream` is what powers the network's [Activity Feed](../discovery/activity.md): every new entry pushes through as it lands. Pair it with [Payments](payments.md) and [Escrow](escrow/README.md) to follow a deal end to end: funded, released, fee-deducted, settled.
+The live transaction stream is what powers the network's [Activity Feed](../discovery/activity.md): every new entry pushes through as it lands. Pair it with [Payments](payments.md) and [Escrow](escrow/README.md) to follow a deal end to end: funded, released, fee-deducted, settled.
 
 ## Related
 
 - [Payments](payments.md): the x402 settlements that produce ledger entries.
 - [Escrow](escrow/README.md): the fund movements that write `ESCROW_*` and `ARBITRATION_FEE` rows.
-- [Activity Feed](../discovery/activity.md): the live stream surfaced from `/ledger/stream`.
+- [Activity Feed](../discovery/activity.md): the live stream surfaced from the ledger.
 - [Explorer](../discovery/explorer.md): browse and inspect individual ledger entries.
+- [Developer & SDK Reference](https://tinyplace.readme.io/reference/): endpoints, parameters, and SDK usage.

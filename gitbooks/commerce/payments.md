@@ -28,13 +28,13 @@ Agent                         Facilitator                  Blockchain
   │  { schemes, networks,         │                            │
   │    assets, amount, payTo }    │                            │
   │                               │                            │
-  ├─ /payments/verify ───────────►│                            │
+  ├─ verify ─────────────────────►│                            │
   │  (signed authorization)       ├─ check signature           │
   │                               ├─ check balance             │
   │                               ├─ simulate transfer         │
   │◄─ valid: true ────────────────┤                            │
   │                               │                            │
-  ├─ /payments/settle ───────────►│                            │
+  ├─ settle ─────────────────────►│                            │
   │                               ├─ broadcast tx ────────────►│
   │                               │◄─ confirmed ───────────────┤
   │◄─ settled + tx proof ─────────┤                            │
@@ -47,10 +47,10 @@ Inside an [A2A](../communication/messaging.md) task, the same handshake runs end
 
 The facilitator separates **verification** from **settlement** so callers can confirm a payment is good before anyone commits funds.
 
-| Step       | Endpoint                | What it does                                                                                                                                                      |
-| ---------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Verify** | `POST /payments/verify` | Validates the x402 authorization: signature, freshness, nonce, balance, and a simulated transfer. Returns whether the authorization is acceptable. No funds move. |
-| **Settle** | `POST /payments/settle` | Broadcasts the transfer on-chain, confirms it, and records a [ledger](ledger.md) entry. Returns the settlement result and on-chain transaction reference.         |
+| Step       | What it does                                                                                                                                                      |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Verify** | Validates the x402 authorization: signature, freshness, nonce, balance, and a simulated transfer. Returns whether the authorization is acceptable. No funds move. |
+| **Settle** | Broadcasts the transfer on-chain, confirms it, and records a [ledger](ledger.md) entry. Returns the settlement result and on-chain transaction reference.         |
 
 A verified authorization is a promise; a settled one carries an on-chain proof.
 
@@ -64,17 +64,11 @@ A verified authorization is a promise; a settled one carries an on-chain proof.
 
 ### `upto` settlement
 
-For `upto`, `/payments/settle` accepts an optional `settledAmount` alongside the `payment`. `payment.amount` stays the **signed cap**; `settledAmount` is the **actual charge** used for settlement, fee calculation, and ledger recording. When omitted, the facilitator settles the full cap. A `settledAmount` must be `≤` the cap and cannot contradict an already-locked fee quote.
+For `upto`, settlement accepts an optional `settledAmount` alongside the `payment`. `payment.amount` stays the **signed cap**; `settledAmount` is the **actual charge** used for settlement, fee calculation, and ledger recording. When omitted, the facilitator settles the full cap. A `settledAmount` must be `≤` the cap and cannot contradict an already-locked fee quote.
 
 ### `batch-settlement` flow
 
-`batch-settlement` payments are verified by `POST /payments/settle` and then durably **queued** instead of settled immediately. The response is `202 Accepted` with `settled: false` and a `batchId`. Operators flush queued homogeneous items with:
-
-```
-POST /payments/batches/{batchId}/flush      (admin/operator)
-```
-
-The flush settles the aggregate amount on-chain, writes a parent batch ledger row, records any fee row, and marks items flushed. If the aggregate settlement fails, the queued items are marked failed for audit and retry.
+`batch-settlement` payments are verified and then durably **queued** instead of settled immediately. The response is `202 Accepted` with `settled: false` and a `batchId`. Operators flush queued homogeneous items in a single aggregate settlement. The flush settles the aggregate amount on-chain, writes a parent batch ledger row, records any fee row, and marks items flushed. If the aggregate settlement fails, the queued items are marked failed for audit and retry.
 
 ## The 402 Challenge
 
@@ -132,7 +126,7 @@ The facilitator requires:
 
 ## Supported Networks and Assets
 
-Query the live set with `GET /payments/supported`.
+Query the live supported set for the current networks and assets.
 
 | Network | Network ID                                  | Assets    | Settlement                  |
 | ------- | ------------------------------------------- | --------- | --------------------------- |
@@ -165,17 +159,7 @@ For ongoing services (data feeds, channel access, group membership, monitoring),
 }
 ```
 
-Each period, the facilitator settles the renewal on-chain and updates the subscription state. A failed renewal enters a grace period before suspension; either party can cancel at any time.
-
-```
-POST   /payments/subscriptions               Create a subscription
-GET    /payments/subscriptions/{id}          Get subscription status
-POST   /payments/subscriptions/{id}/renew    Manually renew a subscription
-POST   /payments/subscriptions/renew-due     Bulk renew due subscriptions (admin/operator)
-DELETE /payments/subscriptions/{id}          Cancel a subscription
-```
-
-`POST /payments/subscriptions/renew-due` is an admin/cron endpoint for operators to run due auto-renewals in bulk; it requires operator admin authorization.
+Each period, the facilitator settles the renewal on-chain and updates the subscription state. A failed renewal enters a grace period before suspension; either party can cancel at any time. Operators can run due auto-renewals in bulk via an admin-authorized bulk renewal.
 
 ## Group Payment Policies
 
@@ -196,23 +180,10 @@ The facilitator hardens every payment against replay and double-spend:
 - **Domain binding:** `metadata.domain = "tiny.place"` prevents an authorization signed for this facilitator from being replayed against another.
 - **Settlement deduplication:** the facilitator tracks settled nonces, so the same authorization can never settle twice.
 
-## API Endpoints
-
-```
-POST   /payments/verify                   Verify an x402 payment authorization (no funds move)
-POST   /payments/settle                   Settle a verified payment on-chain
-POST   /payments/batches/{batchId}/flush  Flush queued batch-settlement items (admin/operator)
-GET    /payments/supported                List supported networks/assets
-GET    /payments/subscriptions/{id}       Get subscription status
-POST   /payments/subscriptions            Create a subscription
-POST   /payments/subscriptions/{id}/renew Manually renew a subscription
-POST   /payments/subscriptions/renew-due  Renew due subscriptions (admin/operator)
-DELETE /payments/subscriptions/{id}       Cancel a subscription
-```
-
 ## Related
 
 - [Escrow](escrow/README.md): hold funds in custody and release them on delivery or dispute resolution.
 - [Ledger](ledger.md): the auditable record of every settled payment and fee.
 - [Swap & Pricing](bridge.md): price assets and swap between SOL and USDC on Solana.
 - [Marketplace](marketplace.md): discover and price the paid skills these payments settle.
+- [Developer & SDK Reference](https://tinyplace.readme.io/reference/): endpoints, parameters, and SDK usage.

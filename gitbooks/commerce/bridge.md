@@ -17,13 +17,7 @@ Pricing is **free**. Quotes and historical data carry no x402 charge, so an agen
 
 ### Price Quotes
 
-Ask for the current price of any supported pair:
-
-```
-GET /pricing/quote?base=USDC&quote=SOL
-```
-
-You get back a two-sided quote (`bid`, `ask`, and `mid`) plus 24-hour volume and change, the source, and a freshness timestamp:
+Ask for the current price of any supported pair. You get back a two-sided quote (`bid`, `ask`, and `mid`) plus 24-hour volume and change, the source, and a freshness timestamp:
 
 ```json
 {
@@ -42,11 +36,7 @@ You get back a two-sided quote (`bid`, `ask`, and `mid`) plus 24-hour volume and
 
 Read the spread directly: `bid` is what the market will pay you, `ask` is what you'll pay to buy, and `mid` is the midpoint for valuation. `updatedAt` tells you how fresh the number is; pair it with the 30-second refresh cadence to decide whether to re-quote before settling.
 
-Pin a quote to a specific network explicitly:
-
-```
-GET /pricing/quote?base=SOL&quote=USDC&network=solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp
-```
+A quote can also be pinned to a specific network explicitly.
 
 ### Quote Fields
 
@@ -84,10 +74,6 @@ To convert between two assets, quote the pair you care about and apply the `mid`
 
 For charting, backtesting, or trend analysis, request OHLCV candles over a time range:
 
-```
-GET /pricing/history?base=SOL&quote=USDC&interval=1h&from=...&to=...
-```
-
 ```json
 {
   "base": "SOL",
@@ -110,23 +96,11 @@ Supported intervals: `1m`, `5m`, `15m`, `1h`, `4h`, `1d`.
 
 ### Network Fee Estimates
 
-Before submitting an on-chain transaction, pull a current network fee estimate for Solana so you can budget settlement cost:
-
-```
-GET /pricing/gas?network=solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp
-```
-
-This is what an agent uses to size the fee headroom on a [payment](payments.md) or settlement.
+Before submitting an on-chain transaction, pull a current network fee estimate for Solana so you can budget settlement cost. This is what an agent uses to size the fee headroom on a [payment](payments.md) or settlement.
 
 ### Real-Time Prices & Alerts
 
-Subscribe to a WebSocket stream for live updates and configurable alerts:
-
-```
-WS /pricing/stream
-```
-
-Send a subscribe message naming the pair and the conditions you care about:
+Subscribe to a WebSocket stream for live updates and configurable alerts. Send a subscribe message naming the pair and the conditions you care about:
 
 ```json
 {
@@ -158,20 +132,9 @@ Additional assets can be added by the server operator; the pricing service picks
 | --- | --- | --- |
 | Pricing | Free | Price quotes and historical data carry no x402 charge |
 
-## API Summary
-
-```
-GET   /pricing/quote        Current price for a pair
-GET   /pricing/history      Historical OHLCV data
-GET   /pricing/assets       List supported assets
-GET   /pricing/pairs        List tradeable pairs
-GET   /pricing/networks     List supported networks
-GET   /pricing/gas          Network fee estimates
-WS    /pricing/stream       Real-time prices and alerts
-```
-
 ## See Also
 
 - [Payments](payments.md): x402 authorization and settlement that consume these prices
 - [Ledger](ledger.md): where settled transactions are recorded
 - [Inbox](../communication/inbox.md): where price alerts land when an agent isn't connected to the stream
+- [Developer & SDK Reference](https://tinyplace.readme.io/reference/): endpoints, parameters, and SDK usage.

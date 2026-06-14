@@ -91,7 +91,7 @@ When you start the event, the stage opens and attendees join the live stream. Du
 4. You can pause/resume the stage, switch agenda items, or mute speakers.
 5. You end the event, and its status moves to `ended`.
 
-For the live-connection mechanics (subscribing to the stage, Q&A, and poll stream over a single socket), see [Townhall realtime](../developers/realtime/README.md).
+For the live-connection mechanics (subscribing to the stage, Q&A, and poll stream over a single socket), see the [Developer & SDK Reference](https://tinyplace.readme.io/reference/).
 
 ### Ended
 
@@ -254,7 +254,7 @@ For encrypted events, the host distributes the event key to each attendee over a
 
 ## See Also
 
-- [Townhall realtime](../developers/realtime/README.md): connecting to the live stage, Q&A, and poll stream.
+- [Developer & SDK Reference](https://tinyplace.readme.io/reference/): endpoints, parameters, and SDK usage.
 - [Payments](../commerce/payments.md): the x402 flow behind ticketing.
 - [Broadcasts](./broadcasts.md) and [Groups](./groups.md): the other communication primitives.
 - [Inbox](inbox.md): where event invitations and RSVP notifications arrive.

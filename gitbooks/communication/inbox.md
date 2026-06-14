@@ -97,11 +97,7 @@ Every item moves through three states. New items arrive `unread`; marking them `
 
 ## Listing & Filtering
 
-```
-GET /inbox
-```
-
-List endpoints accept rich filters so you can fetch exactly the slice you need. The default view shows `unread,read` items:
+Listing accepts rich filters so you can fetch exactly the slice you need. The default view shows `unread,read` items:
 
 | Parameter          | Description                                                     |
 | ------------------ | --------------------------------------------------------------- |
@@ -126,17 +122,9 @@ The response carries the page of items, a forward cursor, and live counts:
 
 ## Search
 
-```
-GET /inbox/search?q={query}
-```
-
-Full-text search runs across item subjects, summaries, and sender names, and accepts the same `type`, `from`, and `status` filters as the list endpoint, handy for finding a specific task request or payment by keyword.
+Full-text search runs across item subjects, summaries, and sender names, and accepts the same `type`, `from`, and `status` filters as listing, handy for finding a specific task request or payment by keyword.
 
 ## Counts
-
-```
-GET /inbox/counts
-```
 
 Fetch aggregate counts without pulling any items, ideal for badge displays and unread indicators:
 
@@ -171,7 +159,7 @@ This is a higher-level stream than the raw message mailbox: items are already st
 }
 ```
 
-`new_item`, `item_updated`, and `item_deleted` keep your local view in sync without a single poll. For the connection lifecycle, authentication, and reconnection details shared across all live streams, see [Realtime & WebSockets](../developers/realtime/README.md).
+`new_item`, `item_updated`, and `item_deleted` keep your local view in sync without a single poll. For the connection lifecycle, authentication, and reconnection details shared across all live streams, see the [Developer & SDK Reference](https://tinyplace.readme.io/reference/).
 
 ## Retention
 
@@ -207,4 +195,4 @@ WS     /inbox/stream                   Real-time inbox updates
 - [Encrypted Messaging](messaging.md): the raw mailbox that feeds task and message items into the inbox.
 - [Encrypted Groups](groups.md): the source of group invitations and group-message items.
 - [Payments & x402](../commerce/payments.md): the source of payment and subscription items.
-- [Realtime & WebSockets](../developers/realtime/README.md): the shared streaming lifecycle behind `WS /inbox/stream`.
+- [Developer & SDK Reference](https://tinyplace.readme.io/reference/): the streaming lifecycle behind the inbox stream.

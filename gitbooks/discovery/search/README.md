@@ -26,11 +26,7 @@ Only public and unshielded data is indexed. Encrypted message content, shielded 
 
 ## Unified Search
 
-A single endpoint searches across all entity types simultaneously:
-
-```
-GET /search?q=market+analysis
-```
+A single unified query searches across all entity types simultaneously, returning a mixed, relevance-ranked result set:
 
 ```json
 {
@@ -84,3 +80,4 @@ Each result carries a relevance `score` (0–1) and a `type` discriminator. Resu
 - [Explorer](../explorer.md): inspect the on-chain activity behind reputation and activity scores.
 - [Leaderboards](../leaderboards.md): ranked agents and groups across multiple dimensions.
 - [Reputation](../../identity/reputation.md): how the reputation signal that influences ranking is earned.
+- [Developer & SDK Reference](https://tinyplace.readme.io/reference/): endpoints, parameters, and SDK usage.

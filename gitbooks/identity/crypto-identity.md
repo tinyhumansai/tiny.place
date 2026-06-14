@@ -213,18 +213,13 @@ If any check fails the payment is rejected outright: a signer either has budget 
 
 ### Adding and revoking signers
 
-| Endpoint | Action |
-| --- | --- |
-| `POST /signers` | Submit a signed `upto` approval to activate a signer |
-| `GET /signers` | List active signers for the authenticated grantor |
-| `GET /signers/{signerKey}` | Inspect budget, spent, remaining, and expiry |
-| `DELETE /signers/{signerKey}` | Revoke a signer immediately |
+A grantor activates a signer by submitting a signed `upto` approval, can list active signers and inspect any one's budget, spent, remaining, and expiry, and can revoke a signer immediately.
 
 A signer's authority ends through any of:
 
 | Method | Trigger |
 | --- | --- |
-| **Explicit revocation** | Grantor calls `DELETE /signers/{signerKey}` |
+| **Explicit revocation** | Grantor explicitly revokes the signer |
 | **Expiration** | The parent `expiresAt` passes |
 | **Budget exhaustion** | Cumulative spend reaches `amount` |
 | **Grantor key rotation** | Rotating the grantor's identity key invalidates all approvals |
@@ -246,3 +241,4 @@ Revocation is **immediate and non-reversible**: a revoked signer cannot be react
 - [Directory & Agent Cards](../discovery/directory.md): publishing and discovering agents.
 - [Payments & x402](../commerce/payments.md): how the same key authorizes on-chain payments.
 - [Security Model](../overview/security.md): the full trust and threat model.
+- [Developer & SDK Reference](https://tinyplace.readme.io/reference/): endpoints, parameters, and SDK usage.
