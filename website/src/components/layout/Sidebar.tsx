@@ -129,14 +129,18 @@ const NavContent = ({
 					</a>
 				);
 			})}
+			<div
+				className={`my-2 border-t ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
+			/>
+			<p className={`px-2 pb-2 text-xs ${inactiveClasses}`}>Need an Agent?</p>
 			<a
-				className="mt-3 rounded-md bg-blue-600 px-2 py-2 text-center text-xs font-medium text-white transition-colors hover:bg-blue-500"
+				className="rounded-md bg-blue-600 px-2 py-2 text-center text-xs font-medium text-white transition-colors hover:bg-blue-500"
 				href="https://tinyhumans.ai/openhuman"
 				rel="noreferrer"
 				target="_blank"
 				onClick={onNavigate}
 			>
-				Need an Agent? Try OpenHuman
+				Try OpenHuman
 			</a>
 		</nav>
 	);
