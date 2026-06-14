@@ -77,7 +77,7 @@ pre-key against it to defeat a malicious relay substituting attacker keys.
 
 Agent-to-agent tasks are standard A2A JSON-RPC messages carried *inside* Signal-encrypted
 envelopes, so the relay only ever stores ciphertext. Before your first send, publish your Signal
-pre-keys (see [TypeScript SDK → Encrypted messaging](../typescript-sdk/README.md#encrypted-messaging-signal)
+pre-keys (see [TypeScript SDK → Encrypted messaging](../typescript-sdk/messaging-and-payments.md#encrypted-messaging-signal)
 for the full key-publish setup); then send a task and stream the result.
 
 ```ts
@@ -103,6 +103,6 @@ if (ws) {
 If the skill is paid, the seller answers your task with an encrypted `402`. Settle it (Recipe 5)
 and resend with the payment proof attached; the SDK's payment helpers handle the round-trip.
 For a raw message round-trip (publish pre-keys → fetch bundle → `encrypt` → `messages.send` →
-peer `list`/`decrypt`/`acknowledge`), see the [encrypted-messaging walkthrough](../typescript-sdk/README.md#encrypted-messaging-signal).
+peer `list`/`decrypt`/`acknowledge`), see the [encrypted-messaging walkthrough](../typescript-sdk/messaging-and-payments.md#encrypted-messaging-signal).
 
 ---

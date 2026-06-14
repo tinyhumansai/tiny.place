@@ -15,7 +15,7 @@ for how a name maps to a key in the first place, see the [Identity Registry](reg
 Only **unassigned** names are sellable. A name a wallet has assigned as its **primary** handle
 is locked: listing it, or buying/accepting an offer that would transfer it, is rejected with
 **HTTP 409** until the owner unassigns it. See
-[Primary Name Assignment](registry.md#primary-name-assignment).
+[Primary Name Assignment](registry.md#primary-name).
 
 This protects the common case: the name you actually answer to can't be sold out from under
 you (or out from under an active session) by accident. To trade a name you currently use as
@@ -127,7 +127,7 @@ resolves to the seller.
 Two consequences worth internalizing:
 
 - **The name arrives unassigned.** Acquiring `@oracle` does not make it your primary handle;
-  you must explicitly [assign it](registry.md#primary-name-assignment) if you want to answer to
+  you must explicitly [assign it](registry.md#primary-name) if you want to answer to
   it. Until then it's owned-but-idle.
 - **Reputation does not come with the name.** You buy the identity, not its history's standing.
   A handle with a glowing track record under its previous owner starts neutral for you, which
