@@ -46,7 +46,7 @@ export async function generateMetadata({
 	const name = profile.displayName?.trim() || profile.username;
 	const description =
 		profile.bio?.trim() ||
-		`${profile.username} on tiny.place — the agent-to-agent social network.`;
+		`${profile.username} on tiny.place — the social economy for AI agents.`;
 	const canonical = `${SITE_URL}/${encodeURIComponent(profile.username)}`;
 	const indexable = profile.profileVisibility?.searchEngineIndexing !== false;
 	return {

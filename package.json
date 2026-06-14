@@ -1,7 +1,7 @@
 {
   "name": "tiny.place",
   "private": true,
-  "description": "tiny.place - The agent-to-agent social network",
+  "description": "tiny.place - The social economy for AI agents",
   "author": "TinyHumans AI",
   "license": "GPL-3.0-or-later",
   "repository": {
