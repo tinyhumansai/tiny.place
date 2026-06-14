@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import { SessionWalletSigner } from "@src/common/session-wallet";
 import type { FunctionComponent } from "@src/common/types";
+import { useAppStore } from "@src/store/app";
 import { useAuthStore } from "@src/store/auth";
 
 const API_BASE_URL =
@@ -37,20 +38,28 @@ function formatExpiry(expiresAt: string, nowMs: number): string {
 }
 
 type StatProps = {
+	isDark: boolean;
 	label: string;
 	value: string;
 	title?: string;
 };
 
-const Stat = ({ label, value, title }: StatProps): FunctionComponent => (
+const Stat = ({
+	isDark,
+	label,
+	value,
+	title,
+}: StatProps): FunctionComponent => (
 	<span className="flex items-center gap-1 whitespace-nowrap" title={title}>
-		<span className="text-white/40">{label}</span>
-		<span className="font-mono text-white/80">{value}</span>
+		<span className={isDark ? "text-white/40" : "text-black/40"}>{label}</span>
+		<span className={`font-mono ${isDark ? "text-white/80" : "text-black/80"}`}>
+			{value}
+		</span>
 	</span>
 );
 
-const Divider = (): FunctionComponent => (
-	<span aria-hidden className="text-white/15">
+const Divider = ({ isDark }: { isDark: boolean }): FunctionComponent => (
+	<span aria-hidden className={isDark ? "text-white/15" : "text-black/15"}>
 		|
 	</span>
 );
@@ -66,6 +75,7 @@ export const ConnectionFooter = (): FunctionComponent => {
 	const { connected } = useWallet();
 	const signer = useAuthStore((state) => state.signer);
 	const agentId = useAuthStore((state) => state.agentId);
+	const isDark = useAppStore((state) => state.theme) === "dark";
 
 	// A 30s tick keeps the expiry countdown roughly live without churn.
 	const [nowMs, setNowMs] = useState(() => Date.now());
@@ -93,17 +103,32 @@ export const ConnectionFooter = (): FunctionComponent => {
 			: "bg-amber-400";
 
 	return (
-		<footer className="fixed inset-x-0 bottom-0 z-50 flex h-7 items-center gap-3 overflow-x-auto border-t border-white/10 bg-neutral-950/90 px-3 text-[11px] leading-none text-white/70 backdrop-blur">
+		<footer
+			className={`fixed inset-x-0 bottom-0 z-50 flex h-7 items-center gap-3 overflow-x-auto border-t px-3 text-[11px] leading-none backdrop-blur ${
+				isDark
+					? "border-white/10 bg-neutral-950/90 text-white/70"
+					: "border-black/10 bg-white/90 text-black/70"
+			}`}
+		>
 			<span className="flex items-center gap-1.5 whitespace-nowrap">
 				<span className={`size-1.5 rounded-full ${statusColor}`} />
-				<span className="font-medium text-white/80">{statusLabel}</span>
+				<span
+					className={`font-medium ${isDark ? "text-white/80" : "text-black/80"}`}
+				>
+					{statusLabel}
+				</span>
 			</span>
-			<Divider />
-			<Stat label={t("connection.server")} value={serverHost(API_BASE_URL)} />
+			<Divider isDark={isDark} />
+			<Stat
+				isDark={isDark}
+				label={t("connection.server")}
+				value={serverHost(API_BASE_URL)}
+			/>
 			{authenticated && agentId ? (
 				<>
-					<Divider />
+					<Divider isDark={isDark} />
 					<Stat
+						isDark={isDark}
 						label={t("connection.agent")}
 						title={agentId}
 						value={truncateId(agentId)}
@@ -112,14 +137,16 @@ export const ConnectionFooter = (): FunctionComponent => {
 			) : null}
 			{session ? (
 				<>
-					<Divider />
+					<Divider isDark={isDark} />
 					<Stat
+						isDark={isDark}
 						label={t("connection.session")}
 						title={session.sessionKey}
 						value={truncateId(session.sessionKey)}
 					/>
-					<Divider />
+					<Divider isDark={isDark} />
 					<Stat
+						isDark={isDark}
 						label={t("connection.expires")}
 						title={session.expiresAt}
 						value={formatExpiry(session.expiresAt, nowMs)}
