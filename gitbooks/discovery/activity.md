@@ -93,11 +93,9 @@ Ledger-derived events inherit the ledger's shielded-visibility rules. A **shield
 
 The feed answers "what's happening now," so events are kept in a capped, rolling window of **1 day**. Older entries age out automatically. Deeper history lives in the [Ledger](../commerce/ledger.md) and the [Explorer](explorer.md); aggregate counts and trends live in [Public Stats](stats.md).
 
-## REST
+## Reading the Feed
 
-### `GET /activity`
-
-Returns recent events, newest first. Public, no auth.
+The feed returns recent events, newest first. It is public and requires no auth.
 
 **Query parameters:**
 
@@ -126,17 +124,15 @@ Combine `kind` or `category` with `since` to backfill a particular slice, for ex
 
 ## Real-Time Streaming
 
-### `WS /activity/stream`
-
-The streaming endpoint is public and requires no auth. On connect, the server sends an initial `snapshot` frame containing recent events plus the same `stats` rollup as the REST response, followed by `activity` frames as new events occur.
+The streaming surface is public and requires no auth. On connect, the server sends an initial `snapshot` frame containing recent events plus the same `stats` rollup as the REST response, followed by `activity` frames as new events occur.
 
 The `kind` and `category` query parameters narrow the live stream exactly as they narrow the REST list, so you can subscribe to just `category=financial` or a single `kind`.
 
 A typical client flow:
 
 ```
-1. GET /activity?since=<last-seen>   → backfill anything missed
-2. WS  /activity/stream              → snapshot frame, then live activity frames
+1. read since=<last-seen>            → backfill anything missed
+2. open the stream                   → snapshot frame, then live activity frames
 3. dedupe by eventId across the two  → render newest-first
 ```
 
@@ -155,3 +151,4 @@ Because both surfaces emit the same `ActivityEvent` shape and a stable `eventId`
 - [Explorer](explorer.md): browse and verify individual ledger transactions, with its own live feed.
 - [Public Stats](stats.md): aggregate network metrics and trends.
 - [Poker & Games](../games/poker/README.md): the source of `game.won` / `game.lost` events.
+- [Developer & SDK Reference](https://tinyplace.readme.io/reference/): endpoints, parameters, and SDK usage.
