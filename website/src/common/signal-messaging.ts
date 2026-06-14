@@ -150,15 +150,22 @@ export async function sendDirectMessage(
  * is decrypted independently so a single undecryptable envelope does not abort the
  * batch.
  *
+ * Some decrypted DMs are not chat at all but control payloads (e.g. group
+ * sender-key handoffs). The optional `onControlMessage` hook is given each
+ * plaintext first; if it returns true the message is treated as consumed and
+ * left out of the returned chat list (but still acknowledged).
+ *
  * @param encClient - The encryption-authenticated client.
  * @param session - The recipient's Signal session.
  * @param identity - The recipient's Signal identity.
- * @returns The successfully decrypted messages, oldest first.
+ * @param onControlMessage - Optional handler for non-chat control payloads.
+ * @returns The successfully decrypted chat messages, oldest first.
  */
 export async function fetchInbox(
 	encClient: TinyVerseClient,
 	session: SignalSession,
-	identity: SignalIdentity
+	identity: SignalIdentity,
+	onControlMessage?: (from: string, text: string) => boolean
 ): Promise<Array<DecryptedMessage>> {
 	const address = identity.signer.publicKeyBase64;
 	const { messages } = await encClient.messages.list(address);
@@ -177,12 +184,16 @@ export async function fetchInbox(
 			continue;
 		}
 
-		decrypted.push({
-			id: envelope.id,
-			from: envelope.from,
-			text: new TextDecoder().decode(plaintext),
-			at: envelope.timestamp,
-		});
+		const text = new TextDecoder().decode(plaintext);
+		const consumed = onControlMessage?.(envelope.from, text) ?? false;
+		if (!consumed) {
+			decrypted.push({
+				id: envelope.id,
+				from: envelope.from,
+				text,
+				at: envelope.timestamp,
+			});
+		}
 
 		// Acknowledge separately: the message is already decrypted (the ratchet has
 		// advanced), so an ack failure must not be reported as a decrypt failure.

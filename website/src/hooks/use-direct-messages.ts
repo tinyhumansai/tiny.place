@@ -6,6 +6,10 @@ import { useCallback } from "react";
 import { useApiClient } from "@src/common/api-context";
 import { resolveEncryptionAddress } from "@src/common/encryption-discovery";
 import {
+	groupKeyManager,
+	parseGroupKeyDistribution,
+} from "@src/common/group-messaging";
+import {
 	fetchInbox,
 	sendDirectMessage,
 	type DecryptedMessage,
@@ -71,7 +75,21 @@ export function useDirectMessages(): UseDirectMessagesResult {
 			if (!encryptionClient || !session || !identity) {
 				return [];
 			}
-			const messages = await fetchInbox(encryptionClient, session, identity);
+			const messages = await fetchInbox(
+				encryptionClient,
+				session,
+				identity,
+				// Group sender-key handoffs travel as DMs; install them as receiver
+				// keys instead of surfacing them in a conversation thread.
+				(_from, text): boolean => {
+					const payload = parseGroupKeyDistribution(text);
+					if (!payload) {
+						return false;
+					}
+					groupKeyManager.installReceiver(payload);
+					return true;
+				}
+			);
 			appendIncoming(messages);
 			return messages;
 		},

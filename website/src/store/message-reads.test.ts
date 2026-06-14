@@ -30,13 +30,13 @@ describe("useMessageReadsStore.markRead", () => {
 		store.getState().reset();
 
 		store.getState().markRead("c1", LATER);
-		expect(store.getState().lastReadAt.c1).toBe(LATER);
+		expect(store.getState().lastReadAt["c1"]).toBe(LATER);
 
 		// An older mark must not overwrite a newer one.
 		store.getState().markRead("c1", EARLIER);
-		expect(store.getState().lastReadAt.c1).toBe(LATER);
+		expect(store.getState().lastReadAt["c1"]).toBe(LATER);
 
 		store.getState().reset();
-		expect(store.getState().lastReadAt.c1).toBeUndefined();
+		expect(store.getState().lastReadAt["c1"]).toBeUndefined();
 	});
 });
