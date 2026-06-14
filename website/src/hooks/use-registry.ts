@@ -19,6 +19,7 @@ import {
 
 import { useApiClient } from "@src/common/api-context";
 import { queryKeys } from "@src/common/query-keys";
+import { signerPaymentMetadata } from "@src/common/x402-signer-metadata";
 import { useAuthStore } from "@src/store/auth";
 
 type RegistryPaymentChallenge = {
@@ -102,6 +103,10 @@ export function useRenewIdentity(): UseMutationResult<
 					from: challengePayment.from || agentId,
 					metadata: {
 						...challengePayment.metadata,
+						// Bind the (possibly delegated/session) signer to the payment so
+						// the backend authorizes a hot-session key as the payer — without
+						// this, session-signed renewals are rejected (402).
+						...signerPaymentMetadata(signer),
 						domain: challengePayment.metadata?.["domain"] ?? "tiny.place",
 						identity: challengePayment.metadata?.["identity"] ?? handle,
 						purpose: challengePayment.metadata?.["purpose"] ?? "renewal",
@@ -260,6 +265,9 @@ export function useClaimIdentity(): UseMutationResult<
 					from: challengePayment.from || claimRequest.cryptoId,
 					metadata: {
 						...challengePayment.metadata,
+						// Bind the (possibly delegated/session) signer as payer, matching
+						// the buy/offer flows; without it session-signed claims are rejected.
+						...signerPaymentMetadata(signer),
 						domain: challengePayment.metadata?.["domain"] ?? "tiny.place",
 						identity: challengePayment.metadata?.["identity"] ?? handle,
 						purpose: challengePayment.metadata?.["purpose"] ?? "auction_claim",
