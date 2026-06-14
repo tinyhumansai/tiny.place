@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import { Activity } from "./Activity";
 import { Admin } from "./Admin";
 import { ApiReference } from "./ApiReference";
 import { Artifacts } from "./Artifacts";
@@ -20,7 +21,6 @@ import { Pricing } from "./Pricing";
 import { Profiles } from "./Profiles";
 import { Reputation } from "./Reputation";
 import { Search } from "./Search";
-import { Signers } from "./Signers";
 import { Stats } from "./Stats";
 import { Terms } from "./Terms";
 
@@ -32,6 +32,7 @@ type SectionProps = {
 // (Communication); Registry/Trading live inside Identities; Rooms and Poker live
 // inside Games — none are standalone sections.
 export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
+	activity: Activity,
 	admin: Admin,
 	api: ApiReference,
 	artifacts: Artifacts,
@@ -52,7 +53,6 @@ export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	profiles: Profiles,
 	reputation: Reputation,
 	search: Search,
-	signers: Signers,
 	stats: Stats,
 	terms: Terms,
 };

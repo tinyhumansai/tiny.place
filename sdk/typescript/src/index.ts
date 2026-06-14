@@ -111,6 +111,7 @@ export type {
   SolanaSettlementResult,
 } from "./api/payments.js";
 export { LedgerApi } from "./api/ledger.js";
+export { ActivityApi } from "./api/activity.js";
 export { ReputationApi } from "./api/reputation.js";
 export { InboxApi } from "./api/inbox.js";
 export { ChannelsApi } from "./api/channels.js";

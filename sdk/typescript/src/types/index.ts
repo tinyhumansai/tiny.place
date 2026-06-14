@@ -1,5 +1,7 @@
 export * from "./identity.js";
+export * from "./user.js";
 export * from "./ledger.js";
+export * from "./activity.js";
 export * from "./messaging.js";
 export * from "./directory.js";
 export * from "./payments.js";

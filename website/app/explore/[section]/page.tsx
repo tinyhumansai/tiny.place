@@ -4,6 +4,7 @@ import { SectionPage } from "@src/components/layout/SectionPage";
 import { sectionComponents } from "@src/components/explore";
 
 const sectionTitles: Record<string, string> = {
+	activity: "Activity",
 	identities: "Identities",
 	profiles: "Profiles",
 	messaging: "Messaging",

@@ -12,15 +12,8 @@ export interface PaymentMethod {
   assets: Array<string>;
 }
 
-export interface IdentityMetadata {
-  avatar?: string;
-  links?: Array<string>;
-  tags?: Array<string>;
-}
-
 export interface Identity {
   username: string;
-  bio: string;
   cryptoId: string;
   publicKey: string;
   registeredAt: string;
@@ -28,7 +21,6 @@ export interface Identity {
   status: IdentityStatus;
   registrationTx?: string;
   paymentMethods?: Array<PaymentMethod>;
-  metadata?: IdentityMetadata;
   /**
    * Whether this name is the owner wallet's assigned/primary handle. At most
    * one name per wallet is primary; a primary name is locked from sale.
@@ -46,12 +38,6 @@ export interface Subname {
   target: string;
   bio?: string;
   createdAt: string;
-}
-
-export interface IdentityProfileUpdate {
-  bio?: string;
-  metadata?: IdentityMetadata;
-  signature?: string;
 }
 
 export interface RenewalRequest {

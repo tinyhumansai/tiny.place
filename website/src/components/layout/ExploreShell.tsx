@@ -1,13 +1,13 @@
 "use client";
 
 import {
+	BoltIcon,
 	ChartBarIcon,
 	ChatBubbleLeftRightIcon,
 	CreditCardIcon,
 	DocumentArrowDownIcon,
 	GlobeAltIcon,
 	IdentificationIcon,
-	KeyIcon,
 	MagnifyingGlassIcon,
 	MoonIcon,
 	PresentationChartLineIcon,
@@ -26,6 +26,7 @@ import type { ComponentType, ReactNode, SVGProps } from "react";
 
 import type { FunctionComponent } from "@src/common/types";
 import { ConnectWalletButton } from "@src/components/ConnectWalletButton";
+import { ProfileButton } from "@src/components/ProfileButton";
 import { Sidebar } from "@src/components/layout/Sidebar";
 import { useAppStore } from "@src/store/app";
 
@@ -34,10 +35,10 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 // Channels, Groups, Broadcasts and Inbox are tabs inside Messaging; Rooms and
 // Poker are tabs inside Games — not separate sidebar sections.
 const sections: Array<{ icon: IconComponent; key: string; label: string }> = [
+	{ key: "activity", label: "Activity", icon: BoltIcon },
 	{ key: "identities", label: "Identities", icon: IdentificationIcon },
 	{ key: "profiles", label: "Profiles", icon: UserIcon },
 	{ key: "messaging", label: "Messaging", icon: ChatBubbleLeftRightIcon },
-	{ key: "signers", label: "Signers", icon: KeyIcon },
 	{ key: "events", label: "Events", icon: SparklesIcon },
 	{ key: "games", label: "Games", icon: PuzzlePieceIcon },
 	{ key: "marketplace", label: "Marketplace", icon: TagIcon },
@@ -79,6 +80,7 @@ export const ExploreShell = ({
 			<main className="flex-1 min-h-screen overflow-y-auto">
 				<div className="fixed top-4 right-4 z-10 flex items-center gap-2">
 					<ConnectWalletButton />
+					<ProfileButton />
 					<button
 						className={`p-2 rounded-full border transition-colors ${isDark ? "border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500" : "border-neutral-300 text-neutral-500 hover:text-black hover:border-neutral-400"}`}
 						type="button"

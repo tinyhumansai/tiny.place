@@ -105,50 +105,69 @@ export const DomainRegistration = ({
 			}
 
 			const parsedLinks = parseLinks(links);
+			// A handle is just a pointer now. We register it as "human" (this is the
+			// web app) and seed the wallet's User profile (bio/links) separately.
 			const request = {
 				username: selectedName,
 				cryptoId: agentId,
 				publicKey: signer.publicKeyBase64,
 				primary,
-				...(bio.trim() ? { bio: bio.trim() } : {}),
-				...(parsedLinks.length > 0 ? { metadata: { links: parsedLinks } } : {}),
+				actorType: "human" as const,
 			};
 
-			try {
-				return await client.registry.register(request);
-			} catch (error) {
-				const challenge = registryPaymentChallenge(error);
-				if (!challenge) {
-					throw error;
+			const identity = await (async (): Promise<unknown> => {
+				try {
+					return await client.registry.register(request);
+				} catch (error) {
+					const challenge = registryPaymentChallenge(error);
+					if (!challenge) {
+						throw error;
+					}
+					setPaymentChallenge(challenge);
+					const challengePayment = challenge.payment;
+					// The exact registration fee is authoritative from the server (and
+					// is in the asset's minor units, not the decimal-USDC preview), so we
+					// can't bind an exact amount client-side here. Guard at minimum that
+					// the money-bearing fields are present and well-formed before signing.
+					assertValidX402Challenge(challengePayment);
+					const metadata = {
+						...challengePayment.metadata,
+						domain: challengePayment.metadata?.["domain"] ?? "tiny.place",
+						identity: challengePayment.metadata?.["identity"] ?? selectedName,
+						publicKey: signer.publicKeyBase64,
+						purpose: challengePayment.metadata?.["purpose"] ?? "registration",
+					};
+					const signedPayment = await signX402Authorization(signer, {
+						...challengePayment,
+						expiresAt:
+							challengePayment.expiresAt ??
+							new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+						from: agentId,
+						metadata,
+						nonce: challengePayment.nonce || generateNonce("reg"),
+					});
+					return client.registry.register({
+						...request,
+						payment: x402AuthorizationToPaymentMap(signedPayment),
+					});
 				}
-				setPaymentChallenge(challenge);
-				const challengePayment = challenge.payment;
-				// The exact registration fee is authoritative from the server (and is
-				// in the asset's minor units, not the decimal-USDC preview), so we
-				// can't bind an exact amount client-side here. Guard at minimum that
-				// the money-bearing fields are present and well-formed before signing.
-				assertValidX402Challenge(challengePayment);
-				const metadata = {
-					...challengePayment.metadata,
-					domain: challengePayment.metadata?.["domain"] ?? "tiny.place",
-					identity: challengePayment.metadata?.["identity"] ?? selectedName,
-					publicKey: signer.publicKeyBase64,
-					purpose: challengePayment.metadata?.["purpose"] ?? "registration",
-				};
-				const signedPayment = await signX402Authorization(signer, {
-					...challengePayment,
-					expiresAt:
-						challengePayment.expiresAt ??
-						new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-					from: agentId,
-					metadata,
-					nonce: challengePayment.nonce || generateNonce("reg"),
-				});
-				return client.registry.register({
-					...request,
-					payment: x402AuthorizationToPaymentMap(signedPayment),
-				});
+			})();
+
+			// Seed the wallet's profile fields (bio/links) on the User record. The
+			// handle itself carries none of this. Best-effort: a failure here does
+			// not undo the successful registration.
+			if (bio.trim() || parsedLinks.length > 0) {
+				try {
+					await client.users.updateProfile(agentId, {
+						...(bio.trim() ? { bio: bio.trim() } : {}),
+						...(parsedLinks.length > 0 ? { links: parsedLinks } : {}),
+					});
+				} catch {
+					// ignore — profile can be edited later from the profile page
+				}
 			}
+
+			return identity;
 		},
 		onSuccess: () => {
 			setPaymentChallenge(null);

@@ -1,5 +1,6 @@
 import type { ProfileVisibility } from "./identity.js";
 import type { ReputationScore } from "./reputation.js";
+import type { ActorType } from "./user.js";
 
 export interface ProfileActivity {
   transactionCount: number;
@@ -36,9 +37,36 @@ export interface ProfileAgentCard {
   skills?: Array<string>;
 }
 
+/** One thing a wallet owns, shown in the assets section of a profile. */
+export interface ProfileAsset {
+  /** Asset class. Currently always "domain" (a registered @handle). */
+  type: string;
+  name: string;
+  primary: boolean;
+  status: string;
+  expiresAt?: string;
+}
+
+/** A compact summary of an event the wallet hosts/hosted. */
+export interface ProfileEvent {
+  eventId: string;
+  name: string;
+  status: string;
+  role: string;
+  startAt?: string;
+}
+
 export interface AgentProfile {
+  /** The wallet's canonical handle — its primary handle when one is assigned. */
   username: string;
   cryptoId: string;
+  /** The wallet's self-declared, trust-based type: "human" or "agent". */
+  actorType: ActorType;
+  /**
+   * displayName/bio/avatar/links/tags are sourced from the wallet's User
+   * record (keyed by cryptoId), not from any single handle.
+   */
+  displayName?: string;
   bio: string;
   avatar?: string;
   links?: Array<string>;
@@ -47,8 +75,11 @@ export interface AgentProfile {
   status: string;
   reputation: ReputationScore;
   profileVisibility: ProfileVisibility;
+  /** The wallet's owned domains/handles. */
+  assets: Array<ProfileAsset>;
   activity?: ProfileActivity;
   groups?: Array<ProfileGroupMembership>;
+  events?: Array<ProfileEvent>;
   broadcasts?: Array<ProfileBroadcast>;
   attestations?: Array<ProfileAttestation>;
   agentCard?: ProfileAgentCard;

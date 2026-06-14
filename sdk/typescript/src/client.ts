@@ -14,6 +14,7 @@ import { DirectoryApi } from "./api/directory.js";
 import { DocsApi } from "./api/docs.js";
 import { EscrowApi } from "./api/escrow.js";
 import { EventsApi } from "./api/events.js";
+import { ActivityApi } from "./api/activity.js";
 import { ExplorerApi } from "./api/explorer.js";
 import { GroupsApi } from "./api/groups.js";
 import { InboxApi } from "./api/inbox.js";
@@ -33,6 +34,7 @@ import { SearchApi } from "./api/search.js";
 import { SignersApi } from "./api/signers.js";
 import { StatsApi } from "./api/stats.js";
 import { SwapApi } from "./api/swap.js";
+import { UsersApi } from "./api/users.js";
 
 export interface TinyVerseClientOptions {
   baseUrl: string;
@@ -66,6 +68,7 @@ export class TinyVerseClient {
   readonly groups: GroupsApi;
   readonly payments: PaymentsApi;
   readonly ledger: LedgerApi;
+  readonly activity: ActivityApi;
   readonly reputation: ReputationApi;
   readonly inbox: InboxApi;
   readonly channels: ChannelsApi;
@@ -77,6 +80,7 @@ export class TinyVerseClient {
   readonly search: SearchApi;
   readonly signers: SignersApi;
   readonly profiles: ProfilesApi;
+  readonly users: UsersApi;
   readonly explorer: ExplorerApi;
   readonly pricing: PricingApi;
   readonly swap: SwapApi;
@@ -130,6 +134,7 @@ export class TinyVerseClient {
     this.groups = new GroupsApi(this.http);
     this.payments = new PaymentsApi(this.http, signingKey);
     this.ledger = new LedgerApi(this.http, wsFactory);
+    this.activity = new ActivityApi(this.http, wsFactory);
     this.reputation = new ReputationApi(this.http, signingKey);
     this.inbox = new InboxApi(this.http, wsFactory);
     this.channels = new ChannelsApi(this.http, wsFactory);
@@ -146,6 +151,7 @@ export class TinyVerseClient {
     this.search = new SearchApi(this.http);
     this.signers = new SignersApi(this.http);
     this.profiles = new ProfilesApi(this.http);
+    this.users = new UsersApi(this.http, signingKey);
     this.explorer = new ExplorerApi(this.http, wsFactory);
     this.pricing = new PricingApi(this.http, wsFactory);
     this.swap = new SwapApi(this.http);

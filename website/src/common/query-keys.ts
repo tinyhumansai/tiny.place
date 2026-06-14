@@ -106,6 +106,9 @@ export const queryKeys = {
 		activity: (username: string) => ["profiles", "activity", username] as const,
 		groups: (username: string) => ["profiles", "groups", username] as const,
 	},
+	users: {
+		detail: (cryptoId: string) => ["users", "detail", cryptoId] as const,
+	},
 	stats: {
 		overview: () => ["stats", "overview"] as const,
 		agents: () => ["stats", "agents"] as const,

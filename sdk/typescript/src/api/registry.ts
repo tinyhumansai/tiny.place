@@ -19,12 +19,11 @@ import {
   type SolanaX402PaymentExecutionOptions,
 } from "../solana.js";
 import type {
+  ActorType,
   AvailabilityResponse,
   Identity,
   IdentityClaimRequest,
   IdentityExport,
-  IdentityMetadata,
-  IdentityProfileUpdate,
   PaymentMethod,
   ProfileVisibility,
   ProfileVisibilityUpdate,
@@ -35,12 +34,15 @@ import type {
 
 export interface RegisterRequest {
   username: string;
-  /** Optional free-text bio. May be omitted or empty at registration. */
-  bio?: string;
   cryptoId: string;
   publicKey: string;
   paymentMethods?: Array<PaymentMethod>;
-  metadata?: IdentityMetadata;
+  /**
+   * The wallet's self-declared, trust-based actor type ("human"/"agent"),
+   * recorded on the wallet's User profile when it is first provisioned. Not part
+   * of the signed payload — the backend trusts the claim. Defaults to "agent".
+   */
+  actorType?: ActorType;
   /**
    * Request that this name be assigned as the wallet's primary handle. When
    * omitted, the backend still auto-assigns it as primary if the wallet has no
@@ -318,30 +320,6 @@ export class RegistryApi {
     );
   }
 
-  async updateProfile(
-    name: string,
-    update: IdentityProfileUpdate,
-  ): Promise<Identity> {
-    if (this.signingKey && !update.signature) {
-      const payload = canonicalPayload("identity.profile", {
-        bio: update.bio,
-        metadata: update.metadata,
-        username: name,
-      });
-      update = {
-        ...update,
-        signature: await signFreshCanonicalPayload(this.signingKey, payload),
-      };
-    }
-    // directoryAuth presents the signing key in X-TinyPlace-Public-Key so the
-    // backend can authorize a delegated hot session key (the body signature is
-    // verified against it); for the identity's own key it is the owner key.
-    return this.http.putDirectoryAuth<Identity>(
-      `/registry/names/${encodeURIComponent(name)}/profile`,
-      update,
-    );
-  }
-
   async updateProfileVisibility(
     name: string,
     update: ProfileVisibilityUpdate,
@@ -589,13 +567,12 @@ function registrationSignaturePayload(request: RegisterRequest): string {
   return JSON.stringify({
     action: "identity.register",
     fields: {
-      // bio is optional client-side; the backend signs the empty string for an
-      // absent bio, so default to "" here to keep the canonical payloads equal.
-      // `primary` is intentionally NOT signed — it only affects the owner's own
-      // names, so the backend reads it from the request without binding it.
-      bio: request.bio ?? "",
+      // A handle is just a pointer now: registration binds the cryptoId to the
+      // public key. Profile fields (bio/name/metadata) live on the wallet's
+      // User and are set separately via UsersApi. `primary` is intentionally
+      // NOT signed — it only affects the owner's own names, so the backend
+      // reads it from the request without binding it.
       cryptoId: request.cryptoId,
-      metadata: identityMetadataPayload(request.metadata),
       paymentMethods: request.paymentMethods
         ? request.paymentMethods.map(paymentMethodPayload)
         : null,
@@ -603,22 +580,6 @@ function registrationSignaturePayload(request: RegisterRequest): string {
       username: request.username,
     },
   });
-}
-
-function identityMetadataPayload(
-  metadata: IdentityMetadata | undefined,
-): Record<string, unknown> {
-  const payload: Record<string, unknown> = {};
-  if (metadata?.avatar !== undefined) {
-    payload["avatar"] = metadata.avatar;
-  }
-  if (metadata?.links !== undefined) {
-    payload["links"] = metadata.links;
-  }
-  if (metadata?.tags !== undefined) {
-    payload["tags"] = metadata.tags;
-  }
-  return payload;
 }
 
 function paymentMethodPayload(method: PaymentMethod): Record<string, unknown> {
