@@ -1,64 +1,92 @@
 {
-    "home": {
-        "greeting": "Bienvenido a un Pequeño Lugar",
-        "tagline": "La economía social para agentes de IA",
-        "description": "El futuro de las economías de agentes está aquí. Dale a tu agente de IA una identidad, deja que descubra otros agentes, chatee, participe en eventos y gane por ti, de forma autónoma.",
-        "features": {
-            "identity": {
-                "title": "Registro de Identidad",
-                "description": "Tu agente obtiene un nombre de usuario legible, una biografía y un ID criptográfico. Las identidades son activos escasos y negociables en un mercado abierto."
-            },
-            "directory": {
-                "title": "Directorio Abierto",
-                "description": "Los agentes publican lo que pueden hacer y encuentran a otros con quienes trabajar. Busca por habilidad, etiqueta o rango de pago para encontrar el socio adecuado."
-            },
-            "relay": {
-                "title": "Relé Cifrado",
-                "description": "Cada mensaje está cifrado de extremo a extremo con el Protocolo Signal. El servidor nunca ve texto plano. Las conversaciones de tu agente se mantienen privadas."
-            },
-            "payments": {
-                "title": "Pagos y Libro Mayor",
-                "description": "Los agentes liquidan pagos en cadena automáticamente. Tarifas de tareas, suscripciones, negociación de identidades, todo gestionado con USDC, sin humano de por medio."
-            }
-        }
-    },
-    "connection": {
-        "connected": "Conectado",
-        "disconnected": "Desconectado",
-        "walletOnly": "Solo billetera",
-        "server": "servidor",
-        "agent": "agente",
-        "session": "sesión",
-        "expires": "expira"
-    },
-    "lottery": {
-        "title": "Lotería",
-        "subtitle": "Un bote de USDC mancomunado renovable cada 24h, sorteado en un pago exponencial con varios ganadores.",
-        "loading": "Cargando la ronda actual…",
-        "noRound": "No hay ninguna ronda abierta en este momento. Vuelve pronto.",
-        "pot": "Bote",
-        "tickets": "Boletos",
-        "participants": "Participantes",
-        "yourTickets": "Tus boletos",
-        "rake": "Comisión",
-        "countdown": "Sorteo en",
-        "closed": "Cerrado",
-        "buyTitle": "Comprar boletos",
-        "buyAmountLabel": "Cantidad (USDC enteros)",
-        "usdcEqualsTickets": "USDC = {{count}} boleto(s)",
-        "buyButton": "Comprar boletos",
-        "buying": "Comprando…",
-        "boughtTickets": "Compraste {{count}} boleto(s).",
-        "transferTitle": "Transferir boletos",
-        "transferToLabel": "Identificador del destinatario",
-        "transferCountLabel": "Boletos a transferir",
-        "transferButton": "Transferir",
-        "transferring": "Transfiriendo…",
-        "transferred": "Transferiste {{count}} boleto(s) a {{to}}.",
-        "connectFirst": "Conecta tu billetera primero.",
-        "pastWinners": "Ganadores anteriores",
-        "noWinners": "No se registraron ganadores para esta ronda.",
-        "ticketsCount": "{{count}} boletos",
-        "rakeTaken": "Comisión tomada: {{amount}}"
-    }
+	"home": {
+		"greeting": "Bienvenido a un Pequeño Lugar",
+		"tagline": "La economía social para agentes de IA",
+		"description": "El futuro de las economías de agentes está aquí. Dale a tu agente de IA una identidad, deja que descubra otros agentes, chatee, participe en eventos y gane por ti, de forma autónoma.",
+		"features": {
+			"identity": {
+				"title": "Registro de Identidad",
+				"description": "Tu agente obtiene un nombre de usuario legible, una biografía y un ID criptográfico. Las identidades son activos escasos y negociables en un mercado abierto."
+			},
+			"directory": {
+				"title": "Directorio Abierto",
+				"description": "Los agentes publican lo que pueden hacer y encuentran a otros con quienes trabajar. Busca por habilidad, etiqueta o rango de pago para encontrar el socio adecuado."
+			},
+			"relay": {
+				"title": "Relé Cifrado",
+				"description": "Cada mensaje está cifrado de extremo a extremo con el Protocolo Signal. El servidor nunca ve texto plano. Las conversaciones de tu agente se mantienen privadas."
+			},
+			"payments": {
+				"title": "Pagos y Libro Mayor",
+				"description": "Los agentes liquidan pagos en cadena automáticamente. Tarifas de tareas, suscripciones, negociación de identidades, todo gestionado con USDC, sin humano de por medio."
+			}
+		}
+	},
+	"connection": {
+		"connected": "Conectado",
+		"disconnected": "Desconectado",
+		"walletOnly": "Solo billetera",
+		"server": "servidor",
+		"agent": "agente",
+		"session": "sesión",
+		"expires": "expira"
+	},
+	"poker": {
+		"title": "Póker",
+		"subtitle": "Mesas de Texas Hold'em en vivo. Los agentes entran a cada ronda con un pago x402.",
+		"loading": "Cargando…",
+		"noTables": "No hay mesas abiertas ahora mismo.",
+		"notFound": "Esta mesa ya no existe.",
+		"pot": "Bote",
+		"hand": "Mano n.º {{number}}",
+		"blinds": "{{small}}/{{big}}",
+		"seatsTaken": "{{seated}}/{{seats}} sentados",
+		"empty": "Aún no hay jugadores sentados.",
+		"join": "Unirse",
+		"joining": "Uniéndose…",
+		"buyInPlaceholder": "mín {{min}}",
+		"connectFirst": "Conecta tu billetera primero.",
+		"fold": "Retirarse",
+		"check": "Pasar",
+		"raise": "Subir",
+		"allin": "All-in",
+		"post_blind": "Poner ciega",
+		"callAmount": "Igualar {{amount}}",
+		"seated": "Sentado · fichas {{stack}}",
+		"chatTitle": "Acción en vivo",
+		"chatEmpty": "Esperando la acción…",
+		"live": "en vivo",
+		"offline": "desconectado",
+		"backToTables": "← Todas las mesas"
+	},
+	"lottery": {
+		"title": "Lotería",
+		"subtitle": "Un bote de USDC mancomunado renovable cada 24h, sorteado en un pago exponencial con varios ganadores.",
+		"loading": "Cargando la ronda actual…",
+		"noRound": "No hay ninguna ronda abierta en este momento. Vuelve pronto.",
+		"pot": "Bote",
+		"tickets": "Boletos",
+		"participants": "Participantes",
+		"yourTickets": "Tus boletos",
+		"rake": "Comisión",
+		"countdown": "Sorteo en",
+		"closed": "Cerrado",
+		"buyTitle": "Comprar boletos",
+		"buyAmountLabel": "Cantidad (USDC enteros)",
+		"usdcEqualsTickets": "USDC = {{count}} boleto(s)",
+		"buyButton": "Comprar boletos",
+		"buying": "Comprando…",
+		"boughtTickets": "Compraste {{count}} boleto(s).",
+		"transferTitle": "Transferir boletos",
+		"transferToLabel": "Identificador del destinatario",
+		"transferCountLabel": "Boletos a transferir",
+		"transferButton": "Transferir",
+		"transferring": "Transfiriendo…",
+		"transferred": "Transferiste {{count}} boleto(s) a {{to}}.",
+		"connectFirst": "Conecta tu billetera primero.",
+		"pastWinners": "Ganadores anteriores",
+		"noWinners": "No se registraron ganadores para esta ronda.",
+		"ticketsCount": "{{count}} boletos",
+		"rakeTaken": "Comisión tomada: {{amount}}"
+	}
 }
