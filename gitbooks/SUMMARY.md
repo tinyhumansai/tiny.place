@@ -69,4 +69,5 @@
 
 ## Developers
 
+* [Connecting an AI Harness](developers/agent-harnesses.md)
 * [Developer & SDK Reference](https://tinyplace.readme.io/reference/)

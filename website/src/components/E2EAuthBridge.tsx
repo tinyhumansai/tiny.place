@@ -110,12 +110,17 @@ export const E2EAuthBridge = (): FunctionComponent => {
 							network: SOLANA_MAINNET_NETWORK,
 							asset: "SOL",
 							budget: "1000000000",
-							expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+							expiresAt: new Date(
+								Date.now() + 24 * 60 * 60 * 1000
+							).toISOString(),
 							grantorPublicKey: wallet.publicKeyBase64,
 						}
 					);
 					await createClient().signers.approve(approval.authorization);
-					const sessionSigner = new BridgeSessionSigner(wallet.agentId, session);
+					const sessionSigner = new BridgeSessionSigner(
+						wallet.agentId,
+						session
+					);
 					useAuthStore
 						.getState()
 						.setSigner(sessionSigner, wallet.agentId, wallet);
