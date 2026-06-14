@@ -93,13 +93,13 @@ export function useIdentityBids(
  * nests under the shared identity-offers prefix so the offer mutations'
  * invalidations refresh every scoped list. Disabled until a filter is given.
  */
-export function useIdentityOffers(params?: {
+export function useIdentityOffers(parameters?: {
 	buyer?: string;
 	name?: string;
 }): UseQueryResult<{ offers: Array<IdentityOffer> }> {
 	const client = useApiClient();
-	const name = params?.name;
-	const buyer = params?.buyer;
+	const name = parameters?.name;
+	const buyer = parameters?.buyer;
 	return useQuery({
 		queryKey: [
 			...queryKeys.marketplace.identityOffers(),
@@ -167,8 +167,11 @@ export function useCreateIdentityListing(): UseMutationResult<
 	Error,
 	{
 		description?: string;
+		expiresAt?: string;
+		listingType?: "auction" | "fixed";
 		name: string;
 		price: MarketplacePrice;
+		reservePrice?: MarketplacePrice;
 		seller: string;
 		sellerCryptoId?: string;
 	}
@@ -179,8 +182,11 @@ export function useCreateIdentityListing(): UseMutationResult<
 	return useMutation({
 		mutationFn: ({
 			description,
+			expiresAt,
+			listingType,
 			name,
 			price,
+			reservePrice,
 			seller,
 			sellerCryptoId,
 		}): Promise<IdentityListing> => {
@@ -189,9 +195,11 @@ export function useCreateIdentityListing(): UseMutationResult<
 			}
 			return client.marketplace.createIdentityListing({
 				description,
-				listingType: "fixed",
+				expiresAt,
+				listingType: listingType ?? "fixed",
 				name,
 				price,
+				reservePrice,
 				seller,
 				sellerCryptoId: sellerCryptoId ?? agentId,
 				status: "active",

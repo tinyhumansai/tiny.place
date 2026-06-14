@@ -46,6 +46,9 @@ function IdentityCard({
 	const [panel, setPanel] = useState<ActionPanel>("none");
 	const [price, setPrice] = useState("");
 	const [description, setDescription] = useState("");
+	const [listingType, setListingType] = useState<"auction" | "fixed">("fixed");
+	const [reserve, setReserve] = useState("");
+	const [durationDays, setDurationDays] = useState("7");
 	const [recipient, setRecipient] = useState("");
 	const [recipientError, setRecipientError] = useState<string | null>(null);
 	const [confirmTransfer, setConfirmTransfer] = useState(false);
@@ -85,11 +88,23 @@ function IdentityCard({
 
 	function handleList(event: React.FormEvent): void {
 		event.preventDefault();
+		const isAuction = listingType === "auction";
+		// For an auction the price is the starting bid; the reserve (if set) is the
+		// minimum acceptable winning bid, and the listing runs for durationDays.
+		const days = Number(durationDays) || 7;
 		createListing.mutate(
 			{
 				description,
+				expiresAt: isAuction
+					? new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+					: undefined,
+				listingType,
 				name: identity.username,
 				price: { amount: price, asset: "USDC", network: SOLANA_NETWORK },
+				reservePrice:
+					isAuction && reserve
+						? { amount: reserve, asset: "USDC", network: SOLANA_NETWORK }
+						: undefined,
 				seller: identity.username,
 				sellerCryptoId: agentId,
 			},
@@ -97,6 +112,7 @@ function IdentityCard({
 				onSuccess: (): void => {
 					setPrice("");
 					setDescription("");
+					setReserve("");
 					setPanel("none");
 				},
 			}
@@ -272,9 +288,33 @@ function IdentityCard({
 
 			{panel === "list" && (
 				<form className="mt-3 space-y-2" onSubmit={handleList}>
+					<div className="flex gap-1.5">
+						{(["fixed", "auction"] as const).map((kind) => (
+							<button
+								key={kind}
+								type="button"
+								className={`rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
+									listingType === kind
+										? "bg-blue-600 text-white"
+										: isDark
+											? "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+											: "bg-neutral-200 text-neutral-600 hover:bg-neutral-300"
+								}`}
+								onClick={(): void => {
+									setListingType(kind);
+								}}
+							>
+								{kind === "fixed" ? "Fixed price" : "Auction"}
+							</button>
+						))}
+					</div>
 					<div className="grid grid-cols-2 gap-2">
 						<div>
-							<label className={labelClass}>Price (USDC)</label>
+							<label className={labelClass}>
+								{listingType === "auction"
+									? "Starting bid (USDC)"
+									: "Price (USDC)"}
+							</label>
 							<input
 								required
 								className={inputClass}
@@ -301,6 +341,37 @@ function IdentityCard({
 							/>
 						</div>
 					</div>
+					{listingType === "auction" && (
+						<div className="grid grid-cols-2 gap-2">
+							<div>
+								<label className={labelClass}>Reserve (USDC, optional)</label>
+								<input
+									className={inputClass}
+									min="0"
+									placeholder="100.00"
+									step="0.01"
+									type="number"
+									value={reserve}
+									onChange={(event): void => {
+										setReserve(event.target.value);
+									}}
+								/>
+							</div>
+							<div>
+								<label className={labelClass}>Duration (days)</label>
+								<input
+									className={inputClass}
+									min="1"
+									placeholder="7"
+									type="number"
+									value={durationDays}
+									onChange={(event): void => {
+										setDurationDays(event.target.value);
+									}}
+								/>
+							</div>
+						</div>
+					)}
 					{createListing.isError && (
 						<p className="text-xs text-rose-500">
 							{createListing.error instanceof Error
