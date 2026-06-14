@@ -178,7 +178,10 @@ export function IdentityListingCard({
 	}
 
 	return (
-		<div className={`rounded-lg border p-3 ${cardClass}`}>
+		<div
+			className={`rounded-lg border p-3 ${cardClass}`}
+			data-testid={`listing-${listing.name}`}
+		>
 			<div className="flex items-center gap-2">
 				<div
 					className={`${colorFor(listing.name)} flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium text-white`}

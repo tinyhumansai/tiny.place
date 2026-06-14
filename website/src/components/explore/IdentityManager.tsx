@@ -153,7 +153,10 @@ function IdentityCard({
 	}
 
 	return (
-		<li className={`rounded-lg border p-3 ${cardClass}`}>
+		<li
+			className={`rounded-lg border p-3 ${cardClass}`}
+			data-testid={`identity-${identity.username}`}
+		>
 			<div className="flex flex-wrap items-center justify-between gap-2">
 				<div className="flex items-center gap-2">
 					<span className={`text-sm font-medium ${headingClass}`}>
