@@ -13,17 +13,31 @@ authors = [{ name = "TinyHumans AI" }]
 dependencies = [
   "aiohttp>=3.9",
   "PyNaCl>=1.5",
+  "solders>=0.27",
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0",
   "pytest-asyncio>=0.23",
+  "pytest-cov>=5.0",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tinyplace"]
 
 [tool.pytest.ini_options]
+addopts = "--cov=tinyplace --cov-report=term-missing --cov-fail-under=80"
 asyncio_mode = "auto"
+markers = [
+  "e2e: tests that require a running backend and local Solana validator",
+]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true

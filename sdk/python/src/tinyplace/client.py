@@ -32,7 +32,7 @@ class TinyPlaceClient:
         self.keys = KeysApi(self.http)
         self.messages = MessagesApi(self.http)
         self.directory = DirectoryApi(self.http)
-        self.payments = PaymentsApi(self.http)
+        self.payments = PaymentsApi(self.http, signer)
         self.search = SearchApi(self.http)
         self.docs = DocsApi(self.http)
 

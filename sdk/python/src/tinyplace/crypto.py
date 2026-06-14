@@ -24,7 +24,7 @@ def public_key_to_solana_address(public_key: bytes) -> str:
         if byte != 0:
             break
         leading_zeroes += 1
-    return ("1" * leading_zeroes) + (encoded or "1")
+    return ("1" * leading_zeroes) + encoded if encoded else "1"
 
 
 def derive_crypto_id(public_key: bytes) -> str:

@@ -4,26 +4,9 @@ import json
 from typing import Any
 
 from tinyplace import LocalSigner, TinyPlaceClient, TinyPlaceError
+from tinyplace.http import HttpClient
 
-
-class FakeResponse:
-    def __init__(self, status: int, body: Any, headers: dict[str, str] | None = None) -> None:
-        self.status = status
-        self._body = body
-        self.headers = headers or {}
-
-    async def text(self) -> str:
-        return self._body if isinstance(self._body, str) else json.dumps(self._body)
-
-
-class FakeSession:
-    def __init__(self, responses: list[FakeResponse]) -> None:
-        self.responses = responses
-        self.requests: list[dict[str, Any]] = []
-
-    async def request(self, method: str, url: str, **kwargs: Any) -> FakeResponse:
-        self.requests.append({"method": method, "url": url, **kwargs})
-        return self.responses.pop(0)
+from .helpers import FakeResponse, FakeSession
 
 
 async def test_directory_get_agent_builds_expected_request() -> None:
@@ -75,3 +58,54 @@ async def test_error_includes_payment_challenge_from_body() -> None:
         assert error.payment_required.payment["amount"] == "1"
     else:
         raise AssertionError("expected TinyPlaceError")
+
+
+async def test_text_response_and_query_array_encoding() -> None:
+    session = FakeSession([FakeResponse(200, "hello")])
+    client = TinyPlaceClient(base_url="https://api.example.test", session=session)  # type: ignore[arg-type]
+
+    result = await client.http.get_text("/docs", {"tag": ["a", "b"], "skip": None})
+
+    assert result == "hello"
+    assert session.requests[0]["url"] == "https://api.example.test/docs?tag=a&tag=b"
+
+
+async def test_admin_auth_and_invalid_auth_hook() -> None:
+    admin = LocalSigner.from_seed(bytes(range(32)))
+    calls: list[tuple[int, Any]] = []
+    session = FakeSession([FakeResponse(403, {"error": "nope"})])
+    client = TinyPlaceClient(
+        base_url="https://api.example.test",
+        admin_signer=admin,
+        session=session,  # type: ignore[arg-type]
+        on_auth_invalid=lambda status, body: calls.append((status, body)),
+    )
+
+    try:
+        await client.http.post_admin("/admin/fees", {"id": "fee"})
+    except TinyPlaceError:
+        pass
+
+    assert calls == [(403, {"error": "nope"})]
+    headers = session.requests[0]["headers"]
+    assert headers["Authorization"].startswith('TinyPlace-Admin actor="')
+    assert headers["X-TinyPlace-Date"]
+    assert headers["X-TinyPlace-Nonce"]
+
+
+async def test_payment_challenge_from_header_and_no_content() -> None:
+    header = json.dumps({"error": "pay", "payment": {"amount": "1"}})
+    session = FakeSession([FakeResponse(402, "", {"X-Payment-Required": header})])
+    client = TinyPlaceClient(base_url="https://api.example.test", session=session)  # type: ignore[arg-type]
+
+    try:
+        await client.healthz()
+    except TinyPlaceError as error:
+        assert error.payment_required is not None
+        assert error.payment_required.error == "pay"
+    else:
+        raise AssertionError("expected TinyPlaceError")
+
+    no_content = FakeSession([FakeResponse(204, "")])
+    http = HttpClient(base_url="https://api.example.test", session=no_content)  # type: ignore[arg-type]
+    assert await http.delete_public("/resource") is None
