@@ -52,6 +52,17 @@ export interface IdentityClaimRequest {
   signature?: string;
 }
 
+/**
+ * Request body for a direct, no-payment transfer of a @handle to another
+ * wallet. `cryptoId`/`publicKey` identify the recipient; `signature` is the
+ * CURRENT owner's authorization over the `identity.transfer` payload.
+ */
+export interface IdentityTransferRequest {
+  cryptoId: string;
+  publicKey: string;
+  signature?: string;
+}
+
 export interface SubnameCreateRequest {
   subname: string;
   target: string;

@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 import type {
-	Identity,
 	IdentityListing,
 	MarketplacePrice,
 } from "@tinyhumansai/tinyplace";
@@ -11,7 +10,6 @@ import type {
 import type { FunctionComponent } from "@src/common/types";
 import {
 	useBuyIdentityListing,
-	useCreateIdentityListing,
 	useIdentityFloor,
 	useIdentityListings,
 	useIdentityRecentSales,
@@ -20,8 +18,9 @@ import {
 	firstActiveIdentity,
 	useOwnedIdentities,
 } from "@src/hooks/use-marketplace";
-import { useSetPrimaryIdentity } from "@src/hooks/use-registry";
 import { useAuthStore } from "@src/store/auth";
+
+import { IdentityManager } from "./IdentityManager";
 
 const avatarColors = [
 	"bg-indigo-600",
@@ -66,128 +65,6 @@ function floorDescription(length: number): string {
 
 const floorLengths = [3, 4, 5] as const;
 
-type IdentityListingFormProperties = {
-	agentId: string;
-	isDark: boolean;
-	isIdentityLoading: boolean;
-	sellerHandle: string | undefined;
-};
-
-function IdentityListingForm({
-	agentId,
-	isDark,
-	isIdentityLoading,
-	sellerHandle,
-}: IdentityListingFormProperties): FunctionComponent {
-	const createListing = useCreateIdentityListing();
-	const [amount, setAmount] = useState("");
-	const [description, setDescription] = useState("");
-
-	const inputClass = `w-full rounded-md border px-2.5 py-1.5 text-xs ${
-		isDark
-			? "border-neutral-700 bg-neutral-900 text-white placeholder-neutral-600"
-			: "border-neutral-300 bg-white text-black placeholder-neutral-400"
-	}`;
-	const labelClass = `text-xs font-medium ${isDark ? "text-neutral-400" : "text-neutral-500"}`;
-	const cardClass = isDark
-		? "border-neutral-800 bg-neutral-950"
-		: "border-neutral-200 bg-neutral-50";
-
-	const handleSubmit = (event: React.FormEvent): void => {
-		event.preventDefault();
-		if (!sellerHandle) {
-			return;
-		}
-		createListing.mutate(
-			{
-				description,
-				name: sellerHandle,
-				price: {
-					amount,
-					asset: "USDC",
-					network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-				},
-				seller: sellerHandle,
-				sellerCryptoId: agentId,
-			},
-			{
-				onSuccess: (): void => {
-					setAmount("");
-					setDescription("");
-				},
-			}
-		);
-	};
-
-	return (
-		<form
-			className={`rounded-lg border p-4 ${cardClass}`}
-			onSubmit={handleSubmit}
-		>
-			<h3
-				className={`mb-3 text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
-			>
-				List an Identity
-			</h3>
-			<p
-				className={`mb-3 text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
-			>
-				{isIdentityLoading
-					? "Checking registered handles..."
-					: sellerHandle
-						? `Selling ${sellerHandle}`
-						: "Register a handle before listing identities."}
-			</p>
-			<div className="grid grid-cols-2 gap-3">
-				<div>
-					<label className={labelClass}>Price (USDC)</label>
-					<input
-						required
-						className={inputClass}
-						min="0"
-						placeholder="25.00"
-						step="0.01"
-						type="number"
-						value={amount}
-						onChange={(event): void => {
-							setAmount(event.target.value);
-						}}
-					/>
-				</div>
-				<div>
-					<label className={labelClass}>Description</label>
-					<input
-						className={inputClass}
-						placeholder="Premium agent handle"
-						type="text"
-						value={description}
-						onChange={(event): void => {
-							setDescription(event.target.value);
-						}}
-					/>
-				</div>
-			</div>
-			{createListing.isError && (
-				<p className="mt-2 text-xs text-rose-500">
-					{createListing.error instanceof Error
-						? createListing.error.message
-						: "Failed to list identity"}
-				</p>
-			)}
-			{createListing.isSuccess && (
-				<p className="mt-2 text-xs text-emerald-500">Identity listed.</p>
-			)}
-			<button
-				className="mt-3 w-full rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
-				disabled={createListing.isPending || !sellerHandle || !amount}
-				type="submit"
-			>
-				{createListing.isPending ? "Listing..." : "List Identity"}
-			</button>
-		</form>
-	);
-}
-
 type FloorCardProperties = {
 	isDark: boolean;
 	length: number;
@@ -215,80 +92,6 @@ function FloorCard({ isDark, length }: FloorCardProperties): FunctionComponent {
 			<div className={`mt-1 text-xs ${secondaryClass}`}>
 				{floorQuery.isError ? "Unavailable" : floorDescription(length)}
 			</div>
-		</div>
-	);
-}
-
-type MyIdentitiesPanelProperties = {
-	identities: Array<Identity>;
-	isDark: boolean;
-};
-
-// Lists the connected wallet's active identities, shows which one is the
-// primary handle, and lets the owner assign/unassign primary. A primary name is
-// locked from sale, so this is where a seller unassigns before listing.
-function MyIdentitiesPanel({
-	identities,
-	isDark,
-}: MyIdentitiesPanelProperties): FunctionComponent {
-	const setPrimary = useSetPrimaryIdentity();
-	const cardClass = isDark
-		? "border-neutral-800 bg-neutral-950"
-		: "border-neutral-200 bg-neutral-50";
-	const headingClass = isDark ? "text-white" : "text-black";
-	const secondaryClass = isDark ? "text-neutral-500" : "text-neutral-400";
-
-	if (identities.length === 0) {
-		return null;
-	}
-
-	return (
-		<div className={`rounded-lg border p-4 ${cardClass}`}>
-			<h3 className={`mb-3 text-sm font-medium ${headingClass}`}>
-				Your Identities
-			</h3>
-			<ul className="space-y-2">
-				{identities.map((identity) => (
-					<li
-						key={identity.username}
-						className="flex items-center justify-between gap-2"
-					>
-						<span className={`text-sm ${headingClass}`}>
-							{identity.username}
-							{identity.primary && (
-								<span className="ml-2 rounded-full bg-emerald-600/20 px-2 py-0.5 text-xs font-medium text-emerald-500">
-									Primary
-								</span>
-							)}
-							{!identity.primary && (
-								<span className={`ml-2 text-xs ${secondaryClass}`}>
-									Unassigned · sellable
-								</span>
-							)}
-						</span>
-						<button
-							className="rounded-md border border-neutral-600 px-2.5 py-1 text-xs font-medium transition-colors hover:bg-neutral-700/30 disabled:opacity-50"
-							disabled={setPrimary.isPending}
-							type="button"
-							onClick={(): void => {
-								setPrimary.mutate({
-									name: identity.username,
-									primary: !identity.primary,
-								});
-							}}
-						>
-							{identity.primary ? "Unassign" : "Set primary"}
-						</button>
-					</li>
-				))}
-			</ul>
-			{setPrimary.isError && (
-				<p className="mt-2 text-xs text-rose-500">
-					{setPrimary.error instanceof Error
-						? setPrimary.error.message
-						: "Failed to update primary"}
-				</p>
-			)}
 		</div>
 	);
 }
@@ -328,27 +131,20 @@ export const IdentityTrading = ({
 		);
 	}
 
-	const ownedActive = (ownedIdentities.data?.identities ?? []).filter(
-		(identity) => identity.status === "active"
+	// Owner-controllable names: active or in the grace/expiring window (an
+	// auctioned/released name is no longer the owner's to manage).
+	const ownedManageable = (ownedIdentities.data?.identities ?? []).filter(
+		(identity) => identity.status === "active" || identity.status === "expiring"
 	);
-	// Only an unassigned name is sellable; never offer a primary handle to the
-	// listing form (the backend rejects it anyway).
-	const sellableHandle = ownedActive.find(
-		(identity) => !identity.primary
-	)?.username;
 
 	return (
 		<div className="space-y-4">
-			{agentId && ownedActive.length > 0 && (
-				<MyIdentitiesPanel identities={ownedActive} isDark={isDark} />
-			)}
-
-			{agentId && (
-				<IdentityListingForm
+			{agentId && ownedManageable.length > 0 && (
+				<IdentityManager
 					agentId={agentId}
+					identities={ownedManageable}
 					isDark={isDark}
-					isIdentityLoading={ownedIdentities.isLoading}
-					sellerHandle={sellableHandle}
+					listings={listings}
 				/>
 			)}
 

@@ -24,6 +24,7 @@ import type {
   Identity,
   IdentityClaimRequest,
   IdentityExport,
+  IdentityTransferRequest,
   PaymentMethod,
   ProfileVisibility,
   ProfileVisibilityUpdate,
@@ -355,6 +356,34 @@ export class RegistryApi {
     }
     return this.http.postDirectoryAuth<Identity>(
       `/registry/names/${encodeURIComponent(name)}/renew`,
+      request,
+    );
+  }
+
+  /**
+   * Directly transfer this name to another wallet with no payment (a gift or
+   * account move), distinct from the paid marketplace flow. The CURRENT owner
+   * (this client's signing key, or an approved delegate) authorizes the move;
+   * `request.cryptoId`/`request.publicKey` identify the recipient. The name
+   * keeps its registration period and the recipient receives it unassigned.
+   */
+  async transfer(
+    name: string,
+    request: IdentityTransferRequest,
+  ): Promise<Identity> {
+    if (this.signingKey && !request.signature) {
+      const payload = canonicalPayload("identity.transfer", {
+        cryptoId: request.cryptoId,
+        publicKey: request.publicKey,
+        username: name,
+      });
+      request = {
+        ...request,
+        signature: await signFreshCanonicalPayload(this.signingKey, payload),
+      };
+    }
+    return this.http.postDirectoryAuth<Identity>(
+      `/registry/names/${encodeURIComponent(name)}/transfer`,
       request,
     );
   }
