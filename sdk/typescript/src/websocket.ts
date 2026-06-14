@@ -76,7 +76,11 @@ export class TinyVerseWebSocket {
         this.emit("close", undefined);
         if (!this.closed && this.reconnect && this.reconnectCount < this.maxReconnectAttempts) {
           this.reconnectCount++;
-          setTimeout(() => this.connect(), this.reconnectInterval);
+          // Catch the reconnect's rejection so a failed retry doesn't surface as
+          // an unhandled promise rejection; onclose will schedule the next one.
+          setTimeout(() => {
+            void this.connect().catch(() => {});
+          }, this.reconnectInterval);
         }
       };
 

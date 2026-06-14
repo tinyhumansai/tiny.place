@@ -88,7 +88,9 @@ export function useActivityFeed(
 				setIsLive(false);
 			}),
 		];
-		void socket.connect();
+		// Swallow connect failures (e.g. the stream endpoint is unreachable); the
+		// "close" handler clears the live flag and REST backfill still applies.
+		void socket.connect().catch(() => {});
 		return (): void => {
 			for (const unsubscribe of unsubscribers) {
 				unsubscribe();
