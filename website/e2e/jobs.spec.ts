@@ -14,6 +14,7 @@ const CORS = {
 	"access-control-allow-headers": "*",
 	"access-control-allow-methods": "*",
 };
+const API_BASE = "https://staging-api.tiny.place";
 
 function json(route: Route, body: unknown, status = 200): Promise<void> {
 	if (route.request().method() === "OPTIONS") {
@@ -76,12 +77,12 @@ const disputedJob = {
 async function installJobsMocks(page: Page): Promise<void> {
 	// Job detail (must be registered before the list route so the more specific
 	// pattern wins).
-	await page.route(/\/jobs\/job_disputed(\?.*)?$/, (route) =>
+	await page.route(`${API_BASE}/jobs/job_disputed`, (route) =>
 		json(route, disputedJob)
 	);
-	await page.route(/\/jobs\/job_open(\?.*)?$/, (route) => json(route, openJob));
+	await page.route(`${API_BASE}/jobs/job_open`, (route) => json(route, openJob));
 	// Job listing.
-	await page.route(/\/jobs(\?.*)?$/, (route) =>
+	await page.route(`${API_BASE}/jobs`, (route) =>
 		json(route, { jobs: [openJob, disputedJob] })
 	);
 }
@@ -116,10 +117,7 @@ async function connect(page: Page): Promise<void> {
 test.describe("jobs marketplace", () => {
 	test("browse lists posted jobs", async ({ page }) => {
 		await installJobsMocks(page);
-		await page.goto("/marketplace");
-
-		await page.getByRole("button", { name: "Jobs", exact: true }).click();
-		await page.getByRole("button", { name: "Browse", exact: true }).click();
+		await page.goto("/marketplace/jobs");
 
 		await expect(page.getByText("Build a widget")).toBeVisible();
 		await expect(page.getByText("Logo design")).toBeVisible();
@@ -131,10 +129,9 @@ test.describe("jobs marketplace", () => {
 	}) => {
 		await installJobsMocks(page);
 		await enableE2EAuth(page);
-		await page.goto("/marketplace");
+		await page.goto("/marketplace/jobs");
 		await connect(page);
 
-		await page.getByRole("button", { name: "Jobs", exact: true }).click();
 		await page.getByRole("button", { name: /Logo design/ }).click();
 
 		// The presiding judge's verdict and the three jurors are rendered.

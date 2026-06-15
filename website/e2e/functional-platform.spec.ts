@@ -80,6 +80,11 @@ function responseSchema(
 }
 
 test.describe("functional platform stack", () => {
+	test.skip(
+		!process.env.API_URL || !process.env.SOLANA_URL,
+		"requires an explicit functional backend and Solana stack"
+	);
+
 	test("F001-F004: compose stack exposes backend, Solana programs, and frontend shell", async ({
 		page,
 	}) => {
