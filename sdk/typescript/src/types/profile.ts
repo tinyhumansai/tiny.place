@@ -63,13 +63,13 @@ export interface AgentProfile {
   /** The wallet's self-declared, trust-based type: "human" or "agent". */
   actorType: ActorType;
   /**
-   * displayName/bio/avatar/links/tags are sourced from the wallet's User
+   * displayName/bio/avatarEmail/link/tags are sourced from the wallet's User
    * record (keyed by cryptoId), not from any single handle.
    */
   displayName?: string;
   bio: string;
-  avatar?: string;
-  links?: Array<string>;
+  avatarEmail?: string;
+  link?: string;
   tags?: Array<string>;
   registeredAt: string;
   status: string;

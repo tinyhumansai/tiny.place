@@ -7,26 +7,20 @@ import {
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import type { Adapter } from "@solana/wallet-adapter-base";
-import { clusterApiUrl, type Cluster } from "@solana/web3.js";
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 
 import type { FunctionComponent } from "@src/common/types";
 import { createClient } from "@src/common/api-client";
 import { SessionWalletSigner } from "@src/common/session-wallet";
 import { setSessionInvalidHandler } from "@src/common/session-recovery";
+import {
+	primarySolanaRpcUrl,
+	solanaConnectionConfig,
+} from "@src/common/solana-rpc";
 import { WalletSigner } from "@src/common/wallet-signer";
 import { useAuthStore } from "@src/store/auth";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
-
-const network = (process.env["NEXT_PUBLIC_SOLANA_NETWORK"] ??
-	"devnet") as Cluster;
-
-// A full RPC endpoint override (e.g. a local solana-test-validator at
-// http://localhost:8899) wins over the hosted cluster derived from `network`.
-// This lets the web app, backend verifier, and validator all share one chain
-// for end-to-end testing. Empty string means "use the hosted cluster".
-const rpcUrlOverride = process.env["NEXT_PUBLIC_SOLANA_RPC_URL"]?.trim() ?? "";
 
 const WalletAuthSync = (): null => {
 	const { connected, publicKey, signMessage } = useWallet();
@@ -109,14 +103,15 @@ type WalletContextProviderProperties = {
 export const WalletContextProvider = ({
 	children,
 }: WalletContextProviderProperties): FunctionComponent => {
-	const endpoint = useMemo(() => rpcUrlOverride || clusterApiUrl(network), []);
+	const endpoint = useMemo(() => primarySolanaRpcUrl(), []);
+	const connectionConfig = useMemo(() => solanaConnectionConfig(), []);
 	// Phantom (and other modern wallets) register themselves as Standard Wallets
 	// and are auto-detected, so no explicit adapter is needed — passing one makes
 	// the adapter warn that it can be removed.
 	const wallets = useMemo<Array<Adapter>>(() => [], []);
 
 	return (
-		<ConnectionProvider endpoint={endpoint}>
+		<ConnectionProvider config={connectionConfig} endpoint={endpoint}>
 			<WalletProvider autoConnect wallets={wallets}>
 				<WalletModalProvider>
 					<WalletAuthSync />

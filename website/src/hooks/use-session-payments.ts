@@ -10,11 +10,8 @@ import {
 	type SessionPaymentOptions,
 } from "@src/common/session-payments";
 import { SessionWalletSigner } from "@src/common/session-wallet";
+import { primarySolanaRpcUrl } from "@src/common/solana-rpc";
 import { useAuthStore } from "@src/store/auth";
-
-const RPC_URL =
-	process.env["NEXT_PUBLIC_SOLANA_RPC_URL"] ??
-	"https://api.mainnet-beta.solana.com";
 
 interface UseSessionPayments {
 	/** True when a session wallet + a connected wallet that can sign txs exist. */
@@ -54,7 +51,7 @@ export function useSessionPayments(): UseSessionPayments {
 				Buffer.from(session.publicKeyBase64, "base64")
 			).toBase58();
 			return enableDelegatedSpending({
-				rpcUrl: RPC_URL,
+				rpcUrl: primarySolanaRpcUrl(),
 				payer: publicKey.toBase58(),
 				delegate,
 				amount,
@@ -75,7 +72,7 @@ export function useSessionPayments(): UseSessionPayments {
 			const client = createClient(session);
 			return payViaSessionDelegate(client, session, {
 				...options,
-				rpcUrl: RPC_URL,
+				rpcUrl: primarySolanaRpcUrl(),
 			});
 		},
 		[session]

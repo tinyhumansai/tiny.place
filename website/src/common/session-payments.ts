@@ -1,4 +1,4 @@
-import { Connection, type Transaction } from "@solana/web3.js";
+import type { Transaction } from "@solana/web3.js";
 import {
 	buildX402PaymentAuthorization,
 	SOLANA_MAINNET_NETWORK,
@@ -6,6 +6,7 @@ import {
 	type X402SettleResponse,
 } from "@tinyhumansai/tinyplace";
 
+import { createSolanaConnection } from "@src/common/solana-rpc";
 import {
 	buildApproveTransaction,
 	buildDelegatedDepositTx,
@@ -40,7 +41,7 @@ export async function enableDelegatedSpending(options: {
 		mint: options.mint,
 	});
 	const signed = await options.signTransaction(transaction);
-	const connection = new Connection(options.rpcUrl, "confirmed");
+	const connection = createSolanaConnection(options.rpcUrl);
 	const signature = await connection.sendRawTransaction(signed.serialize());
 	await connection.confirmTransaction(signature, "confirmed");
 	return signature;
