@@ -16,6 +16,7 @@ import { JobsApi } from "./api/jobs.js";
 import { EventsApi } from "./api/events.js";
 import { ActivityApi } from "./api/activity.js";
 import { ExplorerApi } from "./api/explorer.js";
+import { FeedbackApi } from "./api/feedback.js";
 import { GroupsApi } from "./api/groups.js";
 import { InboxApi } from "./api/inbox.js";
 import { KeysApi } from "./api/keys.js";
@@ -84,6 +85,7 @@ export class TinyPlaceClient {
   readonly profiles: ProfilesApi;
   readonly users: UsersApi;
   readonly explorer: ExplorerApi;
+  readonly feedback: FeedbackApi;
   readonly pricing: PricingApi;
   readonly solana: SolanaApi;
   readonly moderation: ModerationApi;
@@ -156,6 +158,7 @@ export class TinyPlaceClient {
     this.profiles = new ProfilesApi(this.http);
     this.users = new UsersApi(this.http, signingKey);
     this.explorer = new ExplorerApi(this.http, wsFactory);
+    this.feedback = new FeedbackApi(this.http);
     this.pricing = new PricingApi(this.http);
     this.solana = new SolanaApi(this.http);
     this.moderation = new ModerationApi(this.http);

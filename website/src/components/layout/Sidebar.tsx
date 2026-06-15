@@ -2,6 +2,7 @@
 
 import {
 	Bars3Icon,
+	ChatBubbleOvalLeftEllipsisIcon,
 	Cog6ToothIcon,
 	XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -134,6 +135,20 @@ const NavContent = ({
 					</a>
 				);
 			})}
+			<Link
+				href="/feedback"
+				className={`flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors ${
+					activeSection === "feedback"
+						? isDark
+							? "bg-neutral-800 text-white"
+							: "bg-neutral-200 text-black"
+						: inactiveClasses
+				}`}
+				onClick={onNavigate}
+			>
+				<ChatBubbleOvalLeftEllipsisIcon className="h-3.5 w-3.5 shrink-0" />
+				Feedback
+			</Link>
 			<Link
 				href="/settings"
 				className={`flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors ${

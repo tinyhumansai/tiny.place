@@ -13,6 +13,7 @@ export * from "./marketplace.js";
 export * from "./broadcasts.js";
 export * from "./events.js";
 export * from "./escrow.js";
+export * from "./feedback.js";
 export * from "./jobs.js";
 export * from "./games.js";
 export * from "./lottery.js";

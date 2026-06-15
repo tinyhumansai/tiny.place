@@ -149,6 +149,16 @@ export const queryKeys = {
 			}
 		) => ["reputation", "leaderboard", category, parameters] as const,
 	},
+	feedback: {
+		list: (parameters?: { limit?: number; offset?: number; status?: string }) =>
+			["feedback", "list", parameters] as const,
+		adminList: (parameters?: {
+			limit?: number;
+			offset?: number;
+			status?: string;
+		}) => ["feedback", "admin-list", parameters] as const,
+		detail: (feedbackId: string) => ["feedback", "detail", feedbackId] as const,
+	},
 	explorer: {
 		overview: () => ["explorer", "overview"] as const,
 		transaction: (transactionId: string) =>
