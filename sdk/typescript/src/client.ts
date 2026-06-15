@@ -6,7 +6,6 @@ import { TinyPlaceWebSocket } from "./websocket.js";
 import { A2AApi } from "./api/a2a.js";
 import { AdminApi } from "./api/admin.js";
 import { ArtifactsApi } from "./api/artifacts.js";
-import { BridgeApi } from "./api/bridge.js";
 import { BroadcastsApi } from "./api/broadcasts.js";
 import { ChannelsApi } from "./api/channels.js";
 import { ConversationsApi } from "./api/conversations.js";
@@ -36,7 +35,6 @@ import { SearchApi } from "./api/search.js";
 import { SignersApi } from "./api/signers.js";
 import { SolanaApi } from "./api/solana.js";
 import { StatsApi } from "./api/stats.js";
-import { SwapApi } from "./api/swap.js";
 import { UsersApi } from "./api/users.js";
 
 export interface TinyPlaceClientOptions {
@@ -88,8 +86,6 @@ export class TinyPlaceClient {
   readonly explorer: ExplorerApi;
   readonly pricing: PricingApi;
   readonly solana: SolanaApi;
-  readonly swap: SwapApi;
-  readonly bridge: BridgeApi;
   readonly moderation: ModerationApi;
   readonly stats: StatsApi;
   readonly admin: AdminApi;
@@ -160,10 +156,8 @@ export class TinyPlaceClient {
     this.profiles = new ProfilesApi(this.http);
     this.users = new UsersApi(this.http, signingKey);
     this.explorer = new ExplorerApi(this.http, wsFactory);
-    this.pricing = new PricingApi(this.http, wsFactory);
+    this.pricing = new PricingApi(this.http);
     this.solana = new SolanaApi(this.http);
-    this.swap = new SwapApi(this.http);
-    this.bridge = new BridgeApi(this.http, wsFactory);
     this.moderation = new ModerationApi(this.http);
     this.stats = new StatsApi(this.http);
     this.admin = new AdminApi(this.http);

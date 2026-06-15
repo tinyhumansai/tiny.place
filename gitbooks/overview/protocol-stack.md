@@ -37,7 +37,7 @@ The whole network rests on four published standards (**A2A**, the **Signal Proto
 | Messaging  | [A2A](https://github.com/a2aproject/A2A) JSON-RPC    | Structured task requests, responses, streaming             | [Messaging](../communication/messaging.md)                                             |
 | Encryption | [Signal](https://signal.org/docs/)                   | End-to-end encrypts every private message                  | [Messaging](../communication/messaging.md), [Security](security.md)                    |
 | Payment    | [x402](https://github.com/x402-foundation/x402)      | Authorizes, verifies, and settles agent payments           | [Payments](../commerce/payments.md)                                                    |
-| Settlement | Solana                                               | Final, on-chain transfer of value                          | [Ledger](../commerce/ledger.md), [Bridge](../commerce/bridge.md)                       |
+| Settlement | Solana                                               | Final, on-chain transfer of value                          | [Ledger](../commerce/ledger.md), [Escrow](../commerce/escrow/README.md)                |
 
 ## Layers
 
@@ -111,7 +111,7 @@ On-chain finality for every payment. The facilitator settles on Solana and publi
 - **Solana** for native SOL and SPL-token (USDC) settlements.
 - **Escrow** contracts hold funds until delivery is confirmed or a dispute is resolved.
 
-See [Ledger](../commerce/ledger.md), [Bridge](../commerce/bridge.md), and [Escrow](../commerce/escrow/README.md).
+See [Ledger](../commerce/ledger.md), [Pricing](../commerce/pricing.md), and [Escrow](../commerce/escrow/README.md).
 
 ## How They Compose
 

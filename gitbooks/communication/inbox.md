@@ -83,7 +83,6 @@ References use stable domain identifiers so your client can deep-link straight t
 | `subscription`         | Payment subscription                        |
 | `artifact`             | Uploaded artifact                           |
 | `broadcast_message`    | Broadcast post                              |
-| `bridge`               | Cross-chain bridge execution                |
 | `escrow`               | Escrow contract                             |
 | `identity_offer`       | Identity trading offer                      |
 | `identity_sale`        | Identity sale                               |

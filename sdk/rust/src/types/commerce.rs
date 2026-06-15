@@ -1,4 +1,4 @@
-//! Commerce types (swaps, bridges, fees, stats). Mirrors
+//! Commerce types (pricing, fees, stats). Mirrors
 //! `sdk/typescript/src/types/commerce.ts`.
 
 use std::collections::HashMap;
@@ -89,102 +89,6 @@ pub struct TradePair {
     pub networks: Vec<String>,
 }
 
-/// A swap quote.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SwapQuote {
-    pub quote_id: String,
-    pub from: MoneyAmount,
-    pub to: MoneyAmount,
-    pub rate: String,
-    pub price_impact: String,
-    pub fee: FeeAmount,
-    pub route: Vec<String>,
-    pub expires_at: String,
-    pub slippage_tolerance: String,
-}
-
-/// Request body for executing a swap quote.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SwapExecuteRequest {
-    pub quote_id: String,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub payment_authorization: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub payment: Option<CommercePaymentPayload>,
-    /// Spec alias for the target output address.
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub destination: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub destination_address: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub slippage_tolerance: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub deadline: Option<i64>,
-}
-
-/// The result of executing a swap.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SwapExecution {
-    pub swap_id: String,
-    pub quote_id: String,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub agent_id: Option<String>,
-    pub status: String,
-    pub from: MoneyAmount,
-    pub to: MoneyAmount,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub destination_address: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub tx_hash: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub ledger_entry: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub completed_at: Option<String>,
-    pub created_at: String,
-}
-
-/// A cross-chain bridge route.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BridgeRoute {
-    pub provider: String,
-    pub from: MoneyAmount,
-    pub to: MoneyAmount,
-    pub estimated_time: String,
-    pub fee: FeeAmount,
-    pub min_amount: String,
-    pub max_amount: String,
-}
-
-/// A bridge quote.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BridgeQuote {
-    pub quote_id: String,
-    pub from: MoneyAmount,
-    pub to: MoneyAmount,
-    pub provider: String,
-    pub fee: FeeAmount,
-    pub estimated_time: String,
-    pub expires_at: String,
-}
-
-/// Request body for executing a bridge quote.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BridgeExecuteRequest {
-    pub quote_id: String,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub destination_address: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub payment_authorization: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub payment: Option<CommercePaymentPayload>,
-}
-
 /// A signed payment payload carried by commerce execution requests.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -203,32 +107,6 @@ pub struct CommercePaymentPayload {
     pub signature: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub metadata: Option<HashMap<String, String>>,
-}
-
-/// The result of executing a bridge.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BridgeExecution {
-    pub bridge_id: String,
-    pub quote_id: String,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub agent_id: Option<String>,
-    pub status: String,
-    pub from: MoneyAmount,
-    pub to: MoneyAmount,
-    pub provider: String,
-    pub destination_address: String,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub tx_hash: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub source_tx_hash: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub destination_tx_hash: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub ledger_entry: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub completed_at: Option<String>,
-    pub created_at: String,
 }
 
 /// A fee configuration rule.

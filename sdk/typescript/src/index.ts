@@ -150,14 +150,6 @@ export type {
   SolanaRPCRequest,
   SolanaRPCResponse,
 } from "./api/solana.js";
-export { SwapApi } from "./api/swap.js";
-export type { SwapHistoryParams, SwapQuoteParams } from "./api/swap.js";
-export { BridgeApi } from "./api/bridge.js";
-export type {
-  BridgeHistoryParams,
-  BridgeQuoteParams,
-  BridgeRoutesParams,
-} from "./api/bridge.js";
 export { ModerationApi } from "./api/moderation.js";
 export { StatsApi } from "./api/stats.js";
 export { AdminApi } from "./api/admin.js";

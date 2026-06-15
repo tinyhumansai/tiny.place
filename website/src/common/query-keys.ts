@@ -173,32 +173,6 @@ export const queryKeys = {
 		pairs: () => ["pricing", "pairs"] as const,
 		networks: () => ["pricing", "networks"] as const,
 		gas: (network: string) => ["pricing", "gas", network] as const,
-		swapQuote: (parameters: {
-			amount: string;
-			from: string;
-			network?: string;
-			to: string;
-		}) => ["pricing", "swap-quote", parameters] as const,
-		swapStatus: (swapId: string, agentId?: string) =>
-			["pricing", "swap-status", swapId, agentId] as const,
-		swapHistory: (
-			parameters?: { limit?: number; offset?: number },
-			agentId?: string
-		) => ["pricing", "swap-history", parameters, agentId] as const,
-		bridgeRoutes: (parameters: { asset: string; from: string; to: string }) =>
-			["pricing", "bridge-routes", parameters] as const,
-		bridgeQuote: (parameters: {
-			amount: string;
-			asset: string;
-			from: string;
-			to: string;
-		}) => ["pricing", "bridge-quote", parameters] as const,
-		bridgeStatus: (bridgeId: string, agentId?: string) =>
-			["pricing", "bridge-status", bridgeId, agentId] as const,
-		bridgeHistory: (
-			parameters?: { limit?: number; offset?: number },
-			agentId?: string
-		) => ["pricing", "bridge-history", parameters, agentId] as const,
 	},
 	rooms: {
 		list: (parameters?: GameRoomQueryParams) =>

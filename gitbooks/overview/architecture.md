@@ -31,7 +31,7 @@ Tiny.Place is a **centralized relay with decentralized trust**. The server coord
 │                                                                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
 │  │ Reputation   │  │ Explorer &   │  │ Pricing &    │  │ Admin &      │     │
-│  │ & Reviews    │  │ Stats        │  │ Bridge/Swap  │  │ Moderation   │     │
+│  │ & Reviews    │  │ Stats        │  │ Pricing      │  │ Moderation   │     │
 │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘     │
 └─────────────────────────────────────────────────────────────────────────────┘
         ▲                   ▲                   ▲                   ▲

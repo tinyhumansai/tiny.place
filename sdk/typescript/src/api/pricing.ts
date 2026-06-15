@@ -1,24 +1,15 @@
 import type { HttpClient } from "../http.js";
-import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
-  BridgeExecution,
-  BridgeExecuteRequest,
-  BridgeQuote,
-  BridgeRoute,
   GasEstimate,
   PriceHistory,
   PriceQuote,
   SupportedChain,
-  SwapExecution,
-  SwapExecuteRequest,
-  SwapQuote,
   TradePair,
 } from "../types/index.js";
 
 export class PricingApi {
   constructor(
     private readonly http: HttpClient,
-    private readonly wsFactory?: (path: string) => TinyPlaceWebSocket,
   ) {}
 
   // --- Price Data ---
@@ -69,179 +60,4 @@ export class PricingApi {
     return this.http.get<GasEstimate>("/pricing/gas", { network });
   }
 
-  priceStream(): TinyPlaceWebSocket | undefined {
-    return this.wsFactory?.("/pricing/stream");
-  }
-
-  // --- Swap ---
-
-  swapQuote(params: {
-    from?: string;
-    to?: string;
-    fromAsset?: string;
-    toAsset?: string;
-    amount: string;
-    network?: string;
-  }): Promise<SwapQuote> {
-    return this.http.get<SwapQuote>("/swap/quote", {
-      from: params.from ?? params.fromAsset,
-      to: params.to ?? params.toAsset,
-      amount: params.amount,
-      network: params.network,
-    });
-  }
-
-  executeSwap(
-    request: SwapExecuteRequest,
-    agentId?: string,
-  ): Promise<SwapExecution> {
-    if (agentId) {
-      return this.http.postDirectoryAuthAs<SwapExecution>(
-        "/swap/execute",
-        agentId,
-        request,
-      );
-    }
-    return this.http.post<SwapExecution>("/swap/execute", request);
-  }
-
-  getSwap(swapId: string, agentId?: string): Promise<SwapExecution> {
-    if (agentId) {
-      return this.http.getDirectoryAuthAs<SwapExecution>(
-        `/swap/${encodeURIComponent(swapId)}`,
-        agentId,
-      );
-    }
-    return this.http.get<SwapExecution>(`/swap/${encodeURIComponent(swapId)}`);
-  }
-
-  getSwapStatus(swapId: string, agentId?: string): Promise<SwapExecution> {
-    if (agentId) {
-      return this.http.getDirectoryAuthAs<SwapExecution>(
-        `/swap/status/${encodeURIComponent(swapId)}`,
-        agentId,
-      );
-    }
-    return this.http.get<SwapExecution>(
-      `/swap/status/${encodeURIComponent(swapId)}`,
-    );
-  }
-
-  swapHistory(
-    params?: {
-      limit?: number;
-      offset?: number;
-    },
-    agentId?: string,
-  ): Promise<{ swaps: Array<SwapExecution> }> {
-    if (agentId) {
-      return this.http.getDirectoryAuthAs<{ swaps: Array<SwapExecution> }>(
-        "/swap/history",
-        agentId,
-        params as Record<string, unknown>,
-      );
-    }
-    return this.http.get<{ swaps: Array<SwapExecution> }>(
-      "/swap/history",
-      params as Record<string, unknown>,
-    );
-  }
-
-  // --- Bridge ---
-
-  bridgeRoutes(params: {
-    from?: string;
-    to?: string;
-    asset?: string;
-    fromChain?: string;
-    toChain?: string;
-  }): Promise<{ routes: Array<BridgeRoute> }> {
-    return this.http.get<{ routes: Array<BridgeRoute> }>("/bridge/routes", {
-      from: params.from ?? params.fromChain,
-      to: params.to ?? params.toChain,
-      asset: params.asset,
-    });
-  }
-
-  bridgeQuote(params: {
-    from?: string;
-    to?: string;
-    asset?: string;
-    fromChain?: string;
-    toChain?: string;
-    token?: string;
-    amount: string;
-  }): Promise<BridgeQuote> {
-    return this.http.get<BridgeQuote>("/bridge/quote", {
-      from: params.from ?? params.fromChain,
-      to: params.to ?? params.toChain,
-      asset: params.asset ?? params.token,
-      amount: params.amount,
-    });
-  }
-
-  executeBridge(
-    request: BridgeExecuteRequest,
-    agentId?: string,
-  ): Promise<BridgeExecution> {
-    if (agentId) {
-      return this.http.postDirectoryAuthAs<BridgeExecution>(
-        "/bridge/execute",
-        agentId,
-        request,
-      );
-    }
-    return this.http.post<BridgeExecution>("/bridge/execute", request);
-  }
-
-  getBridge(bridgeId: string, agentId?: string): Promise<BridgeExecution> {
-    if (agentId) {
-      return this.http.getDirectoryAuthAs<BridgeExecution>(
-        `/bridge/${encodeURIComponent(bridgeId)}`,
-        agentId,
-      );
-    }
-    return this.http.get<BridgeExecution>(
-      `/bridge/${encodeURIComponent(bridgeId)}`,
-    );
-  }
-
-  getBridgeStatus(
-    bridgeId: string,
-    agentId?: string,
-  ): Promise<BridgeExecution> {
-    if (agentId) {
-      return this.http.getDirectoryAuthAs<BridgeExecution>(
-        `/bridge/status/${encodeURIComponent(bridgeId)}`,
-        agentId,
-      );
-    }
-    return this.http.get<BridgeExecution>(
-      `/bridge/status/${encodeURIComponent(bridgeId)}`,
-    );
-  }
-
-  bridgeHistory(
-    params?: {
-      limit?: number;
-      offset?: number;
-    },
-    agentId?: string,
-  ): Promise<{ bridges: Array<BridgeExecution> }> {
-    if (agentId) {
-      return this.http.getDirectoryAuthAs<{ bridges: Array<BridgeExecution> }>(
-        "/bridge/history",
-        agentId,
-        params as Record<string, unknown>,
-      );
-    }
-    return this.http.get<{ bridges: Array<BridgeExecution> }>(
-      "/bridge/history",
-      params as Record<string, unknown>,
-    );
-  }
-
-  bridgeStream(): TinyPlaceWebSocket | undefined {
-    return this.wsFactory?.("/bridge/stream");
-  }
 }
