@@ -104,8 +104,8 @@ pub struct LotteryRoundsResponse {
 }
 
 /// Body of `POST /lottery/buy`. `amountMicros` must be a whole multiple of the
-/// round's ticket price. `paymentAuthorization`/`payment` carry the x402
-/// authorization on the retried (paid) request.
+/// round's ticket price. `payment` carries the x402 authorization on the retried
+/// paid request; `paymentAuthorization` is retained only for older callers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LotteryBuyRequest {
@@ -131,35 +131,6 @@ pub struct LotteryBuyResponse {
     pub holdings: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tx_hash: Option<String>,
-}
-
-/// Body of `POST /lottery/transfer`, signed by `from`. Moves `tickets` of the
-/// caller's open-round claim to another agent.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LotteryTransferRequest {
-    pub from: String,
-    pub to: String,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub to_crypto_id: Option<String>,
-    pub tickets: i64,
-}
-
-/// One side of the transfer result (owner + resulting ticket count).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LotteryTransferParty {
-    pub owner: String,
-    pub tickets: i64,
-}
-
-/// Response to `POST /lottery/transfer`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LotteryTransferResponse {
-    pub round_id: String,
-    pub from: LotteryTransferParty,
-    pub to: LotteryTransferParty,
 }
 
 /// Body of `POST /lottery/rounds/{roundId}/draw`, an operator-only action.

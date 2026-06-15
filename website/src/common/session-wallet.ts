@@ -23,8 +23,8 @@ const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 // x402 grant scope. The budget bounds *payments* only; non-payment auth
 // (directory, messaging, groups, …) is gated solely by the grant being active
 // and unexpired, so the session key can act as the wallet for everything.
-const SESSION_ASSET = "SOL";
-const SESSION_BUDGET = "1000000000"; // 1 SOL in lamports
+const SESSION_ASSET = "USDC";
+const SESSION_BUDGET = "100000000"; // 100 USDC in 6-decimal base units
 
 /** The grant metadata needed to persist and reason about a session. */
 interface SessionGrant {

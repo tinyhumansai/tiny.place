@@ -19,8 +19,8 @@ use tinyplace::types::{
     FeeConfig, FeeResolveParams, GameActionRequest, GameEmergencyWithdrawalRequest,
     GameJoinRequest, GameLeaveRequest, GameOperatorRequest, GameRoom, GameRoomQueryParams,
     GameSettleRequest, LeaderboardQueryParams, LotteryBuyRequest, LotteryDrawRequest,
-    LotteryRoundQueryParams, LotteryTransferRequest, ModerationAction, ModerationReportCreate,
-    ReputationReviewCreate, ReputationVouchCreate, TrustGraphQueryParams,
+    LotteryRoundQueryParams, ModerationAction, ModerationReportCreate, ReputationReviewCreate,
+    ReputationVouchCreate, TrustGraphQueryParams,
 };
 
 // --- RoomsApi ---
@@ -284,22 +284,6 @@ async fn lottery_buy() {
     let req = only_request(&server).await;
     assert_eq!(req.method.as_str(), "POST");
     assert!(req.url.path().contains("/lottery/buy"));
-}
-
-#[tokio::test]
-async fn lottery_transfer() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let request: LotteryTransferRequest = serde_json::from_value(json!({
-        "from": "@alice",
-        "to": "@bob",
-        "tickets": 5
-    }))
-    .unwrap();
-    let _ = client.lottery.transfer(&request, Some("@alice")).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "POST");
-    assert!(req.url.path().contains("/lottery/transfer"));
 }
 
 #[tokio::test]

@@ -8,7 +8,6 @@ import type { GameRoom, GameRoomStatus } from "@tinyhumansai/tinyplace";
 import type { FunctionComponent } from "@src/common/types";
 import { formatChips } from "@src/common/poker";
 import { useCreateRoom, useRooms } from "@src/hooks/use-rooms";
-import { useAppStore } from "@src/store/app";
 import { useAuthStore } from "@src/store/auth";
 
 type RoomCreateForm = {
@@ -57,11 +56,9 @@ function roomStatusLabel(status: GameRoomStatus): string {
 }
 
 function RoomCard({
-	isDark,
 	rank,
 	room,
 }: {
-	isDark: boolean;
 	rank: number;
 	room: GameRoom;
 }): FunctionComponent {
@@ -70,32 +67,28 @@ function RoomCard({
 	const staked = formatChips(String(roomStakedAmount(room)));
 	return (
 		<Link
+			className="theme-surface-card block rounded-lg border p-4 transition hover:border-primary"
 			href={`/poker/${encodeURIComponent(room.roomId)}`}
-			className={`block rounded-lg border p-4 transition hover:border-emerald-500 ${
-				isDark
-					? "border-neutral-800 bg-neutral-900"
-					: "border-neutral-200 bg-white"
-			}`}
 		>
 			<div className="flex items-center justify-between">
 				<span className="min-w-0 truncate font-heading font-semibold">
 					{rank}. {room.name}
 				</span>
-				<span className="rounded bg-neutral-500/20 px-2 py-0.5 text-xs">
+				<span className="rounded bg-secondary px-2 py-0.5 text-xs text-secondary-front">
 					{roomStatusLabel(room.status)}
 				</span>
 			</div>
 			<div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-				<span className="rounded bg-neutral-500/10 px-2 py-1">
-					<span className="block opacity-60">{t("poker.staked")}</span>
+				<span className="theme-detail-list rounded border px-2 py-1">
+					<span className="block text-muted">{t("poker.staked")}</span>
 					<span className="font-semibold">{staked}</span>
 				</span>
-				<span className="rounded bg-neutral-500/10 px-2 py-1">
-					<span className="block opacity-60">{t("poker.minEntry")}</span>
+				<span className="theme-detail-list rounded border px-2 py-1">
+					<span className="block text-muted">{t("poker.minEntry")}</span>
 					<span className="font-semibold">{formatChips(room.buyIn.min)}</span>
 				</span>
-				<span className="rounded bg-neutral-500/10 px-2 py-1">
-					<span className="block opacity-60">{t("poker.blindsLabel")}</span>
+				<span className="theme-detail-list rounded border px-2 py-1">
+					<span className="block text-muted">{t("poker.blindsLabel")}</span>
 					<span className="font-semibold">
 						{t("poker.blinds", {
 							small: formatChips(room.stakes.smallBlind),
@@ -103,8 +96,8 @@ function RoomCard({
 						})}
 					</span>
 				</span>
-				<span className="rounded bg-neutral-500/10 px-2 py-1">
-					<span className="block opacity-60">{t("poker.seats")}</span>
+				<span className="theme-detail-list rounded border px-2 py-1">
+					<span className="block text-muted">{t("poker.seats")}</span>
 					<span className="font-semibold">
 						{t("poker.seatsTaken", { seated, seats: room.seats })}
 					</span>
@@ -114,16 +107,14 @@ function RoomCard({
 	);
 }
 
-function CreateRoomForm({ isDark }: { isDark: boolean }): FunctionComponent {
+function CreateRoomForm(): FunctionComponent {
 	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
 	const createRoom = useCreateRoom();
 	const [form, setForm] = useState<RoomCreateForm>(defaultRoomForm);
 	const [error, setError] = useState<string | null>(null);
 
-	const fieldClass = `w-full rounded border px-2 py-1 text-sm ${
-		isDark ? "border-neutral-700 bg-neutral-900" : "border-neutral-300 bg-white"
-	}`;
+	const fieldClass = "theme-input w-full rounded border px-2 py-1 text-sm";
 
 	const updateField =
 		(field: keyof RoomCreateForm) =>
@@ -166,11 +157,7 @@ function CreateRoomForm({ isDark }: { isDark: boolean }): FunctionComponent {
 
 	return (
 		<form
-			className={`rounded-lg border p-4 ${
-				isDark
-					? "border-neutral-800 bg-neutral-900"
-					: "border-neutral-200 bg-white"
-			}`}
+			className="theme-surface-card rounded-lg border p-4"
 			onSubmit={submit}
 		>
 			<div className="mb-3 flex items-center justify-between gap-3">
@@ -178,16 +165,20 @@ function CreateRoomForm({ isDark }: { isDark: boolean }): FunctionComponent {
 					{t("poker.createRoom")}
 				</h2>
 				<button
-					className="rounded bg-emerald-600 px-3 py-1 text-sm font-semibold text-white disabled:opacity-50"
 					disabled={createRoom.isPending}
 					type="submit"
+					className={`rounded px-3 py-1 text-sm font-semibold transition-colors ${
+						createRoom.isPending
+							? "theme-disabled-action"
+							: "theme-primary-action"
+					}`}
 				>
 					{createRoom.isPending ? t("poker.creating") : t("poker.create")}
 				</button>
 			</div>
 			<div className="grid gap-2 sm:grid-cols-3">
 				<label className="sm:col-span-3">
-					<span className="mb-1 block text-xs opacity-60">
+					<span className="mb-1 block text-xs text-muted">
 						{t("poker.name")}
 					</span>
 					<input
@@ -197,7 +188,7 @@ function CreateRoomForm({ isDark }: { isDark: boolean }): FunctionComponent {
 					/>
 				</label>
 				<label>
-					<span className="mb-1 block text-xs opacity-60">
+					<span className="mb-1 block text-xs text-muted">
 						{t("poker.smallBlind")}
 					</span>
 					<input
@@ -208,7 +199,7 @@ function CreateRoomForm({ isDark }: { isDark: boolean }): FunctionComponent {
 					/>
 				</label>
 				<label>
-					<span className="mb-1 block text-xs opacity-60">
+					<span className="mb-1 block text-xs text-muted">
 						{t("poker.bigBlind")}
 					</span>
 					<input
@@ -219,7 +210,7 @@ function CreateRoomForm({ isDark }: { isDark: boolean }): FunctionComponent {
 					/>
 				</label>
 				<label>
-					<span className="mb-1 block text-xs opacity-60">
+					<span className="mb-1 block text-xs text-muted">
 						{t("poker.seats")}
 					</span>
 					<input
@@ -230,7 +221,7 @@ function CreateRoomForm({ isDark }: { isDark: boolean }): FunctionComponent {
 					/>
 				</label>
 				<label>
-					<span className="mb-1 block text-xs opacity-60">
+					<span className="mb-1 block text-xs text-muted">
 						{t("poker.minEntry")}
 					</span>
 					<input
@@ -241,7 +232,7 @@ function CreateRoomForm({ isDark }: { isDark: boolean }): FunctionComponent {
 					/>
 				</label>
 				<label>
-					<span className="mb-1 block text-xs opacity-60">
+					<span className="mb-1 block text-xs text-muted">
 						{t("poker.maxEntry")}
 					</span>
 					<input
@@ -252,7 +243,7 @@ function CreateRoomForm({ isDark }: { isDark: boolean }): FunctionComponent {
 					/>
 				</label>
 			</div>
-			{error ? <p className="mt-2 text-xs text-red-500">{error}</p> : null}
+			{error ? <p className="mt-2 text-xs text-danger">{error}</p> : null}
 		</form>
 	);
 }
@@ -263,7 +254,6 @@ function CreateRoomForm({ isDark }: { isDark: boolean }): FunctionComponent {
  */
 export const Poker = (): FunctionComponent => {
 	const { t } = useTranslation();
-	const isDark = useAppStore((state) => state.theme) === "dark";
 	const roomsQuery = useRooms();
 	const rooms = useMemo(
 		() => rankedRooms(roomsQuery.data?.rooms ?? []),
@@ -271,27 +261,22 @@ export const Poker = (): FunctionComponent => {
 	);
 
 	return (
-		<div className={isDark ? "text-white" : "text-black"}>
+		<div className="text-front">
 			<div className="mb-6">
 				<h1 className="font-heading text-2xl font-bold">{t("poker.title")}</h1>
-				<p className="mt-1 text-sm opacity-70">{t("poker.subtitle")}</p>
+				<p className="mt-1 text-sm text-muted">{t("poker.subtitle")}</p>
 			</div>
 			<div className="mb-4">
-				<CreateRoomForm isDark={isDark} />
+				<CreateRoomForm />
 			</div>
 			{roomsQuery.isLoading ? (
-				<p className="text-sm opacity-70">{t("poker.loading")}</p>
+				<p className="text-sm text-muted">{t("poker.loading")}</p>
 			) : rooms.length === 0 ? (
-				<p className="text-sm opacity-70">{t("poker.noTables")}</p>
+				<p className="text-sm text-muted">{t("poker.noTables")}</p>
 			) : (
 				<div className="grid gap-3 sm:grid-cols-2">
 					{rooms.map((room, index) => (
-						<RoomCard
-							key={room.roomId}
-							isDark={isDark}
-							rank={index + 1}
-							room={room}
-						/>
+						<RoomCard key={room.roomId} rank={index + 1} room={room} />
 					))}
 				</div>
 			)}

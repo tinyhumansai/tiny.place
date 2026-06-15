@@ -4,7 +4,7 @@ import { LocalSigner } from "@tinyhumansai/tinyplace";
 // The lottery page reads from a cross-origin backend (NEXT_PUBLIC_API_BASE_URL).
 // These tests intercept those calls so the UI is exercised against fixed,
 // deterministic data — and drive the *real* in-app flows: the x402 402-challenge
-// buy (a connected player signs the authorization and retries), ticket transfer,
+// buy (a connected player signs the authorization and retries), odds calculator,
 // and the settled-round winners list. Authentication is established through the
 // localStorage-gated E2EAuthBridge (see src/components/E2EAuthBridge.tsx), which
 // seeds a deterministic LocalSigner — the same primitive a real hot-session login
@@ -12,6 +12,7 @@ import { LocalSigner } from "@tinyhumansai/tinyplace";
 
 const LOTTERY_PROGRAM = "MfwLo55Nkv3SCQ2uFuoWXmAe7zJR6t3rMdm9K8Lr5Me";
 const TICKET_PRICE_MICROS = "1000000"; // 1 USDC = 1 ticket
+const BASIC_AUTH = `Basic ${Buffer.from(":atinyplace").toString("base64")}`;
 
 // A fixed 32-byte seed -> a deterministic player identity. The same seed runs in
 // Node here (to precompute the agent id used in the winners mock) and in the
@@ -150,10 +151,10 @@ async function installLotteryMocks(
 		const body = (route.request().postDataJSON() ?? {}) as {
 			agentId?: string;
 			amountMicros?: string;
-			paymentAuthorization?: string;
+			payment?: Record<string, string>;
 		};
 		// Unpaid first attempt -> 402 with the x402 challenge the hook signs.
-		if (!body.paymentAuthorization) {
+		if (!body.payment?.signature) {
 			await json(
 				route,
 				{
@@ -188,25 +189,6 @@ async function installLotteryMocks(
 			tickets,
 			holdings: state.holdings,
 			txHash: "mock:e2e:lottery:buy",
-		});
-	});
-
-	await page.route(/\/lottery\/transfer$/, async (route) => {
-		if (route.request().method() === "OPTIONS") {
-			await route.fulfill({ status: 204, headers: CORS });
-			return;
-		}
-		const body = (route.request().postDataJSON() ?? {}) as {
-			from?: string;
-			to?: string;
-			tickets?: number;
-		};
-		const moved = body.tickets ?? 0;
-		state.holdings = Math.max(0, state.holdings - moved);
-		await json(route, {
-			roundId: "rnd_e2e_open",
-			from: { owner: body.from ?? "", tickets: state.holdings },
-			to: { owner: body.to ?? "", tickets: moved },
 		});
 	});
 
@@ -255,6 +237,10 @@ async function connectPlayer(page: Page): Promise<string> {
 }
 
 test.describe("lottery page", () => {
+	test.beforeEach(async ({ page }) => {
+		await page.setExtraHTTPHeaders({ authorization: BASIC_AUTH });
+	});
+
 	test("renders the open round and gates buying behind a wallet", async ({
 		page,
 	}) => {
@@ -273,6 +259,7 @@ test.describe("lottery page", () => {
 		await expect(
 			page.getByRole("button", { name: "Buy tickets" })
 		).toBeDisabled();
+		await expect(page.getByText("Odds calculator")).toBeVisible();
 	});
 
 	test("a connected player buys tickets through the x402 challenge flow", async ({
@@ -301,11 +288,11 @@ test.describe("lottery page", () => {
 		await expect(pot).toContainText("4");
 		const yourTickets = page
 			.locator("div", { hasText: /^Your tickets/ })
-			.locator("span.text-amber-500");
+			.locator("span.text-warning");
 		await expect(yourTickets).toHaveText("3");
 	});
 
-	test("a player can transfer tickets to another agent", async ({ page }) => {
+	test("calculates odds instead of exposing ticket transfers", async ({ page }) => {
 		await installLotteryMocks(page);
 		await enableE2EAuth(page);
 		await page.goto("/lottery");
@@ -317,15 +304,10 @@ test.describe("lottery page", () => {
 		await page.getByRole("button", { name: "Buy tickets" }).click();
 		await expect(page.getByText("Bought 2 ticket(s).")).toBeVisible();
 
-		await page.locator("#lottery-transfer-to").fill("@bob");
-		await page.locator("#lottery-transfer-count").fill("1");
-		const transferButton = page.getByRole("button", { name: "Transfer" });
-		await expect(transferButton).toBeEnabled();
-		await transferButton.click();
-
-		await expect(
-			page.getByText("Transferred 1 ticket(s) to @bob.")
-		).toBeVisible();
+		await expect(page.getByText("Odds calculator")).toBeVisible();
+		await expect(page.getByText("Transfer tickets")).toHaveCount(0);
+		await page.locator("#lottery-odds-tickets").fill("3");
+		await expect(page.getByText("5 of 6 total ticket(s).")).toBeVisible();
 	});
 
 	test("shows the connected player as a winner of the settled round", async ({

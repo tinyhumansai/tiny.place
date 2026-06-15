@@ -8,15 +8,15 @@ import {
 import {
 	signX402Authorization,
 	TinyPlaceError,
+	type CommercePaymentPayload,
 	type LotteryBuyRequest,
 	type LotteryBuyResponse,
 	type LotteryHolding,
 	type LotteryRound,
 	type LotteryRoundQueryParams,
 	type LotteryRoundsResponse,
-	type LotteryTransferRequest,
-	type LotteryTransferResponse,
 	type LotteryView,
+	type X402Authorization,
 	type X402AuthorizationFields,
 } from "@tinyhumansai/tinyplace";
 
@@ -53,6 +53,23 @@ function invalidateLottery(
 	queryClient: ReturnType<typeof useQueryClient>
 ): void {
 	void queryClient.invalidateQueries({ queryKey: ["lottery"] });
+}
+
+function commercePaymentPayload(
+	authorization: X402Authorization
+): CommercePaymentPayload {
+	return {
+		amount: authorization.amount,
+		asset: authorization.asset,
+		expiresAt: authorization.expiresAt,
+		from: authorization.from,
+		metadata: authorization.metadata,
+		network: authorization.network,
+		nonce: authorization.nonce,
+		scheme: authorization.scheme,
+		signature: authorization.signature,
+		to: authorization.to,
+	};
 }
 
 export function useLottery(): UseQueryResult<LotteryView> {
@@ -127,26 +144,10 @@ export function useBuyLotteryTickets(): UseMutationResult<
 				});
 				return client.lottery.buy({
 					...request,
-					paymentAuthorization: signedPayment.signature,
+					payment: commercePaymentPayload(signedPayment),
 				});
 			}
 		},
-		onSuccess: (): void => {
-			invalidateLottery(queryClient);
-		},
-	});
-}
-
-export function useTransferLotteryTickets(): UseMutationResult<
-	LotteryTransferResponse,
-	Error,
-	LotteryTransferRequest
-> {
-	const client = useApiClient();
-	const queryClient = useQueryClient();
-	return useMutation({
-		mutationFn: (request): Promise<LotteryTransferResponse> =>
-			client.lottery.transfer(request),
 		onSuccess: (): void => {
 			invalidateLottery(queryClient);
 		},

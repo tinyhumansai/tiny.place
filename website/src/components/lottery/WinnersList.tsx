@@ -10,59 +10,40 @@ import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 import { formatUsdc } from "./usdc";
 
 type WinnersListProperties = {
-	isDark: boolean;
 	round: LotteryRound;
 };
 
-const rankColor = (rank: number, isDark: boolean): string => {
+const rankColor = (rank: number): string => {
 	switch (rank) {
 		case 1:
-			return isDark
-				? "bg-amber-500/20 text-amber-400"
-				: "bg-amber-100 text-amber-700";
+			return "bg-warning/20 text-warning";
 		case 2:
-			return isDark
-				? "bg-neutral-500/20 text-neutral-300"
-				: "bg-neutral-200 text-neutral-600";
+			return "bg-secondary text-secondary-front";
 		case 3:
-			return isDark
-				? "bg-orange-500/20 text-orange-400"
-				: "bg-orange-100 text-orange-700";
+			return "bg-primary/20 text-primary";
 		default:
-			return isDark
-				? "bg-neutral-800 text-neutral-400"
-				: "bg-neutral-100 text-neutral-500";
+			return "bg-secondary text-muted";
 	}
 };
 
 export const WinnersList = ({
-	isDark,
 	round,
 }: WinnersListProperties): FunctionComponent => {
 	const { t } = useTranslation();
 
-	const cardClasses = isDark
-		? "border-neutral-800 bg-neutral-900"
-		: "border-neutral-200 bg-white";
-	const labelClasses = isDark ? "text-neutral-400" : "text-neutral-500";
-
 	const winners = [...round.winners].sort((a, b) => a.rank - b.rank);
 
 	return (
-		<div
-			className={`flex flex-col gap-3 rounded-xl border px-5 py-4 ${cardClasses}`}
-		>
+		<div className="theme-surface-card flex flex-col gap-3 rounded-xl border px-5 py-4">
 			<div className="flex items-center justify-between">
-				<h3
-					className={`flex items-center gap-1.5 text-sm font-semibold ${isDark ? "text-white" : "text-black"}`}
-				>
-					<TrophyIcon className="h-4 w-4 text-amber-500" />
+				<h3 className="flex items-center gap-1.5 text-sm font-semibold text-front">
+					<TrophyIcon className="h-4 w-4 text-warning" />
 					{t("lottery.pastWinners")}
 				</h3>
-				<span className={`text-xs ${labelClasses}`}>{round.roundId}</span>
+				<span className="text-xs text-muted">{round.roundId}</span>
 			</div>
 			{winners.length === 0 ? (
-				<p className={`text-xs ${labelClasses}`}>{t("lottery.noWinners")}</p>
+				<p className="text-xs text-muted">{t("lottery.noWinners")}</p>
 			) : (
 				<ul className="flex flex-col gap-1">
 					{winners.map((winner) => (
@@ -72,21 +53,21 @@ export const WinnersList = ({
 						>
 							<div className="flex items-center gap-2">
 								<span
-									className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${rankColor(winner.rank, isDark)}`}
+									className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${rankColor(winner.rank)}`}
 								>
 									{winner.rank}
 								</span>
 								<ProfileEntityLink
-									className={`truncate text-sm hover:underline ${isDark ? "text-white" : "text-black"}`}
+									className="truncate text-sm text-front hover:underline"
 									value={winner.owner}
 								>
 									{winner.owner}
 								</ProfileEntityLink>
-								<span className={`text-xs ${labelClasses}`}>
+								<span className="text-xs text-muted">
 									{t("lottery.ticketsCount", { count: winner.tickets })}
 								</span>
 							</div>
-							<span className="text-sm font-semibold text-emerald-500">
+							<span className="text-sm font-semibold text-positive">
 								{formatUsdc(winner.payoutMicros)} {round.asset}
 							</span>
 						</li>
@@ -94,7 +75,7 @@ export const WinnersList = ({
 				</ul>
 			)}
 			{round.rakeMicros && (
-				<p className={`text-xs ${labelClasses}`}>
+				<p className="text-xs text-muted">
 					{t("lottery.rakeTaken", {
 						amount: `${formatUsdc(round.rakeMicros)} ${round.asset}`,
 					})}

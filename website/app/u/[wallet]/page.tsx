@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 import { ProfileTabs } from "@src/components/profile/ProfileTabs";
-import { userToProfile } from "@src/components/profile/profile-adapter";
+import {
+	emptyUser,
+	userToProfile,
+} from "@src/components/profile/profile-adapter";
 import {
 	fetchIdentitiesByCryptoId,
 	fetchUserByCryptoId,
@@ -31,14 +33,14 @@ export default async function WalletProfilePage({
 		fetchIdentitiesByCryptoId(cryptoId),
 	]);
 
-	if (!user) {
-		notFound();
-	}
-
 	const handle = primaryHandleFromIdentities(identities);
 	return (
 		<ProfileTabs
-			profile={userToProfile(user, handle ?? undefined, identities)}
+			profile={userToProfile(
+				user ?? emptyUser(cryptoId),
+				handle ?? undefined,
+				identities
+			)}
 		/>
 	);
 }

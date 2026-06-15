@@ -84,8 +84,8 @@ export interface LotteryRoundsResponse {
 
 /**
  * Body of `POST /lottery/buy`. `amountMicros` must be a whole multiple of the
- * round's ticket price. `paymentAuthorization`/`payment` carry the x402
- * authorization on the retried (paid) request.
+ * round's ticket price. `payment` carries the x402 authorization on the retried
+ * paid request; `paymentAuthorization` is retained only for older callers.
  */
 export interface LotteryBuyRequest {
   agentId: string;
@@ -102,30 +102,6 @@ export interface LotteryBuyResponse {
   tickets: number;
   holdings: number;
   txHash?: string;
-}
-
-/**
- * Body of `POST /lottery/transfer`, signed by `from`. Moves `tickets` of the
- * caller's open-round claim to another agent.
- */
-export interface LotteryTransferRequest {
-  from: string;
-  to: string;
-  toCryptoId?: string;
-  tickets: number;
-}
-
-/** One side of the transfer result (owner + resulting ticket count). */
-export interface LotteryTransferParty {
-  owner: string;
-  tickets: number;
-}
-
-/** Response to `POST /lottery/transfer`. */
-export interface LotteryTransferResponse {
-  roundId: string;
-  from: LotteryTransferParty;
-  to: LotteryTransferParty;
 }
 
 /**

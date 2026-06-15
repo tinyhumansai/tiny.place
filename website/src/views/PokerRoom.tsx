@@ -19,7 +19,6 @@ import {
 } from "@src/common/poker";
 import { useJoinRoom, useRoom, useRoomAction } from "@src/hooks/use-rooms";
 import { useRoomStream } from "@src/hooks/use-room-stream";
-import { useAppStore } from "@src/store/app";
 import { useAuthStore } from "@src/store/auth";
 
 // The prompt the backend pushes on action_required, telling the on-the-clock
@@ -114,7 +113,6 @@ export const PokerRoom = ({
 	roomId: string;
 }): FunctionComponent => {
 	const { t } = useTranslation();
-	const isDark = useAppStore((state) => state.theme) === "dark";
 	const agentId = useAuthStore((state) => state.agentId);
 	const roomQuery = useRoom(roomId);
 	const { events, isLive } = useRoomStream(roomId);
@@ -176,11 +174,11 @@ export const PokerRoom = ({
 	};
 
 	if (roomQuery.isLoading) {
-		return <p className="px-4 py-8 text-sm opacity-70">{t("poker.loading")}</p>;
+		return <p className="px-4 py-8 text-sm text-muted">{t("poker.loading")}</p>;
 	}
 	if (!room) {
 		return (
-			<p className="px-4 py-8 text-sm opacity-70">{t("poker.notFound")}</p>
+			<p className="px-4 py-8 text-sm text-muted">{t("poker.notFound")}</p>
 		);
 	}
 
@@ -221,7 +219,7 @@ export const PokerRoom = ({
 				<header className="flex flex-wrap items-baseline justify-between gap-2">
 					<div>
 						<h1 className="font-heading text-xl font-bold">{room.name}</h1>
-						<p className="text-xs opacity-70">
+						<p className="text-xs text-muted">
 							{t("poker.blinds", {
 								small: formatChips(room.stakes.smallBlind),
 								big: formatChips(room.stakes.bigBlind),
@@ -231,20 +229,18 @@ export const PokerRoom = ({
 						</p>
 					</div>
 					<div className="text-right">
-						<div className="text-xs uppercase opacity-60">{t("poker.pot")}</div>
-						<div className="font-heading text-lg font-bold text-amber-500">
+						<div className="text-xs uppercase text-subtle">
+							{t("poker.pot")}
+						</div>
+						<div className="font-heading text-lg font-bold text-warning">
 							{formatChips(hand?.pot ?? "0")}
 						</div>
 					</div>
 				</header>
 
-				<div
-					className={`grid gap-2 rounded-lg border p-3 text-sm sm:grid-cols-4 ${
-						isDark ? "border-neutral-800" : "border-neutral-200"
-					}`}
-				>
+				<div className="theme-surface-card grid gap-2 rounded-lg border p-3 text-sm sm:grid-cols-4">
 					<div>
-						<div className="text-xs uppercase opacity-60">
+						<div className="text-xs uppercase text-subtle">
 							{t("poker.board")}
 						</div>
 						<div className="font-semibold">
@@ -252,19 +248,19 @@ export const PokerRoom = ({
 						</div>
 					</div>
 					<div>
-						<div className="text-xs uppercase opacity-60">
+						<div className="text-xs uppercase text-subtle">
 							{t("poker.minEntry")}
 						</div>
 						<div className="font-semibold">{formatChips(room.buyIn.min)}</div>
 					</div>
 					<div>
-						<div className="text-xs uppercase opacity-60">
+						<div className="text-xs uppercase text-subtle">
 							{t("poker.maxEntry")}
 						</div>
 						<div className="font-semibold">{formatChips(room.buyIn.max)}</div>
 					</div>
 					<div>
-						<div className="text-xs uppercase opacity-60">
+						<div className="text-xs uppercase text-subtle">
 							{t("poker.seats")}
 						</div>
 						<div className="font-semibold">
@@ -276,18 +272,14 @@ export const PokerRoom = ({
 					</div>
 				</div>
 
-				<section
-					className={`rounded-lg border ${
-						isDark ? "border-neutral-800" : "border-neutral-200"
-					}`}
-				>
-					<div className="border-b border-neutral-500/20 px-3 py-2 text-sm font-semibold">
+				<section className="theme-surface-card rounded-lg border">
+					<div className="border-b border-border px-3 py-2 text-sm font-semibold">
 						{t("poker.players")}
 					</div>
 					{players.length === 0 ? (
-						<p className="px-3 py-3 text-sm opacity-70">{t("poker.empty")}</p>
+						<p className="px-3 py-3 text-sm text-muted">{t("poker.empty")}</p>
 					) : (
-						<div className="divide-y divide-neutral-500/20">
+						<div className="divide-y divide-border">
 							{players.map((seat) => {
 								const handPlayer = handPlayerBySeat.get(seat.seat);
 								const position = positionBadge(
@@ -303,21 +295,19 @@ export const PokerRoom = ({
 										key={seat.seat}
 										className="grid gap-2 px-3 py-2 text-sm sm:grid-cols-[4rem_1fr_6rem_6rem]"
 									>
-										<div className="opacity-70">
+										<div className="text-muted">
 											{position ? `${seat.seat} ${position}` : seat.seat}
 										</div>
 										<div className="min-w-0 truncate font-medium">
 											{seatLabel(seat)}
 											{mySeat?.seat === seat.seat ? (
-												<span className="ml-2 text-xs text-emerald-500">
+												<span className="ml-2 text-xs text-positive">
 													{t("poker.you")}
 												</span>
 											) : null}
 										</div>
 										<div>{formatChips(seat.stack)}</div>
-										<div
-											className={isCurrent ? "text-amber-500" : "opacity-70"}
-										>
+										<div className={isCurrent ? "text-warning" : "text-muted"}>
 											{handPlayerStatus(handPlayer, isCurrent)}
 										</div>
 									</div>
@@ -327,21 +317,13 @@ export const PokerRoom = ({
 					)}
 				</section>
 
-				<div
-					className={`rounded-lg border p-3 ${
-						isDark ? "border-neutral-800" : "border-neutral-200"
-					}`}
-				>
+				<div className="theme-surface-card rounded-lg border p-3">
 					{!mySeat ? (
 						<div className="flex flex-wrap items-center gap-2">
 							<input
+								className="theme-input w-28 rounded border px-2 py-1 text-sm"
 								inputMode="decimal"
 								value={buyIn}
-								className={`w-28 rounded border px-2 py-1 text-sm ${
-									isDark
-										? "border-neutral-700 bg-neutral-800"
-										: "border-neutral-300 bg-white"
-								}`}
 								placeholder={t("poker.buyInPlaceholder", {
 									min: formatChips(room.buyIn.min),
 								})}
@@ -350,9 +332,13 @@ export const PokerRoom = ({
 								}}
 							/>
 							<button
-								className="rounded bg-emerald-600 px-3 py-1 text-sm font-semibold text-white disabled:opacity-50"
 								disabled={joinRoom.isPending || room.status === "closed"}
 								type="button"
+								className={`rounded px-3 py-1 text-sm font-semibold transition-colors ${
+									joinRoom.isPending || room.status === "closed"
+										? "theme-disabled-action"
+										: "theme-primary-action"
+								}`}
 								onClick={submitJoin}
 							>
 								{joinRoom.isPending ? t("poker.joining") : t("poker.join")}
@@ -365,20 +351,16 @@ export const PokerRoom = ({
 									return (
 										<span key="raise" className="flex items-center gap-1">
 											<input
+												className="theme-input w-20 rounded border px-2 py-1 text-sm"
 												inputMode="decimal"
 												placeholder={formatChips(hand?.minRaise)}
 												value={raiseAmount}
-												className={`w-20 rounded border px-2 py-1 text-sm ${
-													isDark
-														? "border-neutral-700 bg-neutral-800"
-														: "border-neutral-300 bg-white"
-												}`}
 												onChange={(event): void => {
 													setRaiseAmount(event.target.value);
 												}}
 											/>
 											<button
-												className="rounded bg-amber-600 px-3 py-1 text-sm font-semibold text-white"
+												className="theme-primary-action rounded px-3 py-1 text-sm font-semibold transition-colors"
 												type="button"
 												onClick={(): void => {
 													submitAction(
@@ -409,8 +391,12 @@ export const PokerRoom = ({
 										key={action}
 										disabled={roomAction.isPending}
 										type="button"
-										className={`rounded px-3 py-1 text-sm font-semibold text-white ${
-											action === "fold" ? "bg-neutral-500" : "bg-sky-600"
+										className={`rounded px-3 py-1 text-sm font-semibold transition-colors ${
+											roomAction.isPending
+												? "theme-disabled-action"
+												: action === "fold"
+													? "bg-secondary text-secondary-front hover:bg-secondary-hover"
+													: "theme-primary-action"
 										}`}
 										onClick={(): void => {
 											submitAction(action as GameAction, amount);
@@ -422,17 +408,16 @@ export const PokerRoom = ({
 							})}
 						</div>
 					) : (
-						<p className="text-sm opacity-70">
+						<p className="text-sm text-muted">
 							{t("poker.seated", { stack: formatChips(mySeat.stack) })}
 						</p>
 					)}
-					{error ? <p className="mt-2 text-xs text-red-500">{error}</p> : null}
+					{error ? <p className="mt-2 text-xs text-danger">{error}</p> : null}
 				</div>
 			</div>
 
 			<ActionChatbox
 				emptyLabel={t("poker.chatEmpty")}
-				isDark={isDark}
 				isLive={isLive}
 				lines={lines}
 				liveLabel={t("poker.live")}

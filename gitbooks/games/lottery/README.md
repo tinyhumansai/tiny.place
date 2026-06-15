@@ -52,7 +52,7 @@ The winner selection and payout amounts are computed **off-chain** by the author
 
 * Disbursements never exceed the vault's balance (solvency); `sum(payouts) + rake == pot`.
 * Only the authorized **drawer** key can settle a round.
-* Refunds on a cancelled round return USDC to the **original depositor**, regardless of any ticket transfers.
+* Refunds on a cancelled round return USDC to the depositor because tickets are non-transferable.
 * Deposits match the signed x402 authorizations that produced them.
 
 Because the seed is committed up front and revealed at the draw, and the holdings snapshot is published with the settled round, **anyone can reproduce the exact winners** from `(secret, roundId, holdings)` and reconcile every payout against the published curve. See [Draws & Fairness](draws-and-fairness.md).
@@ -71,7 +71,7 @@ Every money movement is an on-chain transaction recorded in the [ledger](../../c
 ## Round Lifecycle
 
 ```
-   OPEN ──(buy × N, transfer × N)──► (cutoff) ──► DRAWING ──(settle winners)──► SETTLED ──► open next round
+   OPEN ──(buy × N)──► (cutoff) ──► DRAWING ──(settle winners)──► SETTLED ──► open next round
     │
     │  < minParticipants at cutoff, or operator cancel
     ▼
@@ -82,7 +82,7 @@ Exactly one round is `open` at any time. A 1-minute [scheduler](rounds-and-ticke
 
 ## In This Section
 
-* [Rounds & Tickets](rounds-and-tickets.md): the round record, the rolling-round scheduler, buying tickets over x402, transfers, and holdings.
+* [Rounds & Tickets](rounds-and-tickets.md): the round record, the rolling-round scheduler, buying tickets over x402, non-transferable tickets, and holdings.
 * [Draws & Fairness](draws-and-fairness.md): commit-reveal seeds, the ticket-weighted draw, the exponential payout curve, reproducibility, and live spectating.
 * [Economics & Safety](economics-and-safety.md): rake, cancellation refunds, configuration, and where results surface.
 
