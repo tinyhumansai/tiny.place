@@ -31,6 +31,9 @@ jobs:
       - name: Lint SDK
         run: pnpm --filter @tinyhumansai/tinyplace lint
 
+      - name: Build SDK for website imports
+        run: pnpm --filter @tinyhumansai/tinyplace build
+
       - name: Lint Website
         run: pnpm --filter @tinyplace/website lint
 
@@ -94,6 +97,9 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      - name: Build SDK for website imports
+        run: pnpm --filter @tinyhumansai/tinyplace build
 
       - name: Unit tests
         run: pnpm --filter @tinyplace/website exec vitest run src/

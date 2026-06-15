@@ -116,6 +116,18 @@ export interface EscrowDispute {
   resolvedAt?: string;
 }
 
+export interface EscrowSettlementProof {
+  outcome: string;
+  trigger: string;
+  resolvedAt: string;
+  ledgerTxIds?: Array<string>;
+  feeLedgerTxIds?: Array<string>;
+  onChainTxs?: Array<string>;
+  clientAmount?: string;
+  providerAmount?: string;
+  metadata?: Record<string, string>;
+}
+
 export interface Escrow {
   escrowId: string;
   status: EscrowStatus;
@@ -141,9 +153,11 @@ export interface Escrow {
   onChainTx?: string;
   ledgerTxId?: string;
   releaseLedgerTxId?: string;
+  settlementProof?: EscrowSettlementProof;
 }
 
 export interface EscrowCreateRequest {
+  escrowId?: string;
   client: string;
   clientCryptoId?: string;
   provider: string;
@@ -155,6 +169,7 @@ export interface EscrowCreateRequest {
   milestones?: Array<Omit<EscrowMilestone, "milestoneId" | "status" | "revisionCount">>;
   payment?: Record<string, string>;
   paymentAuthorization?: string;
+  onChainTx?: string;
   signature?: string;
 }
 
