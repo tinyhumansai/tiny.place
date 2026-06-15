@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { TinyPlaceClient } from "./client.js";
 import { LocalSigner } from "./local-signer.js";
 
@@ -20,6 +23,11 @@ export interface TinyPlaceCliCommand {
 export interface TinyPlaceCliOptions {
   env?: Record<string, string | undefined>;
   fetch?: typeof globalThis.fetch;
+}
+
+interface TinyPlaceCliConfig {
+  endpoint?: string;
+  secretKey?: string;
 }
 
 export interface TinyPlaceCliResult {
@@ -86,6 +94,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
   { name: "subscription-create", capability: "payments", description: "Create a subscription." },
   { name: "subscription-cancel", capability: "payments", description: "Cancel a subscription." },
   { name: "ledger", capability: "ledger", description: "List ledger transactions." },
+  { name: "ledger-tx", capability: "ledger", description: "Get a ledger transaction." },
   { name: "ledger-transaction", capability: "ledger", description: "Get a ledger transaction." },
   { name: "ledger-verify", capability: "ledger", description: "Verify a ledger transaction." },
 ];
@@ -112,18 +121,18 @@ export async function runTinyPlaceCli(
   try {
     const client = await makeCliClient(options);
     const result = await dispatch(client, parsed);
-    return { code: 0, stdout: `${JSON.stringify(result, null, 2)}\n`, stderr: "" };
+    return { code: 0, stdout: `${JSON.stringify(redactSecrets(result), null, 2)}\n`, stderr: "" };
   } catch (error) {
     const detail = error as { status?: number; body?: unknown; paymentRequired?: unknown };
     return {
       code: 1,
       stdout: "",
-      stderr: `${JSON.stringify({
+      stderr: `${JSON.stringify(redactSecrets({
         error: error instanceof Error ? error.message : String(error),
         ...(detail.status ? { status: detail.status } : {}),
         ...(detail.body !== undefined ? { body: detail.body } : {}),
         ...(detail.paymentRequired ? { paymentRequired: detail.paymentRequired } : {}),
-      }, null, 2)}\n`,
+      }), null, 2)}\n`,
     };
   }
 }
@@ -161,17 +170,39 @@ function parseArgs(argv: Array<string>): ParsedArgs {
 
 async function makeCliClient(options: TinyPlaceCliOptions): Promise<TinyPlaceClient> {
   const env = options.env ?? process.env;
+  const config = await loadCliConfig(env);
   const baseUrl =
     env.TINYPLACE_ENDPOINT ??
     env.TINYPLACE_API_URL ??
     env.NEXT_PUBLIC_API_URL ??
+    config.endpoint ??
     "https://api.tiny.place";
-  const seed = env.TINYPLACE_SECRET_KEY;
+  const seed = env.TINYPLACE_SECRET_KEY ?? config.secretKey;
   return new TinyPlaceClient({
     baseUrl,
     ...(seed ? { signer: await LocalSigner.fromSeed(hexToBytes(seed)) } : {}),
     fetch: options.fetch,
   });
+}
+
+async function loadCliConfig(env: Record<string, string | undefined>): Promise<TinyPlaceCliConfig> {
+  const configPath = env.TINYPLACE_CONFIG ?? join(homedir(), ".tinyplace", "config.json");
+  try {
+    const parsed = JSON.parse(await readFile(configPath, "utf8")) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    const config = parsed as Record<string, unknown>;
+    return {
+      ...(typeof config.endpoint === "string" ? { endpoint: config.endpoint } : {}),
+      ...(typeof config.secretKey === "string" ? { secretKey: config.secretKey } : {}),
+    };
+  } catch (error) {
+    if ((error as { code?: string }).code === "ENOENT") {
+      return {};
+    }
+    throw error;
+  }
 }
 
 async function dispatch(client: TinyPlaceClient, parsed: ParsedArgs): Promise<unknown> {
@@ -309,6 +340,7 @@ async function dispatch(client: TinyPlaceClient, parsed: ParsedArgs): Promise<un
       return client.payments.cancelSubscription(required(first, "subscription-cancel <id>"), stringFlag(flags, "actor"));
     case "ledger":
       return client.ledger.list(flags.recent === true ? { limit: 20 } : queryFlags(flags, ["agent", "type", "status", "limit"]));
+    case "ledger-tx":
     case "ledger-transaction":
       return client.ledger.get(required(first, "ledger-transaction <txId>"));
     case "ledger-verify":
@@ -386,6 +418,25 @@ function hexToBytes(value: string): Uint8Array {
     out[index] = Number.parseInt(normalized.slice(index * 2, index * 2 + 2), 16);
   }
   return out;
+}
+
+function redactSecrets(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => redactSecrets(item));
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  const out: JsonObject = {};
+  for (const [key, child] of Object.entries(value)) {
+    out[key] = isSecretKeyName(key) ? "[redacted]" : redactSecrets(child);
+  }
+  return out;
+}
+
+function isSecretKeyName(key: string): boolean {
+  const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return normalized.includes("secret") || normalized.includes("privatekey");
 }
 
 if (typeof process !== "undefined" && process.argv[1]?.endsWith("cli.js")) {
