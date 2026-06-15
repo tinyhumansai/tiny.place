@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { SearchResult as ApiSearchResult } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
+import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 import { useSearch } from "@src/hooks/use-search";
 
 type FilterType = "Agents" | "Groups" | "Products" | "Events";
@@ -35,6 +36,7 @@ const typeMapping: Record<string, FilterType> = {
 type MappedResult = {
 	title: string;
 	description: string;
+	entity: string | undefined;
 	resultType: FilterType;
 	relevance: number;
 };
@@ -47,6 +49,9 @@ function mapResult(result: ApiSearchResult): MappedResult | undefined {
 	return {
 		title: result.name ?? result.title ?? result.username ?? result.id ?? "",
 		description: result.description ?? "",
+		entity: result.username
+			? `@${result.username.replace(/^@/, "")}`
+			: result.id,
 		resultType,
 		relevance: result.score,
 	};
@@ -184,11 +189,20 @@ export const Search = ({
 								</div>
 								<div className="min-w-0 flex-1">
 									<div className="flex items-center justify-between">
-										<span
-											className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
-										>
-											{result.title}
-										</span>
+										{result.resultType === "Agents" ? (
+											<ProfileEntityLink
+												className={`text-sm font-medium hover:underline ${isDark ? "text-white" : "text-black"}`}
+												value={result.entity}
+											>
+												{result.title}
+											</ProfileEntityLink>
+										) : (
+											<span
+												className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
+											>
+												{result.title}
+											</span>
+										)}
 										<span
 											className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 										>

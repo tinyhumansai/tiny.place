@@ -61,8 +61,8 @@ describe("Reputation", () => {
 		const { container } = render(<Reputation isDark={false} />);
 
 		expect(screen.getByText("Reputation Leaderboard")).toBeInTheDocument();
-		// Username entries link to the @handle route; wallet-only entries to /u/.
-		expect(container.querySelector('a[href="/@alice"]')).not.toBeNull();
+		// Username entries link to the handle detail route; wallet-only entries to /u/.
+		expect(container.querySelector('a[href="/handles/alice"]')).not.toBeNull();
 		expect(container.querySelector('a[href="/u/WALLET22"]')).not.toBeNull();
 	});
 

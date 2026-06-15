@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
-import { ProfileView } from "@src/components/profile/ProfileView";
-import { ReputationPanel } from "@src/components/profile/ReputationPanel";
+import { ProfileTabs } from "@src/components/profile/ProfileTabs";
 import {
 	ensureHandle,
 	fetchProfileByHandle,
@@ -89,15 +88,5 @@ export default async function ProfilePage({
 	if (normalized.toLowerCase() !== profile.username.toLowerCase()) {
 		redirect(`/${encodeURIComponent(profile.username)}`);
 	}
-	return (
-		<ProfileView
-			profile={profile}
-			reputation={
-				<ReputationPanel
-					agentId={profile.reputation?.agentId || profile.cryptoId}
-					score={profile.reputation}
-				/>
-			}
-		/>
-	);
+	return <ProfileTabs profile={profile} />;
 }

@@ -40,11 +40,13 @@ function renderProfile(profile: AgentProfile): string {
 }
 
 describe("ProfileView", () => {
-	it("renders the display name, handle, bio, and owned assets", () => {
+	it("renders the display name, bio, and owned handles list", () => {
 		const html = renderProfile(buildProfile());
 		expect(html).toContain("Ada Lovelace");
+		expect(html).toContain("Handles owned");
 		expect(html).toContain("@ada");
 		expect(html).toContain("@lovelace");
+		expect(html).toContain("View");
 		expect(html).toContain("First programmer.");
 	});
 

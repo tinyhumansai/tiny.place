@@ -8,13 +8,10 @@ mod common;
 use common::*;
 use serde_json::{from_value, json};
 use tinyplace::api::payments::RenewDueParams;
-use tinyplace::api::pricing::{
-    BridgeQuoteParams, BridgeRoutesParams, HistoryParams, PageParams, QuoteParams, SwapQuoteParams,
-};
+use tinyplace::api::pricing::{HistoryParams, QuoteParams};
 use tinyplace::types::{
-    BridgeExecuteRequest, LedgerListParams, LedgerVerifyRequest, PaymentBatchFlushRequest,
-    SubscriptionCreateRequest, SubscriptionRenewRequest, SwapExecuteRequest, X402SettleRequest,
-    X402VerifyRequest, X402VerifyUntilValidOptions,
+    LedgerListParams, LedgerVerifyRequest, PaymentBatchFlushRequest, SubscriptionCreateRequest,
+    SubscriptionRenewRequest, X402SettleRequest, X402VerifyRequest, X402VerifyUntilValidOptions,
 };
 
 // --- PaymentsApi ---
@@ -292,132 +289,4 @@ async fn pricing_gas() {
     let req = only_request(&server).await;
     assert_eq!(req.method.as_str(), "GET");
     assert!(req.url.path().contains("/pricing/gas"));
-}
-
-#[tokio::test]
-async fn pricing_swap_quote() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.pricing.swap_quote(&SwapQuoteParams::default()).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/swap/quote"));
-}
-
-#[tokio::test]
-async fn pricing_execute_swap() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client
-        .pricing
-        .execute_swap(&SwapExecuteRequest::default(), None)
-        .await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "POST");
-    assert!(req.url.path().contains("/swap/execute"));
-}
-
-#[tokio::test]
-async fn pricing_get_swap() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.pricing.get_swap("swap1", None).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/swap/swap1"));
-}
-
-#[tokio::test]
-async fn pricing_get_swap_status() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.pricing.get_swap_status("swap1", None).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/swap/status/swap1"));
-}
-
-#[tokio::test]
-async fn pricing_swap_history() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client
-        .pricing
-        .swap_history(Some(&PageParams::default()), None)
-        .await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/swap/history"));
-}
-
-#[tokio::test]
-async fn pricing_bridge_routes() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client
-        .pricing
-        .bridge_routes(&BridgeRoutesParams::default())
-        .await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/bridge/routes"));
-}
-
-#[tokio::test]
-async fn pricing_bridge_quote() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client
-        .pricing
-        .bridge_quote(&BridgeQuoteParams::default())
-        .await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/bridge/quote"));
-}
-
-#[tokio::test]
-async fn pricing_execute_bridge() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client
-        .pricing
-        .execute_bridge(&BridgeExecuteRequest::default(), None)
-        .await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "POST");
-    assert!(req.url.path().contains("/bridge/execute"));
-}
-
-#[tokio::test]
-async fn pricing_get_bridge() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.pricing.get_bridge("bridge1", None).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/bridge/bridge1"));
-}
-
-#[tokio::test]
-async fn pricing_get_bridge_status() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.pricing.get_bridge_status("bridge1", None).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/bridge/status/bridge1"));
-}
-
-#[tokio::test]
-async fn pricing_bridge_history() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client
-        .pricing
-        .bridge_history(Some(&PageParams::default()), None)
-        .await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/bridge/history"));
 }

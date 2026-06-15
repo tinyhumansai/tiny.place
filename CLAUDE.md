@@ -76,12 +76,13 @@ Contracts: `contracts-sol/` uses **Anchor** (`anchor build` / `anchor test`).
 - **`.husky/pre-push`** runs `pnpm format && pnpm lint && pnpm build` on every `git push`. It's slow; run lint/build locally first so the hook doesn't surprise you. (Bypass in emergencies with `git push --no-verify`.)
 - **CI (`.github/workflows/ci.yml`, on PRs to `main`)** must all go green: **Lint**, **Format** (`prettier --check`), **Typecheck** (`tsc --noEmit` for the website + `tsc` build for the SDK), **Unit tests** (Vitest), and **Build**. A separate **E2E** workflow (`e2e.yml`) runs Playwright on PRs.
 - Pushing a change under `sdk/typescript/` to `main` triggers **`publish-sdk.yml`** (npm publish) and there's a manual **`bump-sdk.yml`** to bump its version.
+- Keep commits small and focused while working. Prefer committing each validated slice as soon as it is coherent over waiting to batch unrelated frontend, SDK, and documentation changes together.
 
 ## Website Architecture
 
 **Next.js 16 (App Router)** + React 19 + TypeScript. Note: the app was migrated from Vite + TanStack Router to Next.js — there is no `routeTree.gen.ts` and no Vite config in play for routing.
 
-**Routing:** App Router under `website/app/`. Pages: `app/page.tsx` (home), `app/explore/` (layout + page; the explore sections — directory, profiles, messaging, events, marketplace, payments, ledger, reputation, leaderboards, stats, explorer, search — render as **internal tab views** inside the explore shell, not separate route files), `app/room/`, `app/poker/`, `app/not-found.tsx`. Providers are injected via `app/providers.tsx` / `app/client-layout.tsx`.
+**Routing:** App Router under `website/app/`. Pages: `app/page.tsx` (home), `app/explore/` (layout + page; the explore sections — directory, profiles, messaging, events, marketplace, payments, ledger, reputation, leaderboards, stats, explorer, search — render as **internal tab views** inside the explore shell, not separate route files), `app/poker/`, `app/not-found.tsx`. Providers are injected via `app/providers.tsx` / `app/client-layout.tsx`.
 
 **Auth:** Solana wallet (Phantom via `@solana/wallet-adapter-*`). Connecting the wallet builds a signer stored in the Zustand `auth` store (`website/src/store/`), which is injected into the API client so backend calls are signed/authenticated.
 
@@ -89,15 +90,22 @@ Contracts: `contracts-sol/` uses **Anchor** (`anchor build` / `anchor test`).
 
 **State & data:** Zustand for client state (`website/src/store/`), TanStack Query for server state (`website/src/common/query-client.ts`; typed keys in `website/src/common/query-keys.ts`), React Hook Form + Zod for forms.
 
-**Styling:** Tailwind CSS v4 via `@tailwindcss/postcss`. Global styles in `website/src/styles/tailwind.css`. Dark/light theme in the Zustand `app` store.
+**Styling:** Tailwind CSS v4 via `@tailwindcss/postcss`. Global styles and theme tokens live in `website/src/styles/tailwind.css`. The Zustand `app` store owns appearance state (`theme`, currently `dark`/`light`, plus `flavor`), and `website/src/components/ThemeController.tsx` mirrors that state onto `<html>` as `data-theme` / `data-flavor`.
+
+Theme colors are centralized as CSS variables in `tailwind.css`:
+
+- Semantic utilities such as `bg-bg`, `text-front`, `bg-surface`, `border-border`, `bg-primary`, `text-muted`, `text-danger`, etc. are backed by `--theme-*` variables.
+- Existing Tailwind color classes that are common across the app (`bg-black`, `text-white`, `border-neutral-800`, `bg-blue-600`, status colors, etc.) are also remapped to those variables, so legacy `isDark ? ... : ...` classes repaint immediately when the root theme changes.
+- App "flavors" should be added as `:root[data-flavor="<name>"]` overrides in `tailwind.css`; prefer overriding semantic variables like `--theme-primary` / `--theme-primary-hover` rather than editing components.
+- New UI should prefer semantic theme utilities and token-backed colors over literal palette choices. Use direct hue classes only when the color is meaningful content/status (success, warning, danger, chart identity), not just surface/text chrome.
 
 **i18n:** i18next + react-i18next with **statically imported** JSON resources (no HTTP backend in use). Translations in `website/src/assets/locales/{en,es}/translations.json`; config in `website/src/common/i18n.ts` (browser language detection on the client, EN fallback).
 
-**Charts:** Nivo (`@nivo/bar`, `@nivo/line`, `@nivo/pie`). **UI:** Headless UI + Heroicons. **Game:** Phaser 3 powers the `/room` isometric world and `/poker` mini-game (engine in `website/src/engine/`).
+**Charts:** Nivo (`@nivo/bar`, `@nivo/line`, `@nivo/pie`). **UI:** Headless UI + Heroicons.
 
 **Path alias:** `@src/*` maps to `website/src/*` (configured in `website/tsconfig.json`).
 
-**Other source dirs:** `website/src/{components,views,features,engine,common,hooks,store,assets}`. Much of the explore UI still uses mock components; messaging/channels are wired to real data.
+**Other source dirs:** `website/src/{components,views,features,common,hooks,store,assets}`. Much of the explore UI still uses mock components; messaging/channels are wired to real data.
 
 ### Where to add things
 
@@ -112,6 +120,7 @@ Contracts: `contracts-sol/` uses **Anchor** (`anchor build` / `anchor test`).
 - **Solana / wallet code must be client-only.** The wallet adapter breaks under SSR, so providers are lazy/client-loaded (`app/providers.tsx`, `app/client-layout.tsx`, `ClientOnly`). Don't import wallet/`@solana/*` code into server-rendered module scope.
 - **Much of the explore UI is mocked**, not backend-wired — "it renders data" doesn't mean the endpoint exists yet. Messaging/channels are the real ones.
 - The authoritative spec for intended behavior is **`gitbooks/`** (and the backend spec under `../backend-tinyplace/docs/spec/`), not the mocked UI.
+- **Theme changes must be runtime-token based.** Do not add one-off color maps across components for dark/light/flavor work. Put the palette in `tailwind.css`, update `useAppStore` only for appearance state, and let `ThemeController` drive root attributes. Appearance and language controls belong on the `/settings` page, not in the header. Validate theme work with `pnpm --filter @tinyplace/website lint`, `pnpm --filter @tinyplace/website build`, and a browser/Playwright smoke that selects a Settings theme and confirms `document.documentElement.dataset.theme`, `document.documentElement.dataset.flavor`, persistence after reload, and computed body colors change.
 
 ## Contracts
 

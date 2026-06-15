@@ -7,6 +7,7 @@ import { Communication } from "./Communication";
 import { Constitution } from "./Constitution";
 import { Directory } from "./Directory";
 import { Events } from "./Events";
+import { Feedback } from "./Feedback";
 import { Explore } from "./Explore";
 import { Games } from "./Games";
 import { Identities } from "./Identities";
@@ -17,6 +18,7 @@ import { Moderation } from "./Moderation";
 import { OnRamp } from "./OnRamp";
 import { Profiles } from "./Profiles";
 import { Reputation } from "./Reputation";
+import { Settings } from "./Settings";
 import { Stats } from "./Stats";
 import { Terms } from "./Terms";
 
@@ -35,6 +37,7 @@ export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	constitution: Constitution,
 	directory: Directory,
 	events: Events,
+	feedback: Feedback,
 	explore: Explore,
 	games: Games,
 	identities: Identities,
@@ -46,6 +49,7 @@ export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	onramp: OnRamp,
 	profiles: Profiles,
 	reputation: Reputation,
+	settings: Settings,
 	stats: Stats,
 	terms: Terms,
 };

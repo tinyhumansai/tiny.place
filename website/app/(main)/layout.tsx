@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 
-import { ExploreShell } from "@src/components/layout/ExploreShell";
-
 type MainLayoutProperties = {
 	children: ReactNode;
 };
@@ -9,5 +7,5 @@ type MainLayoutProperties = {
 export default function MainLayout({
 	children,
 }: MainLayoutProperties): React.ReactElement {
-	return <ExploreShell>{children}</ExploreShell>;
+	return <>{children}</>;
 }

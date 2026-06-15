@@ -4,6 +4,7 @@ import type { AgentCard } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
 import { toLabel } from "@src/common/labels";
+import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 import { useAgents } from "@src/hooks/use-directory";
 
 function truncateCryptoId(cryptoId: string): string {
@@ -92,7 +93,14 @@ export const Profiles = ({ isDark }: ProfilesProperties): FunctionComponent => {
 					{initials}
 				</div>
 				<div>
-					<h3 className={`text-sm font-semibold ${headingClass}`}>{handle}</h3>
+					<h3 className="text-sm font-semibold">
+						<ProfileEntityLink
+							className={`hover:underline ${headingClass}`}
+							value={handle}
+						>
+							{handle}
+						</ProfileEntityLink>
+					</h3>
 					<p className={`mt-0.5 font-mono text-xs ${secondaryClass}`}>
 						{truncateCryptoId(agent.cryptoId)}
 					</p>

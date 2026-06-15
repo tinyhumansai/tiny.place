@@ -1,6 +1,8 @@
 import type { AgentProfile } from "@tinyhumansai/tinyplace";
 import type { ReactElement, ReactNode } from "react";
 
+import { ProfileEntityLink } from "./EntityLink";
+
 function truncateCryptoId(cryptoId: string): string {
 	if (cryptoId.length <= 12) {
 		return cryptoId;
@@ -96,9 +98,9 @@ function Section({
 	children,
 }: SectionProperties): ReactElement {
 	return (
-		<section className={`rounded-xl border p-5 ${theme.surface}`}>
+		<section className={`rounded-lg border p-4 ${theme.surface}`}>
 			<h2
-				className={`mb-3 flex items-baseline gap-2 text-sm font-semibold tracking-wide uppercase ${theme.heading}`}
+				className={`mb-3 flex items-baseline gap-2 text-sm font-medium ${theme.heading}`}
 			>
 				{title}
 				{count !== undefined && (
@@ -116,6 +118,10 @@ type ProfileViewProperties = {
 	actions?: ReactNode;
 	/** Render in dark mode. Defaults to light (e.g. the public SEO route). */
 	isDark?: boolean;
+	/** Show activity inline. Profile tabs render it directly after the card. */
+	showActivity?: boolean;
+	/** Show owned handles inline. Profile tabs render them in a dedicated tab. */
+	showHandles?: boolean;
 	/**
 	 * Optional reputation detail slot rendered below the profile sections. Pages
 	 * pass a <ReputationPanel> here; keeping it a slot lets ProfileView stay
@@ -134,29 +140,33 @@ export function ProfileView({
 	profile,
 	actions,
 	isDark = false,
+	showActivity = true,
+	showHandles = true,
 	reputation,
 }: ProfileViewProperties): ReactElement {
 	const t = themeClasses(isDark);
 	const displayName = profile.displayName?.trim() || profile.username;
 	const initials = displayName.replace(/^@/, "").slice(0, 2).toUpperCase();
-	const assets = profile.assets ?? [];
+	const handles = profile.assets ?? [];
 	const groups = profile.groups ?? [];
 	const events = profile.events ?? [];
 	const tags = profile.tags ?? [];
 	const links = profile.links ?? [];
 
 	return (
-		<div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
-			<header className={`rounded-xl border p-6 ${t.surface}`}>
-				<div className="flex items-start gap-4">
-					<div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xl font-semibold text-white">
+		<div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+			<header className={`rounded-lg border p-4 ${t.surface}`}>
+				<div className="flex items-start gap-3">
+					<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-base font-semibold text-white">
 						{initials}
 					</div>
 					<div className="min-w-0 flex-1">
 						<div className="flex items-start justify-between gap-3">
 							<div className="min-w-0">
 								<div className="flex items-center gap-2">
-									<h1 className={`truncate text-xl font-semibold ${t.heading}`}>
+									<h1
+										className={`truncate text-base font-semibold ${t.heading}`}
+									>
 										{displayName}
 									</h1>
 									<ActorBadge actorType={profile.actorType} />
@@ -210,49 +220,70 @@ export function ProfileView({
 				</div>
 			</header>
 
-			<Section count={assets.length} theme={t} title="Assets">
-				{assets.length === 0 ? (
-					<p className={`text-sm ${t.muted}`}>No domains owned.</p>
-				) : (
-					<ul className="flex flex-col gap-2">
-						{assets.map((asset) => (
-							<li
-								key={asset.name}
-								className={`flex items-center justify-between rounded-lg border px-3 py-2 ${t.innerBorder}`}
-							>
-								<span className={`font-medium ${t.primary}`}>{asset.name}</span>
-								<span className={`flex items-center gap-2 text-xs ${t.muted}`}>
-									{asset.primary && (
-										<span className="rounded-full bg-blue-500/10 px-2 py-0.5 font-medium text-blue-500">
-											primary
-										</span>
-									)}
-									{asset.status}
-								</span>
-							</li>
-						))}
-					</ul>
-				)}
-			</Section>
+			{showHandles && (
+				<Section count={handles.length} theme={t} title="Handles owned">
+					{handles.length === 0 ? (
+						<p className={`text-sm ${t.muted}`}>No handles owned.</p>
+					) : (
+						<ul className="flex flex-col gap-2">
+							{handles.map((handle) => (
+								<li
+									key={handle.name}
+									className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${t.innerBorder}`}
+								>
+									<span className="min-w-0">
+										<ProfileEntityLink
+											className={`font-medium hover:underline ${t.primary}`}
+											value={handle.name}
+										>
+											{handle.name}
+										</ProfileEntityLink>
+									</span>
+									<span
+										className={`flex shrink-0 items-center gap-2 text-xs ${t.muted}`}
+									>
+										{handle.primary && (
+											<span className="rounded-full bg-blue-500/10 px-2 py-0.5 font-medium text-blue-500">
+												primary
+											</span>
+										)}
+										<span>{handle.status}</span>
+										<ProfileEntityLink
+											value={handle.name}
+											className={`rounded-md border px-2 py-1 font-medium transition-colors ${
+												isDark
+													? "border-neutral-700 text-neutral-300 hover:bg-neutral-900"
+													: "border-neutral-200 text-neutral-700 hover:bg-neutral-100"
+											}`}
+										>
+											View
+										</ProfileEntityLink>
+									</span>
+								</li>
+							))}
+						</ul>
+					)}
+				</Section>
+			)}
 
-			{profile.activity && (
+			{showActivity && profile.activity && (
 				<Section theme={t} title="Activity">
 					<dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
 						<div>
 							<dt className={`text-xs ${t.muted}`}>Transactions</dt>
-							<dd className={`text-lg font-semibold ${t.primary}`}>
+							<dd className={`text-base font-semibold ${t.primary}`}>
 								{profile.activity.transactionCount}
 							</dd>
 						</div>
 						<div>
 							<dt className={`text-xs ${t.muted}`}>Volume (USD)</dt>
-							<dd className={`text-lg font-semibold ${t.primary}`}>
+							<dd className={`text-base font-semibold ${t.primary}`}>
 								${profile.activity.totalVolumeUsd}
 							</dd>
 						</div>
 						<div>
 							<dt className={`text-xs ${t.muted}`}>Counterparties</dt>
-							<dd className={`text-lg font-semibold ${t.primary}`}>
+							<dd className={`text-base font-semibold ${t.primary}`}>
 								{profile.activity.uniqueCounterparties}
 							</dd>
 						</div>

@@ -6,6 +6,7 @@ import type { AgentCard } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
 import { toLabel } from "@src/common/labels";
+import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 import { useAgents } from "@src/hooks/use-directory";
 
 const AVATAR_COLORS: Array<string> = [
@@ -151,9 +152,10 @@ export const Directory = ({
 				const skills = getSkills(agent);
 
 				return (
-					<button
+					<div
 						key={agent.agentId}
-						type="button"
+						role="button"
+						tabIndex={0}
 						className={`rounded-lg border p-3 text-left transition-colors ${
 							isDark
 								? `border-neutral-800 bg-neutral-950 ${
@@ -170,6 +172,12 @@ export const Directory = ({
 						onClick={() => {
 							handleSelect(handle);
 						}}
+						onKeyDown={(event): void => {
+							if (event.key === "Enter" || event.key === " ") {
+								event.preventDefault();
+								handleSelect(handle);
+							}
+						}}
 					>
 						<div className="flex items-start gap-2.5">
 							<div className="flex-shrink-0">
@@ -180,11 +188,12 @@ export const Directory = ({
 								</div>
 							</div>
 							<div className="min-w-0 flex-1">
-								<span
-									className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
+								<ProfileEntityLink
+									className={`text-sm font-medium hover:underline ${isDark ? "text-white" : "text-black"}`}
+									value={handle}
 								>
 									{handle}
-								</span>
+								</ProfileEntityLink>
 								<p
 									className={`mt-0.5 truncate text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 								>
@@ -208,7 +217,7 @@ export const Directory = ({
 								)}
 							</div>
 						</div>
-					</button>
+					</div>
 				);
 			})}
 		</div>

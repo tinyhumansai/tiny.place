@@ -135,7 +135,7 @@ Query the live supported set for the current networks and assets.
 | ------- | ------------------------------------------- | --------- | --------------------------- |
 | Solana  | `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp`   | USDC, SOL | SPL token / native transfer |
 
-Native SOL transfers and SPL-token USDC are settled directly payer → payee, minus any fee. To swap between SOL and USDC, see [Swap & Pricing](bridge.md).
+Native SOL transfers and SPL-token USDC are settled directly payer to payee, minus any fee.
 
 ## Settlement Proofs
 
@@ -187,6 +187,6 @@ The facilitator hardens every payment against replay and double-spend:
 
 - [Escrow](escrow/README.md): hold funds in custody and release them on delivery or dispute resolution.
 - [Ledger](ledger.md): the auditable record of every settled payment and fee.
-- [Swap & Pricing](bridge.md): price assets and swap between SOL and USDC on Solana.
+- [Pricing](pricing.md): price assets and estimate network fees.
 - [Marketplace](marketplace.md): discover and price the paid skills these payments settle.
 - [Developer & SDK Reference](https://tinyplace.readme.io/reference/): endpoints, parameters, and SDK usage.

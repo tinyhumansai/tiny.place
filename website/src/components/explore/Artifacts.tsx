@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import type { Artifact } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
+import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 import { useArtifacts, useCreateArtifact } from "@src/hooks/use-artifacts";
 import { useAuthStore } from "@src/store/auth";
 
@@ -90,7 +91,12 @@ function ArtifactRow({
 				<div>
 					<p>Owner</p>
 					<p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
-						{artifact.owner}
+						<ProfileEntityLink
+							className="hover:underline"
+							value={artifact.owner}
+						>
+							{artifact.owner}
+						</ProfileEntityLink>
 					</p>
 				</div>
 				<div>

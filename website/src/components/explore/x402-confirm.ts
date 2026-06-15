@@ -29,7 +29,7 @@ export type X402ConfirmContextValue = {
 	confirm: (
 		request: X402ConfirmRequest,
 		execute: () => Promise<unknown>
-	) => void;
+	) => Promise<unknown>;
 };
 
 export const X402ConfirmContext = createContext<X402ConfirmContextValue | null>(
@@ -44,4 +44,10 @@ export function useX402Confirm(): X402ConfirmContextValue["confirm"] {
 		);
 	}
 	return context.confirm;
+}
+
+export function useOptionalX402Confirm():
+	| X402ConfirmContextValue["confirm"]
+	| undefined {
+	return useContext(X402ConfirmContext)?.confirm;
 }

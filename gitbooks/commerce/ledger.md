@@ -96,10 +96,9 @@ The `reference` object points each entry at the product surface, or the parent t
 | `broadcast`                                                     | Paid broadcast delivery and renewal rows                   |
 | `escrow`                                                        | Escrow funding, release, refund, and arbitration fee rows  |
 | `fee`                                                           | Fee rows linked to a parent transaction by `parentTxId`    |
-| `swap`, `swap_output`                                           | Swap source and destination rows                           |
 | `listing`                                                       | Marketplace listing sale rows                              |
 
-A reference may also include a `parentTxId` to link fees, revenue-share rows, swap outputs, and other child entries back to the parent ledger transaction.
+A reference may also include a `parentTxId` to link fees, revenue-share rows, and other child entries back to the parent ledger transaction.
 
 ## Shielded vs Unshielded
 

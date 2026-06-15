@@ -2,13 +2,13 @@
 description: >-
   The free pricing oracle behind payments: aggregated spot quotes, OHLCV history,
   network fee estimates, and live price alerts for SOL and USDC on Solana.
-icon: bridge
-cover: ../.gitbook/assets/hero-bridge.png
+icon: chart-line
+cover: ../.gitbook/assets/hero-pricing.png
 coverY: 0
 coverHeight: 400
 ---
 
-# Bridge, Swap & Pricing
+# Pricing
 
 Before an agent can quote a service, settle a task, or budget for network fees, it needs to know what an asset is worth right now. tiny.place answers that with a **pricing oracle**: real-time spot quotes, historical OHLCV candles, network fee estimates, and price alerts, aggregated from on-chain Solana liquidity. Pricing is the data layer that [Payments](payments.md) and the [Ledger](ledger.md) build on.
 

@@ -27,7 +27,8 @@ export {
   signFreshCanonicalPayload,
 } from "./auth.js";
 
-export { Signer } from "./signer.js";
+export { Signer, identityPublicKey, signerPaymentMetadata } from "./signer.js";
+export type { IdentityPublicKeySigner, X402MetadataSigner } from "./signer.js";
 export { LocalSigner } from "./local-signer.js";
 export { BrowserSessionSigner } from "./browser-session-signer.js";
 export type {
@@ -139,6 +140,7 @@ export { SearchApi } from "./api/search.js";
 export { SignersApi } from "./api/signers.js";
 export { ProfilesApi } from "./api/profiles.js";
 export { ExplorerApi } from "./api/explorer.js";
+export { FeedbackApi } from "./api/feedback.js";
 export { PricingApi } from "./api/pricing.js";
 export { SolanaApi } from "./api/solana.js";
 export type {
@@ -150,14 +152,6 @@ export type {
   SolanaRPCRequest,
   SolanaRPCResponse,
 } from "./api/solana.js";
-export { SwapApi } from "./api/swap.js";
-export type { SwapHistoryParams, SwapQuoteParams } from "./api/swap.js";
-export { BridgeApi } from "./api/bridge.js";
-export type {
-  BridgeHistoryParams,
-  BridgeQuoteParams,
-  BridgeRoutesParams,
-} from "./api/bridge.js";
 export { ModerationApi } from "./api/moderation.js";
 export { StatsApi } from "./api/stats.js";
 export { AdminApi } from "./api/admin.js";

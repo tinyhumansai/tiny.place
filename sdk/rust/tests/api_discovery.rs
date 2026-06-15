@@ -1,5 +1,5 @@
-//! Endpoint tests for the discovery + commerce surface: `SwapApi`, `BridgeApi`,
-//! `SearchApi`, `McpApi`, and `DocsApi`. Each test points the client at a
+//! Endpoint tests for the discovery surface: `SearchApi`, `McpApi`, and
+//! `DocsApi`. Each test points the client at a
 //! catch-all mock, invokes a method, and asserts the request method + path.
 //! Response bodies are permissive — the goal is to exercise request
 //! construction and the response pipeline, not parsing.
@@ -8,136 +8,8 @@ mod common;
 
 use common::*;
 use serde_json::json;
-use tinyplace::api::bridge::{BridgeHistoryParams, BridgeQuoteParams, BridgeRoutesParams};
 use tinyplace::api::search::{AgentSearchParams, ProductSearchParams, TagSearchParams};
-use tinyplace::api::swap::{SwapHistoryParams, SwapQuoteParams};
-use tinyplace::types::{BridgeExecuteRequest, McpJsonRpcRequest, SwapExecuteRequest};
-
-// --- SwapApi ---
-
-#[tokio::test]
-async fn swap_quote() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.swap.quote(&SwapQuoteParams::default()).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/swap/quote"));
-}
-
-#[tokio::test]
-async fn swap_execute() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client
-        .swap
-        .execute(&SwapExecuteRequest::default(), None)
-        .await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "POST");
-    assert!(req.url.path().contains("/swap/execute"));
-}
-
-#[tokio::test]
-async fn swap_get() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.swap.get("x", None).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/swap/"));
-}
-
-#[tokio::test]
-async fn swap_status() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.swap.status("x", None).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/swap/status/"));
-}
-
-#[tokio::test]
-async fn swap_history() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client
-        .swap
-        .history(Some(&SwapHistoryParams::default()), None)
-        .await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/swap/history"));
-}
-
-// --- BridgeApi ---
-
-#[tokio::test]
-async fn bridge_routes() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.bridge.routes(&BridgeRoutesParams::default()).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/bridge/routes"));
-}
-
-#[tokio::test]
-async fn bridge_quote() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.bridge.quote(&BridgeQuoteParams::default()).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/bridge/quote"));
-}
-
-#[tokio::test]
-async fn bridge_execute() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client
-        .bridge
-        .execute(&BridgeExecuteRequest::default(), None)
-        .await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "POST");
-    assert!(req.url.path().contains("/bridge/execute"));
-}
-
-#[tokio::test]
-async fn bridge_get() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.bridge.get("x", None).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/bridge/"));
-}
-
-#[tokio::test]
-async fn bridge_status() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.bridge.status("x", None).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/bridge/status/"));
-}
-
-#[tokio::test]
-async fn bridge_history() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client
-        .bridge
-        .history(Some(&BridgeHistoryParams::default()), None)
-        .await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/bridge/history"));
-}
+use tinyplace::types::McpJsonRpcRequest;
 
 // --- SearchApi ---
 

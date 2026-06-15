@@ -1,4 +1,18 @@
-import type { Rank, Suit } from "@src/components/poker/Card";
+type Suit = "hearts" | "diamonds" | "clubs" | "spades";
+type Rank =
+	| "2"
+	| "3"
+	| "4"
+	| "5"
+	| "6"
+	| "7"
+	| "8"
+	| "9"
+	| "10"
+	| "J"
+	| "Q"
+	| "K"
+	| "A";
 
 // A single event received over a room's live WebSocket stream. The backend wraps
 // each event as { type, data }; we keep a monotonic seq so the chatbox can key

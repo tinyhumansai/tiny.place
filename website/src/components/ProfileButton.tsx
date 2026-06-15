@@ -1,11 +1,11 @@
 "use client";
 
 import { UserCircleIcon } from "@heroicons/react/24/outline";
+import { useWallet } from "@solana/wallet-adapter-react";
 import Link from "next/link";
 
 import type { FunctionComponent } from "@src/common/types";
 import { useAppStore } from "@src/store/app";
-import { useAuthStore } from "@src/store/auth";
 
 /**
  * A round icon button — styled to match the theme/language pills — that opens
@@ -14,9 +14,9 @@ import { useAuthStore } from "@src/store/auth";
  */
 export const ProfileButton = (): FunctionComponent => {
 	const isDark = useAppStore((state) => state.theme === "dark");
-	const agentId = useAuthStore((state) => state.agentId);
+	const { publicKey } = useWallet();
 
-	if (!agentId) return null;
+	if (!publicKey) return null;
 
 	const className = `p-2 rounded-full border transition-colors ${
 		isDark
@@ -28,7 +28,7 @@ export const ProfileButton = (): FunctionComponent => {
 		<Link
 			aria-label="Profile"
 			className={className}
-			href="/profile"
+			href={`/u/${publicKey.toBase58()}`}
 			title="Profile"
 		>
 			<UserCircleIcon className="h-4 w-4" />

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { LotteryRound } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
+import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 
 import { formatUsdc } from "./usdc";
 
@@ -75,11 +76,12 @@ export const WinnersList = ({
 								>
 									{winner.rank}
 								</span>
-								<span
-									className={`truncate text-sm ${isDark ? "text-white" : "text-black"}`}
+								<ProfileEntityLink
+									className={`truncate text-sm hover:underline ${isDark ? "text-white" : "text-black"}`}
+									value={winner.owner}
 								>
 									{winner.owner}
-								</span>
+								</ProfileEntityLink>
 								<span className={`text-xs ${labelClasses}`}>
 									{t("lottery.ticketsCount", { count: winner.tickets })}
 								</span>

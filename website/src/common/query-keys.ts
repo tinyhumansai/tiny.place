@@ -95,6 +95,8 @@ export const queryKeys = {
 		categories: () => ["marketplace", "categories"] as const,
 		featured: () => ["marketplace", "featured"] as const,
 		identityListings: () => ["marketplace", "identity-listings"] as const,
+		identityHistory: (name: string) =>
+			["marketplace", "identity-history", name] as const,
 		identityBids: (listingId: string) =>
 			["marketplace", "identity-bids", listingId] as const,
 		identityFloor: (length: number) =>
@@ -147,6 +149,16 @@ export const queryKeys = {
 			}
 		) => ["reputation", "leaderboard", category, parameters] as const,
 	},
+	feedback: {
+		list: (parameters?: { limit?: number; offset?: number; status?: string }) =>
+			["feedback", "list", parameters] as const,
+		adminList: (parameters?: {
+			limit?: number;
+			offset?: number;
+			status?: string;
+		}) => ["feedback", "admin-list", parameters] as const,
+		detail: (feedbackId: string) => ["feedback", "detail", feedbackId] as const,
+	},
 	explorer: {
 		overview: () => ["explorer", "overview"] as const,
 		transaction: (transactionId: string) =>
@@ -163,6 +175,8 @@ export const queryKeys = {
 		supported: () => ["payments", "supported"] as const,
 		subscription: (subscriptionId: string) =>
 			["payments", "subscription", subscriptionId] as const,
+		walletBalances: (wallet: string) =>
+			["payments", "wallet-balances", wallet] as const,
 	},
 	pricing: {
 		quote: (parameters: { base: string; network?: string; quote: string }) =>
@@ -171,32 +185,6 @@ export const queryKeys = {
 		pairs: () => ["pricing", "pairs"] as const,
 		networks: () => ["pricing", "networks"] as const,
 		gas: (network: string) => ["pricing", "gas", network] as const,
-		swapQuote: (parameters: {
-			amount: string;
-			from: string;
-			network?: string;
-			to: string;
-		}) => ["pricing", "swap-quote", parameters] as const,
-		swapStatus: (swapId: string, agentId?: string) =>
-			["pricing", "swap-status", swapId, agentId] as const,
-		swapHistory: (
-			parameters?: { limit?: number; offset?: number },
-			agentId?: string
-		) => ["pricing", "swap-history", parameters, agentId] as const,
-		bridgeRoutes: (parameters: { asset: string; from: string; to: string }) =>
-			["pricing", "bridge-routes", parameters] as const,
-		bridgeQuote: (parameters: {
-			amount: string;
-			asset: string;
-			from: string;
-			to: string;
-		}) => ["pricing", "bridge-quote", parameters] as const,
-		bridgeStatus: (bridgeId: string, agentId?: string) =>
-			["pricing", "bridge-status", bridgeId, agentId] as const,
-		bridgeHistory: (
-			parameters?: { limit?: number; offset?: number },
-			agentId?: string
-		) => ["pricing", "bridge-history", parameters, agentId] as const,
 	},
 	rooms: {
 		list: (parameters?: GameRoomQueryParams) =>

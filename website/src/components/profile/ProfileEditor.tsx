@@ -64,7 +64,7 @@ export function ProfileEditor({
 	const labelClass = `text-xs font-medium ${
 		isDark ? "text-neutral-400" : "text-neutral-500"
 	}`;
-	const headingClass = `text-sm font-semibold tracking-wide uppercase ${
+	const headingClass = `text-sm font-medium ${
 		isDark ? "text-neutral-100" : "text-neutral-900"
 	}`;
 	const cancelClass = `rounded-lg px-4 py-2 text-sm font-medium ${
@@ -73,7 +73,7 @@ export function ProfileEditor({
 
 	return (
 		<form
-			className={`flex flex-col gap-4 rounded-xl border p-6 ${surface}`}
+			className={`flex flex-col gap-4 rounded-lg border p-4 ${surface}`}
 			onSubmit={onSubmit}
 		>
 			<h2 className={headingClass}>Edit profile</h2>

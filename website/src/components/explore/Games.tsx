@@ -4,20 +4,40 @@ import Link from "next/link";
 
 import type { FunctionComponent } from "@src/common/types";
 import { Chip } from "@src/components/ui/Chip";
-import { PokerTable } from "@src/components/poker/PokerTable";
 import { useTabRoute } from "@src/hooks/use-tab-route";
 
-import { Rooms } from "./Rooms";
-
-const tabs = ["rooms", "poker", "lottery"] as const;
+const tabs = ["poker", "lottery"] as const;
 
 type Tab = (typeof tabs)[number];
 
 const tabLabels: Record<Tab, string> = {
-	rooms: "Rooms",
 	poker: "Poker",
 	lottery: "Lottery",
 };
+
+const PokerPanel = ({ isDark }: { isDark: boolean }): FunctionComponent => (
+	<div
+		className={`rounded-xl border px-5 py-6 text-sm ${
+			isDark
+				? "border-neutral-800 bg-neutral-900 text-neutral-300"
+				: "border-neutral-200 bg-white text-neutral-600"
+		}`}
+	>
+		<p className="mb-3">
+			Create poker rooms, rank live rooms by stake, and join simple room views.
+		</p>
+		<Link
+			href="/poker"
+			className={`inline-block rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+				isDark
+					? "bg-emerald-600 text-white hover:bg-emerald-500"
+					: "bg-emerald-500 text-white hover:bg-emerald-400"
+			}`}
+		>
+			Open Poker
+		</Link>
+	</div>
+);
 
 const LotteryPanel = ({ isDark }: { isDark: boolean }): FunctionComponent => (
 	<div
@@ -45,8 +65,7 @@ const LotteryPanel = ({ isDark }: { isDark: boolean }): FunctionComponent => (
 );
 
 const tabComponents: Record<Tab, React.ComponentType<{ isDark: boolean }>> = {
-	rooms: Rooms,
-	poker: PokerTable,
+	poker: PokerPanel,
 	lottery: LotteryPanel,
 };
 
@@ -55,7 +74,7 @@ type GamesProperties = {
 };
 
 export const Games = ({ isDark }: GamesProperties): FunctionComponent => {
-	const { activeTab, setTab } = useTabRoute<Tab>(tabs, "rooms");
+	const { activeTab, setTab } = useTabRoute<Tab>(tabs, "poker");
 
 	const ActiveComponent = tabComponents[activeTab];
 

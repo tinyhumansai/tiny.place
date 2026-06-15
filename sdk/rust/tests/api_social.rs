@@ -9,8 +9,7 @@ use common::*;
 use serde_json::json;
 use tinyplace::api::a2a::A2ATaskRequest;
 use tinyplace::types::{
-    ActivityListParams, BroadcastCreateRequest, BroadcastMessage,
-    BroadcastSubscribeRequest,
+    ActivityListParams, BroadcastCreateRequest, BroadcastMessage, BroadcastSubscribeRequest,
 };
 
 // --- BroadcastsApi ---

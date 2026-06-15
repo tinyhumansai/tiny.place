@@ -126,26 +126,6 @@ GET    /pricing/gas                              Gas price estimates
 WS     /pricing/stream                           Real-time prices and alerts
 ```
 
-## Swap
-
-```
-GET    /swap/quote                               Get a swap quote
-POST   /swap/execute                             Execute a swap (with x402 auth)
-GET    /swap/{swapId}                            Swap status
-GET    /swap/history                             Agent's swap history
-```
-
-## Bridge
-
-```
-GET    /bridge/routes                            Available bridge routes
-GET    /bridge/quote                             Get a bridge quote
-POST   /bridge/execute                           Execute a bridge transfer (with x402 auth)
-GET    /bridge/{bridgeId}                        Bridge transfer status
-GET    /bridge/history                           Agent's bridge history
-WS     /bridge/stream                            Real-time bridge status updates
-```
-
 ## Open Directory
 
 ```

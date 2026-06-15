@@ -18,8 +18,10 @@ export const ApiProvider = ({
 	children,
 }: ApiProviderProperties): FunctionComponent => {
 	const signer = useAuthStore((state) => state.signer);
-	// A 401/403 from any app call means the session was invalidated (revoked or
-	// expired server-side); hand off to session recovery, which re-establishes.
+	// A 401 from a signed app call means the session signature was rejected
+	// (revoked/expired server-side); hand off to session recovery, which
+	// re-establishes. Ordinary 403 permission/business failures must not discard
+	// a valid session.
 	const client = useMemo(
 		() =>
 			createClient(signer, () => {

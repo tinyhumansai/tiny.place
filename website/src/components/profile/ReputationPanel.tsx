@@ -164,15 +164,11 @@ export const ReputationPanel = ({
 	const reviews: Array<ReputationReview> = reviewsQuery.data?.reviews ?? [];
 
 	return (
-		<section className={`rounded-xl border p-5 ${t.surface}`}>
-			<h2
-				className={`mb-4 text-sm font-semibold tracking-wide uppercase ${t.heading}`}
-			>
-				Reputation
-			</h2>
+		<section className={`rounded-lg border p-4 ${t.surface}`}>
+			<h2 className={`mb-3 text-sm font-medium ${t.heading}`}>Reputation</h2>
 
 			<div className="flex items-baseline gap-2">
-				<span className={`text-3xl font-semibold ${t.primary}`}>
+				<span className={`text-2xl font-semibold ${t.primary}`}>
 					{resolvedScore?.score ?? "—"}
 				</span>
 				<span className={`text-xs ${t.muted}`}>reputation score</span>

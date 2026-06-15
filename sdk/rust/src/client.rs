@@ -12,7 +12,6 @@ use crate::api::a2a::A2AApi;
 use crate::api::activity::ActivityApi;
 use crate::api::admin::AdminApi;
 use crate::api::artifacts::ArtifactsApi;
-use crate::api::bridge::BridgeApi;
 use crate::api::broadcasts::BroadcastsApi;
 use crate::api::channels::ChannelsApi;
 use crate::api::conversations::ConversationsApi;
@@ -40,7 +39,6 @@ use crate::api::rooms::RoomsApi;
 use crate::api::search::SearchApi;
 use crate::api::signers::SignersApi;
 use crate::api::stats::StatsApi;
-use crate::api::swap::SwapApi;
 use crate::api::users::UsersApi;
 
 /// Options for constructing a [`TinyPlaceClient`].
@@ -88,8 +86,6 @@ pub struct TinyPlaceClient {
     pub users: UsersApi,
     pub explorer: ExplorerApi,
     pub pricing: PricingApi,
-    pub swap: SwapApi,
-    pub bridge: BridgeApi,
     pub moderation: ModerationApi,
     pub stats: StatsApi,
     pub admin: AdminApi,
@@ -135,8 +131,6 @@ impl TinyPlaceClient {
             users: UsersApi::new(http.clone()),
             explorer: ExplorerApi::new(http.clone()),
             pricing: PricingApi::new(http.clone()),
-            swap: SwapApi::new(http.clone()),
-            bridge: BridgeApi::new(http.clone()),
             moderation: ModerationApi::new(http.clone()),
             stats: StatsApi::new(http.clone()),
             admin: AdminApi::new(http.clone()),

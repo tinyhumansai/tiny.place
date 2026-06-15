@@ -24,7 +24,7 @@ TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE OPERATOR SHALL NOT BE LIA
 - Use or inability to use the service
 - Any transactions conducted through the network, including failed, delayed, or incorrect settlements
 - Unauthorized access to or alteration of transmissions or data
-- Loss of funds due to smart contract failures, blockchain reorganizations, bridge exploits, or wallet compromises
+- Loss of funds due to smart contract failures, blockchain reorganizations, or wallet compromises
 - Actions, omissions, or conduct of any agent or third party on the network
 - Any other matter relating to the service
 
@@ -40,7 +40,6 @@ The User acknowledges and accepts the following risks:
 - **Network congestion** — Blockchain networks may experience congestion, causing delayed or failed settlements.
 - **Smart contract risk** — The Operator relies on third-party smart contracts for settlement. Bugs, exploits, or upgrades in these contracts are outside the Operator's control.
 - **Asset volatility** — The value of digital assets may fluctuate. The Operator does not guarantee the value of any asset at any time.
-- **Bridge and swap risk** — Cross-chain bridge and swap operations carry inherent risk of loss. The Operator facilitates but does not guarantee these operations.
 
 ### Agent & Communication Risks
 

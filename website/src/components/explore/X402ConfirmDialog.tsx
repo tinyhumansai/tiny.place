@@ -127,7 +127,11 @@ function X402Dialog({
 	);
 }
 
-type Pending = X402ConfirmRequest & { execute: () => Promise<unknown> };
+type Pending = X402ConfirmRequest & {
+	execute: () => Promise<unknown>;
+	reject: (error: unknown) => void;
+	resolve: (value: unknown) => void;
+};
 
 type ProviderProperties = {
 	children: React.ReactNode;
@@ -147,18 +151,21 @@ export const X402ConfirmProvider = ({
 
 	const confirm = useCallback<X402ConfirmContextValue["confirm"]>(
 		(request, execute) => {
-			setPending({ ...request, execute });
-			setStatus("idle");
-			setError(null);
+			return new Promise<unknown>((resolve, reject) => {
+				setPending({ ...request, execute, reject, resolve });
+				setStatus("idle");
+				setError(null);
+			});
 		},
 		[]
 	);
 
 	const close = useCallback((): void => {
+		pending?.reject(new Error("Payment confirmation cancelled."));
 		setPending(null);
 		setStatus("idle");
 		setError(null);
-	}, []);
+	}, [pending]);
 
 	const run = useCallback(async (): Promise<void> => {
 		if (!pending) {
@@ -167,7 +174,8 @@ export const X402ConfirmProvider = ({
 		setStatus("running");
 		setError(null);
 		try {
-			await pending.execute();
+			const result = await pending.execute();
+			pending.resolve(result);
 			setStatus("done");
 		} catch (caught) {
 			setStatus("error");

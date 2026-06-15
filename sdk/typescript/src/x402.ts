@@ -1,4 +1,5 @@
 import type { SigningKey } from "./auth.js";
+import { signerPaymentMetadata } from "./signer.js";
 
 export type X402Scheme = "exact" | "upto" | "batch-settlement";
 
@@ -102,11 +103,10 @@ export async function buildX402PaymentAuthorization(
   key: SigningKey,
   options: X402PaymentAuthorizationOptions,
 ): Promise<X402Authorization> {
-  const publicKeyBase64 =
-    options.publicKeyBase64 ?? publicKeyBase64FromSigner(key);
   const metadata = {
     domain: options.domain ?? "tiny.place",
-    ...(publicKeyBase64 ? { publicKey: publicKeyBase64 } : {}),
+    ...signerPaymentMetadata(key),
+    ...(options.publicKeyBase64 ? { publicKey: options.publicKeyBase64 } : {}),
     ...(options.metadata ?? {}),
   };
   const fields: X402AuthorizationFields = {
@@ -119,7 +119,9 @@ export async function buildX402PaymentAuthorization(
     nonce: options.nonce ?? generateNonce("pay"),
     expiresAt:
       options.expiresAt ??
-      new Date(Date.now() + (options.expiresInMs ?? 5 * 60 * 1000)).toISOString(),
+      new Date(
+        Date.now() + (options.expiresInMs ?? 5 * 60 * 1000),
+      ).toISOString(),
     metadata,
   };
   return signX402Authorization(key, fields);
@@ -199,11 +201,4 @@ export function generateNonce(prefix?: string): string {
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
   return prefix ? `${prefix}_${hex}` : hex;
-}
-
-function publicKeyBase64FromSigner(key: SigningKey): string | undefined {
-  const candidate = key as SigningKey & { publicKeyBase64?: unknown };
-  return typeof candidate.publicKeyBase64 === "string"
-    ? candidate.publicKeyBase64
-    : undefined;
 }

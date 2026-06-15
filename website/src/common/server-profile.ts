@@ -2,6 +2,7 @@ import type {
 	AgentProfile,
 	Identity,
 	TinyPlaceError,
+	User,
 } from "@tinyhumansai/tinyplace";
 
 import { createClient } from "./api-client";
@@ -48,6 +49,43 @@ export async function fetchProfileByHandle(
 }
 
 /**
+ * Fetches a wallet User profile by cryptoId. Returns null when the wallet does
+ * not have a profile record yet; rethrows unexpected API errors.
+ */
+export async function fetchUserByCryptoId(
+	cryptoId: string
+): Promise<User | null> {
+	const client = createClient();
+	try {
+		return await client.users.get(cryptoId.trim());
+	} catch (error) {
+		if (isNotFound(error)) {
+			return null;
+		}
+		throw error;
+	}
+}
+
+/**
+ * Fetches every handle owned by a wallet. Returns an empty list when the wallet
+ * has no reverse-directory record yet.
+ */
+export async function fetchIdentitiesByCryptoId(
+	cryptoId: string
+): Promise<Array<Identity>> {
+	const client = createClient();
+	try {
+		const reverse = await client.directory.reverse(cryptoId.trim());
+		return reverse.identities ?? [];
+	} catch (error) {
+		if (isNotFound(error)) {
+			return [];
+		}
+		throw error;
+	}
+}
+
+/**
  * Resolves the canonical (primary) handle a wallet should be shown under.
  * Returns the wallet's primary handle when one is assigned, otherwise its first
  * owned handle, or null when the wallet owns no handles.
@@ -55,17 +93,16 @@ export async function fetchProfileByHandle(
 export async function resolvePrimaryHandle(
 	cryptoId: string
 ): Promise<string | null> {
-	const client = createClient();
-	let identities: Array<Identity>;
-	try {
-		const reverse = await client.directory.reverse(cryptoId.trim());
-		identities = reverse.identities ?? [];
-	} catch (error) {
-		if (isNotFound(error)) {
-			return null;
-		}
-		throw error;
-	}
+	const identities = await fetchIdentitiesByCryptoId(cryptoId);
+	const primary =
+		identities.find((identity) => identity.primary) ?? identities[0];
+	return primary ? primary.username : null;
+}
+
+/** Picks the profile display handle from a wallet's owned identities. */
+export function primaryHandleFromIdentities(
+	identities: Array<Identity>
+): string | null {
 	const primary =
 		identities.find((identity) => identity.primary) ?? identities[0];
 	return primary ? primary.username : null;

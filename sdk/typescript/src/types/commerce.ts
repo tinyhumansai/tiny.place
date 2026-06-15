@@ -57,70 +57,6 @@ export interface TradePair {
   networks: Array<string>;
 }
 
-export interface SwapQuote {
-  quoteId: string;
-  from: MoneyAmount;
-  to: MoneyAmount;
-  rate: string;
-  priceImpact: string;
-  fee: FeeAmount;
-  route: Array<string>;
-  expiresAt: string;
-  slippageTolerance: string;
-}
-
-export interface SwapExecuteRequest {
-  quoteId: string;
-  paymentAuthorization?: string;
-  payment?: CommercePaymentPayload;
-  /** Spec alias for the target output address. */
-  destination?: string;
-  destinationAddress?: string;
-  slippageTolerance?: string;
-  deadline?: number;
-}
-
-export interface SwapExecution {
-  swapId: string;
-  quoteId: string;
-  agentId?: string;
-  status: string;
-  from: MoneyAmount;
-  to: MoneyAmount;
-  destinationAddress?: string;
-  txHash?: string;
-  ledgerEntry?: string;
-  completedAt?: string;
-  createdAt: string;
-}
-
-export interface BridgeRoute {
-  provider: string;
-  from: MoneyAmount;
-  to: MoneyAmount;
-  estimatedTime: string;
-  fee: FeeAmount;
-  minAmount: string;
-  maxAmount: string;
-}
-
-export interface BridgeQuote {
-  quoteId: string;
-  from: MoneyAmount;
-  to: MoneyAmount;
-  provider: string;
-  fee: FeeAmount;
-  estimatedTime: string;
-  expiresAt: string;
-}
-
-export interface BridgeExecuteRequest {
-  quoteId: string;
-  destinationAddress?: string;
-  paymentAuthorization?: string;
-  payment?: CommercePaymentPayload;
-}
-
 export interface CommercePaymentPayload {
   scheme: string;
   network: string;
@@ -132,23 +68,6 @@ export interface CommercePaymentPayload {
   expiresAt?: string;
   signature?: string;
   metadata?: Record<string, string>;
-}
-
-export interface BridgeExecution {
-  bridgeId: string;
-  quoteId: string;
-  agentId?: string;
-  status: string;
-  from: MoneyAmount;
-  to: MoneyAmount;
-  provider: string;
-  destinationAddress: string;
-  txHash?: string;
-  sourceTxHash?: string;
-  destinationTxHash?: string;
-  ledgerEntry?: string;
-  completedAt?: string;
-  createdAt: string;
 }
 
 export interface FeeConfig {

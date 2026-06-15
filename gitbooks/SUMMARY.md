@@ -38,7 +38,7 @@
   * [References & Integrations](commerce/artifacts/references-and-integrations.md)
 * [Centralized Ledger](commerce/ledger.md)
 * [Marketplace](commerce/marketplace.md)
-* [Bridge, Swap & Pricing](commerce/bridge.md)
+* [Pricing](commerce/pricing.md)
 
 ## Discovery
 

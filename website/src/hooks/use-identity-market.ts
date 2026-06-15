@@ -7,7 +7,9 @@ import {
 } from "@tanstack/react-query";
 import {
 	generateNonce,
+	identityPublicKey,
 	signX402Authorization,
+	signerPaymentMetadata,
 	TinyPlaceError,
 	x402AuthorizationToPaymentMap,
 	type IdentityBid,
@@ -24,13 +26,14 @@ import {
 import { useApiClient } from "@src/common/api-context";
 import { queryKeys } from "@src/common/query-keys";
 import {
+	useOptionalX402Confirm,
+	type X402ConfirmContextValue,
+	type X402ConfirmRequest,
+} from "@src/components/explore/x402-confirm";
+import {
 	assertValidX402Challenge,
 	type ExpectedX402Payment,
 } from "@src/common/x402-challenge";
-import {
-	identityPublicKey,
-	signerPaymentMetadata,
-} from "@src/common/x402-signer-metadata";
 import { useAuthStore } from "@src/store/auth";
 
 /** Lists identities currently listed for sale on the marketplace. */
@@ -49,6 +52,26 @@ export function useIdentityListings(): UseQueryResult<{
 	});
 }
 
+export function useIdentityListingForName(
+	name: string
+): UseQueryResult<IdentityListing | undefined> {
+	const client = useApiClient();
+	const normalized = name.trim().replace(/^@+/, "").toLowerCase();
+	return useQuery({
+		queryKey: [...queryKeys.marketplace.identityListings(), normalized],
+		queryFn: async (): Promise<IdentityListing | undefined> => {
+			const result = await client.marketplace.listIdentities({
+				status: "active",
+			});
+			return result.identities.find(
+				(listing) =>
+					listing.name.trim().replace(/^@+/, "").toLowerCase() === normalized
+			);
+		},
+		enabled: normalized.length > 0,
+	});
+}
+
 /** Recent completed identity sales. */
 export function useIdentityRecentSales(): UseQueryResult<{
 	recent: Array<IdentitySale>;
@@ -60,6 +83,23 @@ export function useIdentityRecentSales(): UseQueryResult<{
 			const result = await client.marketplace.recent();
 			return { recent: result.sales };
 		},
+	});
+}
+
+export function useIdentitySaleHistory(
+	name: string
+): UseQueryResult<{ history: Array<IdentitySale> }> {
+	const client = useApiClient();
+	const normalized = name.trim().replace(/^@+/, "");
+	return useQuery({
+		queryKey: queryKeys.marketplace.identityHistory(normalized),
+		queryFn: async (): Promise<{ history: Array<IdentitySale> }> => {
+			const result = await client.marketplace.identitySaleHistory(
+				`@${normalized}`
+			);
+			return { history: result.history ?? [] };
+		},
+		enabled: normalized.length > 0,
 	});
 }
 
@@ -118,6 +158,8 @@ type IdentityPaymentChallenge = {
 		Partial<Pick<X402AuthorizationFields, "expiresAt" | "nonce">>;
 };
 
+type ConfirmX402 = X402ConfirmContextValue["confirm"] | undefined;
+
 function identityPaymentChallenge(
 	error: unknown
 ): IdentityPaymentChallenge | null {
@@ -142,24 +184,44 @@ async function signIdentityPaymentChallenge(
 	challenge: IdentityPaymentChallenge,
 	fallbackFrom: string,
 	noncePrefix: string,
-	expected: ExpectedX402Payment = {}
+	expected: ExpectedX402Payment = {},
+	confirmX402?: ConfirmX402,
+	confirmRequest?: X402ConfirmRequest
 ): Promise<Record<string, string>> {
 	const challengePayment = challenge.payment;
 	assertValidX402Challenge(challengePayment, expected);
-	const signedPayment = await signX402Authorization(signer, {
-		...challengePayment,
-		expiresAt:
-			challengePayment.expiresAt ??
-			new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-		from: challengePayment.from || fallbackFrom,
-		metadata: {
-			...challengePayment.metadata,
-			...signerPaymentMetadata(signer),
-		},
-		nonce: challengePayment.nonce || generateNonce(noncePrefix),
-	});
+	const sign = async (): Promise<Record<string, string>> => {
+		const signedPayment = await signX402Authorization(signer, {
+			...challengePayment,
+			expiresAt:
+				challengePayment.expiresAt ??
+				new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+			from: challengePayment.from || fallbackFrom,
+			metadata: {
+				...challengePayment.metadata,
+				...signerPaymentMetadata(signer),
+			},
+			nonce: challengePayment.nonce || generateNonce(noncePrefix),
+		});
 
-	return x402AuthorizationToPaymentMap(signedPayment);
+		return x402AuthorizationToPaymentMap(signedPayment);
+	};
+
+	if (!confirmX402) {
+		return sign();
+	}
+
+	return (await confirmX402(
+		{
+			title: confirmRequest?.title ?? "Confirm identity payment",
+			subject: confirmRequest?.subject ?? fallbackFrom,
+			amount: challengePayment.amount,
+			asset: challengePayment.asset,
+			recipient: challengePayment.to,
+			...confirmRequest,
+		},
+		sign
+	)) as Record<string, string>;
 }
 
 export function useCreateIdentityListing(): UseMutationResult<
@@ -254,6 +316,7 @@ export function useBuyIdentityListing(): UseMutationResult<
 > {
 	const client = useApiClient();
 	const signer = useAuthStore((state) => state.signer);
+	const confirmX402 = useOptionalX402Confirm();
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async ({
@@ -298,24 +361,22 @@ export function useBuyIdentityListing(): UseMutationResult<
 						}
 					: {};
 
-				const challengePayment = challenge.payment;
-				assertValidX402Challenge(challengePayment, expected);
-				const signedPayment = await signX402Authorization(signer, {
-					...challengePayment,
-					expiresAt:
-						challengePayment.expiresAt ??
-						new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-					from: challengePayment.from || buyer,
-					metadata: {
-						...challengePayment.metadata,
-						...signerPaymentMetadata(signer),
-					},
-					nonce: challengePayment.nonce || generateNonce("identity"),
-				});
-
 				return client.marketplace.buyIdentityListing(listingId, {
 					...request,
-					payment: x402AuthorizationToPaymentMap(signedPayment),
+					payment: await signIdentityPaymentChallenge(
+						signer,
+						challenge,
+						buyer,
+						"identity",
+						expected,
+						confirmX402,
+						{
+							title: "Buy identity",
+							subject: listing?.name ?? listingId,
+							note: "The server returned an x402 challenge. Confirm to sign the payment authorization and complete the buy.",
+							confirmLabel: "Sign x402",
+						}
+					),
 				});
 			}
 		},
@@ -325,6 +386,9 @@ export function useBuyIdentityListing(): UseMutationResult<
 			});
 			void queryClient.invalidateQueries({
 				queryKey: queryKeys.marketplace.identityRecent(),
+			});
+			void queryClient.invalidateQueries({
+				queryKey: ["marketplace", "identity-history"],
 			});
 		},
 	});
@@ -338,6 +402,7 @@ export function usePlaceIdentityBid(): UseMutationResult<
 	const client = useApiClient();
 	const signer = useAuthStore((state) => state.signer);
 	const agentId = useAuthStore((state) => state.agentId);
+	const confirmX402 = useOptionalX402Confirm();
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async ({ bid, listingId }): Promise<IdentityListing> => {
@@ -375,7 +440,14 @@ export function usePlaceIdentityBid(): UseMutationResult<
 									asset: bid.price.asset,
 									network: bid.price.network,
 								}
-							: {}
+							: {},
+						confirmX402,
+						{
+							title: "Place auction bid",
+							subject: listingId,
+							note: "Confirm to sign the x402 authorization for this bid.",
+							confirmLabel: "Sign x402",
+						}
 					),
 				});
 			}
@@ -403,6 +475,7 @@ export function useCloseIdentityAuction(): UseMutationResult<
 	const client = useApiClient();
 	const signer = useAuthStore((state) => state.signer);
 	const agentId = useAuthStore((state) => state.agentId);
+	const confirmX402 = useOptionalX402Confirm();
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async ({
@@ -431,7 +504,15 @@ export function useCloseIdentityAuction(): UseMutationResult<
 						signer,
 						challenge,
 						sellerId ?? agentId ?? "",
-						"identity-auction"
+						"identity-auction",
+						{},
+						confirmX402,
+						{
+							title: "Settle auction",
+							subject: listingId,
+							note: "Confirm to sign the x402 authorization needed to settle this auction.",
+							confirmLabel: "Sign x402",
+						}
 					),
 				});
 			}
@@ -462,6 +543,7 @@ export function useDefaultIdentityAuction(): UseMutationResult<
 	const client = useApiClient();
 	const signer = useAuthStore((state) => state.signer);
 	const agentId = useAuthStore((state) => state.agentId);
+	const confirmX402 = useOptionalX402Confirm();
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async ({
@@ -492,7 +574,15 @@ export function useDefaultIdentityAuction(): UseMutationResult<
 							signer,
 							challenge,
 							sellerId ?? agentId ?? "",
-							"identity-auction-default"
+							"identity-auction-default",
+							{},
+							confirmX402,
+							{
+								title: "Default auction",
+								subject: listingId,
+								note: "Confirm to sign the x402 authorization needed to default this auction.",
+								confirmLabel: "Sign x402",
+							}
 						),
 					},
 					sellerId
@@ -521,6 +611,7 @@ export function useCreateIdentityOffer(): UseMutationResult<
 	const client = useApiClient();
 	const signer = useAuthStore((state) => state.signer);
 	const agentId = useAuthStore((state) => state.agentId);
+	const confirmX402 = useOptionalX402Confirm();
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async (offer): Promise<IdentityOffer> => {
@@ -556,24 +647,22 @@ export function useCreateIdentityOffer(): UseMutationResult<
 						}
 					: {};
 
-				const challengePayment = challenge.payment;
-				assertValidX402Challenge(challengePayment, expected);
-				const signedPayment = await signX402Authorization(signer, {
-					...challengePayment,
-					expiresAt:
-						challengePayment.expiresAt ??
-						new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-					from: challengePayment.from || offer.buyer,
-					metadata: {
-						...challengePayment.metadata,
-						...signerPaymentMetadata(signer),
-					},
-					nonce: challengePayment.nonce || generateNonce("identity-offer"),
-				});
-
 				return client.marketplace.createOffer({
 					...request,
-					payment: x402AuthorizationToPaymentMap(signedPayment),
+					payment: await signIdentityPaymentChallenge(
+						signer,
+						challenge,
+						offer.buyer,
+						"identity-offer",
+						expected,
+						confirmX402,
+						{
+							title: "Make an offer",
+							subject: offer.name ?? "Identity offer",
+							note: "Confirm to sign the x402 authorization for this offer.",
+							confirmLabel: "Sign x402",
+						}
+					),
 				});
 			}
 		},

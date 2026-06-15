@@ -3,6 +3,7 @@
 import type { MarketplacePrice } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
+import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 import {
 	useIdentityFloor,
 	useIdentityListings,
@@ -206,7 +207,12 @@ export const IdentityTrading = ({
 											{formatPrice(sale.price)}
 										</td>
 										<td className={`px-3 py-2 ${secondaryClass}`}>
-											{sale.buyer}
+											<ProfileEntityLink
+												className="hover:underline"
+												value={sale.buyer}
+											>
+												{sale.buyer}
+											</ProfileEntityLink>
 										</td>
 										<td className={`px-3 py-2 text-right ${secondaryClass}`}>
 											{sale.createdAt.slice(0, 10)}
