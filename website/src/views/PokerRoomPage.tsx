@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 
 import { PokerRoom } from "@src/views/PokerRoom";
 import type { FunctionComponent } from "@src/common/types";
-import { useAppStore } from "@src/store/app";
 
 /**
  * PokerRoomPage is the themed shell around a single live table, rendered by the
@@ -17,12 +16,11 @@ export const PokerRoomPage = ({
 	roomId: string;
 }): FunctionComponent => {
 	const { t } = useTranslation();
-	const isDark = useAppStore((state) => state.theme) === "dark";
 	return (
-		<div className={isDark ? "text-white" : "text-black"}>
+		<div className="text-front">
 			<Link
-				className="mb-4 inline-block text-sm opacity-70 hover:opacity-100"
-				href="/poker"
+				className="mb-4 inline-block text-sm text-muted transition-colors hover:text-front"
+				href="/games/poker"
 			>
 				{t("poker.backToTables")}
 			</Link>

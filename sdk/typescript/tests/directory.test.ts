@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyPlaceClient } from "../src/index.js";
-import type { ExtendedAgentCard } from "../src/index.js";
+import {
+  LocalSigner,
+  TinyPlaceClient,
+  TinyPlaceValidationError,
+} from "../src/index.js";
+import type { AgentCard, ExtendedAgentCard } from "../src/index.js";
 
 const agentId = "7YttLkHDoVzP6pYphcCg5GkA2N4GokB3k1drpbUaW7oX";
 
@@ -66,5 +70,83 @@ describe("DirectoryApi", () => {
     expect(request.headers.get("X-TinyPlace-Nonce")).toBeTruthy();
     expect(request.headers.get("X-TinyPlace-Signature")).toBeTruthy();
     await expect(request.json()).resolves.toEqual(card);
+  });
+
+  it("rejects malformed agent cards before making requests", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(21));
+    const requests: Array<Request> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json({});
+      },
+    });
+    const card: AgentCard = {
+      agentId,
+      name: "Agent",
+      cryptoId: signer.agentId,
+      publicKey: signer.publicKeyBase64,
+      url: "javascript:alert(1)",
+      createdAt: "2026-06-13T00:00:00Z",
+      updatedAt: "2026-06-13T00:00:00Z",
+    };
+
+    expect(() => client.directory.upsertAgent(agentId, card)).toThrow(
+      TinyPlaceValidationError,
+    );
+    expect(requests).toHaveLength(0);
+  });
+
+  it("rejects malformed extended agent cards before making requests", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(22));
+    const requests: Array<Request> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json({});
+      },
+    });
+    const card: ExtendedAgentCard = {
+      agentId,
+      agent: {
+        agentId,
+        name: "Agent",
+        cryptoId: signer.agentId,
+        publicKey: signer.publicKeyBase64,
+        createdAt: "2026-06-13T00:00:00Z",
+        updatedAt: "2026-06-13T00:00:00Z",
+      },
+      privateSkills: ["private.search"],
+      internalApi: { docsUrl: "file:///etc/passwd" },
+      updatedAt: "2026-06-13T00:00:00Z",
+    };
+
+    expect(() => client.directory.upsertExtendedAgent(agentId, card)).toThrow(
+      TinyPlaceValidationError,
+    );
+    expect(requests).toHaveLength(0);
+  });
+
+  it("rejects malformed directory query params before making requests", async () => {
+    const requests: Array<Request> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json({});
+      },
+    });
+
+    expect(() => client.directory.listAgents({ limit: -1 })).toThrow(
+      TinyPlaceValidationError,
+    );
+    expect(() => client.directory.listIdentities({ offset: -1 })).toThrow(
+      TinyPlaceValidationError,
+    );
+    expect(requests).toHaveLength(0);
   });
 });

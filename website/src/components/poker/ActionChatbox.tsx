@@ -7,7 +7,6 @@ import type { RoomChatLine } from "@src/common/poker";
 
 type ActionChatboxProperties = {
 	emptyLabel: string;
-	isDark: boolean;
 	isLive: boolean;
 	lines: Array<RoomChatLine>;
 	liveLabel: string;
@@ -17,8 +16,8 @@ type ActionChatboxProperties = {
 
 const toneClass: Record<RoomChatLine["tone"], string> = {
 	action: "",
-	system: "opacity-70",
-	win: "font-semibold text-amber-500",
+	system: "text-muted",
+	win: "font-semibold text-warning",
 };
 
 /**
@@ -28,7 +27,6 @@ const toneClass: Record<RoomChatLine["tone"], string> = {
  */
 export const ActionChatbox = ({
 	emptyLabel,
-	isDark,
 	isLive,
 	lines,
 	liveLabel,
@@ -42,23 +40,13 @@ export const ActionChatbox = ({
 	}, [lines.length]);
 
 	return (
-		<div
-			className={`flex h-full min-h-[18rem] flex-col rounded-lg border ${
-				isDark
-					? "border-neutral-800 bg-neutral-900"
-					: "border-neutral-200 bg-white"
-			}`}
-		>
-			<header
-				className={`flex items-center justify-between border-b px-3 py-2 ${
-					isDark ? "border-neutral-800" : "border-neutral-200"
-				}`}
-			>
+		<div className="theme-surface-card flex h-full min-h-[18rem] flex-col rounded-lg border">
+			<header className="flex items-center justify-between border-b border-border px-3 py-2">
 				<span className="text-sm font-semibold">{title}</span>
 				<span className="flex items-center gap-1.5 text-xs">
 					<span
 						className={`inline-block h-2 w-2 rounded-full ${
-							isLive ? "bg-emerald-500" : "bg-neutral-400"
+							isLive ? "bg-positive" : "bg-muted"
 						}`}
 					/>
 					{isLive ? liveLabel : offlineLabel}
@@ -66,7 +54,7 @@ export const ActionChatbox = ({
 			</header>
 			<div className="flex-1 space-y-1 overflow-y-auto px-3 py-2 text-sm">
 				{lines.length === 0 ? (
-					<p className="opacity-60">{emptyLabel}</p>
+					<p className="text-muted">{emptyLabel}</p>
 				) : (
 					lines.map((line) => (
 						<p key={line.seq} className={toneClass[line.tone]}>

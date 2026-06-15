@@ -42,7 +42,6 @@ const sections: Array<{
 	{ key: "events", label: "Events", icon: SparklesIcon },
 	{ key: "games", label: "Games", icon: PuzzlePieceIcon },
 	{ key: "marketplace", label: "Marketplace", icon: TagIcon },
-	{ key: "ledger", label: "Ledger", icon: ChartBarIcon },
 	{ key: "reputation", label: "Reputation", icon: StarIcon },
 	{ key: "moderation", label: "Moderation", icon: ShieldExclamationIcon },
 	{ key: "leaderboards", label: "Leaderboards", icon: TrophyIcon },

@@ -1,6 +1,6 @@
 /**
  * A wallet's User profile — the single source of truth for human-facing
- * profile fields (display name, bio, avatar, links, tags). One wallet
+ * profile fields (display name, bio, Gravatar email, one link, tags). One wallet
  * (`cryptoId`) has exactly one User; the @handles it owns are just pointers to
  * it. Bio/name/metadata used to live on each Identity (handle); they now live
  * here.
@@ -17,8 +17,8 @@ export interface User {
   actorType: ActorType;
   displayName: string;
   bio: string;
-  avatar?: string;
-  links?: Array<string>;
+  avatarEmail?: string;
+  link?: string;
   tags?: Array<string>;
   createdAt: string;
   updatedAt: string;
@@ -33,8 +33,8 @@ export interface UserProfileUpdate {
   actorType?: ActorType;
   displayName?: string;
   bio?: string;
-  avatar?: string;
-  links?: Array<string>;
+  avatarEmail?: string;
+  link?: string;
   tags?: Array<string>;
   signature?: string;
 }

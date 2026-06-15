@@ -5,6 +5,7 @@ export type { TinyPlaceClientOptions } from "./client.js";
 
 export { TinyPlaceError } from "./http.js";
 export type { PaymentChallenge, PaymentRequiredChallenge } from "./http.js";
+export { TinyPlaceValidationError } from "./validation.js";
 export { TinyPlaceWebSocket } from "./websocket.js";
 export type {
   TinyPlaceWebSocketOptions,

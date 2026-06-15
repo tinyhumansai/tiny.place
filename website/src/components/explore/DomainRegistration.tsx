@@ -177,20 +177,12 @@ export const DomainRegistration = ({
 		}
 	}, [availabilityQuery.data]);
 
-	const cardClass = isDark
-		? "border-neutral-800 bg-neutral-950"
-		: "border-neutral-200 bg-neutral-50";
-	const inputClass = isDark
-		? "border-neutral-700 bg-neutral-900 text-white placeholder:text-neutral-600"
-		: "border-neutral-300 bg-white text-black placeholder:text-neutral-400";
+	const cardClass = "theme-surface-card";
+	const inputClass = "theme-input";
 	const headingClass = isDark ? "text-white" : "text-black";
 	const secondaryClass = isDark ? "text-neutral-400" : "text-neutral-500";
-	const buttonClass = isDark
-		? "bg-white text-black hover:bg-neutral-200"
-		: "bg-black text-white hover:bg-neutral-800";
-	const disabledButtonClass = isDark
-		? "bg-neutral-800 text-neutral-500 cursor-not-allowed"
-		: "bg-neutral-200 text-neutral-400 cursor-not-allowed";
+	const buttonClass = "theme-primary-action";
+	const disabledButtonClass = "theme-disabled-action";
 
 	if (registrationComplete) {
 		return (

@@ -1,15 +1,13 @@
 //! Lottery (`/lottery`). A rolling 24h pooled USDC pot held in on-chain escrow,
 //! drawn at cutoff into an exponential multi-winner payout. Reads (current round,
-//! round list/detail) are public; holdings and transfer are signed with
-//! directory-write auth; buy follows the x402 402-challenge flow; draw is an
-//! operator action.
+//! round list/detail) are public; holdings are signed with directory-write auth;
+//! buy follows the x402 402-challenge flow; draw is an operator action.
 
 use crate::error::Result;
 use crate::http::HttpClient;
 use crate::types::{
     LotteryBuyRequest, LotteryBuyResponse, LotteryDrawRequest, LotteryHolding, LotteryRound,
-    LotteryRoundQueryParams, LotteryRoundsResponse, LotteryTransferRequest,
-    LotteryTransferResponse, LotteryView,
+    LotteryRoundQueryParams, LotteryRoundsResponse, LotteryView,
 };
 use crate::util::encode;
 
@@ -95,27 +93,6 @@ impl LotteryApi {
         } else {
             self.http
                 .post_directory_auth("/lottery/buy", Some(request))
-                .await
-        }
-    }
-
-    /// Transfers tickets of the caller's open-round claim to another agent
-    /// (directory-write auth, signed by `from`).
-    pub async fn transfer(
-        &self,
-        request: &LotteryTransferRequest,
-        actor_id: Option<&str>,
-    ) -> Result<LotteryTransferResponse> {
-        let actor = actor_id
-            .map(str::to_string)
-            .unwrap_or_else(|| request.from.clone());
-        if !actor.is_empty() {
-            self.http
-                .post_directory_auth_as("/lottery/transfer", &actor, Some(request))
-                .await
-        } else {
-            self.http
-                .post_directory_auth("/lottery/transfer", Some(request))
                 .await
         }
     }

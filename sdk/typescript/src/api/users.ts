@@ -6,7 +6,7 @@ import type { User, UserProfileUpdate } from "../types/index.js";
 
 /**
  * UsersApi reads and writes the per-wallet User profile — the single source of
- * truth for human-facing fields (display name, bio, avatar, links, tags). A
+ * truth for human-facing fields (display name, bio, Gravatar email, link, tags). A
  * wallet is identified by its `cryptoId`; the @handles it owns are pointers to
  * it. These fields used to live on each Identity (handle) and now live here.
  */
@@ -56,11 +56,11 @@ function userProfileSignaturePayload(
 ): string {
   return canonicalPayload("user.profile", {
     actorType: update.actorType ?? null,
-    avatar: update.avatar ?? null,
+    avatarEmail: update.avatarEmail ?? null,
     bio: update.bio ?? null,
     cryptoId,
     displayName: update.displayName ?? null,
-    links: update.links ?? null,
+    link: update.link ?? null,
     tags: update.tags ?? null,
   });
 }

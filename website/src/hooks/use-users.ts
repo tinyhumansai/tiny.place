@@ -26,8 +26,8 @@ type UpdateUserProfileInput = {
 };
 
 /**
- * Updates the signed-in wallet's User profile (display name, bio, avatar,
- * links, tags). On success it invalidates the wallet's User query and any
+ * Updates the signed-in wallet's User profile (display name, bio, Gravatar
+ * email, link, tags). On success it invalidates the wallet's User query and any
  * profile views derived from it.
  */
 export function useUpdateUserProfile(): UseMutationResult<

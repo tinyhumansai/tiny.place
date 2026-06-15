@@ -7,7 +7,6 @@ import type { FunctionComponent } from "@src/common/types";
 
 type CountdownProperties = {
 	cutoffAt: string;
-	isDark: boolean;
 };
 
 function remainingMs(cutoffAt: string): number {
@@ -29,7 +28,6 @@ function formatDuration(ms: number): string {
 
 export const Countdown = ({
 	cutoffAt,
-	isDark,
 }: CountdownProperties): FunctionComponent => {
 	const { t } = useTranslation();
 	// Store the target alongside the countdown so a changed `cutoffAt` resets
@@ -55,20 +53,12 @@ export const Countdown = ({
 
 	return (
 		<div className="flex flex-col">
-			<span
-				className={`text-xs uppercase tracking-wide ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
-			>
+			<span className="text-xs uppercase tracking-wide text-subtle">
 				{t("lottery.countdown")}
 			</span>
 			<span
 				className={`font-mono text-xl font-bold tabular-nums ${
-					ms === 0
-						? isDark
-							? "text-red-400"
-							: "text-red-500"
-						: isDark
-							? "text-white"
-							: "text-black"
+					ms === 0 ? "text-danger" : "text-front"
 				}`}
 			>
 				{ms === 0 ? t("lottery.closed") : formatDuration(ms)}

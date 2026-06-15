@@ -117,8 +117,8 @@ export const E2EAuthBridge = (): FunctionComponent => {
 						wallet.agentId,
 						{
 							network: SOLANA_MAINNET_NETWORK,
-							asset: "SOL",
-							budget: "1000000000",
+							asset: "USDC",
+							budget: "100000000",
 							expiresAt: new Date(
 								Date.now() + 24 * 60 * 60 * 1000
 							).toISOString(),

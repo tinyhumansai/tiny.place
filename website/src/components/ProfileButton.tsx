@@ -5,7 +5,6 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import Link from "next/link";
 
 import type { FunctionComponent } from "@src/common/types";
-import { useAppStore } from "@src/store/app";
 
 /**
  * A round icon button — styled to match the theme/language pills — that opens
@@ -13,22 +12,15 @@ import { useAppStore } from "@src/store/app";
  * (it sits next to the connected address in the top-right cluster).
  */
 export const ProfileButton = (): FunctionComponent => {
-	const isDark = useAppStore((state) => state.theme === "dark");
 	const { publicKey } = useWallet();
 
 	if (!publicKey) return null;
 
-	const className = `p-2 rounded-full border transition-colors ${
-		isDark
-			? "border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500"
-			: "border-neutral-300 text-neutral-500 hover:text-black hover:border-neutral-400"
-	}`;
-
 	return (
 		<Link
 			aria-label="Profile"
-			className={className}
-			href={`/u/${publicKey.toBase58()}`}
+			className="rounded-full border border-border-strong p-2 text-muted transition-colors hover:border-primary hover:text-front"
+			href="/profile"
 			title="Profile"
 		>
 			<UserCircleIcon className="h-4 w-4" />

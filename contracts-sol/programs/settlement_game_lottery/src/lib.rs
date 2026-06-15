@@ -242,8 +242,7 @@ pub mod settlement_game_lottery {
     }
 
     /// A depositor reclaims their USDC from a cancelled round. Refunds always go
-    /// to the original depositor (the on-chain entry), independent of any
-    /// off-chain ticket transfers.
+    /// to the on-chain ticket entry's depositor.
     pub fn claim_refund(ctx: Context<ClaimRefund>) -> Result<()> {
         require!(
             ctx.accounts.round.state == RoundState::Cancelled,
@@ -378,8 +377,8 @@ impl Round {
 
 /// A buyer's stake in a round; the unit of refund on cancel. One per
 /// (round, buyer), accumulating across repeat buys. PDA:
-/// `["ticket", round, buyer]`. Off-chain ticket transfers do not touch this —
-/// it records the original depositor and total USDC for refund safety.
+/// `["ticket", round, buyer]`. It records the depositor and total USDC for
+/// refund safety.
 #[account]
 pub struct TicketEntry {
     /// The round this entry belongs to.

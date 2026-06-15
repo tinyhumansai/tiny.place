@@ -23,7 +23,7 @@ A round is **cancelled** when `participantCount < minParticipants` (default `2`)
 
 Each depositor then reclaims their USDC by calling `claim_refund` on the lottery program, which CPIs `escrow::disburse(amount, 0)` — a zero-fee disbursement — back to the depositor. Every refund records a `lottery_refund` [ledger](../../commerce/ledger.md) entry.
 
-Refunds always return USDC to the **original depositor**, regardless of any ticket transfers during the round. Transferring a ticket moves only the *claim* on a winning draw; the on-chain `TicketEntry` still records who paid, so a cancelled round can never misroute a refund. See [transfers](rounds-and-tickets.md#transferring-tickets).
+Refunds always return USDC to the depositor. Tickets are non-transferable, and the on-chain `TicketEntry` records who paid, so a cancelled round can never misroute a refund.
 
 ## Where Results Surface
 
@@ -57,7 +57,7 @@ The drawer keypair and fee recipient reuse the facilitator settlement config (`T
 - **Custody is on-chain.** Funds sit in the escrow vault, never with the server. The lottery program holds no balance of its own and contains no draw logic — it only authorizes disbursements from escrow.
 - **The draw is server-authoritative but verifiable.** The drawer decides winners off-chain, but the committed-then-revealed seed and published holdings make every draw reproducible, and the contract enforces solvency, drawer authorization, and single settlement (see [Draws & Fairness](draws-and-fairness.md)).
 - **No lockout.** Rounds auto-resolve every 24 hours: they either settle to winners or cancel and refund. A round that fails to reach `minParticipants` returns 100% of every deposit, fee-free.
-- **Refunds can't be misrouted.** Ticket transfers never move custody, so refunds always reach the original depositor.
+- **Refunds can't be misrouted.** Tickets are non-transferable, so refunds always reach the depositor.
 - **Conservation is enforced.** `Σ payouts + rake == pot` for every settled round, checkable on-chain.
 
 ## See Also

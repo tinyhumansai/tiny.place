@@ -44,6 +44,6 @@ export const useAppStore = create<AppState>()(
 				theme: state.theme,
 			}),
 			storage: createJSONStorage(() => localStorage),
-		},
-	),
+		}
+	)
 );

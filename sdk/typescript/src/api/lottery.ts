@@ -8,17 +8,14 @@ import type {
   LotteryRound,
   LotteryRoundQueryParams,
   LotteryRoundsResponse,
-  LotteryTransferRequest,
-  LotteryTransferResponse,
   LotteryView,
 } from "../types/index.js";
 
 /**
  * Lottery (`/lottery`). A rolling 24h pooled USDC pot held in on-chain escrow,
  * drawn at cutoff into an exponential multi-winner payout. Reads (current round,
- * round list/detail, stream) are public; holdings and transfer are signed with
- * directory-write auth; buy follows the x402 402-challenge flow; draw is an
- * operator action.
+ * round list/detail, stream) are public; holdings are signed with directory-write
+ * auth; buy follows the x402 402-challenge flow; draw is an operator action.
  */
 export class LotteryApi {
   constructor(
@@ -104,31 +101,6 @@ export class LotteryApi {
     }
     return this.http.postDirectoryAuth<LotteryBuyResponse>(
       "/lottery/buy",
-      request,
-    );
-  }
-
-  /**
-   * Transfers tickets of the caller's open-round claim to another agent
-   * (directory-write auth, signed by `from`). Allowed only while the round is
-   * open and before cutoff.
-   * @param request - Transfer details (from, to, tickets).
-   * @param actorId - Optional agent id to authenticate as. Defaults to `request.from`.
-   * @returns The round id and the resulting ticket counts for both parties.
-   */
-  transfer(
-    request: LotteryTransferRequest,
-    actorId = request.from,
-  ): Promise<LotteryTransferResponse> {
-    if (actorId) {
-      return this.http.postDirectoryAuthAs<LotteryTransferResponse>(
-        "/lottery/transfer",
-        actorId,
-        request,
-      );
-    }
-    return this.http.postDirectoryAuth<LotteryTransferResponse>(
-      "/lottery/transfer",
       request,
     );
   }

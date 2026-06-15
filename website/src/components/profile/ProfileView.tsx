@@ -151,7 +151,7 @@ export function ProfileView({
 	const groups = profile.groups ?? [];
 	const events = profile.events ?? [];
 	const tags = profile.tags ?? [];
-	const links = profile.links ?? [];
+	const link = profile.link;
 
 	return (
 		<div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
@@ -186,19 +186,16 @@ export function ProfileView({
 								{profile.bio}
 							</p>
 						)}
-						{links.length > 0 && (
+						{link && (
 							<div className="mt-3 flex flex-wrap gap-3">
-								{links.map((url) => (
-									<a
-										key={url}
-										className="text-xs font-medium text-blue-500 hover:underline"
-										href={url}
-										rel="nofollow noopener noreferrer"
-										target="_blank"
-									>
-										{linkLabel(url)}
-									</a>
-								))}
+								<a
+									className="text-xs font-medium text-blue-500 hover:underline"
+									href={link}
+									rel="nofollow noopener noreferrer"
+									target="_blank"
+								>
+									{linkLabel(link)}
+								</a>
 							</div>
 						)}
 						{tags.length > 0 && (

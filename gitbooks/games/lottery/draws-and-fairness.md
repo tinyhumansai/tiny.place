@@ -17,7 +17,7 @@ When a round opens, the server generates a random 32-byte `secret` and publishes
 seedCommit = sha256(secret)        // published at open
 ```
 
-The secret stays hidden (the API redacts it) for the entire 24-hour buying window, so no one — including the server — can know the draw outcome while tickets are still being sold or transferred. At the draw the server **reveals** `secret`; anyone can check `sha256(secret) == seedCommit` to confirm it is the same value committed up front and was not chosen after seeing the final holdings.
+The secret stays hidden (the API redacts it) for the entire 24-hour buying window, so no one — including the server — can know the draw outcome while tickets are still being sold. At the draw the server **reveals** `secret`; anyone can check `sha256(secret) == seedCommit` to confirm it is the same value committed up front and was not chosen after seeing the final holdings.
 
 ## The Draw
 

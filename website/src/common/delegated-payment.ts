@@ -1,5 +1,4 @@
 import {
-	Connection,
 	PublicKey,
 	Transaction,
 	TransactionInstruction,
@@ -8,6 +7,8 @@ import {
 	SOLANA_TOKEN_PROGRAM_ID,
 	SOLANA_USDC_MINT,
 } from "@tinyhumansai/tinyplace";
+
+import { createSolanaConnection } from "@src/common/solana-rpc";
 
 // The Associated Token Account program. Not exported by the SDK, so it is
 // defined here alongside the other Solana program ids it complements.
@@ -156,7 +157,7 @@ export async function buildApproveTransaction(options: {
 }): Promise<Transaction> {
 	const mint = options.mint ?? SOLANA_USDC_MINT;
 	const owner = new PublicKey(options.payer);
-	const connection = new Connection(options.rpcUrl, "confirmed");
+	const connection = createSolanaConnection(options.rpcUrl);
 	const { blockhash } = await connection.getLatestBlockhash("confirmed");
 	const transaction = new Transaction();
 	transaction.feePayer = owner;
@@ -202,7 +203,7 @@ export async function buildDelegatedTransferTx(options: {
 		Buffer.from(options.sessionPublicKeyBase64, "base64")
 	);
 
-	const connection = new Connection(options.rpcUrl, "confirmed");
+	const connection = createSolanaConnection(options.rpcUrl);
 	const { blockhash } = await connection.getLatestBlockhash("confirmed");
 
 	const transaction = new Transaction();
@@ -259,7 +260,7 @@ export async function readEscrowNextNonce(
 	rpcUrl: string,
 	payer: string
 ): Promise<bigint> {
-	const connection = new Connection(rpcUrl, "confirmed");
+	const connection = createSolanaConnection(rpcUrl);
 	const info = await connection.getAccountInfo(nonceTrackerAddress(payer));
 	if (!info || info.data.length < NONCE_TRACKER_LAST_NONCE_OFFSET + 8) {
 		return 1n;
@@ -287,7 +288,7 @@ export async function buildDelegatedDepositTx(options: {
 	payee?: string;
 	expiryUnixSeconds?: number;
 }): Promise<string> {
-	const connection = new Connection(options.rpcUrl, "confirmed");
+	const connection = createSolanaConnection(options.rpcUrl);
 	const vaultInfo = await connection.getAccountInfo(
 		new PublicKey(options.vault)
 	);

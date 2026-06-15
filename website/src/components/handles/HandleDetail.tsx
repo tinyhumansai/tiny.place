@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useState, type ReactElement } from "react";
 
-import type { IdentityListing, MarketplacePrice } from "@tinyhumansai/tinyplace";
+import type {
+	IdentityListing,
+	MarketplacePrice,
+} from "@tinyhumansai/tinyplace";
 import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 import {
 	useBuyIdentityListing,
@@ -152,7 +155,9 @@ function ListingPanel({
 			</div>
 
 			{listing.description && (
-				<p className={`mt-3 text-sm ${isDark ? "text-neutral-300" : "text-neutral-700"}`}>
+				<p
+					className={`mt-3 text-sm ${isDark ? "text-neutral-300" : "text-neutral-700"}`}
+				>
 					{listing.description}
 				</p>
 			)}
@@ -284,13 +289,15 @@ export function HandleDetail({ handle }: { handle: string }): ReactElement {
 				<div className="flex flex-wrap items-start justify-between gap-3">
 					<div className="min-w-0">
 						<div className="flex flex-wrap items-center gap-2">
-							<h1 className={`truncate text-base font-semibold ${headingClass}`}>
+							<h1
+								className={`truncate text-base font-semibold ${headingClass}`}
+							>
 								{normalized}
 							</h1>
 							<span
 								className={`rounded-md px-2 py-1 text-xs ${statusClass(isDark)}`}
 							>
-								{isAvailable ? "available" : identity?.status ?? "unknown"}
+								{isAvailable ? "available" : (identity?.status ?? "unknown")}
 							</span>
 							{identity?.primary && (
 								<span className="rounded-md bg-blue-500/10 px-2 py-1 text-xs font-medium text-blue-500">
@@ -347,7 +354,9 @@ export function HandleDetail({ handle }: { handle: string }): ReactElement {
 			<section className={panelClass(isDark)}>
 				<div className="flex flex-wrap items-start justify-between gap-3">
 					<div>
-						<h2 className={`text-sm font-medium ${headingClass}`}>Make an offer</h2>
+						<h2 className={`text-sm font-medium ${headingClass}`}>
+							Make an offer
+						</h2>
 						<p className={`mt-1 text-xs ${mutedClass}`}>
 							Send an offer to the current owner. You need an active handle to
 							offer as a buyer.
@@ -436,11 +445,15 @@ export function HandleDetail({ handle }: { handle: string }): ReactElement {
 			</section>
 
 			<section className={panelClass(isDark)}>
-				<h2 className={`text-sm font-medium ${headingClass}`}>Trading history</h2>
+				<h2 className={`text-sm font-medium ${headingClass}`}>
+					Trading history
+				</h2>
 				{history.isLoading ? (
 					<p className={`mt-3 text-xs ${mutedClass}`}>Loading history...</p>
 				) : (history.data?.history ?? []).length === 0 ? (
-					<p className={`mt-3 text-xs ${mutedClass}`}>No completed sales yet.</p>
+					<p className={`mt-3 text-xs ${mutedClass}`}>
+						No completed sales yet.
+					</p>
 				) : (
 					<div
 						className={`mt-3 overflow-hidden rounded-lg border ${
@@ -450,10 +463,14 @@ export function HandleDetail({ handle }: { handle: string }): ReactElement {
 						<table className="w-full text-xs">
 							<thead className={isDark ? "bg-neutral-900" : "bg-neutral-100"}>
 								<tr>
-									<th className={`px-3 py-2 text-left font-medium ${mutedClass}`}>
+									<th
+										className={`px-3 py-2 text-left font-medium ${mutedClass}`}
+									>
 										Price
 									</th>
-									<th className={`px-3 py-2 text-left font-medium ${mutedClass}`}>
+									<th
+										className={`px-3 py-2 text-left font-medium ${mutedClass}`}
+									>
 										Buyer
 									</th>
 									<th

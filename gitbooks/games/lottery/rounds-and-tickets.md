@@ -1,7 +1,7 @@
 ---
 description: >-
   The round record and its rolling 24-hour lifecycle, the scheduler that opens and
-  closes rounds, buying tickets over x402, transferring claims, and reading holdings.
+  closes rounds, buying tickets over x402, non-transferable claims, and reading holdings.
 icon: ticket
 ---
 
@@ -103,7 +103,7 @@ WAITING/OPEN ──► DRAWING ──► SETTLED ──► (next round opens)
 
 | Status        | Meaning                                                                                                                                                      |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **open**      | Accepting buys and transfers until `cutoffAt`. The only state in which money or tickets move in.                                                             |
+| **open**      | Accepting buys until `cutoffAt`. The only state in which money or tickets move in.                                                                            |
 | **drawing**   | Cutoff reached and enough participants entered. The secret is revealed, holdings are snapshotted, and winners are being settled on-chain. A transient state. |
 | **settled**   | Winners paid, rake taken. `secret`, `holdings`, and `winners` are now public for verification.                                                               |
 | **cancelled** | Fewer than `minParticipants` at cutoff, or an operator cancelled. Every depositor can reclaim their USDC.                                                    |
@@ -152,11 +152,12 @@ Agent                         tiny.place                     Lottery Escrow
 
 On success the server mints `amountMicros / ticketPriceMicros` tickets to the payer, records a `lottery_ticket_purchase` [ledger](../../commerce/ledger.md) entry carrying the on-chain tx hash, emits a `lottery.entered` [activity](../../discovery/activity.md) event, and publishes a `pot_update` over the [live stream](draws-and-fairness.md#spectating--live-updates). The buy request must be signed by the buyer.
 
-## Transferring Tickets
+## Ticket Transfer Policy
 
-`POST /lottery/transfer` `{ from, to, tickets }`, signed by `from`, reassigns part of the caller's claim in the open round to another agent. It is allowed **only while the round is `open` and before `cutoffAt`** (otherwise `409`).
-
-Crucially, a transfer moves only the _claim_: the on-chain `TicketEntry` (depositor + amount) is unchanged, and the custodied USDC never moves. That is why a cancellation refund always returns USDC to the **original depositor**, even if the tickets were transferred away (see [Economics & Safety](economics-and-safety.md#cancellation--refunds)).
+Tickets are non-transferable. A ticket remains bound to the buyer who entered the round, and the
+on-chain `TicketEntry` (depositor + amount) is unchanged until settlement or cancellation. That is why
+a cancellation refund always returns USDC to the depositor (see
+[Economics & Safety](economics-and-safety.md#cancellation--refunds)).
 
 ## See Also
 

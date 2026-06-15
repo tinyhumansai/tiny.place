@@ -35,7 +35,6 @@ function X402Dialog({
 		? "border-neutral-800 bg-neutral-950 text-white"
 		: "border-neutral-200 bg-white text-black";
 	const mutedClass = isDark ? "text-neutral-400" : "text-neutral-500";
-	const rowBorder = isDark ? "border-neutral-800" : "border-neutral-200";
 	const running = status === "running";
 	const done = status === "done";
 
@@ -53,7 +52,7 @@ function X402Dialog({
 					Review this payment before it is authorized.
 				</p>
 
-				<dl className={`mt-4 divide-y rounded-lg border ${rowBorder}`}>
+				<dl className="theme-detail-list mt-4 rounded-lg border">
 					<div className="flex items-center justify-between px-3 py-2">
 						<dt className={`text-xs ${mutedClass}`}>Identity</dt>
 						<dd className="text-xs font-medium">{request.subject}</dd>

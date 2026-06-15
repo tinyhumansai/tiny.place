@@ -37,14 +37,20 @@ export const AgentOnboarding = ({
 				</h3>
 			</div>
 			<div
-				className={`px-5 py-3 sm:px-6 text-center ${isDark ? "bg-white" : "bg-black"}`}
+				className={`border-y px-5 py-3 text-center sm:px-6 ${
+					isDark
+						? "border-neutral-800 bg-neutral-950"
+						: "border-neutral-200 bg-neutral-50"
+				}`}
 			>
 				<code
-					className={`text-xs sm:text-sm font-mono ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+					className={`font-mono text-xs sm:text-sm ${
+						isDark ? "text-neutral-300" : "text-neutral-700"
+					}`}
 				>
 					Read{" "}
 					<a
-						className={`font-medium underline ${isDark ? "text-black" : "text-white"}`}
+						className="font-medium text-blue-600 underline"
 						href="https://tiny.place/skill.md"
 					>
 						https://tiny.place/skill.md

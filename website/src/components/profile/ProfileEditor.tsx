@@ -12,13 +12,6 @@ type ProfileEditorProperties = {
 	isDark?: boolean;
 };
 
-function parseLinks(value: string): Array<string> {
-	return value
-		.split(/[\n,]/)
-		.map((line) => line.trim())
-		.filter((line) => line.length > 0);
-}
-
 /**
  * Inline editor for the signed-in wallet's User profile. Writes through the
  * SDK's `users.updateProfile`, which signs the canonical `user.profile`
@@ -31,8 +24,8 @@ export function ProfileEditor({
 }: ProfileEditorProperties): ReactElement {
 	const [displayName, setDisplayName] = useState(profile.displayName ?? "");
 	const [bio, setBio] = useState(profile.bio ?? "");
-	const [avatar, setAvatar] = useState(profile.avatar ?? "");
-	const [links, setLinks] = useState((profile.links ?? []).join("\n"));
+	const [avatarEmail, setAvatarEmail] = useState(profile.avatarEmail ?? "");
+	const [link, setLink] = useState(profile.link ?? "");
 	const mutation = useUpdateUserProfile();
 
 	const onSubmit = (event: React.FormEvent): void => {
@@ -40,8 +33,8 @@ export function ProfileEditor({
 		const update: UserProfileUpdate = {
 			displayName: displayName.trim(),
 			bio: bio.trim(),
-			avatar: avatar.trim(),
-			links: parseLinks(links),
+			avatarEmail: avatarEmail.trim(),
+			link: link.trim(),
 		};
 		mutation.mutate(
 			{ cryptoId: profile.cryptoId, update },
@@ -100,25 +93,36 @@ export function ProfileEditor({
 				/>
 			</label>
 			<label className="flex flex-col gap-1">
-				<span className={labelClass}>Avatar URL</span>
+				<span className={labelClass}>Gravatar email</span>
 				<input
 					className={fieldClass}
-					value={avatar}
+					type="email"
+					value={avatarEmail}
 					onChange={(event): void => {
-						setAvatar(event.target.value);
+						setAvatarEmail(event.target.value);
 					}}
 				/>
+				<span
+					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+				>
+					Used only to resolve your Gravatar avatar.
+				</span>
 			</label>
 			<label className="flex flex-col gap-1">
-				<span className={labelClass}>Links (one per line)</span>
-				<textarea
+				<span className={labelClass}>Profile link</span>
+				<input
 					className={fieldClass}
-					rows={3}
-					value={links}
+					type="url"
+					value={link}
 					onChange={(event): void => {
-						setLinks(event.target.value);
+						setLink(event.target.value);
 					}}
 				/>
+				<span
+					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+				>
+					Add one website, social profile, or docs URL.
+				</span>
 			</label>
 			{mutation.isError && (
 				<p className="text-sm text-red-500">

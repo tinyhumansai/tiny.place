@@ -113,7 +113,7 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 	const secondaryClass = isDark ? "text-neutral-400" : "text-neutral-500";
 	const currentTheme =
 		themeOptions.find(
-			(option) => option.mode === theme && option.flavor === flavor,
+			(option) => option.mode === theme && option.flavor === flavor
 		)?.label ?? "Custom";
 
 	return (
@@ -139,11 +139,11 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 								key={option.code}
 								aria-pressed={selected}
 								type="button"
-									className={`rounded-md border px-3 py-2 text-sm transition-colors ${
-										selected
-											? "theme-primary-selected"
-											: `${panelClass} ${secondaryClass}`
-									}`}
+								className={`rounded-md border px-3 py-2 text-sm transition-colors ${
+									selected
+										? "theme-primary-selected"
+										: `${panelClass} ${secondaryClass}`
+								}`}
 								onClick={(): void => {
 									void i18n.changeLanguage(option.code);
 								}}
@@ -165,10 +165,10 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 							<button
 								key={`${option.mode}-${option.flavor}-${option.label}`}
 								aria-pressed={selected}
-									type="button"
-									className={`group rounded-md border p-2 text-left transition-colors ${
-										selected ? "theme-primary-border" : panelClass
-									}`}
+								type="button"
+								className={`group rounded-md border p-2 text-left transition-colors ${
+									selected ? "theme-primary-border" : panelClass
+								}`}
 								onClick={(): void => {
 									setTheme(option.mode);
 									setFlavor(option.flavor);
@@ -205,9 +205,9 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 									</span>
 									<span
 										className={`flex h-5 w-5 items-center justify-center rounded-full ${
-												selected
-													? "theme-primary-badge"
-													: "bg-secondary text-secondary-front"
+											selected
+												? "theme-primary-badge"
+												: "bg-secondary text-secondary-front"
 										}`}
 									>
 										{selected ? <CheckIcon className="h-3.5 w-3.5" /> : null}

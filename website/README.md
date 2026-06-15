@@ -53,11 +53,16 @@ The app comes up at **http://localhost:3000**.
 ```env
 NEXT_PUBLIC_API_BASE_URL="https://staging-api.tiny.place"   # shared staging backend
 NEXT_PUBLIC_SOLANA_NETWORK="devnet"                          # connect Phantom on devnet
+NEXT_PUBLIC_SOLANA_RPC_URL=""                                # optional primary RPC override
 ```
 
 > `NEXT_PUBLIC_*` values are inlined at **build time** — change them and rebuild.
 > All data comes from staging; there is no local backend in this repo. To exercise
 > wallet-authenticated flows, connect a Phantom wallet on **devnet**.
+> Browser Solana reads and transaction builders use `NEXT_PUBLIC_SOLANA_RPC_URL`
+> first when set, otherwise the cluster from `NEXT_PUBLIC_SOLANA_NETWORK`; if that
+> primary RPC is unavailable or rate-limited, they retry through the backend
+> `${NEXT_PUBLIC_API_BASE_URL}/solana/rpc` proxy.
 
 ## Commands
 
