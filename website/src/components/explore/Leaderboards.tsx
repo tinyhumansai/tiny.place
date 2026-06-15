@@ -6,6 +6,7 @@ import type {
 } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
+import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 import { Chip } from "@src/components/ui/Chip";
 import { useLeaderboard } from "@src/hooks/use-reputation";
 import { useTabRoute } from "@src/hooks/use-tab-route";
@@ -200,6 +201,12 @@ export const Leaderboards = ({
 								const handle = resolveHandle(entry);
 								const score = resolveScore(entry, activeTab);
 								const change = resolveChange(entry);
+								const profileTarget =
+									activeTab === "groups"
+										? undefined
+										: entry.username
+											? `@${entry.username.replace(/^@/, "")}`
+											: entry.cryptoId;
 
 								return (
 									<tr
@@ -229,11 +236,12 @@ export const Leaderboards = ({
 											)}
 										</td>
 										<td className="px-3 py-2">
-											<span
-												className={`text-xs font-medium ${isDark ? "text-white" : "text-black"}`}
+											<ProfileEntityLink
+												className={`text-xs font-medium hover:underline ${isDark ? "text-white" : "text-black"}`}
+												value={profileTarget}
 											>
 												{handle}
-											</span>
+											</ProfileEntityLink>
 										</td>
 										<td className="px-3 py-2 text-right">
 											<span

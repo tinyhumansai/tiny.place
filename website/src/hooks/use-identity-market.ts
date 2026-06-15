@@ -52,6 +52,26 @@ export function useIdentityListings(): UseQueryResult<{
 	});
 }
 
+export function useIdentityListingForName(
+	name: string
+): UseQueryResult<IdentityListing | undefined> {
+	const client = useApiClient();
+	const normalized = name.trim().replace(/^@+/, "").toLowerCase();
+	return useQuery({
+		queryKey: [...queryKeys.marketplace.identityListings(), normalized],
+		queryFn: async (): Promise<IdentityListing | undefined> => {
+			const result = await client.marketplace.listIdentities({
+				status: "active",
+			});
+			return result.identities.find(
+				(listing) =>
+					listing.name.trim().replace(/^@+/, "").toLowerCase() === normalized
+			);
+		},
+		enabled: normalized.length > 0,
+	});
+}
+
 /** Recent completed identity sales. */
 export function useIdentityRecentSales(): UseQueryResult<{
 	recent: Array<IdentitySale>;
@@ -63,6 +83,23 @@ export function useIdentityRecentSales(): UseQueryResult<{
 			const result = await client.marketplace.recent();
 			return { recent: result.sales };
 		},
+	});
+}
+
+export function useIdentitySaleHistory(
+	name: string
+): UseQueryResult<{ history: Array<IdentitySale> }> {
+	const client = useApiClient();
+	const normalized = name.trim().replace(/^@+/, "");
+	return useQuery({
+		queryKey: queryKeys.marketplace.identityHistory(normalized),
+		queryFn: async (): Promise<{ history: Array<IdentitySale> }> => {
+			const result = await client.marketplace.identitySaleHistory(
+				`@${normalized}`
+			);
+			return { history: result.history ?? [] };
+		},
+		enabled: normalized.length > 0,
 	});
 }
 
@@ -349,6 +386,9 @@ export function useBuyIdentityListing(): UseMutationResult<
 			});
 			void queryClient.invalidateQueries({
 				queryKey: queryKeys.marketplace.identityRecent(),
+			});
+			void queryClient.invalidateQueries({
+				queryKey: ["marketplace", "identity-history"],
 			});
 		},
 	});

@@ -7,18 +7,15 @@ import {
 	GlobeAltIcon,
 	HomeIcon,
 	IdentificationIcon,
-	MoonIcon,
 	PuzzlePieceIcon,
 	ShieldExclamationIcon,
 	SparklesIcon,
 	StarIcon,
-	SunIcon,
 	TagIcon,
 	TrophyIcon,
 } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
 import type { ComponentType, ReactNode, SVGProps } from "react";
-import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { ActivityMarquee } from "@src/components/ActivityMarquee";
@@ -61,12 +58,7 @@ export const ExploreShell = ({
 	children,
 }: ExploreShellProperties): FunctionComponent => {
 	const theme = useAppStore((state) => state.theme);
-	const toggleTheme = useAppStore((state) => state.toggleTheme);
 	const isDark = theme === "dark";
-	const { i18n } = useTranslation();
-	const toggleLanguage = (): void => {
-		void i18n.changeLanguage(i18n.resolvedLanguage === "en" ? "es" : "en");
-	};
 	const pathname = usePathname();
 	// The section is the first path segment so a tab sub-route (e.g.
 	// /identities/trading) still highlights its parent section in the sidebar.
@@ -111,24 +103,6 @@ export const ExploreShell = ({
 					<div className="flex shrink-0 items-center gap-2">
 						<ConnectWalletButton />
 						<ProfileButton />
-						<button
-							className={`p-2 rounded-full border transition-colors ${isDark ? "border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500" : "border-neutral-300 text-neutral-500 hover:text-black hover:border-neutral-400"}`}
-							type="button"
-							onClick={toggleTheme}
-						>
-							{isDark ? (
-								<SunIcon className="h-4 w-4" />
-							) : (
-								<MoonIcon className="h-4 w-4" />
-							)}
-						</button>
-						<button
-							className={`px-2.5 py-1.5 rounded-full border text-xs transition-colors ${isDark ? "border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500" : "border-neutral-300 text-neutral-500 hover:text-black hover:border-neutral-400"}`}
-							type="button"
-							onClick={toggleLanguage}
-						>
-							{i18n.resolvedLanguage === "en" ? "ES" : "EN"}
-						</button>
 					</div>
 				</header>
 				<div className="relative z-10 flex-1 pt-[10vh] max-w-4xl mx-auto px-8 py-12">

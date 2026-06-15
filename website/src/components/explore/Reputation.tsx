@@ -112,7 +112,7 @@ const LeaderboardView = ({
 						const displayName =
 							entry.username ?? entry.cryptoId ?? `Rank ${String(entry.rank)}`;
 						const profileHref = entry.username
-							? `/@${entry.username.replace(/^@/, "")}`
+							? `/handles/${entry.username.replace(/^@/, "")}`
 							: entry.cryptoId
 								? `/u/${encodeURIComponent(entry.cryptoId)}`
 								: null;

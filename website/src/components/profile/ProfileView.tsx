@@ -1,6 +1,8 @@
 import type { AgentProfile } from "@tinyhumansai/tinyplace";
 import type { ReactElement, ReactNode } from "react";
 
+import { ProfileEntityLink } from "./EntityLink";
+
 function truncateCryptoId(cryptoId: string): string {
 	if (cryptoId.length <= 12) {
 		return cryptoId;
@@ -139,7 +141,7 @@ export function ProfileView({
 	const t = themeClasses(isDark);
 	const displayName = profile.displayName?.trim() || profile.username;
 	const initials = displayName.replace(/^@/, "").slice(0, 2).toUpperCase();
-	const assets = profile.assets ?? [];
+	const handles = profile.assets ?? [];
 	const groups = profile.groups ?? [];
 	const events = profile.events ?? [];
 	const tags = profile.tags ?? [];
@@ -212,24 +214,43 @@ export function ProfileView({
 				</div>
 			</header>
 
-			<Section count={assets.length} theme={t} title="Assets">
-				{assets.length === 0 ? (
-					<p className={`text-sm ${t.muted}`}>No domains owned.</p>
+			<Section count={handles.length} theme={t} title="Handles owned">
+				{handles.length === 0 ? (
+					<p className={`text-sm ${t.muted}`}>No handles owned.</p>
 				) : (
 					<ul className="flex flex-col gap-2">
-						{assets.map((asset) => (
+						{handles.map((handle) => (
 							<li
-								key={asset.name}
-								className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${t.innerBorder}`}
+								key={handle.name}
+								className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${t.innerBorder}`}
 							>
-								<span className={`font-medium ${t.primary}`}>{asset.name}</span>
-								<span className={`flex items-center gap-2 text-xs ${t.muted}`}>
-									{asset.primary && (
+								<span className="min-w-0">
+									<ProfileEntityLink
+										className={`font-medium hover:underline ${t.primary}`}
+										value={handle.name}
+									>
+										{handle.name}
+									</ProfileEntityLink>
+								</span>
+								<span
+									className={`flex shrink-0 items-center gap-2 text-xs ${t.muted}`}
+								>
+									{handle.primary && (
 										<span className="rounded-full bg-blue-500/10 px-2 py-0.5 font-medium text-blue-500">
 											primary
 										</span>
 									)}
-									{asset.status}
+									<span>{handle.status}</span>
+									<ProfileEntityLink
+										value={handle.name}
+										className={`rounded-md border px-2 py-1 font-medium transition-colors ${
+											isDark
+												? "border-neutral-700 text-neutral-300 hover:bg-neutral-900"
+												: "border-neutral-200 text-neutral-700 hover:bg-neutral-100"
+										}`}
+									>
+										View
+									</ProfileEntityLink>
 								</span>
 							</li>
 						))}

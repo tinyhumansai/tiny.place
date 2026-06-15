@@ -95,6 +95,8 @@ export const queryKeys = {
 		categories: () => ["marketplace", "categories"] as const,
 		featured: () => ["marketplace", "featured"] as const,
 		identityListings: () => ["marketplace", "identity-listings"] as const,
+		identityHistory: (name: string) =>
+			["marketplace", "identity-history", name] as const,
 		identityBids: (listingId: string) =>
 			["marketplace", "identity-bids", listingId] as const,
 		identityFloor: (length: number) =>

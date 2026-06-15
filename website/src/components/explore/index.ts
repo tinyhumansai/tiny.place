@@ -17,6 +17,7 @@ import { Moderation } from "./Moderation";
 import { OnRamp } from "./OnRamp";
 import { Profiles } from "./Profiles";
 import { Reputation } from "./Reputation";
+import { Settings } from "./Settings";
 import { Stats } from "./Stats";
 import { Terms } from "./Terms";
 
@@ -46,6 +47,7 @@ export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	onramp: OnRamp,
 	profiles: Profiles,
 	reputation: Reputation,
+	settings: Settings,
 	stats: Stats,
 	terms: Terms,
 };

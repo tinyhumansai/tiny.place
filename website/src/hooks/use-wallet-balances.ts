@@ -120,18 +120,20 @@ function sortBalances(balances: Array<WalletBalance>): Array<WalletBalance> {
 	});
 }
 
-export function useWalletBalances(): UseQueryResult<Array<WalletBalance>> {
+export function useWalletBalancesForAddress(
+	walletAddress: string | undefined
+): UseQueryResult<Array<WalletBalance>> {
 	const { connection } = useConnection();
-	const { publicKey } = useWallet();
 	const supported = useSupportedPayments();
-	const wallet = publicKey?.toBase58() ?? "";
+	const wallet = walletAddress ?? "";
 
 	return useQuery({
 		queryKey: queryKeys.payments.walletBalances(wallet),
 		queryFn: async (): Promise<Array<WalletBalance>> => {
-			if (!publicKey) {
+			if (!wallet) {
 				return [];
 			}
+			const owner = new PublicKey(wallet);
 
 			const solanaChain = supported.data?.chains.find(
 				(chain) => chain.kind === "solana"
@@ -139,7 +141,7 @@ export function useWalletBalances(): UseQueryResult<Array<WalletBalance>> {
 			const network = solanaChain?.network ?? "solana";
 			const nativeSymbol = solanaChain?.nativeAsset ?? "SOL";
 			const balances: Array<WalletBalance> = [];
-			const lamports = await connection.getBalance(publicKey, "confirmed");
+			const lamports = await connection.getBalance(owner, "confirmed");
 
 			balances.push(
 				toBalance({
@@ -159,7 +161,7 @@ export function useWalletBalances(): UseQueryResult<Array<WalletBalance>> {
 			);
 			const rawByMint = new Map<string, bigint>();
 			const accountBalances = await connection.getParsedTokenAccountsByOwner(
-				publicKey,
+				owner,
 				{ programId: new PublicKey(SOLANA_TOKEN_PROGRAM_ID) },
 				"confirmed"
 			);
@@ -200,8 +202,15 @@ export function useWalletBalances(): UseQueryResult<Array<WalletBalance>> {
 
 			return sortBalances(balances.concat(tokenBalances));
 		},
-		enabled: Boolean(publicKey) && !supported.isLoading,
+		enabled: Boolean(wallet) && !supported.isLoading,
 	});
+}
+
+export function useWalletBalances(): UseQueryResult<Array<WalletBalance>> {
+	const { publicKey } = useWallet();
+	const wallet = publicKey?.toBase58() ?? "";
+
+	return useWalletBalancesForAddress(wallet);
 }
 
 export type { WalletBalance };

@@ -11,6 +11,7 @@ import {
 } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
+import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 import {
 	useBuyIdentityListing,
 	useCloseIdentityAuction,
@@ -189,7 +190,15 @@ export function IdentityListingCard({
 							? `${highest ? formatPrice(highest) : formatPrice(listing.price)}${highest ? " bid" : " start"}`
 							: formatPrice(listing.price)}
 					</div>
-					<div className={`text-xs ${secondaryClass}`}>by {listing.seller}</div>
+					<div className={`text-xs ${secondaryClass}`}>
+						by{" "}
+						<ProfileEntityLink
+							className="hover:underline"
+							value={listing.seller}
+						>
+							{listing.seller}
+						</ProfileEntityLink>
+					</div>
 				</div>
 				<div className="flex gap-1">
 					<button

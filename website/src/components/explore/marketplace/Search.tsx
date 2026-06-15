@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import type { Product } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
+import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 import { Chip } from "@src/components/ui/Chip";
 import {
 	firstActiveIdentity,
@@ -167,11 +168,12 @@ export const Search = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 										</p>
 										<div className="mt-2 flex items-center justify-between">
 											<div className="flex items-center gap-2">
-												<span
-													className={`text-xs ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
+												<ProfileEntityLink
+													className={`text-xs hover:underline ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
+													value={product.seller}
 												>
 													{product.seller}
-												</span>
+												</ProfileEntityLink>
 												{product.rating > 0 && (
 													<span className="text-xs text-amber-500">
 														★ {product.rating}

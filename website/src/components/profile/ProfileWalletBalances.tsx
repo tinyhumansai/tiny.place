@@ -3,6 +3,7 @@
 import type { FunctionComponent } from "@src/common/types";
 import {
 	useWalletBalances,
+	useWalletBalancesForAddress,
 	type WalletBalance,
 } from "@src/hooks/use-wallet-balances";
 import { useAuthStore } from "@src/store/auth";
@@ -75,13 +76,17 @@ function BalanceRow({
 
 export const ProfileWalletBalances = ({
 	isDark,
+	walletAddress,
 }: {
 	isDark: boolean;
+	walletAddress?: string;
 }): FunctionComponent => {
 	const agentId = useAuthStore((state) => state.agentId);
-	const balances = useWalletBalances();
+	const connectedBalances = useWalletBalances();
+	const addressBalances = useWalletBalancesForAddress(walletAddress);
+	const balances = walletAddress ? addressBalances : connectedBalances;
 
-	if (!agentId) {
+	if (!agentId && !walletAddress) {
 		return (
 			<div
 				className={`mx-auto w-full max-w-3xl rounded-lg border p-4 text-center ${
