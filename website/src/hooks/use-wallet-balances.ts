@@ -1,6 +1,11 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+	SOLANA_TOKEN_PROGRAM_ID,
+	SOLANA_USDC_MINT,
+	type SupportedAsset,
+} from "@tinyhumansai/tinyplace";
 
 import { queryKeys } from "@src/common/query-keys";
 import { useSupportedPayments } from "@src/hooks/use-payments";
@@ -8,12 +13,24 @@ import { useSupportedPayments } from "@src/hooks/use-payments";
 type WalletBalance = {
 	amount: string;
 	decimals: number;
+	kind: "native" | "spl";
+	mint?: string;
 	network: string;
 	rawAmount: string;
 	symbol: string;
 };
 
-function formatUnits(rawAmount: bigint, decimals: number): string {
+type TokenAsset = Pick<SupportedAsset, "address" | "decimals" | "symbol">;
+
+const USDC_DECIMALS = 6;
+const PUBLIC_USDC_MINT =
+	process.env["NEXT_PUBLIC_SOLANA_USDC_MINT"] ?? SOLANA_USDC_MINT;
+
+function shortMint(mint: string): string {
+	return `${mint.slice(0, 4)}...${mint.slice(-4)}`;
+}
+
+export function formatUnits(rawAmount: bigint, decimals: number): string {
 	const negative = rawAmount < 0n;
 	const absolute = negative ? -rawAmount : rawAmount;
 	const base = 10n ** BigInt(decimals);
@@ -31,11 +48,15 @@ function formatUnits(rawAmount: bigint, decimals: number): string {
 
 function toBalance({
 	decimals,
+	kind,
+	mint,
 	network,
 	rawAmount,
 	symbol,
 }: {
 	decimals: number;
+	kind: WalletBalance["kind"];
+	mint?: string;
 	network: string;
 	rawAmount: bigint;
 	symbol: string;
@@ -43,10 +64,60 @@ function toBalance({
 	return {
 		amount: formatUnits(rawAmount, decimals),
 		decimals,
+		kind,
+		mint,
 		network,
 		rawAmount: rawAmount.toString(),
 		symbol,
 	};
+}
+
+function tokenAssetKey(asset: TokenAsset): string | undefined {
+	return asset.address?.trim();
+}
+
+export function tokenAssetsWithUsdcFallback(
+	assets: Array<TokenAsset>
+): Array<TokenAsset> {
+	const byMint = new Map<string, TokenAsset>();
+
+	for (const asset of assets) {
+		const mint = tokenAssetKey(asset);
+		if (mint) {
+			byMint.set(mint, asset);
+		}
+	}
+
+	if (!byMint.has(PUBLIC_USDC_MINT)) {
+		byMint.set(PUBLIC_USDC_MINT, {
+			address: PUBLIC_USDC_MINT,
+			decimals: USDC_DECIMALS,
+			symbol: "USDC",
+		});
+	}
+
+	return Array.from(byMint.values());
+}
+
+function balanceSortValue(balance: WalletBalance): number {
+	if (balance.kind === "native") {
+		return 0;
+	}
+	if (balance.symbol.toUpperCase() === "USDC") {
+		return 1;
+	}
+	return 2;
+}
+
+function sortBalances(balances: Array<WalletBalance>): Array<WalletBalance> {
+	return [...balances].sort((left, right) => {
+		const leftValue = balanceSortValue(left);
+		const rightValue = balanceSortValue(right);
+		if (leftValue !== rightValue) {
+			return leftValue - rightValue;
+		}
+		return left.symbol.localeCompare(right.symbol);
+	});
 }
 
 export function useWalletBalances(): UseQueryResult<Array<WalletBalance>> {
@@ -73,44 +144,61 @@ export function useWalletBalances(): UseQueryResult<Array<WalletBalance>> {
 			balances.push(
 				toBalance({
 					decimals: 9,
+					kind: "native",
 					network,
 					rawAmount: BigInt(lamports),
 					symbol: nativeSymbol,
 				})
 			);
 
-			const tokenAssets =
-				solanaChain?.assets.filter((asset) => asset.address) ?? [];
-			const tokenBalances = await Promise.all(
-				tokenAssets.map(async (asset): Promise<WalletBalance | null> => {
-					const mint = new PublicKey(asset.address ?? "");
-					const accounts = await connection.getParsedTokenAccountsByOwner(
-						publicKey,
-						{ mint },
-						"confirmed"
-					);
-					const rawAmount = accounts.value.reduce<bigint>((total, account) => {
-						const parsed = account.account.data.parsed as {
-							info?: { tokenAmount?: { amount?: string } };
-						};
-						const amount = parsed.info?.tokenAmount?.amount ?? "0";
-						return total + BigInt(amount);
-					}, 0n);
+			const tokenAssets = tokenAssetsWithUsdcFallback(
+				solanaChain?.assets.filter((asset) => asset.address) ?? []
+			);
+			const assetByMint = new Map(
+				tokenAssets.map((asset) => [asset.address ?? "", asset])
+			);
+			const rawByMint = new Map<string, bigint>();
+			const accountBalances = await connection.getParsedTokenAccountsByOwner(
+				publicKey,
+				{ programId: new PublicKey(SOLANA_TOKEN_PROGRAM_ID) },
+				"confirmed"
+			);
 
-					return toBalance({
-						decimals: asset.decimals,
-						network,
-						rawAmount,
-						symbol: asset.symbol,
+			for (const account of accountBalances.value) {
+				const parsed = account.account.data.parsed as {
+					info?: {
+						mint?: string;
+						tokenAmount?: { amount?: string; decimals?: number };
+					};
+				};
+				const mint = parsed.info?.mint;
+				if (!mint) {
+					continue;
+				}
+				const amount = parsed.info?.tokenAmount?.amount ?? "0";
+				rawByMint.set(mint, (rawByMint.get(mint) ?? 0n) + BigInt(amount));
+
+				if (!assetByMint.has(mint)) {
+					assetByMint.set(mint, {
+						address: mint,
+						decimals: parsed.info?.tokenAmount?.decimals ?? 0,
+						symbol: shortMint(mint),
 					});
+				}
+			}
+
+			const tokenBalances = Array.from(assetByMint.values()).map((asset) =>
+				toBalance({
+					decimals: asset.decimals,
+					kind: "spl",
+					mint: asset.address,
+					network,
+					rawAmount: rawByMint.get(asset.address ?? "") ?? 0n,
+					symbol: asset.symbol,
 				})
 			);
 
-			return balances.concat(
-				tokenBalances.filter(
-					(balance): balance is WalletBalance => balance !== null
-				)
-			);
+			return sortBalances(balances.concat(tokenBalances));
 		},
 		enabled: Boolean(publicKey) && !supported.isLoading,
 	});

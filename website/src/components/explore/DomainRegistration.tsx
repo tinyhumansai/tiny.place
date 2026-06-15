@@ -23,6 +23,8 @@ import { useHandleAvailability } from "@src/hooks/use-registry";
 import { useOwnedIdentities } from "@src/hooks/use-marketplace";
 import { useAuthStore } from "@src/store/auth";
 
+import { useOptionalX402Confirm } from "./x402-confirm";
+
 function normalizedHandle(value: string): string {
 	const normalized = value.trim().replace(/^@+/, "");
 	return normalized ? `@${normalized}` : "";
@@ -77,6 +79,7 @@ export const DomainRegistration = ({
 	const agentId = useAuthStore((state) => state.agentId);
 	const signer = identitySigner;
 	const client = useMemo(() => createClient(identitySigner), [identitySigner]);
+	const confirmX402 = useOptionalX402Confirm();
 
 	const [searchInput, setSearchInput] = useState("");
 	const [selectedName, setSelectedName] = useState<string | null>(null);
@@ -138,18 +141,37 @@ export const DomainRegistration = ({
 						publicKey: signer.publicKeyBase64,
 						purpose: challengePayment.metadata?.["purpose"] ?? "registration",
 					};
-					const signedPayment = await signX402Authorization(signer, {
-						...challengePayment,
-						expiresAt:
-							challengePayment.expiresAt ??
-							new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-						from: agentId,
-						metadata,
-						nonce: challengePayment.nonce || generateNonce("reg"),
-					});
+					const signRegistrationPayment = async (): Promise<
+						Record<string, string>
+					> => {
+						const signedPayment = await signX402Authorization(signer, {
+							...challengePayment,
+							expiresAt:
+								challengePayment.expiresAt ??
+								new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+							from: agentId,
+							metadata,
+							nonce: challengePayment.nonce || generateNonce("reg"),
+						});
+						return x402AuthorizationToPaymentMap(signedPayment);
+					};
+					const payment = confirmX402
+						? ((await confirmX402(
+								{
+									title: "Register identity",
+									subject: selectedName,
+									amount: challengePayment.amount,
+									asset: challengePayment.asset,
+									recipient: challengePayment.to,
+									note: "Confirm to sign the x402 authorization and register this identity.",
+									confirmLabel: "Sign x402",
+								},
+								signRegistrationPayment
+							)) as Record<string, string>)
+						: await signRegistrationPayment();
 					return client.registry.register({
 						...request,
-						payment: x402AuthorizationToPaymentMap(signedPayment),
+						payment,
 					});
 				}
 			})();

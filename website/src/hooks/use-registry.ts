@@ -20,6 +20,11 @@ import {
 import { useApiClient } from "@src/common/api-context";
 import { queryKeys } from "@src/common/query-keys";
 import { signerPaymentMetadata } from "@src/common/x402-signer-metadata";
+import {
+	useOptionalX402Confirm,
+	type X402ConfirmContextValue,
+	type X402ConfirmRequest,
+} from "@src/components/explore/x402-confirm";
 import { useAuthStore } from "@src/store/auth";
 
 type RegistryPaymentChallenge = {
@@ -27,6 +32,8 @@ type RegistryPaymentChallenge = {
 	payment: Omit<X402AuthorizationFields, "expiresAt" | "nonce"> &
 		Partial<Pick<X402AuthorizationFields, "expiresAt" | "nonce">>;
 };
+
+type ConfirmX402 = X402ConfirmContextValue["confirm"] | undefined;
 
 function registryPaymentChallenge(
 	error: unknown
@@ -45,6 +52,53 @@ function registryPaymentChallenge(
 		error: body.error ?? "Payment required",
 		payment: body.payment,
 	};
+}
+
+async function signRegistryPaymentChallenge(
+	signer: NonNullable<ReturnType<typeof useAuthStore.getState>["signer"]>,
+	challenge: RegistryPaymentChallenge,
+	options: {
+		confirmRequest: X402ConfirmRequest;
+		confirmX402?: ConfirmX402;
+		fallbackFrom: string;
+		handle: string;
+		noncePrefix: string;
+		purpose: string;
+	}
+): Promise<Record<string, string>> {
+	const challengePayment = challenge.payment;
+	const sign = async (): Promise<Record<string, string>> => {
+		const signedPayment = await signX402Authorization(signer, {
+			...challengePayment,
+			expiresAt:
+				challengePayment.expiresAt ??
+				new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+			from: challengePayment.from || options.fallbackFrom,
+			metadata: {
+				...challengePayment.metadata,
+				...signerPaymentMetadata(signer),
+				domain: challengePayment.metadata?.["domain"] ?? "tiny.place",
+				identity: challengePayment.metadata?.["identity"] ?? options.handle,
+				purpose: challengePayment.metadata?.["purpose"] ?? options.purpose,
+			},
+			nonce: challengePayment.nonce || generateNonce(options.noncePrefix),
+		});
+		return x402AuthorizationToPaymentMap(signedPayment);
+	};
+
+	if (!options.confirmX402) {
+		return sign();
+	}
+
+	return (await options.confirmX402(
+		{
+			amount: challengePayment.amount,
+			asset: challengePayment.asset,
+			recipient: challengePayment.to,
+			...options.confirmRequest,
+		},
+		sign
+	)) as Record<string, string>;
 }
 
 /**
@@ -75,6 +129,7 @@ export function useRenewIdentity(): UseMutationResult<
 	const client = useApiClient();
 	const signer = useAuthStore((state) => state.signer);
 	const agentId = useAuthStore((state) => state.agentId);
+	const confirmX402 = useOptionalX402Confirm();
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -94,28 +149,21 @@ export function useRenewIdentity(): UseMutationResult<
 				if (!signer || !agentId) {
 					throw new Error("Connect your wallet first");
 				}
-				const challengePayment = challenge.payment;
-				const signedPayment = await signX402Authorization(signer, {
-					...challengePayment,
-					expiresAt:
-						challengePayment.expiresAt ??
-						new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-					from: challengePayment.from || agentId,
-					metadata: {
-						...challengePayment.metadata,
-						// Bind the (possibly delegated/session) signer to the payment so
-						// the backend authorizes a hot-session key as the payer — without
-						// this, session-signed renewals are rejected (402).
-						...signerPaymentMetadata(signer),
-						domain: challengePayment.metadata?.["domain"] ?? "tiny.place",
-						identity: challengePayment.metadata?.["identity"] ?? handle,
-						purpose: challengePayment.metadata?.["purpose"] ?? "renewal",
-					},
-					nonce: challengePayment.nonce || generateNonce("renew"),
-				});
 				return client.registry.renew(handle, {
 					...(request ?? {}),
-					payment: x402AuthorizationToPaymentMap(signedPayment),
+					payment: await signRegistryPaymentChallenge(signer, challenge, {
+						confirmRequest: {
+							title: "Renew identity",
+							subject: handle,
+							note: "The server returned an x402 renewal challenge. Confirm to sign the payment authorization and renew this identity.",
+							confirmLabel: "Sign x402",
+						},
+						confirmX402,
+						fallbackFrom: agentId,
+						handle,
+						noncePrefix: "renew",
+						purpose: "renewal",
+					}),
 				});
 			}
 		},
@@ -229,6 +277,7 @@ export function useClaimIdentity(): UseMutationResult<
 	const client = useApiClient();
 	const signer = useAuthStore((state) => state.signer);
 	const agentId = useAuthStore((state) => state.agentId);
+	const confirmX402 = useOptionalX402Confirm();
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -256,27 +305,21 @@ export function useClaimIdentity(): UseMutationResult<
 				if (!challenge) {
 					throw error;
 				}
-				const challengePayment = challenge.payment;
-				const signedPayment = await signX402Authorization(signer, {
-					...challengePayment,
-					expiresAt:
-						challengePayment.expiresAt ??
-						new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-					from: challengePayment.from || claimRequest.cryptoId,
-					metadata: {
-						...challengePayment.metadata,
-						// Bind the (possibly delegated/session) signer as payer, matching
-						// the buy/offer flows; without it session-signed claims are rejected.
-						...signerPaymentMetadata(signer),
-						domain: challengePayment.metadata?.["domain"] ?? "tiny.place",
-						identity: challengePayment.metadata?.["identity"] ?? handle,
-						purpose: challengePayment.metadata?.["purpose"] ?? "auction_claim",
-					},
-					nonce: challengePayment.nonce || generateNonce("claim"),
-				});
 				return client.registry.claim(handle, {
 					...claimRequest,
-					payment: x402AuthorizationToPaymentMap(signedPayment),
+					payment: await signRegistryPaymentChallenge(signer, challenge, {
+						confirmRequest: {
+							title: "Claim identity",
+							subject: handle,
+							note: "Confirm to sign the x402 authorization needed to claim this identity.",
+							confirmLabel: "Sign x402",
+						},
+						confirmX402,
+						fallbackFrom: claimRequest.cryptoId,
+						handle,
+						noncePrefix: "claim",
+						purpose: "auction_claim",
+					}),
 				});
 			}
 		},

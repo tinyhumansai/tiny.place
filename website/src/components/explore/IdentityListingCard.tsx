@@ -24,7 +24,6 @@ import {
 	isExpired,
 	strip,
 } from "./identity-management";
-import { useX402Confirm } from "./x402-confirm";
 
 const avatarColors = [
 	"bg-indigo-600",
@@ -76,7 +75,6 @@ export function IdentityListingCard({
 	const [bidAmount, setBidAmount] = useState("");
 	const [offerAmount, setOfferAmount] = useState("");
 
-	const confirmX402 = useX402Confirm();
 	const buyListing = useBuyIdentityListing();
 	const placeBid = usePlaceIdentityBid();
 	const closeAuction = useCloseIdentityAuction();
@@ -124,26 +122,19 @@ export function IdentityListingCard({
 			return;
 		}
 		const amount = bidAmount;
-		confirmX402(
+		placeBid.mutate(
 			{
-				title: "Place auction bid",
-				subject: listing.name,
-				amount,
-				asset: listing.price.asset,
-				recipient: listing.seller,
-				note: "Your bid is locked via x402; you only pay if you win.",
-				confirmLabel: "Place bid",
+				bid: {
+					bidder: bidder.username,
+					price: { amount, asset: "USDC", network: SOLANA_NETWORK },
+				},
+				listingId: listing.listingId,
 			},
-			async () => {
-				await placeBid.mutateAsync({
-					bid: {
-						bidder: bidder.username,
-						price: { amount, asset: "USDC", network: SOLANA_NETWORK },
-					},
-					listingId: listing.listingId,
-				});
-				setBidAmount("");
-				setPanel("none");
+			{
+				onSuccess: (): void => {
+					setBidAmount("");
+					setPanel("none");
+				},
 			}
 		);
 	}
@@ -155,24 +146,17 @@ export function IdentityListingCard({
 			return;
 		}
 		const amount = offerAmount;
-		confirmX402(
+		createOffer.mutate(
 			{
-				title: "Make an offer",
-				subject: listing.name,
-				amount,
-				asset: listing.price.asset,
-				recipient: listing.seller,
-				note: "Funds are authorized now and only move if the seller accepts.",
-				confirmLabel: "Submit offer",
+				buyer: buyer.username,
+				name: listing.name,
+				price: { amount, asset: "USDC", network: SOLANA_NETWORK },
 			},
-			async () => {
-				await createOffer.mutateAsync({
-					buyer: buyer.username,
-					name: listing.name,
-					price: { amount, asset: "USDC", network: SOLANA_NETWORK },
-				});
-				setOfferAmount("");
-				setPanel("none");
+			{
+				onSuccess: (): void => {
+					setOfferAmount("");
+					setPanel("none");
+				},
 			}
 		);
 	}
@@ -239,23 +223,11 @@ export function IdentityListingCard({
 								if (!wallet || !buyer) {
 									return;
 								}
-								confirmX402(
-									{
-										title: "Buy identity",
-										subject: listing.name,
-										amount: listing.price.amount,
-										asset: listing.price.asset,
-										recipient: listing.seller,
-										note: "Settled on-chain via the tiny.place facilitator.",
-										confirmLabel: "Buy",
-									},
-									() =>
-										buyListing.mutateAsync({
-											buyer: buyer.username,
-											buyerCryptoId: wallet,
-											listingId: listing.listingId,
-										})
-								);
+								buyListing.mutate({
+									buyer: buyer.username,
+									buyerCryptoId: wallet,
+									listingId: listing.listingId,
+								});
 							}}
 						>
 							{buyListing.isPending ? "Buying…" : "Buy"}

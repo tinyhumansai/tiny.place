@@ -6,13 +6,13 @@ import type {
 	GameAction,
 	GameHandPlayer,
 	GameRoom,
+	GameSeat,
 } from "@tinyhumansai/tinyplace";
 
 import { ActionChatbox } from "@src/components/poker/ActionChatbox";
-import { CommunityCards } from "@src/components/poker/CommunityCards";
-import { SeatRow } from "@src/components/poker/SeatRow";
 import type { FunctionComponent } from "@src/common/types";
 import {
+	cardLabel,
 	describeRoomEvent,
 	formatChips,
 	type RoomStreamEvent,
@@ -80,12 +80,33 @@ function latestPrompt(
 	return undefined;
 }
 
+function boardLabel(cards: Array<string> | undefined): string {
+	if (!cards || cards.length === 0) {
+		return "none";
+	}
+	return cards.map(cardLabel).join(" ");
+}
+
+function handPlayerStatus(
+	handPlayer: GameHandPlayer | undefined,
+	isCurrent: boolean
+): string {
+	if (handPlayer?.result && handPlayer.result !== "active") {
+		return handPlayer.result;
+	}
+	return isCurrent ? "to act" : "active";
+}
+
+function seatLabel(seat: GameSeat): string {
+	return seat.handle ?? seat.cryptoId ?? `Seat ${seat.seat}`;
+}
+
 /**
- * PokerRoom is the compact, live Texas Hold'em table: a column of seat rows, the
- * community board, and a streaming action chatbox. Authoritative state comes from
- * the REST room query; the WebSocket stream supplies liveness, the chatbox
- * narration, and prompt-driven action controls. Entering a round requires an
- * x402 buy-in, handled by the join/action hooks' 402-challenge retry.
+ * PokerRoom is a simple live room state surface: metrics, seats, action
+ * controls, and a streaming action log. Authoritative state comes from the REST
+ * room query; the WebSocket stream supplies liveness, narration, and prompts.
+ * Entering a round requires an x402 buy-in, handled by the join/action hooks'
+ * 402-challenge retry.
  */
 export const PokerRoom = ({
 	roomId,
@@ -218,38 +239,93 @@ export const PokerRoom = ({
 				</header>
 
 				<div
-					className={`rounded-lg border p-3 ${
-						isDark
-							? "border-neutral-800 bg-neutral-900/50"
-							: "border-neutral-200 bg-neutral-100/50"
+					className={`grid gap-2 rounded-lg border p-3 text-sm sm:grid-cols-4 ${
+						isDark ? "border-neutral-800" : "border-neutral-200"
 					}`}
 				>
-					<CommunityCards cards={hand?.communityCards ?? []} isDark={isDark} />
+					<div>
+						<div className="text-xs uppercase opacity-60">
+							{t("poker.board")}
+						</div>
+						<div className="font-semibold">
+							{boardLabel(hand?.communityCards)}
+						</div>
+					</div>
+					<div>
+						<div className="text-xs uppercase opacity-60">
+							{t("poker.minEntry")}
+						</div>
+						<div className="font-semibold">{formatChips(room.buyIn.min)}</div>
+					</div>
+					<div>
+						<div className="text-xs uppercase opacity-60">
+							{t("poker.maxEntry")}
+						</div>
+						<div className="font-semibold">{formatChips(room.buyIn.max)}</div>
+					</div>
+					<div>
+						<div className="text-xs uppercase opacity-60">
+							{t("poker.seats")}
+						</div>
+						<div className="font-semibold">
+							{t("poker.seatsTaken", {
+								seated: room.players.length,
+								seats: room.seats,
+							})}
+						</div>
+					</div>
 				</div>
 
-				<div className="space-y-2">
+				<section
+					className={`rounded-lg border ${
+						isDark ? "border-neutral-800" : "border-neutral-200"
+					}`}
+				>
+					<div className="border-b border-neutral-500/20 px-3 py-2 text-sm font-semibold">
+						{t("poker.players")}
+					</div>
 					{players.length === 0 ? (
-						<p className="text-sm opacity-70">{t("poker.empty")}</p>
+						<p className="px-3 py-3 text-sm opacity-70">{t("poker.empty")}</p>
 					) : (
-						players.map((seat) => (
-							<SeatRow
-								key={seat.seat}
-								handPlayer={handPlayerBySeat.get(seat.seat)}
-								isCurrent={hand?.currentSeat === seat.seat}
-								isDark={isDark}
-								isYou={mySeat?.seat === seat.seat}
-								seat={seat}
-								position={positionBadge(
+						<div className="divide-y divide-neutral-500/20">
+							{players.map((seat) => {
+								const handPlayer = handPlayerBySeat.get(seat.seat);
+								const position = positionBadge(
 									seat.seat,
 									room,
 									hand?.dealerSeat,
 									hand?.smallBlindSeat,
 									hand?.bigBlindSeat
-								)}
-							/>
-						))
+								);
+								const isCurrent = hand?.currentSeat === seat.seat;
+								return (
+									<div
+										key={seat.seat}
+										className="grid gap-2 px-3 py-2 text-sm sm:grid-cols-[4rem_1fr_6rem_6rem]"
+									>
+										<div className="opacity-70">
+											{position ? `${seat.seat} ${position}` : seat.seat}
+										</div>
+										<div className="min-w-0 truncate font-medium">
+											{seatLabel(seat)}
+											{mySeat?.seat === seat.seat ? (
+												<span className="ml-2 text-xs text-emerald-500">
+													{t("poker.you")}
+												</span>
+											) : null}
+										</div>
+										<div>{formatChips(seat.stack)}</div>
+										<div
+											className={isCurrent ? "text-amber-500" : "opacity-70"}
+										>
+											{handPlayerStatus(handPlayer, isCurrent)}
+										</div>
+									</div>
+								);
+							})}
+						</div>
 					)}
-				</div>
+				</section>
 
 				<div
 					className={`rounded-lg border p-3 ${

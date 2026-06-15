@@ -18,13 +18,6 @@ export const ProfileSessions = ({
 }: ProfileSessionsProperties): FunctionComponent => {
 	return (
 		<section className="mx-auto w-full max-w-3xl">
-			<h2
-				className={`mb-3 text-sm font-semibold ${
-					isDark ? "text-neutral-100" : "text-neutral-800"
-				}`}
-			>
-				Sessions
-			</h2>
 			<Signers isDark={isDark} />
 		</section>
 	);

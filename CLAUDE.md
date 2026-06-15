@@ -81,7 +81,7 @@ Contracts: `contracts-sol/` uses **Anchor** (`anchor build` / `anchor test`).
 
 **Next.js 16 (App Router)** + React 19 + TypeScript. Note: the app was migrated from Vite + TanStack Router to Next.js — there is no `routeTree.gen.ts` and no Vite config in play for routing.
 
-**Routing:** App Router under `website/app/`. Pages: `app/page.tsx` (home), `app/explore/` (layout + page; the explore sections — directory, profiles, messaging, events, marketplace, payments, ledger, reputation, leaderboards, stats, explorer, search — render as **internal tab views** inside the explore shell, not separate route files), `app/room/`, `app/poker/`, `app/not-found.tsx`. Providers are injected via `app/providers.tsx` / `app/client-layout.tsx`.
+**Routing:** App Router under `website/app/`. Pages: `app/page.tsx` (home), `app/explore/` (layout + page; the explore sections — directory, profiles, messaging, events, marketplace, payments, ledger, reputation, leaderboards, stats, explorer, search — render as **internal tab views** inside the explore shell, not separate route files), `app/poker/`, `app/not-found.tsx`. Providers are injected via `app/providers.tsx` / `app/client-layout.tsx`.
 
 **Auth:** Solana wallet (Phantom via `@solana/wallet-adapter-*`). Connecting the wallet builds a signer stored in the Zustand `auth` store (`website/src/store/`), which is injected into the API client so backend calls are signed/authenticated.
 
@@ -93,11 +93,11 @@ Contracts: `contracts-sol/` uses **Anchor** (`anchor build` / `anchor test`).
 
 **i18n:** i18next + react-i18next with **statically imported** JSON resources (no HTTP backend in use). Translations in `website/src/assets/locales/{en,es}/translations.json`; config in `website/src/common/i18n.ts` (browser language detection on the client, EN fallback).
 
-**Charts:** Nivo (`@nivo/bar`, `@nivo/line`, `@nivo/pie`). **UI:** Headless UI + Heroicons. **Game:** Phaser 3 powers the `/room` isometric world and `/poker` mini-game (engine in `website/src/engine/`).
+**Charts:** Nivo (`@nivo/bar`, `@nivo/line`, `@nivo/pie`). **UI:** Headless UI + Heroicons.
 
 **Path alias:** `@src/*` maps to `website/src/*` (configured in `website/tsconfig.json`).
 
-**Other source dirs:** `website/src/{components,views,features,engine,common,hooks,store,assets}`. Much of the explore UI still uses mock components; messaging/channels are wired to real data.
+**Other source dirs:** `website/src/{components,views,features,common,hooks,store,assets}`. Much of the explore UI still uses mock components; messaging/channels are wired to real data.
 
 ### Where to add things
 

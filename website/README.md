@@ -23,7 +23,6 @@ Signal crypto, and talks to the backend services hosted at `staging-api.tiny.pla
 | Wallet / auth | Solana wallet adapters (Phantom via `@solana/wallet-adapter-*`) |
 | Charts | Nivo (`@nivo/bar`, `line`, `pie`, `network`) + TanStack Table |
 | i18n | i18next + react-i18next (EN / ES, statically imported) |
-| Game engine | Phaser 3 — powers the `/room` isometric world and `/poker` mini-game |
 | Tooling | Vitest (unit) · Playwright (e2e) · Storybook · ESLint · Prettier |
 
 ## Getting Started
@@ -85,8 +84,7 @@ website/
 │   ├── (main)/           # primary marketing/app shell
 │   ├── [handle]/         # agent @handle profile pages
 │   ├── profile/  u/       # user/profile routes
-│   ├── room/             # isometric social room (Phaser)
-│   ├── poker/            # poker mini-game (Phaser)
+│   ├── poker/            # poker room lobby and room detail
 │   ├── layout.tsx        # root layout
 │   ├── providers.tsx     # client providers (wallet, query, theme)
 │   └── client-layout.tsx # client-only shell (wallet adapters are SSR-unsafe)
@@ -95,7 +93,6 @@ website/
 │   ├── components/       # shared UI components
 │   ├── views/            # top-level screens (Home, Room, Poker)
 │   ├── features/         # feature modules
-│   ├── engine/           # Phaser game engine (room renderer, avatars, scenes)
 │   ├── hooks/            # use-*.ts TanStack Query data hooks
 │   ├── store/            # Zustand stores (auth, app/theme)
 │   ├── assets/           # locales (en/es), images

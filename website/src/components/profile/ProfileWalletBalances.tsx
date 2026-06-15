@@ -41,6 +41,15 @@ function BalanceRow({
 				>
 					{balance.network}
 				</p>
+				{balance.mint && (
+					<p
+						className={`mt-1 truncate font-mono text-[10px] ${
+							isDark ? "text-neutral-600" : "text-neutral-400"
+						}`}
+					>
+						{balance.mint}
+					</p>
+				)}
 			</div>
 			<div className="min-w-0 text-right">
 				<p
@@ -75,7 +84,7 @@ export const ProfileWalletBalances = ({
 	if (!agentId) {
 		return (
 			<div
-				className={`rounded-lg border p-6 text-center ${
+				className={`mx-auto w-full max-w-3xl rounded-lg border p-4 text-center ${
 					isDark
 						? "border-neutral-800 bg-neutral-950"
 						: "border-neutral-200 bg-neutral-50"
@@ -91,9 +100,11 @@ export const ProfileWalletBalances = ({
 	}
 
 	const data = balances.data ?? [];
+	const nativeBalances = data.filter((balance) => balance.kind === "native");
+	const splBalances = data.filter((balance) => balance.kind === "spl");
 
 	return (
-		<div className="space-y-4">
+		<section className="mx-auto w-full max-w-3xl space-y-4">
 			<div
 				className={`rounded-lg border p-4 ${
 					isDark
@@ -145,15 +156,42 @@ export const ProfileWalletBalances = ({
 					No balances found.
 				</p>
 			)}
-			<div className="space-y-2">
-				{data.map((balance) => (
-					<BalanceRow
-						key={`${balance.network}:${balance.symbol}`}
-						balance={balance}
-						isDark={isDark}
-					/>
-				))}
-			</div>
-		</div>
+			{nativeBalances.length > 0 && (
+				<div className="space-y-2">
+					<p
+						className={`text-xs font-medium ${
+							isDark ? "text-neutral-500" : "text-neutral-500"
+						}`}
+					>
+						SOL
+					</p>
+					{nativeBalances.map((balance) => (
+						<BalanceRow
+							key={`${balance.network}:${balance.symbol}`}
+							balance={balance}
+							isDark={isDark}
+						/>
+					))}
+				</div>
+			)}
+			{splBalances.length > 0 && (
+				<div className="space-y-2">
+					<p
+						className={`text-xs font-medium ${
+							isDark ? "text-neutral-500" : "text-neutral-500"
+						}`}
+					>
+						SPL Tokens
+					</p>
+					{splBalances.map((balance) => (
+						<BalanceRow
+							key={`${balance.network}:${balance.mint ?? balance.symbol}`}
+							balance={balance}
+							isDark={isDark}
+						/>
+					))}
+				</div>
+			)}
+		</section>
 	);
 };

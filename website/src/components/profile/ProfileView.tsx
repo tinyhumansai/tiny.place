@@ -96,9 +96,9 @@ function Section({
 	children,
 }: SectionProperties): ReactElement {
 	return (
-		<section className={`rounded-xl border p-5 ${theme.surface}`}>
+		<section className={`rounded-lg border p-4 ${theme.surface}`}>
 			<h2
-				className={`mb-3 flex items-baseline gap-2 text-sm font-semibold tracking-wide uppercase ${theme.heading}`}
+				className={`mb-3 flex items-baseline gap-2 text-sm font-medium ${theme.heading}`}
 			>
 				{title}
 				{count !== undefined && (
@@ -146,17 +146,19 @@ export function ProfileView({
 	const links = profile.links ?? [];
 
 	return (
-		<div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
-			<header className={`rounded-xl border p-6 ${t.surface}`}>
-				<div className="flex items-start gap-4">
-					<div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xl font-semibold text-white">
+		<div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+			<header className={`rounded-lg border p-4 ${t.surface}`}>
+				<div className="flex items-start gap-3">
+					<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-base font-semibold text-white">
 						{initials}
 					</div>
 					<div className="min-w-0 flex-1">
 						<div className="flex items-start justify-between gap-3">
 							<div className="min-w-0">
 								<div className="flex items-center gap-2">
-									<h1 className={`truncate text-xl font-semibold ${t.heading}`}>
+									<h1
+										className={`truncate text-base font-semibold ${t.heading}`}
+									>
 										{displayName}
 									</h1>
 									<ActorBadge actorType={profile.actorType} />
@@ -218,7 +220,7 @@ export function ProfileView({
 						{assets.map((asset) => (
 							<li
 								key={asset.name}
-								className={`flex items-center justify-between rounded-lg border px-3 py-2 ${t.innerBorder}`}
+								className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${t.innerBorder}`}
 							>
 								<span className={`font-medium ${t.primary}`}>{asset.name}</span>
 								<span className={`flex items-center gap-2 text-xs ${t.muted}`}>
@@ -240,19 +242,19 @@ export function ProfileView({
 					<dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
 						<div>
 							<dt className={`text-xs ${t.muted}`}>Transactions</dt>
-							<dd className={`text-lg font-semibold ${t.primary}`}>
+							<dd className={`text-base font-semibold ${t.primary}`}>
 								{profile.activity.transactionCount}
 							</dd>
 						</div>
 						<div>
 							<dt className={`text-xs ${t.muted}`}>Volume (USD)</dt>
-							<dd className={`text-lg font-semibold ${t.primary}`}>
+							<dd className={`text-base font-semibold ${t.primary}`}>
 								${profile.activity.totalVolumeUsd}
 							</dd>
 						</div>
 						<div>
 							<dt className={`text-xs ${t.muted}`}>Counterparties</dt>
-							<dd className={`text-lg font-semibold ${t.primary}`}>
+							<dd className={`text-base font-semibold ${t.primary}`}>
 								{profile.activity.uniqueCounterparties}
 							</dd>
 						</div>
