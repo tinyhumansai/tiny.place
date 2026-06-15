@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { SigningKey } from "../src/index.js";
+import { TinyPlaceClient, type SigningKey } from "../src/index.js";
 import { signDirectoryWrite, signDirectoryWriteQuery } from "../src/auth.js";
 
 describe("directory write auth", () => {
@@ -59,5 +59,36 @@ describe("directory write auth", () => {
       url.searchParams.get("X-TinyPlace-Nonce"),
       expect.any(String),
     ]);
+  });
+});
+
+describe("client auth invalidation", () => {
+  it("notifies session recovery for 401 but not ordinary 403 responses", async () => {
+    const statuses: Array<number> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      onAuthInvalid: (status): void => {
+        statuses.push(status);
+      },
+      fetch: async (input) => {
+        const url = new URL(String(input));
+        return Response.json(
+          {
+            error: url.pathname.endsWith("/unauthorized")
+              ? "invalid signature"
+              : "forbidden",
+          },
+          { status: url.pathname.endsWith("/unauthorized") ? 401 : 403 },
+        );
+      },
+    });
+
+    await expect(client.stats.overview()).rejects.toThrow("HTTP 403");
+    expect(statuses).toEqual([]);
+
+    await expect(client.docs.identityPage("unauthorized")).rejects.toThrow(
+      "HTTP 401",
+    );
+    expect(statuses).toEqual([401]);
   });
 });

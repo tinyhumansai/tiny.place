@@ -180,10 +180,7 @@ export class HttpClient {
       } catch {
         parsed = errorBody;
       }
-      if (
-        (response.status === 401 || response.status === 403) &&
-        this.onAuthInvalid
-      ) {
+      if (response.status === 401 && this.onAuthInvalid) {
         this.onAuthInvalid(response.status, parsed);
       }
       throw new TinyPlaceError(

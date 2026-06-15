@@ -8,6 +8,7 @@ import {
 import {
 	generateNonce,
 	signX402Authorization,
+	signerPaymentMetadata,
 	TinyPlaceError,
 	x402AuthorizationToPaymentMap,
 	type AvailabilityResponse,
@@ -19,7 +20,6 @@ import {
 
 import { useApiClient } from "@src/common/api-context";
 import { queryKeys } from "@src/common/query-keys";
-import { signerPaymentMetadata } from "@src/common/x402-signer-metadata";
 import {
 	useOptionalX402Confirm,
 	type X402ConfirmContextValue,

@@ -27,7 +27,8 @@ export {
   signFreshCanonicalPayload,
 } from "./auth.js";
 
-export { Signer } from "./signer.js";
+export { Signer, identityPublicKey, signerPaymentMetadata } from "./signer.js";
+export type { IdentityPublicKeySigner, X402MetadataSigner } from "./signer.js";
 export { LocalSigner } from "./local-signer.js";
 export { BrowserSessionSigner } from "./browser-session-signer.js";
 export type {

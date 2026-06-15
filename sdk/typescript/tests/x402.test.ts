@@ -75,7 +75,9 @@ describe("x402 helpers", () => {
     const secretKey = new Uint8Array(64);
     secretKey.set(seed, 0);
     secretKey.set(seedSigner.publicKey, 32);
-    const signer = await LocalSigner.fromSolanaSecretKey(encodeBase58(secretKey));
+    const signer = await LocalSigner.fromSolanaSecretKey(
+      encodeBase58(secretKey),
+    );
 
     const authorization = await buildX402PaymentAuthorization(signer, {
       network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
@@ -103,13 +105,48 @@ describe("x402 helpers", () => {
     });
   });
 
+  it("uses delegated session x402 metadata when the signer provides it", async () => {
+    const signer = {
+      agentId: payerAddress,
+      publicKeyBase64: "session-public-key",
+      sign(): Uint8Array {
+        return new Uint8Array([1, 2, 3]);
+      },
+      x402PaymentMetadata(): Record<string, string> {
+        return {
+          publicKey: "session-public-key",
+          parentNonce: "approved-session-nonce",
+        };
+      },
+    };
+
+    const authorization = await buildX402PaymentAuthorization(signer, {
+      network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      asset: "USDC",
+      amount: "1000000",
+      to: "seller",
+      nonce: "nonce-for-session-test",
+      expiresAt: "2026-06-13T00:00:00Z",
+      metadata: { kind: "identity-listing" },
+    });
+
+    expect(authorization.metadata).toEqual({
+      domain: "tiny.place",
+      publicKey: "session-public-key",
+      parentNonce: "approved-session-nonce",
+      kind: "identity-listing",
+    });
+  });
+
   it("signs payment maps with on-chain references in metadata", async () => {
     const seed = new Uint8Array(32).fill(14);
     const seedSigner = await LocalSigner.fromSeed(seed);
     const secretKey = new Uint8Array(64);
     secretKey.set(seed, 0);
     secretKey.set(seedSigner.publicKey, 32);
-    const signer = await LocalSigner.fromSolanaSecretKey(encodeBase58(secretKey));
+    const signer = await LocalSigner.fromSolanaSecretKey(
+      encodeBase58(secretKey),
+    );
 
     const payment = await buildX402PaymentMap(signer, {
       network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
@@ -139,7 +176,9 @@ describe("x402 helpers", () => {
     const secretKey = new Uint8Array(64);
     secretKey.set(seed, 0);
     secretKey.set(seedSigner.publicKey, 32);
-    const signer = await LocalSigner.fromSolanaSecretKey(encodeBase58(secretKey));
+    const signer = await LocalSigner.fromSolanaSecretKey(
+      encodeBase58(secretKey),
+    );
 
     const payment = await buildX402PaymentPayload(signer, {
       network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",

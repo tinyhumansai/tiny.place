@@ -7,7 +7,9 @@ import {
 } from "@tanstack/react-query";
 import {
 	generateNonce,
+	identityPublicKey,
 	signX402Authorization,
+	signerPaymentMetadata,
 	TinyPlaceError,
 	x402AuthorizationToPaymentMap,
 	type IdentityBid,
@@ -32,10 +34,6 @@ import {
 	assertValidX402Challenge,
 	type ExpectedX402Payment,
 } from "@src/common/x402-challenge";
-import {
-	identityPublicKey,
-	signerPaymentMetadata,
-} from "@src/common/x402-signer-metadata";
 import { useAuthStore } from "@src/store/auth";
 
 /** Lists identities currently listed for sale on the marketplace. */

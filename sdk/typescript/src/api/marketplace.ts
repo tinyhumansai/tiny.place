@@ -537,7 +537,6 @@ export class MarketplaceApi {
         listingId,
         ...options.metadata,
       },
-      publicKeyBase64: prepared.bidderPublicKey,
     });
     const updatedListing = await this.placeBid(listingId, {
       ...prepared,
@@ -682,7 +681,6 @@ export class MarketplaceApi {
         offerId,
         ...options.metadata,
       },
-      publicKeyBase64: prepared.buyerPublicKey,
     });
     const created = await this.createOffer({
       ...prepared,
