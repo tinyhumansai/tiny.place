@@ -27,6 +27,19 @@ importers:
         specifier: ^0.4.0
         version: 0.4.0
 
+  sdk/plugin-openclaw:
+    dependencies:
+      '@tinyhumansai/tinyplace':
+        specifier: workspace:*
+        version: link:../typescript
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.1
+        version: 24.13.1
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   sdk/typescript:
     dependencies:
       '@noble/curves':

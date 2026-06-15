@@ -19,12 +19,21 @@ import { useAuthStore } from "@src/store/auth";
 class BridgeSessionSigner extends Signer {
 	public readonly agentId: string;
 	public readonly publicKeyBase64: string;
+	// The wallet (grantor) key. Identity-bound calls (e.g. buy's buyerPublicKey)
+	// use identityPublicKey(signer), which must resolve to the wallet key the
+	// identity is registered under — not the ephemeral session key.
+	public readonly identityPublicKeyBase64: string;
 	private readonly session: BrowserSessionSigner;
 
-	public constructor(agentId: string, session: BrowserSessionSigner) {
+	public constructor(
+		agentId: string,
+		walletPublicKeyBase64: string,
+		session: BrowserSessionSigner
+	) {
 		super();
 		this.agentId = agentId;
 		this.publicKeyBase64 = session.publicKeyBase64;
+		this.identityPublicKeyBase64 = walletPublicKeyBase64;
 		this.session = session;
 	}
 
@@ -119,6 +128,7 @@ export const E2EAuthBridge = (): FunctionComponent => {
 					await createClient().signers.approve(approval.authorization);
 					const sessionSigner = new BridgeSessionSigner(
 						wallet.agentId,
+						wallet.publicKeyBase64,
 						session
 					);
 					useAuthStore

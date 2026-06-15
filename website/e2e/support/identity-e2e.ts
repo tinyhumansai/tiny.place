@@ -8,6 +8,7 @@
  * focus on the button under test; the browser signs in through the session-mode
  * E2E auth bridge.
  */
+import { execSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 
 import {
@@ -20,6 +21,20 @@ import {
 import type { Page } from "@playwright/test";
 
 export const API_URL = process.env.E2E_API_URL ?? "http://localhost:8083";
+
+/**
+ * Flushes the backend's Redis response cache so the browser's next GETs (e.g.
+ * the 30s-cached /marketplace/identities listing) reflect just-seeded data
+ * instead of a stale page. Best-effort; the redis container is overridable.
+ */
+export function flushCache(): void {
+	const container = process.env.E2E_REDIS_CONTAINER ?? "tp-e2e-redis-1";
+	try {
+		execSync(`docker exec ${container} redis-cli flushall`, { stdio: "ignore" });
+	} catch {
+		/* best effort — cache flush is an optimization, not required */
+	}
+}
 
 /** A fresh 32-byte seed (hex) — shared between Node setup and the browser. */
 export function freshSeed(): string {
@@ -152,6 +167,9 @@ export async function signInSession(
 	page: Page,
 	seedHex: string
 ): Promise<void> {
+	// Clear the server cache so the browser's GETs reflect this test's just-seeded
+	// listings/registrations rather than a prior test's cached page.
+	flushCache();
 	await page.addInitScript(() => {
 		window.localStorage.setItem("tinyplace:e2e", "1");
 	});
