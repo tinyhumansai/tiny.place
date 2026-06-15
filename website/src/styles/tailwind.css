@@ -259,3 +259,41 @@ body {
 .theme-primary-selected {
 	border-color: var(--theme-primary);
 }
+
+.theme-surface-card {
+	background: var(--theme-surface);
+	border-color: color-mix(in srgb, var(--theme-border) 72%, transparent);
+}
+
+.theme-input {
+	background: var(--theme-surface-raised);
+	border-color: color-mix(in srgb, var(--theme-border-strong) 70%, transparent);
+	color: var(--theme-front);
+}
+
+.theme-input:focus {
+	border-color: color-mix(in srgb, var(--theme-primary) 72%, transparent);
+	outline: 2px solid
+		color-mix(in srgb, var(--theme-primary) 18%, transparent);
+	outline-offset: 0;
+}
+
+.theme-input::placeholder {
+	color: var(--theme-subtle);
+}
+
+.theme-disabled-action {
+	background: var(--theme-secondary);
+	color: var(--theme-subtle);
+	cursor: not-allowed;
+}
+
+.theme-detail-list {
+	background: color-mix(in srgb, var(--theme-surface-raised) 45%, transparent);
+	border-color: color-mix(in srgb, var(--theme-border) 58%, transparent);
+}
+
+.theme-detail-list > * + * {
+	border-top: 1px solid
+		color-mix(in srgb, var(--theme-border) 44%, transparent);
+}

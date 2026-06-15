@@ -121,6 +121,7 @@ Theme colors are centralized as CSS variables in `tailwind.css`:
 - **Much of the explore UI is mocked**, not backend-wired — "it renders data" doesn't mean the endpoint exists yet. Messaging/channels are the real ones.
 - The authoritative spec for intended behavior is **`gitbooks/`** (and the backend spec under `../backend-tinyplace/docs/spec/`), not the mocked UI.
 - **Theme changes must be runtime-token based.** Do not add one-off color maps across components for dark/light/flavor work. Put the palette in `tailwind.css`, update `useAppStore` only for appearance state, and let `ThemeController` drive root attributes. Appearance and language controls belong on the `/settings` page, not in the header. Validate theme work with `pnpm --filter @tinyplace/website lint`, `pnpm --filter @tinyplace/website build`, and a browser/Playwright smoke that selects a Settings theme and confirms `document.documentElement.dataset.theme`, `document.documentElement.dataset.flavor`, persistence after reload, and computed body colors change.
+- **Placeholder text is part of theming.** Inputs and textareas appear across many explore/profile/marketplace forms, and raw `placeholder-neutral-*` / `placeholder:text-neutral-*` choices can look wrong or disappear under non-default flavors. When touching form fields, style placeholder text with token-backed placeholder utilities/classes from `tailwind.css` and verify it in dark, light, and at least one flavored mode.
 
 ## Contracts
 

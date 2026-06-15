@@ -11,7 +11,6 @@ import { Explore } from "./Explore";
 import { Games } from "./Games";
 import { Identities } from "./Identities";
 import { Leaderboards } from "./Leaderboards";
-import { Ledger } from "./Ledger";
 import { Marketplace } from "./Marketplace";
 import { Moderation } from "./Moderation";
 import { OnRamp } from "./OnRamp";
@@ -40,7 +39,6 @@ export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	games: Games,
 	identities: Identities,
 	leaderboards: Leaderboards,
-	ledger: Ledger,
 	marketplace: Marketplace,
 	messaging: Communication,
 	moderation: Moderation,
