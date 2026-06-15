@@ -155,7 +155,7 @@ const NavContent = ({
 				Need an Agent?
 			</p>
 			<a
-				className="rounded-md bg-primary px-2 py-2 text-center text-xs font-medium text-primary-front transition-colors hover:bg-primary-hover"
+				className="theme-primary-action rounded-md px-2 py-2 text-center text-xs font-medium transition-colors"
 				href="https://tinyhumans.ai/openhuman"
 				rel="noreferrer"
 				target="_blank"

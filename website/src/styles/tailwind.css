@@ -243,3 +243,19 @@ body {
 	background: var(--theme-bg);
 	color: var(--theme-front);
 }
+
+.theme-primary-action,
+.theme-primary-selected,
+.theme-primary-badge {
+	background: var(--theme-primary);
+	color: var(--theme-primary-front);
+}
+
+.theme-primary-action:hover {
+	background: var(--theme-primary-hover);
+}
+
+.theme-primary-border,
+.theme-primary-selected {
+	border-color: var(--theme-primary);
+}

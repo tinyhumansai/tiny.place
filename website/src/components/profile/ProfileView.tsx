@@ -118,6 +118,10 @@ type ProfileViewProperties = {
 	actions?: ReactNode;
 	/** Render in dark mode. Defaults to light (e.g. the public SEO route). */
 	isDark?: boolean;
+	/** Show activity inline. Profile tabs render it directly after the card. */
+	showActivity?: boolean;
+	/** Show owned handles inline. Profile tabs render them in a dedicated tab. */
+	showHandles?: boolean;
 	/**
 	 * Optional reputation detail slot rendered below the profile sections. Pages
 	 * pass a <ReputationPanel> here; keeping it a slot lets ProfileView stay
@@ -136,6 +140,8 @@ export function ProfileView({
 	profile,
 	actions,
 	isDark = false,
+	showActivity = true,
+	showHandles = true,
 	reputation,
 }: ProfileViewProperties): ReactElement {
 	const t = themeClasses(isDark);
@@ -214,51 +220,53 @@ export function ProfileView({
 				</div>
 			</header>
 
-			<Section count={handles.length} theme={t} title="Handles owned">
-				{handles.length === 0 ? (
-					<p className={`text-sm ${t.muted}`}>No handles owned.</p>
-				) : (
-					<ul className="flex flex-col gap-2">
-						{handles.map((handle) => (
-							<li
-								key={handle.name}
-								className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${t.innerBorder}`}
-							>
-								<span className="min-w-0">
-									<ProfileEntityLink
-										className={`font-medium hover:underline ${t.primary}`}
-										value={handle.name}
-									>
-										{handle.name}
-									</ProfileEntityLink>
-								</span>
-								<span
-									className={`flex shrink-0 items-center gap-2 text-xs ${t.muted}`}
+			{showHandles && (
+				<Section count={handles.length} theme={t} title="Handles owned">
+					{handles.length === 0 ? (
+						<p className={`text-sm ${t.muted}`}>No handles owned.</p>
+					) : (
+						<ul className="flex flex-col gap-2">
+							{handles.map((handle) => (
+								<li
+									key={handle.name}
+									className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${t.innerBorder}`}
 								>
-									{handle.primary && (
-										<span className="rounded-full bg-blue-500/10 px-2 py-0.5 font-medium text-blue-500">
-											primary
-										</span>
-									)}
-									<span>{handle.status}</span>
-									<ProfileEntityLink
-										value={handle.name}
-										className={`rounded-md border px-2 py-1 font-medium transition-colors ${
-											isDark
-												? "border-neutral-700 text-neutral-300 hover:bg-neutral-900"
-												: "border-neutral-200 text-neutral-700 hover:bg-neutral-100"
-										}`}
+									<span className="min-w-0">
+										<ProfileEntityLink
+											className={`font-medium hover:underline ${t.primary}`}
+											value={handle.name}
+										>
+											{handle.name}
+										</ProfileEntityLink>
+									</span>
+									<span
+										className={`flex shrink-0 items-center gap-2 text-xs ${t.muted}`}
 									>
-										View
-									</ProfileEntityLink>
-								</span>
-							</li>
-						))}
-					</ul>
-				)}
-			</Section>
+										{handle.primary && (
+											<span className="rounded-full bg-blue-500/10 px-2 py-0.5 font-medium text-blue-500">
+												primary
+											</span>
+										)}
+										<span>{handle.status}</span>
+										<ProfileEntityLink
+											value={handle.name}
+											className={`rounded-md border px-2 py-1 font-medium transition-colors ${
+												isDark
+													? "border-neutral-700 text-neutral-300 hover:bg-neutral-900"
+													: "border-neutral-200 text-neutral-700 hover:bg-neutral-100"
+											}`}
+										>
+											View
+										</ProfileEntityLink>
+									</span>
+								</li>
+							))}
+						</ul>
+					)}
+				</Section>
+			)}
 
-			{profile.activity && (
+			{showActivity && profile.activity && (
 				<Section theme={t} title="Activity">
 					<dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
 						<div>

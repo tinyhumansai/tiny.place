@@ -123,6 +123,9 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 					Settings
 				</h1>
 				<p className={`mt-1 text-sm ${secondaryClass}`}>{currentTheme}</p>
+				<p className={`mt-2 max-w-2xl text-sm leading-6 ${secondaryClass}`}>
+					Language, theme, and interface preferences for this browser.
+				</p>
 			</header>
 
 			<section className="space-y-3">
@@ -135,12 +138,12 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 							<button
 								key={option.code}
 								aria-pressed={selected}
-								className={`rounded-md border px-3 py-2 text-sm transition-colors ${
-									selected
-										? "border-primary bg-primary text-primary-front"
-										: `${panelClass} ${secondaryClass}`
-								}`}
 								type="button"
+									className={`rounded-md border px-3 py-2 text-sm transition-colors ${
+										selected
+											? "theme-primary-selected"
+											: `${panelClass} ${secondaryClass}`
+									}`}
 								onClick={(): void => {
 									void i18n.changeLanguage(option.code);
 								}}
@@ -154,7 +157,7 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 
 			<section className="space-y-3">
 				<h2 className={`text-sm font-semibold ${headingClass}`}>Theme</h2>
-				<div className="grid gap-3 sm:grid-cols-2">
+				<div className="grid gap-2 sm:grid-cols-3">
 					{themeOptions.map((option) => {
 						const selected = option.mode === theme && option.flavor === flavor;
 
@@ -162,49 +165,49 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 							<button
 								key={`${option.mode}-${option.flavor}-${option.label}`}
 								aria-pressed={selected}
-								className={`group rounded-lg border p-3 text-left transition-colors ${
-									selected ? "border-primary" : panelClass
-								}`}
-								type="button"
+									type="button"
+									className={`group rounded-md border p-2 text-left transition-colors ${
+										selected ? "theme-primary-border" : panelClass
+									}`}
 								onClick={(): void => {
 									setTheme(option.mode);
 									setFlavor(option.flavor);
 								}}
 							>
 								<div
-									className="overflow-hidden rounded-md border border-black/10"
+									className="overflow-hidden rounded border border-black/10"
 									style={{ backgroundColor: option.background }}
 								>
-									<div className="flex h-20 items-center gap-2 p-3">
+									<div className="flex h-14 items-center gap-2 p-2">
 										<div
-											className="h-10 w-10 rounded"
+											className="h-8 w-8 rounded"
 											style={{ backgroundColor: option.surface }}
 										/>
 										<div className="min-w-0 flex-1 space-y-2">
 											<div
-												className="h-2.5 w-3/4 rounded-full"
+												className="h-2 w-3/4 rounded-full"
 												style={{ backgroundColor: option.foreground }}
 											/>
 											<div
-												className="h-2.5 w-1/2 rounded-full opacity-60"
+												className="h-2 w-1/2 rounded-full opacity-60"
 												style={{ backgroundColor: option.foreground }}
 											/>
 										</div>
 										<div
-											className="h-7 w-7 rounded-full"
+											className="h-5 w-5 rounded-full"
 											style={{ backgroundColor: option.accent }}
 										/>
 									</div>
 								</div>
-								<div className="mt-3 flex items-center justify-between gap-3">
+								<div className="mt-2 flex items-center justify-between gap-2">
 									<span className={`text-sm font-medium ${headingClass}`}>
 										{option.label}
 									</span>
 									<span
 										className={`flex h-5 w-5 items-center justify-center rounded-full ${
-											selected
-												? "bg-primary text-primary-front"
-												: "bg-secondary text-secondary-front"
+												selected
+													? "theme-primary-badge"
+													: "bg-secondary text-secondary-front"
 										}`}
 									>
 										{selected ? <CheckIcon className="h-3.5 w-3.5" /> : null}

@@ -372,6 +372,7 @@ export function HandleDetail({ handle }: { handle: string }): ReactElement {
 					/>
 					<button
 						className={primaryButtonClass()}
+						type="button"
 						disabled={
 							!buyerIdentity ||
 							!agentId ||
@@ -379,7 +380,6 @@ export function HandleDetail({ handle }: { handle: string }): ReactElement {
 							createOffer.isPending ||
 							!offerAmount.trim()
 						}
-						type="button"
 						onClick={(): void => {
 							if (!buyerIdentity || !agentId || !offerAmount.trim()) {
 								return;
