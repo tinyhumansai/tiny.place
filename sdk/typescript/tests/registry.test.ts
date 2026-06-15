@@ -996,6 +996,70 @@ describe("RegistryApi", () => {
     expect(ok).toBe(true);
   });
 
+  it("exports identity records through the harness-facing alias", async () => {
+    const requests: Array<Request> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json({
+          identity: { username: "@agent" },
+          ledgerTransactions: [
+            {
+              txId: "ledger_tx_1",
+              visibility: "unshielded",
+              type: "REGISTRATION",
+              network: "solana",
+              timestamp: "2026-06-06T12:00:00Z",
+              reference: { kind: "identity", id: "@agent" },
+              onChainTx: "tx_register",
+              status: "SETTLED",
+            },
+          ],
+          exportedAt: "2026-06-06T12:00:00Z",
+          verification: { registrationTx: "tx_register" },
+          proofs: {
+            ownership: {
+              algorithm: "ed25519-solana-public-key",
+              cryptoId: "crypto",
+              publicKey: "public",
+              publicKeyMatchesCryptoId: true,
+            },
+            ledgerReferences: [
+              {
+                txId: "ledger_tx_1",
+                onChainTx: "tx_register",
+                network: "solana",
+                status: "SETTLED",
+                type: "REGISTRATION",
+                reference: { kind: "identity", id: "@agent" },
+              },
+            ],
+          },
+        });
+      },
+    });
+
+    const exported = await client.registry.exportIdentity("@agent");
+
+    expect(exported.proofs.ownership).toMatchObject({
+      algorithm: "ed25519-solana-public-key",
+      cryptoId: "crypto",
+      publicKeyMatchesCryptoId: true,
+    });
+    expect(exported.proofs.ledgerReferences).toEqual([
+      expect.objectContaining({
+        onChainTx: "tx_register",
+        reference: { kind: "identity", id: "@agent" },
+      }),
+    ]);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.method).toBe("GET");
+    expect(requests[0]!.url).toBe(
+      "https://example.test/registry/names/%40agent/export",
+    );
+  });
+
   it("signs profile visibility updates with null omitted fields", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(16));
     const requests: Array<Request> = [];

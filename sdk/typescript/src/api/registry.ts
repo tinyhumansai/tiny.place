@@ -321,6 +321,10 @@ export class RegistryApi {
     );
   }
 
+  exportIdentity(name: string): Promise<IdentityExport> {
+    return this.export(name);
+  }
+
   async updateProfileVisibility(
     name: string,
     update: ProfileVisibilityUpdate,

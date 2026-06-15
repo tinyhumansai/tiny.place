@@ -40,6 +40,15 @@ describe("settlement_game_poker", () => {
     await fundSol(settler.publicKey);
   });
 
+  async function expectGameState(
+    game: PublicKey,
+    state: "open" | "settled" | "cancelled",
+  ) {
+    assert.deepEqual((await pokerProgram.account.game.fetch(game)).state, {
+      [state]: {},
+    });
+  }
+
   async function newGame(label: string) {
     const { vault, vaultToken } = await createVault(pokerProgram.programId, mint, feeAccount, label);
     const gameId = id32(label);
@@ -49,15 +58,23 @@ describe("settlement_game_poker", () => {
       .accounts({ game, creator: payer.publicKey, vault, systemProgram: SystemProgram.programId })
       .signers([])
       .rpc();
+    await expectGameState(game, "open");
     return { vault, vaultToken, game, gameId };
   }
 
-  async function join(game: PublicKey, vault: PublicKey, vaultToken: PublicKey, player: Keypair, nonce: number) {
+  async function join(
+    game: PublicKey,
+    vault: PublicKey,
+    vaultToken: PublicKey,
+    player: Keypair,
+    nonce: number,
+    amount = STAKE,
+  ) {
     await fundSol(player.publicKey);
     const playerToken = await fundTokens(mint, player.publicKey, STAKE);
     await initNonce(player);
     await pokerProgram.methods
-      .join(payload(player.publicKey, STAKE, nonce))
+      .join(payload(player.publicKey, amount, nonce))
       .accounts({
         game,
         playerEntry: playerPda(game, player.publicKey),
@@ -72,6 +89,13 @@ describe("settlement_game_poker", () => {
       })
       .signers([player])
       .rpc();
+
+    const entry = await pokerProgram.account.playerEntry.fetch(playerPda(game, player.publicKey));
+    assert.equal(entry.game.toBase58(), game.toBase58());
+    assert.equal(entry.player.toBase58(), player.publicKey.toBase58());
+    assert.equal(entry.amount.toNumber(), amount);
+    assert.equal(entry.refunded, false);
+    return playerToken;
   }
 
   it("two players join and the settler awards the pot minus rake", async () => {
@@ -83,6 +107,7 @@ describe("settlement_game_poker", () => {
 
     assert.equal((await pokerProgram.account.game.fetch(game)).playerCount, 2);
     assert.equal(await tokenBalance(vaultToken), BigInt(2 * STAKE));
+    await expectGameState(game, "open");
 
     const winnerToken = await ata(mint, p1.publicKey);
     const feeBefore = await tokenBalance(feeAccount);
@@ -108,6 +133,10 @@ describe("settlement_game_poker", () => {
     const fee = Math.floor((pot * FEE_BPS) / 10000); // 100
     assert.equal(await tokenBalance(winnerToken), BigInt(pot - fee));
     assert.equal((await tokenBalance(feeAccount)) - feeBefore, BigInt(fee));
+    await expectGameState(game, "settled");
+
+    const latePlayer = Keypair.generate();
+    await expectRevert(join(game, vault, vaultToken, latePlayer, 1), "join after settle");
   });
 
   it("cancel + claim_refund returns each player's stake", async () => {
@@ -118,9 +147,31 @@ describe("settlement_game_poker", () => {
     await join(game, vault, vaultToken, p2, 1);
 
     await pokerProgram.methods.cancel().accounts({ game, settler: settler.publicKey }).signers([settler]).rpc();
+    await expectGameState(game, "cancelled");
+
+    await expectRevert(
+      pokerProgram.methods
+        .settle()
+        .accounts({
+          game,
+          settler: settler.publicKey,
+          winnerEntry: playerPda(game, p1.publicKey),
+          vault,
+          vaultAuthority: vaultAuthority(),
+          vaultToken,
+          winnerToken: await ata(mint, p1.publicKey),
+          feeToken: feeAccount,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          escrowProgram: escrowProgram.programId,
+        })
+        .signers([settler])
+        .rpc(),
+      "settle after cancel",
+    );
 
     for (const p of [p1, p2]) {
-      const before = await tokenBalance(await ata(mint, p.publicKey));
+      const playerToken = await ata(mint, p.publicKey);
+      const before = await tokenBalance(playerToken);
       await pokerProgram.methods
         .claimRefund()
         .accounts({
@@ -130,15 +181,37 @@ describe("settlement_game_poker", () => {
           vault,
           vaultAuthority: vaultAuthority(),
           vaultToken,
-          playerToken: await ata(mint, p.publicKey),
+          playerToken,
           feeToken: feeAccount,
           tokenProgram: TOKEN_PROGRAM_ID,
           escrowProgram: escrowProgram.programId,
         })
         .signers([p])
         .rpc();
-      assert.equal((await tokenBalance(await ata(mint, p.publicKey))) - before, BigInt(STAKE));
+      assert.equal((await tokenBalance(playerToken)) - before, BigInt(STAKE));
+      const entry = await pokerProgram.account.playerEntry.fetch(playerPda(game, p.publicKey));
+      assert.equal(entry.refunded, true);
     }
+
+    await expectRevert(
+      pokerProgram.methods
+        .claimRefund()
+        .accounts({
+          game,
+          playerEntry: playerPda(game, p1.publicKey),
+          player: p1.publicKey,
+          vault,
+          vaultAuthority: vaultAuthority(),
+          vaultToken,
+          playerToken: await ata(mint, p1.publicKey),
+          feeToken: feeAccount,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          escrowProgram: escrowProgram.programId,
+        })
+        .signers([p1])
+        .rpc(),
+      "double refund",
+    );
   });
 
   it("rejects settle with < 2 players, double-join, and non-settler", async () => {
@@ -170,6 +243,10 @@ describe("settlement_game_poker", () => {
     // Same player joining twice -> PlayerEntry already initialized.
     await expectRevert(join(game, vault, vaultToken, p1, 2), "double join");
 
+    // Buy-in amount must exactly match the game stake.
+    const shortBuyer = Keypair.generate();
+    await expectRevert(join(game, vault, vaultToken, shortBuyer, 1, STAKE - 1), "short buy-in");
+
     // Add a second player so the game is settleable, then a non-settler tries.
     const p2 = Keypair.generate();
     await join(game, vault, vaultToken, p2, 1);
@@ -194,6 +271,11 @@ describe("settlement_game_poker", () => {
         .rpc(),
       "non-settler settle",
     );
+
+    // The configured table cap is enforced.
+    await join(game, vault, vaultToken, Keypair.generate(), 1);
+    await join(game, vault, vaultToken, Keypair.generate(), 1);
+    await expectRevert(join(game, vault, vaultToken, Keypair.generate(), 1), "game full");
   });
 
   // Regression for the CRITICAL vault-theft finding: a pot vault is bound 1:1 to
