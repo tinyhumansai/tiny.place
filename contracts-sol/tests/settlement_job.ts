@@ -35,6 +35,15 @@ describe("settlement_job", () => {
     feeAccount = await ata(mint, payer.publicKey);
   });
 
+  async function expectJobState(
+    job: PublicKey,
+    state: "open" | "delivered" | "disputed" | "resolved" | "refunded",
+  ) {
+    assert.deepEqual((await jobProgram.account.job.fetch(job)).state, {
+      [state]: {},
+    });
+  }
+
   // Create a bound vault + job, fund it from `client`. Returns the handles.
   async function setupJob(label: string, client: Keypair, provider: PublicKey, controller: PublicKey) {
     const { vault, vaultToken } = await createVault(jobProgram.programId, mint, feeAccount, label);
@@ -65,6 +74,7 @@ describe("settlement_job", () => {
       .rpc();
 
     assert.equal((await escrowProgram.account.vault.fetch(vault)).deposited.toNumber(), FUND);
+    await expectJobState(job, "open");
     return { vault, vaultToken, job, jobId };
   }
 
@@ -84,6 +94,7 @@ describe("settlement_job", () => {
       .accounts({ job, actor: providerKp.publicKey })
       .signers([providerKp])
       .rpc();
+    await expectJobState(job, "delivered");
 
     await jobProgram.methods
       .approve()
@@ -106,6 +117,11 @@ describe("settlement_job", () => {
     assert.equal((await tokenBalance(feeAccount)) - feeBefore, BigInt(fee));
     const acc = await escrowProgram.account.vault.fetch(vault);
     assert.equal(acc.disbursed.toNumber(), FUND);
+    await expectJobState(job, "resolved");
+    await expectRevert(
+      jobProgram.methods.markDelivered().accounts({ job, actor: providerKp.publicKey }).signers([providerKp]).rpc(),
+      "resolved job cannot be delivered again",
+    );
   });
 
   it("dispute -> controller resolves to client (refund, no rake)", async () => {
@@ -120,7 +136,9 @@ describe("settlement_job", () => {
     const clientBefore = await tokenBalance(clientToken);
 
     await jobProgram.methods.markDelivered().accounts({ job, actor: providerKp.publicKey }).signers([providerKp]).rpc();
+    await expectJobState(job, "delivered");
     await jobProgram.methods.dispute().accounts({ job, actor: client.publicKey }).signers([client]).rpc();
+    await expectJobState(job, "disputed");
 
     await jobProgram.methods
       .resolve(false) // award_provider = false -> client
@@ -139,6 +157,11 @@ describe("settlement_job", () => {
       .rpc();
 
     assert.equal((await tokenBalance(clientToken)) - clientBefore, BigInt(FUND)); // full refund, no fee
+    await expectJobState(job, "resolved");
+    await expectRevert(
+      jobProgram.methods.dispute().accounts({ job, actor: client.publicKey }).signers([client]).rpc(),
+      "resolved dispute cannot be disputed again",
+    );
   });
 
   it("refund while Open returns funds to client", async () => {
@@ -146,6 +169,7 @@ describe("settlement_job", () => {
     const providerKp = Keypair.generate();
     const controller = Keypair.generate();
     await fundSol(client.publicKey);
+    await fundSol(providerKp.publicKey);
     const clientToken = await ata(mint, client.publicKey);
 
     const { vault, vaultToken, job } = await setupJob("job-refund", client, providerKp.publicKey, controller.publicKey);
@@ -168,6 +192,11 @@ describe("settlement_job", () => {
       .rpc();
 
     assert.equal((await tokenBalance(clientToken)) - before, BigInt(FUND));
+    await expectJobState(job, "refunded");
+    await expectRevert(
+      jobProgram.methods.markDelivered().accounts({ job, actor: providerKp.publicKey }).signers([providerKp]).rpc(),
+      "refunded job cannot be delivered",
+    );
   });
 
   it("rejects unauthorized actors", async () => {
