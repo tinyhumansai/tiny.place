@@ -163,6 +163,8 @@ export const queryKeys = {
 		supported: () => ["payments", "supported"] as const,
 		subscription: (subscriptionId: string) =>
 			["payments", "subscription", subscriptionId] as const,
+		walletBalances: (wallet: string) =>
+			["payments", "wallet-balances", wallet] as const,
 	},
 	pricing: {
 		quote: (parameters: { base: string; network?: string; quote: string }) =>

@@ -2,7 +2,10 @@
 
 import { Signers } from "@src/components/explore/Signers";
 import type { FunctionComponent } from "@src/common/types";
-import { useAppStore } from "@src/store/app";
+
+type ProfileSessionsProperties = {
+	isDark: boolean;
+};
 
 /**
  * The wallet's active sessions (approved signers) shown as a section of the
@@ -10,11 +13,11 @@ import { useAppStore } from "@src/store/app";
  * /explore tab — so session management lives alongside the profile it belongs
  * to.
  */
-export const ProfileSessions = (): FunctionComponent => {
-	const isDark = useAppStore((state) => state.theme === "dark");
-
+export const ProfileSessions = ({
+	isDark,
+}: ProfileSessionsProperties): FunctionComponent => {
 	return (
-		<section className="mx-auto mt-8 w-full max-w-3xl">
+		<section className="mx-auto w-full max-w-3xl">
 			<h2
 				className={`mb-3 text-sm font-semibold ${
 					isDark ? "text-neutral-100" : "text-neutral-800"

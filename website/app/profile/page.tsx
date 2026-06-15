@@ -6,12 +6,24 @@ import type { AgentProfile, User } from "@tinyhumansai/tinyplace";
 import { ProfileEditor } from "@src/components/profile/ProfileEditor";
 import { ProfileSessions } from "@src/components/profile/ProfileSessions";
 import { ProfileView } from "@src/components/profile/ProfileView";
+import { ProfileWalletBalances } from "@src/components/profile/ProfileWalletBalances";
 import { ReputationPanel } from "@src/components/profile/ReputationPanel";
+import { Chip } from "@src/components/ui/Chip";
 import { useOwnedIdentities } from "@src/hooks/use-marketplace";
 import { useProfile } from "@src/hooks/use-profiles";
 import { useUser } from "@src/hooks/use-users";
 import { useAppStore } from "@src/store/app";
 import { useAuthStore } from "@src/store/auth";
+
+const tabs = ["profile", "sessions", "balances"] as const;
+
+type ProfileTab = (typeof tabs)[number];
+
+const tabLabels: Record<ProfileTab, string> = {
+	profile: "Profile",
+	sessions: "Sessions",
+	balances: "Balances",
+};
 
 function primaryHandleOf(
 	identities: Array<{ username: string; primary?: boolean }> | undefined
@@ -91,6 +103,7 @@ export default function OwnProfilePage(): ReactElement {
 	const agentProfile = useProfile(handle ?? "");
 	const user = useUser(agentId);
 	const [editing, setEditing] = useState(false);
+	const [activeTab, setActiveTab] = useState<ProfileTab>("profile");
 
 	if (!agentId) {
 		return <Message>Connect your wallet to view your profile.</Message>;
@@ -110,42 +123,61 @@ export default function OwnProfilePage(): ReactElement {
 		agentProfile.data ?? userToProfile(user.data ?? emptyUser(agentId), handle);
 
 	return (
-		<>
-			{editing ? (
-				<div className="mx-auto w-full max-w-3xl">
-					<ProfileEditor
+		<div className="space-y-5">
+			<div className="mx-auto flex w-full max-w-3xl flex-wrap gap-1">
+				{tabs.map((tab) => (
+					<Chip
+						key={tab}
+						active={activeTab === tab}
+						isDark={isDark}
+						onClick={(): void => {
+							setActiveTab(tab);
+							setEditing(false);
+						}}
+					>
+						{tabLabels[tab]}
+					</Chip>
+				))}
+			</div>
+
+			{activeTab === "profile" &&
+				(editing ? (
+					<div className="mx-auto w-full max-w-3xl">
+						<ProfileEditor
+							isDark={isDark}
+							profile={profile}
+							onClose={(): void => setEditing(false)}
+						/>
+					</div>
+				) : (
+					<ProfileView
+						actions={
+							<button
+								className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+									isDark
+										? "border-neutral-700 text-neutral-300 hover:bg-neutral-900"
+										: "border-neutral-200 text-neutral-700 hover:bg-neutral-100"
+								}`}
+								type="button"
+								onClick={(): void => setEditing(true)}
+							>
+								Edit
+							</button>
+						}
 						isDark={isDark}
 						profile={profile}
-						onClose={(): void => setEditing(false)}
+						reputation={
+							<ReputationPanel
+								agentId={profile.reputation?.agentId || profile.cryptoId}
+								isDark={isDark}
+								score={profile.reputation}
+							/>
+						}
 					/>
-				</div>
-			) : (
-				<ProfileView
-					actions={
-						<button
-							className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-								isDark
-									? "border-neutral-700 text-neutral-300 hover:bg-neutral-900"
-									: "border-neutral-200 text-neutral-700 hover:bg-neutral-100"
-							}`}
-							type="button"
-							onClick={(): void => setEditing(true)}
-						>
-							Edit
-						</button>
-					}
-					isDark={isDark}
-					profile={profile}
-					reputation={
-						<ReputationPanel
-							agentId={profile.reputation?.agentId || profile.cryptoId}
-							isDark={isDark}
-							score={profile.reputation}
-						/>
-					}
-				/>
-			)}
-			<ProfileSessions />
-		</>
+				))}
+
+			{activeTab === "sessions" && <ProfileSessions isDark={isDark} />}
+			{activeTab === "balances" && <ProfileWalletBalances isDark={isDark} />}
+		</div>
 	);
 }
