@@ -149,4 +149,59 @@ describe("DirectoryApi", () => {
     );
     expect(requests).toHaveLength(0);
   });
+
+  it("reverse-resolves an agent by Signal encryption key", async () => {
+    const requests: Array<Request> = [];
+    const card: AgentCard = {
+      agentId,
+      name: "Agent",
+      cryptoId: agentId,
+      metadata: { encryptionPublicKey: "ZW5jLWtleS1iYXNlNjQ=" },
+      createdAt: "2026-06-13T00:00:00Z",
+      updatedAt: "2026-06-13T00:00:00Z",
+    };
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json({ agents: [card] });
+      },
+    });
+
+    const found = await client.directory.findAgentByEncryptionKey(
+      "ZW5jLWtleS1iYXNlNjQ=",
+    );
+
+    expect(found).toEqual(card);
+    expect(requests).toHaveLength(1);
+    const url = new URL(requests[0]!.url);
+    expect(url.pathname).toBe("/directory/agents");
+    expect(url.searchParams.get("encryptionKey")).toBe("ZW5jLWtleS1iYXNlNjQ=");
+    expect(url.searchParams.get("limit")).toBe("1");
+  });
+
+  it("returns undefined when no agent advertises the encryption key", async () => {
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      // Simulate an older backend that ignores the filter and returns a
+      // non-matching card: the client-side verification must reject it.
+      fetch: async () =>
+        Response.json({
+          agents: [
+            {
+              agentId,
+              name: "Other",
+              cryptoId: agentId,
+              metadata: { encryptionPublicKey: "c29tZXRoaW5nLWVsc2U=" },
+              createdAt: "2026-06-13T00:00:00Z",
+              updatedAt: "2026-06-13T00:00:00Z",
+            },
+          ],
+        }),
+    });
+
+    const found =
+      await client.directory.findAgentByEncryptionKey("ZW5jLWtleS1iYXNlNjQ=");
+    expect(found).toBeUndefined();
+  });
 });

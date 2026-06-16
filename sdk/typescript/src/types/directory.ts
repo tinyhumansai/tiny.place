@@ -98,6 +98,11 @@ export interface AgentQueryParams {
   asset?: string;
   maxAmount?: string;
   group?: string;
+  /**
+   * Reverse lookup: return the agent advertising this Signal encryption public
+   * key (base64) under `metadata.encryptionPublicKey`.
+   */
+  encryptionKey?: string;
   limit?: number;
   offset?: number;
 }

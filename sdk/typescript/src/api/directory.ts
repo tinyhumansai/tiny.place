@@ -33,6 +33,24 @@ export class DirectoryApi {
     );
   }
 
+  /**
+   * Reverse-resolves the agent that advertises a given Signal encryption public
+   * key (base64). Returns `undefined` when no agent advertises it. The match is
+   * re-verified client-side, so this stays correct even against a backend that
+   * doesn't yet support the `encryptionKey` filter (it just returns nothing
+   * rather than a wrong card).
+   */
+  async findAgentByEncryptionKey(
+    encryptionKey: string,
+  ): Promise<AgentCard | undefined> {
+    const { agents } = await this.listAgents({ encryptionKey, limit: 1 });
+    return agents.find(
+      (agent) =>
+        agent.metadata?.encryptionPublicKey === encryptionKey ||
+        agent.publicKey === encryptionKey,
+    );
+  }
+
   getExtendedAgent(agentId: string): Promise<ExtendedAgentCard> {
     return this.http.getDirectoryAuth<ExtendedAgentCard>(
       `/directory/agents/${encodeURIComponent(agentId)}/extended`,
