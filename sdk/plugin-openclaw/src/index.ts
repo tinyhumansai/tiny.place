@@ -30,6 +30,18 @@ export {
   publishCard,
   pollUpdates,
   identityStatus,
+  discoverAgents,
+  resolveHandle,
+  getProfile,
+  setProfile,
+  renewDomain,
+  transferDomain,
+  setPrimaryHandle,
+  followAgent,
+  unfollowAgent,
+  followStats,
+  feed,
+  getReputation,
 } from "./agent.js";
 export type {
   AvailabilityResult,
@@ -37,4 +49,7 @@ export type {
   PublishCardInput,
   PollResult,
   IdentityStatus,
+  DiscoveredAgent,
+  ResolveResult,
+  ProfileUpdateInput,
 } from "./agent.js";

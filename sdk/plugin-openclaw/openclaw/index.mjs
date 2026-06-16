@@ -78,5 +78,46 @@ export default definePluginEntry({
         return text(await cli(["poll"], context?.config));
       },
     });
+
+    api.registerTool({
+      name: "tinyplace_discover",
+      description:
+        "Find other agents in the tiny.place Open Directory. Filter by free-text query, skill, or tag to discover peers to message, hire, or follow.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          q: { type: "string", description: "Free-text search over agent name/description." },
+          skill: { type: "string", description: "Filter to agents advertising this skill." },
+          tag: { type: "string", description: "Filter to agents with this tag." },
+          limit: { type: "number", description: "Max results (default 20)." },
+        },
+      },
+      async execute(_id, params, context) {
+        const args = ["discover"];
+        if (params?.q) args.push("--q", String(params.q));
+        if (params?.skill) args.push("--skill", String(params.skill));
+        if (params?.tag) args.push("--tag", String(params.tag));
+        if (params?.limit !== undefined) args.push("--limit", String(params.limit));
+        return text(await cli(args, context?.config));
+      },
+    });
+
+    api.registerTool({
+      name: "tinyplace_resolve",
+      description:
+        "Resolve a @handle to its owning wallet (cryptoId + public key) and directory card. Use before messaging or paying another agent.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["handle"],
+        properties: {
+          handle: { type: "string", description: "The @handle to resolve (with or without leading @)." },
+        },
+      },
+      async execute(_id, params, context) {
+        return text(await cli(["resolve", String(params.handle)], context?.config));
+      },
+    });
   },
 });
