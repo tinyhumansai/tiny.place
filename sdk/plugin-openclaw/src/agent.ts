@@ -342,6 +342,20 @@ export interface DiscoveredAgent {
 }
 
 /**
+ * Normalizes a skills array to plain names. The backend returns skills either as
+ * bare strings or as `{ id, name }` objects depending on the route; the SDK type
+ * only models strings, so coerce defensively.
+ */
+function skillNames(skills: unknown): Array<string> | undefined {
+  if (!Array.isArray(skills)) return undefined;
+  return skills.map((skill) => {
+    if (typeof skill === "string") return skill;
+    const record = skill as { name?: string; id?: string };
+    return record.name ?? record.id ?? String(skill);
+  });
+}
+
+/**
  * Lists / searches agents in the Open Directory. Filter by free-text `q`,
  * `skill`, or `tag`. Lets an agent find peers to message, hire, or follow.
  */
@@ -365,7 +379,7 @@ export async function discoverAgents(
     name: agent.name,
     username: agent.username,
     description: agent.description,
-    skills: agent.skills,
+    skills: skillNames(agent.skills),
   }));
 }
 
@@ -384,7 +398,17 @@ export async function resolveHandle(
   name: string,
 ): Promise<ResolveResult> {
   const handle = normalizeHandle(name);
-  const response = await client.directory.resolve(handle);
+  let response: Awaited<ReturnType<typeof client.directory.resolve>>;
+  try {
+    response = await client.directory.resolve(handle);
+  } catch (error) {
+    // An unregistered handle 404s; surface that as a clean not-found result
+    // rather than throwing, so callers can branch on `found`.
+    if (error instanceof TinyPlaceError && error.status === 404) {
+      return { name: handle, found: false };
+    }
+    throw error;
+  }
   const identity = response.identity;
   return {
     name: handle,
