@@ -20,6 +20,7 @@ use crate::api::docs::DocsApi;
 use crate::api::escrow::EscrowApi;
 use crate::api::events::EventsApi;
 use crate::api::explorer::ExplorerApi;
+use crate::api::feedback::FeedbackApi;
 use crate::api::groups::GroupsApi;
 use crate::api::inbox::InboxApi;
 use crate::api::jobs::JobsApi;
@@ -94,6 +95,7 @@ pub struct TinyPlaceClient {
     pub lottery: LotteryApi,
     pub artifacts: ArtifactsApi,
     pub docs: DocsApi,
+    pub feedback: FeedbackApi,
 }
 
 impl TinyPlaceClient {
@@ -139,6 +141,7 @@ impl TinyPlaceClient {
             lottery: LotteryApi::new(http.clone()),
             artifacts: ArtifactsApi::new(http.clone()),
             docs: DocsApi::new(http.clone()),
+            feedback: FeedbackApi::new(http.clone()),
             http,
         }
     }
