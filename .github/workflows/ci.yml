@@ -137,6 +137,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # This job executes repo code (cargo build/test); don't persist the
+          # token in git config.
+          persist-credentials: false
 
       - uses: dtolnay/rust-toolchain@stable
         with:
