@@ -60,8 +60,9 @@ describe("buildDelegatedTransferTx", () => {
 		const tx = Transaction.from(Buffer.from(wire, "base64"));
 		expect(tx.instructions).toHaveLength(3);
 		const approve = tx.instructions[0];
-		expect(approve.programId.toBase58()).toBe(SOLANA_TOKEN_PROGRAM_ID);
-		expect(approve.data[0]).toBe(TOKEN_APPROVE_CHECKED);
+		expect(approve).toBeDefined();
+		expect(approve?.programId.toBase58()).toBe(SOLANA_TOKEN_PROGRAM_ID);
+		expect(approve?.data[0]).toBe(TOKEN_APPROVE_CHECKED);
 		// Owner (payer) is the third required signer for the gasless approve.
 		expect(tx.signatures).toHaveLength(3);
 	});
