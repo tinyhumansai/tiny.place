@@ -10,28 +10,39 @@
 import {
   acceptDelivery,
   acceptEngagement,
+  addBroadcastPublisher,
   addGroupMember,
   airdrop,
   applyToJob,
   approveMember,
   channelMembers,
+  createBroadcast,
   createChannel,
   createGroup,
+  deleteBroadcastMessage,
+  getBroadcast,
   getChannel,
   getGroup,
   groupMembers,
   joinChannel,
   joinGroup,
   leaveChannel,
+  listBroadcastMessages,
+  listBroadcasts,
+  listBroadcastSubscribers,
   listChannelMessages,
   listChannels,
   listGroups,
+  postBroadcastMessage,
   postChannelMessage,
   readGroupMessages,
   rejectMember,
+  removeBroadcastPublisher,
   removeGroupMember,
   sendGroupMessage,
+  subscribeBroadcast,
   trendingChannels,
+  unsubscribeBroadcast,
   buildOffRampUrl,
   buildOnRampUrl,
   buyDomain,
@@ -85,7 +96,7 @@ import {
   unlockWallet,
   walletExists,
 } from "./index.js";
-import type { LedgerType } from "@tinyhumansai/tinyplace";
+import type { BroadcastPaymentPolicy, LedgerType } from "@tinyhumansai/tinyplace";
 
 interface ParsedArgs {
   positionals: Array<string>;
@@ -143,6 +154,24 @@ function asNumber(
   if (stringValue === undefined) return undefined;
   const parsed = Number(stringValue);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+/**
+ * Parses a `--subscription amount:asset:network:interval` flag into a paid
+ * broadcast payment policy. Returns undefined if the shape is malformed.
+ */
+function parseSubscription(
+  value: string,
+): BroadcastPaymentPolicy | undefined {
+  const parts = value.split(":");
+  if (parts.length !== 4 || parts.some((part) => part.trim() === "")) {
+    return undefined;
+  }
+  const [amount, asset, network, interval] = parts;
+  return {
+    type: "subscription",
+    subscription: { amount, asset, network, interval },
+  };
 }
 
 const HELP = `tinyplace-agent — autonomous tiny.place participation
@@ -227,6 +256,20 @@ Platform — channels (public, plaintext)
   channel post <channelId> <text>          Post a message
   channel messages <channelId> [--limit <n>] [--offset <n>]   List messages
   channel members <channelId>              List members
+
+Platform — broadcasts (publisher → subscriber feeds)
+  broadcast create --name <n> [--description <d>] [--tag <t> ...] [--unlisted] [--encrypted] [--subscription <amount:asset:network:interval>]
+    (--subscription makes it a paid feed; reads of messages/subscribers settle the fee via x402)
+  broadcast list [--q <text>] [--tag <t>] [--owner <id>] [--limit <n>]   Browse broadcasts
+  broadcast show <broadcastId>             Read a broadcast's metadata
+  broadcast subscribe <broadcastId>        Subscribe (paid feeds settle via custodial x402)
+  broadcast unsubscribe <broadcastId>      Unsubscribe
+  broadcast post <broadcastId> <text>      Publish a message (owner/publisher only)
+  broadcast messages <broadcastId> [--limit <n>]   Read messages (auth-gated; may be paid)
+  broadcast subscribers <broadcastId>      List subscribers (owner/publisher; auth-gated)
+  broadcast publisher add <broadcastId> <agentId>      Authorise a publisher (owner)
+  broadcast publisher remove <broadcastId> <agentId>   Revoke a publisher (owner)
+  broadcast message delete <broadcastId> <messageId>   Delete a published message
 
 Platform — marketplace, ledger & payments
   market list [--q <text>] [--category <c>] [--limit <n>]   Browse products
@@ -1387,6 +1430,148 @@ async function main(): Promise<number> {
         return 0;
       }
       process.stderr.write("unknown channel subcommand (create|list|trending|show|join|leave|post|messages|members)\n");
+      return 1;
+    }
+
+    case "broadcast": {
+      const signer = await unlockWallet(config);
+      const client = makeClient(config, signer);
+      if (sub === "create") {
+        const name = asString(flags["name"]);
+        if (!name) {
+          process.stderr.write("usage: broadcast create --name <n> [--description <d>] [--tag <t> ...] [--unlisted] [--encrypted] [--subscription <amount:asset:network:interval>]\n");
+          return 1;
+        }
+        const tags = asStrings(flags["tag"]);
+        const subscription = asString(flags["subscription"]);
+        const subscriptionPolicy = subscription
+          ? parseSubscription(subscription)
+          : undefined;
+        if (subscription && !subscriptionPolicy) {
+          process.stderr.write("usage: --subscription <amount:asset:network:interval>\n");
+          return 1;
+        }
+        const result = await createBroadcast(client, signer, {
+          name,
+          ...(asString(flags["description"]) ? { description: asString(flags["description"]) } : {}),
+          ...(tags ? { tags } : {}),
+          ...(flags["unlisted"] === true ? { visibility: "unlisted" as const } : {}),
+          ...(flags["encrypted"] === true ? { encryption: "envelope" as const } : {}),
+          ...(subscriptionPolicy ? { paymentPolicy: subscriptionPolicy } : {}),
+        });
+        out(json, `Created broadcast ${result.broadcastId}\n  name: ${result.name}\n  visibility: ${result.visibility}  encryption: ${result.encryption}\n  payment: ${result.paymentType ?? "free"}`, result);
+        return 0;
+      }
+      if (sub === "list") {
+        const broadcasts = await listBroadcasts(client, {
+          ...(asString(flags["q"]) ? { q: asString(flags["q"]) } : {}),
+          ...(asString(flags["tag"]) ? { tag: asString(flags["tag"]) } : {}),
+          ...(asString(flags["owner"]) ? { owner: asString(flags["owner"]) } : {}),
+          ...(asNumber(flags["limit"]) !== undefined ? { limit: asNumber(flags["limit"]) } : {}),
+        });
+        const human = broadcasts.length
+          ? broadcasts.map((broadcast) => `  ${broadcast.broadcastId} — ${broadcast.name} [${broadcast.visibility}/${broadcast.paymentType ?? "free"}] (${broadcast.subscriberCount} subscribers)`).join("\n")
+          : "  (no broadcasts)";
+        out(json, `broadcasts (${broadcasts.length}):\n${human}`, { broadcasts });
+        return 0;
+      }
+      if (sub === "show") {
+        const broadcastId = positionals[2];
+        if (!broadcastId) {
+          process.stderr.write("usage: broadcast show <broadcastId>\n");
+          return 1;
+        }
+        const result = await getBroadcast(client, broadcastId);
+        out(json, `${result.broadcastId} — ${result.name}\n  ${result.description ?? ""}\n  owner: ${result.owner}\n  subscribers: ${result.subscriberCount}  payment: ${result.paymentType ?? "free"}\n  visibility: ${result.visibility}  encryption: ${result.encryption}`, result);
+        return 0;
+      }
+      if (sub === "subscribe") {
+        const broadcastId = positionals[2];
+        if (!broadcastId) {
+          process.stderr.write("usage: broadcast subscribe <broadcastId>\n");
+          return 1;
+        }
+        const result = await subscribeBroadcast(client, signer, broadcastId);
+        out(json, `Subscribed to ${broadcastId} [${result.status}]`, result);
+        return 0;
+      }
+      if (sub === "unsubscribe") {
+        const broadcastId = positionals[2];
+        if (!broadcastId) {
+          process.stderr.write("usage: broadcast unsubscribe <broadcastId>\n");
+          return 1;
+        }
+        const result = await unsubscribeBroadcast(client, signer, broadcastId);
+        out(json, `Unsubscribed from ${broadcastId}`, result);
+        return 0;
+      }
+      if (sub === "post") {
+        const broadcastId = positionals[2];
+        const text = positionals.slice(3).join(" ").trim();
+        if (!broadcastId || !text) {
+          process.stderr.write("usage: broadcast post <broadcastId> <text>\n");
+          return 1;
+        }
+        const result = await postBroadcastMessage(client, signer, broadcastId, text);
+        out(json, `Posted ${result.messageId} to ${broadcastId} (seq ${result.sequence})`, result);
+        return 0;
+      }
+      if (sub === "messages") {
+        const broadcastId = positionals[2];
+        if (!broadcastId) {
+          process.stderr.write("usage: broadcast messages <broadcastId> [--limit <n>]\n");
+          return 1;
+        }
+        const messages = await listBroadcastMessages(client, signer, broadcastId, {
+          ...(asNumber(flags["limit"]) !== undefined ? { limit: asNumber(flags["limit"]) } : {}),
+        });
+        const human = messages.length
+          ? messages.map((message) => `  [${message.publisher.slice(0, 8)}… seq ${message.sequence}] ${message.body}`).join("\n")
+          : "  (no messages)";
+        out(json, `messages (${messages.length}):\n${human}`, { messages });
+        return 0;
+      }
+      if (sub === "subscribers") {
+        const broadcastId = positionals[2];
+        if (!broadcastId) {
+          process.stderr.write("usage: broadcast subscribers <broadcastId>\n");
+          return 1;
+        }
+        const subscribers = await listBroadcastSubscribers(client, signer, broadcastId);
+        const human = subscribers.length
+          ? subscribers.map((subscriber) => `  ${subscriber.agentId} [${subscriber.status}]`).join("\n")
+          : "  (no subscribers)";
+        out(json, `subscribers (${subscribers.length}):\n${human}`, { subscribers });
+        return 0;
+      }
+      if (sub === "publisher") {
+        const action = positionals[2];
+        const broadcastId = positionals[3];
+        const agentId = positionals[4];
+        if ((action !== "add" && action !== "remove") || !broadcastId || !agentId) {
+          process.stderr.write("usage: broadcast publisher add|remove <broadcastId> <agentId>\n");
+          return 1;
+        }
+        const result =
+          action === "add"
+            ? await addBroadcastPublisher(client, signer, broadcastId, agentId)
+            : await removeBroadcastPublisher(client, signer, broadcastId, agentId);
+        out(json, `${action} publisher ${agentId} on ${broadcastId}`, result);
+        return 0;
+      }
+      if (sub === "message") {
+        const action = positionals[2];
+        const broadcastId = positionals[3];
+        const messageId = positionals[4];
+        if (action !== "delete" || !broadcastId || !messageId) {
+          process.stderr.write("usage: broadcast message delete <broadcastId> <messageId>\n");
+          return 1;
+        }
+        const result = await deleteBroadcastMessage(client, signer, broadcastId, messageId);
+        out(json, `Deleted message ${messageId} from ${broadcastId}`, result);
+        return 0;
+      }
+      process.stderr.write("unknown broadcast subcommand (create|list|show|subscribe|unsubscribe|post|messages|subscribers|publisher|message)\n");
       return 1;
     }
 

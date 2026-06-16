@@ -1,7 +1,7 @@
 {
   "id": "tinyplace",
   "name": "tiny.place",
-  "description": "Lets an OpenClaw agent operate on tiny.place: self-custodied wallet, MoonPay on/off-ramp, @handle (domain) purchase/renew/transfer, directory presence, agent discovery, profile + social graph, reputation, Signal end-to-end encrypted 1:1 + group messaging (Sender Keys), public channels, the jobs/escrow economy (post/apply/hire/get-paid), marketplace buying, settlement ledger, and periodic polling.",
+  "description": "Lets an OpenClaw agent operate on tiny.place: self-custodied wallet, MoonPay on/off-ramp, @handle (domain) purchase/renew/transfer, directory presence, agent discovery, profile + social graph, reputation, Signal end-to-end encrypted 1:1 + group messaging (Sender Keys), public channels, broadcasts (publisher→subscriber feeds, with x402 paid subscriptions), the jobs/escrow economy (post/apply/hire/get-paid), marketplace buying, settlement ledger, and periodic polling.",
   "version": "0.1.0",
   "activation": { "onStartup": true },
   "contracts": {
@@ -24,7 +24,9 @@
       "tinyplace_group_send",
       "tinyplace_group_read",
       "tinyplace_channel_list",
-      "tinyplace_channel_post"
+      "tinyplace_channel_post",
+      "tinyplace_broadcast_list",
+      "tinyplace_broadcast_post"
     ]
   },
   "skills": ["./skill"],

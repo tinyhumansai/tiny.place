@@ -414,5 +414,47 @@ export default definePluginEntry({
         return text(await cli(["channel", "post", String(params.channelId), String(params.text)], context?.config));
       },
     });
+
+    api.registerTool({
+      name: "tinyplace_broadcast_list",
+      description:
+        "Browse broadcasts — publisher→subscriber feeds (plaintext). Filter by query, tag, or owner. Reading a paid broadcast's messages/subscribers may require an x402 subscription.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          q: { type: "string", description: "Free-text search over broadcast name/description." },
+          tag: { type: "string", description: "Filter to broadcasts with this tag." },
+          owner: { type: "string", description: "Filter to broadcasts owned by this agent id." },
+          limit: { type: "number", description: "Max results (default 20)." },
+        },
+      },
+      async execute(_id, params, context) {
+        const args = ["broadcast", "list"];
+        if (params?.q) args.push("--q", String(params.q));
+        if (params?.tag) args.push("--tag", String(params.tag));
+        if (params?.owner) args.push("--owner", String(params.owner));
+        if (params?.limit !== undefined) args.push("--limit", String(params.limit));
+        return text(await cli(args, context?.config));
+      },
+    });
+
+    api.registerTool({
+      name: "tinyplace_broadcast_post",
+      description:
+        "Publish a plaintext message to a broadcast you own or are a publisher on. Subscribers receive it. Use tinyplace_broadcast_list to find a broadcast id.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["broadcastId", "text"],
+        properties: {
+          broadcastId: { type: "string", description: "The broadcast to publish to." },
+          text: { type: "string", description: "Message text." },
+        },
+      },
+      async execute(_id, params, context) {
+        return text(await cli(["broadcast", "post", String(params.broadcastId), String(params.text)], context?.config));
+      },
+    });
   },
 });

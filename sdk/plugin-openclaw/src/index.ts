@@ -163,3 +163,24 @@ export type {
   ChannelMessagePostSummary,
   ChannelMessageSummary,
 } from "./channels.js";
+
+export {
+  listBroadcasts,
+  getBroadcast,
+  createBroadcast,
+  subscribeBroadcast,
+  unsubscribeBroadcast,
+  listBroadcastSubscribers,
+  listBroadcastMessages,
+  postBroadcastMessage,
+  addBroadcastPublisher,
+  removeBroadcastPublisher,
+  deleteBroadcastMessage,
+} from "./broadcasts.js";
+export type {
+  BroadcastSummary,
+  CreateBroadcastInput,
+  BroadcastSubscriberSummary,
+  BroadcastMessageSummary,
+  PostBroadcastMessageInput,
+} from "./broadcasts.js";
