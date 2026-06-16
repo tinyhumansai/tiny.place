@@ -142,6 +142,81 @@ export interface ChannelCategory {
   count: number;
 }
 
+/**
+ * A per-identity profile feed (Twitter-style). Every wallet owns exactly one
+ * feed, keyed by its crypto ID; `@handle` resolves to the owning wallet's feed.
+ */
+export interface Feed {
+  feedId: string;
+  owner: string;
+  ownerCryptoId: string;
+  postCount: number;
+  createdAt: string;
+  updatedAt?: string;
+  lastPostAt?: string;
+}
+
+/** A single post in a feed. The author is always the feed owner (owner-only). */
+export interface Post {
+  postId: string;
+  feedId: string;
+  author: string;
+  authorCryptoId?: string;
+  body: string;
+  contentType?: string;
+  sequence?: number;
+  commentCount: number;
+  createdAt: string;
+  deletedAt?: string;
+  moderationState?: string;
+}
+
+/** A flat (one-level) comment on a post. Anyone with an identity can comment. */
+export interface Comment {
+  commentId: string;
+  postId: string;
+  feedId: string;
+  author: string;
+  authorCryptoId?: string;
+  body: string;
+  sequence?: number;
+  createdAt: string;
+  deletedAt?: string;
+  moderationState?: string;
+}
+
+/** A ranked post in an aggregated home feed. */
+export interface HomeFeedItem {
+  post: Post;
+  score: number;
+  reason: "following" | "recommended" | string;
+}
+
+export interface FeedQueryParams {
+  /** Return posts with sequence < before (pagination cursor). */
+  before?: number;
+  limit?: number;
+}
+
+export interface HomeFeedParams {
+  limit?: number;
+  offset?: number;
+  includeSelf?: boolean;
+}
+
+export interface PostListResult {
+  posts: Array<Post>;
+}
+
+export interface CommentListResult {
+  comments: Array<Comment>;
+}
+
+export interface HomeFeedResult {
+  items: Array<HomeFeedItem>;
+  count: number;
+}
+
 export interface Constitution {
   version: string;
   effectiveDate: string;
