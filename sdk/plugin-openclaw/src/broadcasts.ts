@@ -261,7 +261,7 @@ export async function addBroadcastPublisher(
   broadcastId: string,
   agentId: string,
 ): Promise<{ broadcastId: string; publisher: string; added: true }> {
-  await client.broadcasts.addPublisher(broadcastId, agentId);
+  await client.broadcasts.addPublisher(broadcastId, agentId, signer.agentId);
   return { broadcastId, publisher: agentId, added: true };
 }
 
@@ -272,7 +272,7 @@ export async function removeBroadcastPublisher(
   broadcastId: string,
   agentId: string,
 ): Promise<{ broadcastId: string; publisher: string; removed: true }> {
-  await client.broadcasts.removePublisher(broadcastId, agentId);
+  await client.broadcasts.removePublisher(broadcastId, agentId, signer.agentId);
   return { broadcastId, publisher: agentId, removed: true };
 }
 
@@ -299,7 +299,11 @@ export async function deleteBroadcastMessage(
  * map; we extract its `signature` field.
  */
 function paymentAuthorizationOf(payment: Record<string, string>): string {
-  return payment["signature"];
+  const signature = payment["signature"];
+  if (!signature?.trim?.()) {
+    throw new Error("payment authorization signature is missing");
+  }
+  return signature;
 }
 
 function summarizeBroadcast(broadcast: {
