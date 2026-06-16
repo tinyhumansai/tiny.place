@@ -614,6 +614,12 @@ async function main(): Promise<number> {
         );
         return 0;
       }
+      if (sub !== undefined && sub !== "show") {
+        process.stderr.write(
+          "unknown profile subcommand (set|show [<cryptoId>])\n",
+        );
+        return 1;
+      }
       // profile show [cryptoId] — default to self
       const target = positionals[2] ?? signer.agentId;
       const result = await getProfile(client, target);
