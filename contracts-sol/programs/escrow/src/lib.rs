@@ -26,7 +26,7 @@ pub const VAULT_AUTHORITY_SEED: &[u8] = b"vault_authority";
 
 /// The escrow program is pure custody + accounting. It holds funds in per-vault
 /// token accounts, accepts x402 deposits, and releases funds **only** when the
-/// registered settlement program (settlement_job, settlement_game_poker, …)
+/// registered settlement program (for example, settlement_job)
 /// authorizes a `disburse` — specifying recipient, amount, and fee. It contains
 /// no job or game logic of its own.
 #[program]
@@ -35,7 +35,7 @@ pub mod escrow {
 
     /// Open a vault bound to a settlement program. The vault's disburse
     /// authority is fixed to that program's `vault_authority` PDA. Typically
-    /// invoked via CPI by the settlement program at job/game creation.
+    /// invoked via CPI by the settlement program at job creation.
     pub fn create_vault(
         ctx: Context<CreateVault>,
         vault_id: [u8; 32],
@@ -283,15 +283,15 @@ pub struct Vault {
     /// Caller-supplied 32-byte id; also the PDA seed. Lets a single deployed
     /// escrow program hold an unbounded, id-mapped set of independent vaults.
     pub vault_id: [u8; 32],
-    /// The settlement program (settlement_job / settlement_game_poker / …) that
+    /// The settlement program (for example, settlement_job) that
     /// is allowed to disburse this vault's funds.
     pub settlement_program: Pubkey,
-    /// The single job/game record (the settlement program's PDA) this vault is
+    /// The single job record (the settlement program's PDA) this vault is
     /// bound to. Set once at creation; the settlement program enforces that the
-    /// registering job/game's key equals this value, so a vault can only ever be
+    /// registering job's key equals this value, so a vault can only ever be
     /// claimed — and therefore disbursed — by one job/game. This is what makes
     /// the custody binding 1:1, preventing a third party from registering a
-    /// competing job/game against an already-funded vault to drain it.
+    /// competing job against an already-funded vault to drain it.
     pub owner: Pubkey,
     /// The exact signer required on `disburse`, fixed at creation to
     /// `PDA(["vault_authority"], settlement_program)`. Recomputing it here makes

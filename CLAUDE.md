@@ -25,7 +25,7 @@ pnpm workspace (`pnpm-workspace.yaml` covers `website` and `sdk/*`); contracts a
 | `sdk/typescript/` | `@tinyhumansai/tinyplace` | **Flagship** TS SDK — the only one with full Signal E2E crypto; published to npm; used by the website |
 | `sdk/python/` | `tinyplace` | Python async SDK (aiohttp). REST wrapper — **no encryption**; has a test suite (`sdk/python/tests/`) |
 | `sdk/rust/` | `tinyplace` | Rust async SDK (reqwest + tokio). **No encryption**; has a test suite (`sdk/rust/tests/`, wiremock-mocked) |
-| `contracts-sol/` | — | Anchor/Solana: custody `escrow` program + `settlement_job` and `settlement_game_poker` policy programs (CPI into escrow) |
+| `contracts-sol/` | — | Anchor/Solana: custody `escrow` program + `settlement_job` policy program (CPI into escrow) |
 | `gitbooks/` | — | ~30 markdown docs: the authoritative product + protocol spec |
 | `bobba_client/` | — | Empty placeholder |
 
@@ -125,11 +125,10 @@ Theme colors are centralized as CSS variables in `tailwind.css`:
 
 ## Contracts
 
-Three Solana programs (`contracts-sol/programs/`) splitting **custody** from **settlement policy**. All x402-compatible, SPL-token based. Job/game *logic* lives off-chain (the backend); the chain only holds funds and settles.
+Two Solana programs (`contracts-sol/programs/`) splitting **custody** from **settlement policy**. Both are x402-compatible and SPL-token based. Job logic lives off-chain (the backend); the chain only holds funds and settles job escrow. Poker is virtual-chip only and has no settlement contract.
 
-- **`escrow`** (custody only) — holds funds in per-vault token accounts and accepts x402 `deposit`s (per-payer nonce + expiry replay protection). It contains no job/game logic. A vault is bound at creation to one **settlement program**, and `disburse(amount, fee)` succeeds only when signed by that program's `vault_authority` PDA. The binding is trustless: escrow recomputes `PDA(["vault_authority"], settlement_program)`. Escrow signs the SPL transfer with its own vault PDA; the fee always goes to the vault's registered fee account.
+- **`escrow`** (custody only) — holds funds in per-vault token accounts and accepts x402 `deposit`s (per-payer nonce + expiry replay protection). It contains no job or game logic. A vault is bound at creation to one **settlement program**, and `disburse(amount, fee)` succeeds only when signed by that program's `vault_authority` PDA. The binding is trustless: escrow recomputes `PDA(["vault_authority"], settlement_program)`. Escrow signs the SPL transfer with its own vault PDA; the fee always goes to the vault's registered fee account.
 - **`settlement_job`** — job lifecycle `Open → Delivered → Resolved`, with `Disputed`/`Refunded` branches, plus a server **controller** key that decides disputed outcomes (`resolve(award_provider)`). `fund` wraps `escrow::deposit`; `approve`/`resolve`/`refund` CPI `escrow::disburse` (signing with its `vault_authority` PDA) to pay provider/client minus rake (no rake on refund).
-- **`settlement_game_poker`** — winner-take-all pooled pot. `join` wraps `escrow::deposit` and records a player entry; a designated server **settler** declares the winner via `settle` (must have an entry), releasing the pot minus rake; `cancel` + per-player `claim_refund` return stakes. Reads `escrow::Vault` for the pot balance.
 
 Settlement programs depend on the escrow crate's `cpi` feature, read `escrow::Vault` state, and drive all payouts through `escrow::disburse`.
 - **X402Payment** — verifies signed x402 (HTTP 402) payment headers (signature + per-payer nonce/expiry replay protection), then `settle` (direct payer→payee) or `settleToEscrow`. Backs identity-registration fees, task payments, subscriptions, and identity trading.
