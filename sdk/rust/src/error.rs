@@ -24,6 +24,11 @@ pub enum Error {
     /// Invalid input supplied by the caller.
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
+
+    /// A JSON-RPC endpoint (e.g. the Solana proxy) returned an error object or
+    /// an unexpected response shape.
+    #[error("rpc error: {0}")]
+    Rpc(String),
 }
 
 /// Details of a non-2xx HTTP response.

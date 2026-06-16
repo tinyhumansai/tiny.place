@@ -56,11 +56,11 @@ pub struct SolanaRpcError {
 #[serde(rename_all = "camelCase")]
 pub struct SolanaRpcResponse<T = serde_json::Value> {
     pub jsonrpc: String,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<SolanaRpcId>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<T>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<SolanaRpcError>,
 }
 

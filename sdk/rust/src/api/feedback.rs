@@ -47,11 +47,7 @@ impl FeedbackApi {
     }
 
     /// Vote on a feedback item, signed as `vote.voter`.
-    pub async fn vote(
-        &self,
-        feedback_id: &str,
-        vote: FeedbackVoteRequest,
-    ) -> Result<FeedbackItem> {
+    pub async fn vote(&self, feedback_id: &str, vote: FeedbackVoteRequest) -> Result<FeedbackItem> {
         let voter = vote.voter.clone();
         self.http
             .post_directory_auth_as(

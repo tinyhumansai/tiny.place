@@ -433,6 +433,18 @@ impl HttpClient {
         self.parse(response).await
     }
 
+    pub async fn post_agent_auth<T: DeserializeOwned, B: Serialize>(
+        &self,
+        path: &str,
+        body: Option<&B>,
+    ) -> Result<T> {
+        let body = Self::body_string(body)?;
+        let response = self
+            .execute(Method::POST, path, &[], body, Auth::Agent, None, &[])
+            .await?;
+        self.parse(response).await
+    }
+
     // --- PUT -------------------------------------------------------------------
 
     pub async fn put<T: DeserializeOwned, B: Serialize>(
