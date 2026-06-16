@@ -47,14 +47,19 @@ vi.mock("@src/common/api-client", () => ({
 vi.mock("@src/hooks/use-registry", () => ({
 	useHandleAvailability: (
 		name: string
-	): { data: { available: boolean; name: string } | undefined; isLoading: boolean } => ({
+	): {
+		data: { available: boolean; name: string } | undefined;
+		isLoading: boolean;
+	} => ({
 		data: name ? { available: true, name } : undefined,
 		isLoading: false,
 	}),
 }));
 
 vi.mock("@src/hooks/use-marketplace", () => ({
-	useOwnedIdentities: (): { data: { identities: Array<{ primary: boolean }> } } => ({
+	useOwnedIdentities: (): {
+		data: { identities: Array<{ primary: boolean }> };
+	} => ({
 		data: { identities: [] },
 	}),
 }));
@@ -74,7 +79,9 @@ function renderRegistration(): void {
 	);
 }
 
-function challenge(fields: Partial<X402AuthorizationFields> = {}): TinyPlaceError {
+function challenge(
+	fields: Partial<X402AuthorizationFields> = {}
+): TinyPlaceError {
 	return new TinyPlaceError(402, {
 		error: "x402 payment is required",
 		payment: {
@@ -155,7 +162,10 @@ describe("DomainRegistration x402 payment signing", () => {
 		);
 
 		renderRegistration();
-		await user.type(screen.getByPlaceholderText("Search for a name..."), "atlas");
+		await user.type(
+			screen.getByPlaceholderText("Search for a name..."),
+			"atlas"
+		);
 		await user.click(screen.getByRole("button", { name: "Check" }));
 		await user.click(
 			screen.getByRole("button", { name: "Authorize 0.005 USDC & Register" })

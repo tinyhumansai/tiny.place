@@ -23,9 +23,7 @@ function fakeSigner(): Signer {
 	} as Signer;
 }
 
-function approval(
-	overrides: Partial<SignerApproval> = {}
-): SignerApproval {
+function approval(overrides: Partial<SignerApproval> = {}): SignerApproval {
 	return {
 		signerKey: "session-key-active-123456",
 		grantor: "wallet-agent",
