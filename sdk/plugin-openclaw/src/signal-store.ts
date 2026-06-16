@@ -234,14 +234,6 @@ export class FileSessionStore implements SessionStore {
   hasSignedPreKey(): boolean {
     return this.state.activeSignedPreKeyId !== null;
   }
-
-  /** The numeric id to start the next batch of one-time pre-keys at. */
-  nextPreKeyStartId(): number {
-    const ids = Object.keys(this.state.preKeys)
-      .map((keyId) => Number.parseInt(keyId.replace(/^pk_/, ""), 10))
-      .filter((value) => Number.isFinite(value));
-    return ids.length ? Math.max(...ids) + 1 : 1;
-  }
 }
 
 /**

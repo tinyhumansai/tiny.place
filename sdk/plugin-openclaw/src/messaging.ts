@@ -23,12 +23,18 @@ import {
   type TinyPlaceClient,
 } from "@tinyhumansai/tinyplace";
 
-import { resolveHandle } from "./agent.js";
 import type { AgentConfig } from "./config.js";
 import { type FileSessionStore, loadSessionStore } from "./signal-store.js";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+
+/**
+ * Agent-card metadata key under which an agent advertises its Signal encryption
+ * public key. Mirrors the web app's `encryption-discovery.ts` so the CLI
+ * addresses messages to the same key the web app would.
+ */
+const ENCRYPTION_PUBLIC_KEY_METADATA = "encryptionPublicKey";
 
 function randomId(prefix: string): string {
   const bytes = new Uint8Array(8);
@@ -42,17 +48,30 @@ function isPublicKey(value: string): boolean {
   return !value.startsWith("@") && /^[A-Za-z0-9+/]{42,46}={0,2}$/.test(value);
 }
 
-/** Resolves a recipient (a @handle or a raw base64 public key) to its key. */
+/**
+ * Resolves a recipient (a @handle or a raw base64 public key) to the base64
+ * encryption public key to address messages + bundles to. Mirrors the web app's
+ * `resolveEncryptionAddress`: prefer the card's advertised encryption key, then
+ * the card's own public key (single-key agents, like this CLI), then the
+ * identity key. This is what lets the CLI message web-app users that run a
+ * distinct encryption identity.
+ */
 async function resolveRecipientKey(
   client: TinyPlaceClient,
   recipient: string,
 ): Promise<string> {
   if (isPublicKey(recipient)) return recipient;
-  const resolved = await resolveHandle(client, recipient);
-  if (!resolved.found || !resolved.publicKey) {
-    throw new Error(`could not resolve ${recipient} to a public key`);
+  const handle = recipient.startsWith("@") ? recipient : `@${recipient}`;
+  const resolved = await client.directory.resolve(handle);
+  const advertised = resolved.agent?.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA];
+  const address =
+    (typeof advertised === "string" && advertised.length > 0 ? advertised : undefined) ??
+    resolved.agent?.publicKey ??
+    resolved.identity?.publicKey;
+  if (!address) {
+    throw new Error(`could not resolve ${recipient} to an encryption public key`);
   }
-  return resolved.publicKey;
+  return address;
 }
 
 export interface PublishKeysResult {
@@ -78,8 +97,13 @@ export async function publishKeys(
   const myPub = signer.publicKeyBase64;
   const count = options.count ?? 10;
 
-  const signedPreKey = await generateSignedPreKey(signer, "spk_1");
-  const preKeys = await generatePreKeys(signer, store.nextPreKeyStartId(), count);
+  // Unique ids per publish (not a fixed spk_1 / start=1): re-publishing then ADDS
+  // fresh pre-keys instead of colliding with the relay's existing ids (409) and
+  // orphaning them. The local store keeps a private for whatever the relay
+  // advertises — exactly what X3DH on the sender side needs. Mirrors the web app.
+  const now = Date.now();
+  const signedPreKey = await generateSignedPreKey(signer, `spk_${now}`);
+  const preKeys = await generatePreKeys(signer, now, count);
 
   await store.storeSignedPreKey(signedPreKey);
   for (const preKey of preKeys) await store.storePreKey(preKey);
@@ -132,9 +156,9 @@ export async function sendMessage(
 
   // First message to this peer needs their bundle to bootstrap X3DH; once a
   // session exists the ratchet carries it, so the bundle is unnecessary.
-  const existing = await store.getSession(recipientPub);
+  const hasSession = await session.hasSession(recipientPub);
   let bundle;
-  if (!existing) {
+  if (!hasSession) {
     bundle = await client.keys.getBundle(recipientPub);
     if (!bundle?.signedPreKey?.publicKey) {
       throw new Error(
@@ -151,6 +175,11 @@ export async function sendMessage(
     bundle ? recipientEd25519 : undefined,
   );
 
+  // Persist the advanced ratchet BEFORE sending: if the send fails the recipient
+  // simply sees a skipped message number (tolerated by the ratchet), whereas a
+  // sent-but-unpersisted message would reuse a message key on the next send.
+  store.persist();
+
   const id = randomId("msg");
   await client.messages.send({
     id,
@@ -163,7 +192,6 @@ export async function sendMessage(
     ...(encrypted.signal ? { signal: encrypted.signal } : {}),
   });
 
-  store.persist();
   return { id, to: recipientPub, type: encrypted.type };
 }
 
@@ -197,30 +225,15 @@ export async function readMessages(
   const identity = await store.getIdentityX25519KeyPair();
   const session = new SignalSession(store, identity.publicKey);
 
+  // Sequential by design: the Double Ratchet advances per message, so decryption
+  // must happen in delivery order — these awaits cannot be parallelized.
   const results: Array<ReadMessage> = [];
   for (const envelope of messages ?? []) {
     const senderEd25519 = fromBase64(envelope.from);
     const senderX25519 = ed25519PubToX25519Pub(senderEd25519);
+    let plaintext: Uint8Array;
     try {
-      const plaintext = await session.decrypt(
-        envelope.from,
-        senderX25519,
-        envelope,
-      );
-      results.push({
-        id: envelope.id,
-        from: envelope.from,
-        timestamp: envelope.timestamp,
-        type: envelope.type,
-        text: decoder.decode(plaintext),
-      });
-      if (ack) {
-        try {
-          await client.messages.acknowledge(envelope.id, myPub);
-        } catch {
-          /* leave it; next run re-acks */
-        }
-      }
+      plaintext = await session.decrypt(envelope.from, senderX25519, envelope);
     } catch (error) {
       results.push({
         id: envelope.id,
@@ -229,10 +242,42 @@ export async function readMessages(
         type: envelope.type,
         error: error instanceof Error ? error.message : String(error),
       });
+      // An undecryptable envelope is unreadable regardless; ack it to drop it
+      // from the relay and avoid an unbounded re-fetch loop on every read.
+      // Trade-off (same as the web app): we discard a message we could never
+      // have read. Skipped when --no-ack so a human can inspect it.
+      if (ack) {
+        try {
+          await client.messages.acknowledge(envelope.id, myPub);
+        } catch {
+          /* best effort */
+        }
+      }
+      continue;
+    }
+
+    // Persist the advanced ratchet BEFORE acking: the ratchet has moved forward,
+    // so the state must be durable before the message is dropped from the relay
+    // — otherwise a crash between ack and persist would desync the ratchet.
+    store.persist();
+    results.push({
+      id: envelope.id,
+      from: envelope.from,
+      timestamp: envelope.timestamp,
+      type: envelope.type,
+      text: decoder.decode(plaintext),
+    });
+    // Acknowledge separately: the message is already decrypted + persisted, so an
+    // ack failure must not be reported as a decrypt failure.
+    if (ack) {
+      try {
+        await client.messages.acknowledge(envelope.id, myPub);
+      } catch {
+        /* leave it; next run re-acks */
+      }
     }
   }
 
-  store.persist();
   return results;
 }
 
