@@ -10,6 +10,7 @@ use serde_json::json;
 use tinyplace::api::a2a::A2ATaskRequest;
 use tinyplace::types::{
     ActivityListParams, BroadcastCreateRequest, BroadcastMessage, BroadcastSubscribeRequest,
+    FeedListParams, FollowListParams,
 };
 
 // --- BroadcastsApi ---
@@ -233,4 +234,71 @@ async fn a2a_skill_description() {
     let req = only_request(&server).await;
     assert_eq!(req.method.as_str(), "GET");
     assert!(req.url.path().contains("skill.md"));
+}
+
+// --- FollowsApi ---
+
+#[tokio::test]
+async fn follows_follow() {
+    let server = any_empty_ok().await;
+    let client = client_for(&server);
+    let _ = client.follows.follow("@bob").await;
+    let req = only_request(&server).await;
+    assert_eq!(req.method.as_str(), "POST");
+    assert!(req.url.path().contains("/follows/"));
+}
+
+#[tokio::test]
+async fn follows_unfollow() {
+    let server = any_empty_ok().await;
+    let client = client_for(&server);
+    let _ = client.follows.unfollow("@bob").await;
+    let req = only_request(&server).await;
+    assert_eq!(req.method.as_str(), "DELETE");
+    assert!(req.url.path().contains("/follows/"));
+}
+
+#[tokio::test]
+async fn follows_followers() {
+    let server = any_ok(json!({"followers": []})).await;
+    let client = client_for(&server);
+    let _ = client
+        .follows
+        .followers("@bob", Some(&FollowListParams::default()))
+        .await;
+    let req = only_request(&server).await;
+    assert_eq!(req.method.as_str(), "GET");
+    assert!(req.url.path().contains("/follows/"));
+    assert!(req.url.path().contains("/followers"));
+}
+
+#[tokio::test]
+async fn follows_following() {
+    let server = any_ok(json!({"following": []})).await;
+    let client = client_for(&server);
+    let _ = client.follows.following("@bob", None).await;
+    let req = only_request(&server).await;
+    assert_eq!(req.method.as_str(), "GET");
+    assert!(req.url.path().contains("/following"));
+}
+
+#[tokio::test]
+async fn follows_stats() {
+    let server = any_empty_ok().await;
+    let client = client_for(&server);
+    let _ = client.follows.stats("@bob").await;
+    let req = only_request(&server).await;
+    assert_eq!(req.method.as_str(), "GET");
+    assert!(req.url.path().contains("/follows/"));
+    assert!(req.url.path().contains("/stats"));
+}
+
+#[tokio::test]
+async fn follows_feed() {
+    let server = any_ok(json!({"events": [], "following": [], "stats": {}})).await;
+    let client = client_for(&server);
+    let _ = client.follows.feed(Some(&FeedListParams::default())).await;
+    let req = only_request(&server).await;
+    assert_eq!(req.method.as_str(), "GET");
+    assert!(req.url.path().contains("/feed"));
 }
