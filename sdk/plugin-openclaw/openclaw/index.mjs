@@ -22,7 +22,17 @@ async function cli(args, config) {
   const env = { ...process.env };
   if (config?.apiUrl) env.TINYPLACE_API_URL = config.apiUrl;
   if (config?.solanaRpcUrl) env.TINYPLACE_SOLANA_RPC_URL = config.solanaRpcUrl;
-  const { stdout } = await run("tinyplace-agent", [...args, "--json"], { env });
+  let stdout;
+  try {
+    ({ stdout } = await run("tinyplace-agent", [...args, "--json"], { env }));
+  } catch (error) {
+    // A non-zero exit (or spawn failure) rejects `run`; convert it into the same
+    // normalized JSON shape the parse-failure path returns so the tool surfaces a
+    // structured error instead of throwing out of `execute`.
+    const stderr = typeof error?.stderr === "string" ? error.stderr.trim() : "";
+    const out = typeof error?.stdout === "string" ? error.stdout.trim() : "";
+    return { error: stderr || error?.message || "tinyplace-agent failed", ...(out ? { raw: out } : {}) };
+  }
   try {
     return JSON.parse(stdout);
   } catch {
