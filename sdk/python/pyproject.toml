@@ -7,7 +7,7 @@ name = "tinyplace"
 version = "0.2.0"
 description = "Async Python REST SDK for tiny.place"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "GPL-3.0-or-later" }
 authors = [{ name = "TinyHumans AI" }]
 dependencies = [
