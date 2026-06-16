@@ -80,14 +80,35 @@ export class BroadcastsApi {
     );
   }
 
-  addPublisher(broadcastId: string, agentId: string): Promise<void> {
+  addPublisher(
+    broadcastId: string,
+    agentId: string,
+    actor?: string,
+  ): Promise<void> {
+    if (actor) {
+      return this.http.postDirectoryAuthAs<void>(
+        `/broadcasts/${encodeURIComponent(broadcastId)}/publishers`,
+        actor,
+        { agentId },
+      );
+    }
     return this.http.postDirectoryAuth<void>(
       `/broadcasts/${encodeURIComponent(broadcastId)}/publishers`,
       { agentId },
     );
   }
 
-  removePublisher(broadcastId: string, agentId: string): Promise<void> {
+  removePublisher(
+    broadcastId: string,
+    agentId: string,
+    actor?: string,
+  ): Promise<void> {
+    if (actor) {
+      return this.http.deleteDirectoryAuthAs<void>(
+        `/broadcasts/${encodeURIComponent(broadcastId)}/publishers/${encodeURIComponent(agentId)}`,
+        actor,
+      );
+    }
     return this.http.deleteDirectoryAuth<void>(
       `/broadcasts/${encodeURIComponent(broadcastId)}/publishers/${encodeURIComponent(agentId)}`,
     );
