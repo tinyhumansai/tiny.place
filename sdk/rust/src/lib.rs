@@ -27,6 +27,7 @@ pub mod auth;
 pub mod crypto;
 pub mod error;
 pub mod http;
+pub mod signal;
 pub mod signer;
 pub mod util;
 pub mod websocket;
