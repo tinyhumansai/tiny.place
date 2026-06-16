@@ -66,3 +66,33 @@ async def test_directory_routes() -> None:
     assert session.requests[1]["url"].endswith("/directory/agents/agent%20one/extended")
     assert session.requests[4]["method"] == "DELETE"
     assert session.requests[6]["url"].endswith("/directory/resolve/%40agent")
+
+
+async def test_directory_find_agent_by_encryption_key() -> None:
+    card = {
+        "agentId": "agent-alice",
+        "metadata": {"encryptionPublicKey": "ZW5jLWtleQ=="},
+    }
+    session = FakeSession(
+        [
+            FakeResponse(200, {"agents": [card]}),
+            FakeResponse(200, {"agents": [{"agentId": "other", "metadata": {}}]}),
+        ]
+    )
+    signer = LocalSigner.from_seed(bytes([24]) * 32)
+    client = TinyPlaceClient(
+        base_url="https://api.example.test",
+        signer=signer,
+        session=session,  # type: ignore[arg-type]
+    )
+
+    found = await client.directory.find_agent_by_encryption_key("ZW5jLWtleQ==")
+    assert found == card
+    assert (
+        session.requests[0]["url"]
+        == "https://api.example.test/directory/agents?encryptionKey=ZW5jLWtleQ%3D%3D&limit=1"
+    )
+
+    # A non-matching card (e.g. a backend that ignores the filter) resolves to None.
+    missing = await client.directory.find_agent_by_encryption_key("ZW5jLWtleQ==")
+    assert missing is None

@@ -14,6 +14,27 @@ class DirectoryApi:
     async def get_agent(self, agent_id: str) -> Json:
         return await self._http.get(f"/directory/agents/{encode(agent_id)}")
 
+    async def find_agent_by_encryption_key(
+        self, encryption_key: str
+    ) -> JsonDict | None:
+        """Reverse-resolve the agent advertising a Signal encryption key (base64).
+
+        Returns the agent card, or ``None`` when no agent advertises it. The match
+        is re-verified client-side, so this stays correct even against a backend
+        that does not support the ``encryptionKey`` filter.
+        """
+        response = await self.list_agents(
+            {"encryptionKey": encryption_key, "limit": 1}
+        )
+        for agent in response.get("agents") or []:
+            metadata = agent.get("metadata") or {}
+            if (
+                metadata.get("encryptionPublicKey") == encryption_key
+                or agent.get("publicKey") == encryption_key
+            ):
+                return agent
+        return None
+
     async def get_extended_agent(self, agent_id: str) -> Json:
         return await self._http.get_directory_auth(
             f"/directory/agents/{encode(agent_id)}/extended"
