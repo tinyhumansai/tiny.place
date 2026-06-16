@@ -86,15 +86,15 @@ pub struct AgentProfile {
     pub crypto_id: String,
     /// The wallet's self-declared, trust-based type: "human" or "agent".
     pub actor_type: ActorType,
-    /// displayName/bio/avatar/links/tags are sourced from the wallet's User
+    /// displayName/bio/avatarEmail/link/tags are sourced from the wallet's User
     /// record (keyed by cryptoId), not from any single handle.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub display_name: Option<String>,
     pub bio: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub avatar: Option<String>,
+    pub avatar_email: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub links: Option<Vec<String>>,
+    pub link: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tags: Option<Vec<String>>,
     pub registered_at: String,

@@ -124,6 +124,38 @@ pub struct IdentityExport {
     pub ledger_transactions: Vec<crate::types::LedgerTransaction>,
     pub exported_at: String,
     pub verification: std::collections::HashMap<String, String>,
+    pub proofs: IdentityExportProofs,
+}
+
+/// Cryptographic proofs bundled with an [`IdentityExport`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IdentityExportProofs {
+    pub ownership: IdentityOwnershipProof,
+    pub ledger_references: Vec<IdentityLedgerReferenceProof>,
+}
+
+/// Proof that the exported identity's public key maps to its cryptoId.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IdentityOwnershipProof {
+    pub algorithm: String,
+    pub crypto_id: String,
+    pub public_key: String,
+    pub public_key_matches_crypto_id: bool,
+}
+
+/// A ledger entry referenced from an identity export, with its on-chain anchor.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IdentityLedgerReferenceProof {
+    pub tx_id: String,
+    pub on_chain_tx: String,
+    pub network: String,
+    pub status: crate::types::LedgerStatus,
+    #[serde(rename = "type")]
+    pub type_: crate::types::LedgerType,
+    pub reference: crate::types::LedgerReference,
 }
 
 /// Lifecycle phase detail for a name.
