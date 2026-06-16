@@ -1107,26 +1107,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "settlement_game_lottery"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
- "anchor-spl",
- "escrow",
- "solana-security-txt",
-]
-
-[[package]]
-name = "settlement_game_poker"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
- "anchor-spl",
- "escrow",
- "solana-security-txt",
-]
-
-[[package]]
 name = "settlement_job"
 version = "0.1.0"
 dependencies = [
