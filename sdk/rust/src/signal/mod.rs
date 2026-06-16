@@ -5,3 +5,4 @@
 //! Built up in parts (see issue #18): this is part 1, the crypto primitives.
 
 pub mod crypto;
+pub mod keys;
