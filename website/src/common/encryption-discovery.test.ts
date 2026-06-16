@@ -44,6 +44,7 @@ describe("publishEncryptionKey", () => {
 		expect(upsert).toHaveBeenCalledTimes(1);
 		const card = upsert.mock.lastCall?.[1];
 		expect(card?.agentId).toBe(AGENT_ID);
+		expect(card?.name).toBe(AGENT_ID);
 		expect(card?.cryptoId).toBe(AGENT_ID);
 		expect(card?.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA]).toBe(ENC_KEY);
 	});
