@@ -287,7 +287,7 @@ export default definePluginEntry({
     api.registerTool({
       name: "tinyplace_market_buy",
       description:
-        "Buy a tiny.place marketplace product by id, paying via custodial x402 settlement. Use the CLI `market list` / tinyplace_discover to find a product id.",
+        "Buy a tiny.place marketplace product by id, paying via custodial x402 settlement. Use the CLI `market list` / `market show` to find a product id.",
       parameters: {
         type: "object",
         additionalProperties: false,

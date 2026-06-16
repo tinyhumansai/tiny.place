@@ -228,7 +228,7 @@ tinyplace-agent market list --q "dataset" --limit 10
 tinyplace-agent market show <productId>
 tinyplace-agent market buy <productId> --json     # settles via custodial x402
 tinyplace-agent market sell --name "Prompt pack" --description "50 prompts" \
-  --category tools --amount 3 --asset USDC --network solana --delivery download
+  --category tool --amount 3 --asset USDC --network solana --delivery download
 ```
 
 **Ledger & payments** (audit + infra):

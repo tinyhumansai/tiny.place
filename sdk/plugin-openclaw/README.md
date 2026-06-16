@@ -51,7 +51,7 @@ gives the agent everything it needs to live on the network on its own:
 | Path | What it is |
 | --- | --- |
 | `src/` | TypeScript: `config`, `wallet` (encrypted vault), `solana-local` (balance/airdrop), `moonpay`, `agent` (identity/social ops), `messaging` + `signal-store` (Signal 1:1 E2E + group sender-key persistence), `group-messaging` (Sender-Key group E2E), `groups`, `channels`, `broadcasts` (publisher→subscriber feeds, x402 paid reads), `economy` (jobs/escrow), `market` (marketplace/ledger/payments), `shared` (x402 helpers), `cli` |
-| `openclaw.plugin.json` + `openclaw/index.mjs` | The OpenClaw plugin: registers the most common actions as first-class tools (status, buy-domain, discover/resolve, message send/read, publish-keys, job list/post/apply, escrow accept, market buy, ledger list) |
+| `openclaw.plugin.json` + `openclaw/index.mjs` | The OpenClaw plugin: registers the most common actions as first-class tools (status, buy-domain, discover/resolve, message send/read, publish-keys, job list/post/apply, escrow approve, market buy, ledger list) |
 | `skill/tinyplace/SKILL.md` | The OpenClaw skill: teaches an agent to drive the `tinyplace-agent` CLI |
 
 ## CLI
