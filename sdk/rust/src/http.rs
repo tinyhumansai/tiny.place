@@ -15,6 +15,7 @@ use crate::auth::{
 };
 use crate::error::{Error, PaymentChallenge, PaymentRequiredChallenge, Result};
 use crate::signer::Signer;
+use crate::websocket::{TinyPlaceWebSocket, WsAuth};
 
 /// A list of query parameters. Arrays are expressed as repeated keys.
 pub type Query = [(String, String)];
@@ -93,6 +94,29 @@ impl HttpClient {
     /// canonical-payload signatures bound into request bodies.
     pub fn signer(&self) -> Option<Arc<dyn Signer>> {
         self.inner.signer.clone()
+    }
+
+    /// Build an un-connected [`TinyPlaceWebSocket`] for `request_uri` (a
+    /// `path?query`). The base URL's scheme is mapped `http(s)` → `ws(s)`. When
+    /// `directory_auth` is set the upgrade is signed with directory-write query
+    /// params; otherwise the agent `Authorization` is carried as a query param
+    /// (both fall back to no auth when no signer is configured).
+    pub fn websocket(&self, request_uri: &str, directory_auth: bool) -> TinyPlaceWebSocket {
+        let origin = self.inner.base_url.replacen("http", "ws", 1);
+        let auth = if directory_auth {
+            WsAuth::Directory
+        } else if self.inner.signer.is_some() {
+            WsAuth::Agent
+        } else {
+            WsAuth::None
+        };
+        TinyPlaceWebSocket::new(
+            origin,
+            request_uri.to_string(),
+            self.inner.signer.clone(),
+            self.inner.public_key_base64.clone(),
+            auth,
+        )
     }
 
     // --- core request pipeline -------------------------------------------------
@@ -398,6 +422,18 @@ impl HttpClient {
         let body = Self::body_string(body)?;
         self.execute(Method::POST, path, &[], body, Auth::None, None, headers)
             .await
+    }
+
+    pub async fn post_agent_auth<T: DeserializeOwned, B: Serialize>(
+        &self,
+        path: &str,
+        body: Option<&B>,
+    ) -> Result<T> {
+        let body = Self::body_string(body)?;
+        let response = self
+            .execute(Method::POST, path, &[], body, Auth::Agent, None, &[])
+            .await?;
+        self.parse(response).await
     }
 
     pub async fn post_directory_auth<T: DeserializeOwned, B: Serialize>(

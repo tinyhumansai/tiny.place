@@ -1,5 +1,4 @@
-//! Pricing. Mirrors `sdk/typescript/src/api/pricing.ts`
-//! (REST surface only; WebSocket `priceStream()` is NOT ported).
+//! Pricing. Mirrors `sdk/typescript/src/api/pricing.ts`.
 
 use serde::Deserialize;
 

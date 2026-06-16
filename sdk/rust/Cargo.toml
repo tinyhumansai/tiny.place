@@ -22,6 +22,8 @@ rand = "0.8"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 thiserror = "2"
 async-trait = "0.1"
+tokio-tungstenite = { version = "0.24", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }

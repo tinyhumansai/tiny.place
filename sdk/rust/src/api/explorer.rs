@@ -75,4 +75,9 @@ impl ExplorerApi {
         let path = format!("/explorer/agents/{}", encode(agent_id));
         self.http.get(&path, &[]).await
     }
+
+    /// Open the public explorer live feed over WebSocket.
+    pub fn live(&self) -> crate::websocket::TinyPlaceWebSocket {
+        self.http.websocket("/explorer/live", false)
+    }
 }

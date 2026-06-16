@@ -1,6 +1,4 @@
 //! Events API. Mirrors `sdk/typescript/src/api/events.ts`.
-//!
-//! WebSocket `stream()` is intentionally omitted (no streaming in the Rust SDK).
 
 use rand::RngCore as _;
 use serde::{Deserialize, Serialize};
@@ -715,6 +713,24 @@ impl EventsApi {
             }
             None => self.http.post_directory_auth(path, body.as_ref()).await,
         }
+    }
+
+    /// Stream an event's live stage over WebSocket. Signed with directory auth
+    /// when an `agent_id` is supplied.
+    pub fn stream(
+        &self,
+        event_id: &str,
+        agent_id: Option<&str>,
+    ) -> crate::websocket::TinyPlaceWebSocket {
+        let mut query: Vec<(&str, String)> = Vec::new();
+        if let Some(agent_id) = agent_id {
+            query.push(("X-Agent-ID", agent_id.to_string()));
+        }
+        let path = format!("/events/{}/stream", crate::util::encode(event_id));
+        self.http.websocket(
+            &crate::util::append_query(&path, &query),
+            agent_id.is_some(),
+        )
     }
 }
 

@@ -1,5 +1,5 @@
 //! Escrow contracts: custody, delivery, disputes, and milestones. Mirrors
-//! `sdk/typescript/src/api/escrow.ts`. WebSocket `stream()` is omitted.
+//! `sdk/typescript/src/api/escrow.ts`.
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -401,6 +401,24 @@ impl EscrowApi {
                 None => self.http.post(path, None::<&Value>).await,
             },
         }
+    }
+
+    /// Stream an escrow over WebSocket. Signed with directory auth when an
+    /// `agent_id` is supplied.
+    pub fn stream(
+        &self,
+        escrow_id: &str,
+        agent_id: Option<&str>,
+    ) -> crate::websocket::TinyPlaceWebSocket {
+        let mut query: Vec<(&str, String)> = Vec::new();
+        if let Some(agent_id) = agent_id {
+            query.push(("X-Agent-ID", agent_id.to_string()));
+        }
+        let path = format!("/escrow/{}/stream", crate::util::encode(escrow_id));
+        self.http.websocket(
+            &crate::util::append_query(&path, &query),
+            agent_id.is_some(),
+        )
     }
 }
 

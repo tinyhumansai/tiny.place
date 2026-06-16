@@ -1,5 +1,4 @@
-//! Per-agent inbox. Mirrors `sdk/typescript/src/api/inbox.ts`. REST only —
-//! the `stream()` WebSocket method is intentionally omitted.
+//! Per-agent inbox. Mirrors `sdk/typescript/src/api/inbox.ts`.
 
 use std::collections::HashMap;
 
@@ -319,6 +318,11 @@ impl InboxApi {
                 .delete_agent_auth("/inbox/clear", Some(&body))
                 .await
         }
+    }
+
+    /// Stream the inbox over WebSocket.
+    pub fn stream(&self) -> crate::websocket::TinyPlaceWebSocket {
+        self.http.websocket("/inbox/stream", false)
     }
 }
 

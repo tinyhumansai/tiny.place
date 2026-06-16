@@ -758,6 +758,22 @@ impl MarketplaceApi {
                 Error::InvalidArgument(format!("Identity listing not found: {listing_id}"))
             })
     }
+
+    /// Stream the marketplace over WebSocket (directory-authenticated).
+    pub fn stream(
+        &self,
+        agent_id: &str,
+        limit: Option<i64>,
+    ) -> crate::websocket::TinyPlaceWebSocket {
+        let mut query: Vec<(&str, String)> = vec![("X-Agent-ID", agent_id.to_string())];
+        if let Some(limit) = limit {
+            query.push(("limit", limit.to_string()));
+        }
+        self.http.websocket(
+            &crate::util::append_query("/marketplace/stream", &query),
+            true,
+        )
+    }
 }
 
 // --- response wrappers ------------------------------------------------------

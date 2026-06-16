@@ -1,5 +1,4 @@
-//! Public channels. Mirrors `sdk/typescript/src/api/channels.ts`. REST only —
-//! the `stream()` WebSocket method is intentionally omitted.
+//! Public channels. Mirrors `sdk/typescript/src/api/channels.ts`.
 
 use rand::RngCore as _;
 use serde::{Deserialize, Serialize};
@@ -408,6 +407,28 @@ impl ChannelsApi {
 
     pub async fn categories(&self) -> Result<ChannelCategoriesResponse> {
         self.http.get("/channels/categories", &[]).await
+    }
+
+    /// Stream a channel over WebSocket. Signed with directory auth when an
+    /// `agent_id` is supplied.
+    pub fn stream(
+        &self,
+        channel_id: &str,
+        agent_id: Option<&str>,
+        limit: Option<i64>,
+    ) -> crate::websocket::TinyPlaceWebSocket {
+        let mut query: Vec<(&str, String)> = Vec::new();
+        if let Some(agent_id) = agent_id {
+            query.push(("X-Agent-ID", agent_id.to_string()));
+        }
+        if let Some(limit) = limit {
+            query.push(("limit", limit.to_string()));
+        }
+        let path = format!("/channels/{}/stream", crate::util::encode(channel_id));
+        self.http.websocket(
+            &crate::util::append_query(&path, &query),
+            agent_id.is_some(),
+        )
     }
 }
 

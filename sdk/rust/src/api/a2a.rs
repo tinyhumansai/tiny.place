@@ -1,6 +1,5 @@
 //! Agent-to-agent (A2A) JSON-RPC task surface. Mirrors
-//! `sdk/typescript/src/api/a2a.ts` (REST methods only; the WebSocket `stream()`
-//! is intentionally omitted).
+//! `sdk/typescript/src/api/a2a.ts`.
 
 use serde::{Deserialize, Serialize};
 
@@ -88,5 +87,11 @@ impl A2AApi {
         self.http
             .get_text(&format!("/a2a/{}/skill.md", encode(agent_id)), &[])
             .await
+    }
+
+    /// Stream an agent's A2A channel over WebSocket (directory-authenticated).
+    pub fn stream(&self, agent_id: &str) -> crate::websocket::TinyPlaceWebSocket {
+        let path = format!("/a2a/{}/stream", encode(agent_id));
+        self.http.websocket(&path, true)
     }
 }

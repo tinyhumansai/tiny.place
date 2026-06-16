@@ -1,6 +1,5 @@
 //! Broadcast channels — one-to-many publisher feeds. Mirrors
-//! `sdk/typescript/src/api/broadcasts.ts` (REST methods only; the WebSocket
-//! `stream()` is intentionally omitted).
+//! `sdk/typescript/src/api/broadcasts.ts`.
 
 use rand::RngCore as _;
 use serde::Deserialize;
@@ -275,6 +274,32 @@ impl BroadcastsApi {
         self.http
             .delete_directory_auth(&path, None::<&serde_json::Value>)
             .await
+    }
+
+    /// Stream a broadcast over WebSocket. Signed with directory auth when an
+    /// `agent_id` is supplied.
+    pub fn stream(
+        &self,
+        broadcast_id: &str,
+        agent_id: Option<&str>,
+        limit: Option<i64>,
+        payment_authorization: Option<&str>,
+    ) -> crate::websocket::TinyPlaceWebSocket {
+        let mut query: Vec<(&str, String)> = Vec::new();
+        if let Some(agent_id) = agent_id {
+            query.push(("X-Agent-ID", agent_id.to_string()));
+        }
+        if let Some(limit) = limit {
+            query.push(("limit", limit.to_string()));
+        }
+        if let Some(payment_authorization) = payment_authorization {
+            query.push(("paymentAuthorization", payment_authorization.to_string()));
+        }
+        let path = format!("/broadcasts/{}/stream", crate::util::encode(broadcast_id));
+        self.http.websocket(
+            &crate::util::append_query(&path, &query),
+            agent_id.is_some(),
+        )
     }
 }
 

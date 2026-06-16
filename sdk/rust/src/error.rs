@@ -24,6 +24,10 @@ pub enum Error {
     /// Invalid input supplied by the caller.
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
+
+    /// A WebSocket connection or protocol error.
+    #[error("websocket error: {0}")]
+    WebSocket(String),
 }
 
 /// Details of a non-2xx HTTP response.

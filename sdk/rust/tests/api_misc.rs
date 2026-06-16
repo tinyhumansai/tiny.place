@@ -16,11 +16,12 @@ use tinyplace::api::moderation::{
 };
 use tinyplace::types::{
     ArtifactCreateRequest, ArtifactQueryParams, ArtifactRecipientUpdate, AttestationCreate,
-    FeeConfig, FeeResolveParams, GameActionRequest, GameEmergencyWithdrawalRequest,
-    GameJoinRequest, GameLeaveRequest, GameOperatorRequest, GameRoom, GameRoomQueryParams,
-    GameSettleRequest, LeaderboardQueryParams, LotteryBuyRequest, LotteryDrawRequest,
-    LotteryRoundQueryParams, ModerationAction, ModerationReportCreate, ReputationReviewCreate,
-    ReputationVouchCreate, TrustGraphQueryParams,
+    FeeConfig, FeeResolveParams, FeedbackCreate, FeedbackListParams, FeedbackStatusUpdate,
+    FeedbackVoteRequest, GameActionRequest, GameEmergencyWithdrawalRequest, GameJoinRequest,
+    GameLeaveRequest, GameOperatorRequest, GameRoom, GameRoomQueryParams, GameSettleRequest,
+    LeaderboardQueryParams, LotteryBuyRequest, LotteryDrawRequest, LotteryRoundQueryParams,
+    ModerationAction, ModerationReportCreate, ReputationReviewCreate, ReputationVouchCreate,
+    TrustGraphQueryParams,
 };
 
 // --- RoomsApi ---
@@ -1021,4 +1022,89 @@ async fn artifacts_update_recipients() {
     let req = only_request(&server).await;
     assert_eq!(req.method.as_str(), "PUT");
     assert!(req.url.path().contains("/artifacts/art1/recipients"));
+}
+
+// --- FeedbackApi ---
+
+#[tokio::test]
+async fn feedback_list() {
+    let server = any_ok(json!({"feedback": []})).await;
+    let client = client_for(&server);
+    let _ = client
+        .feedback
+        .list(Some(&FeedbackListParams::default()))
+        .await;
+    let req = only_request(&server).await;
+    assert_eq!(req.method.as_str(), "GET");
+    assert!(req.url.path().contains("/feedback"));
+}
+
+#[tokio::test]
+async fn feedback_list_admin() {
+    let server = any_ok(json!({"feedback": []})).await;
+    let client = client_for(&server);
+    let _ = client.feedback.list_admin(None).await;
+    let req = only_request(&server).await;
+    assert_eq!(req.method.as_str(), "GET");
+    assert!(req.url.path().contains("/feedback"));
+}
+
+#[tokio::test]
+async fn feedback_get() {
+    let server = any_empty_ok().await;
+    let client = client_for(&server);
+    let _ = client.feedback.get("fb1").await;
+    let req = only_request(&server).await;
+    assert_eq!(req.method.as_str(), "GET");
+    assert!(req.url.path().contains("/feedback/fb1"));
+}
+
+#[tokio::test]
+async fn feedback_create() {
+    let server = any_empty_ok().await;
+    let client = client_for(&server);
+    let _ = client
+        .feedback
+        .create(FeedbackCreate {
+            author: "@alice".into(),
+            title: "Bug".into(),
+            description: "Something broke".into(),
+            ..Default::default()
+        })
+        .await;
+    let req = only_request(&server).await;
+    assert_eq!(req.method.as_str(), "POST");
+    assert!(req.url.path().contains("/feedback"));
+}
+
+#[tokio::test]
+async fn feedback_vote() {
+    let server = any_empty_ok().await;
+    let client = client_for(&server);
+    let _ = client
+        .feedback
+        .vote(
+            "fb1",
+            FeedbackVoteRequest {
+                voter: "@alice".into(),
+                ..Default::default()
+            },
+        )
+        .await;
+    let req = only_request(&server).await;
+    assert_eq!(req.method.as_str(), "POST");
+    assert!(req.url.path().contains("/feedback/fb1/vote"));
+}
+
+#[tokio::test]
+async fn feedback_update_status() {
+    let server = any_empty_ok().await;
+    let client = client_for(&server);
+    let _ = client
+        .feedback
+        .update_status("fb1", FeedbackStatusUpdate::default())
+        .await;
+    let req = only_request(&server).await;
+    assert_eq!(req.method.as_str(), "PUT");
+    assert!(req.url.path().contains("/feedback/fb1/status"));
 }

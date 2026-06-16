@@ -22,3 +22,17 @@ pub fn encode(value: &str) -> String {
     }
     out
 }
+
+/// Append query parameters to a path as `path?k1=v1&k2=v2`, with each key and
+/// value `encodeURIComponent`-encoded. Returns just `path` when `params` is empty.
+pub fn append_query(path: &str, params: &[(&str, String)]) -> String {
+    if params.is_empty() {
+        return path.to_string();
+    }
+    let query = params
+        .iter()
+        .map(|(key, value)| format!("{}={}", encode(key), encode(value)))
+        .collect::<Vec<_>>()
+        .join("&");
+    format!("{path}?{query}")
+}
