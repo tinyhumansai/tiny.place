@@ -19,6 +19,7 @@ import {
 } from "@src/common/signal-messaging";
 import { useSignalIdentity } from "@src/hooks/use-signal-identity";
 import { addressLabel, useAddressBookStore } from "@src/store/address-book";
+import { useAuthStore } from "@src/store/auth";
 import {
 	useConversationsStore,
 	type ConversationPeer,
@@ -34,8 +35,13 @@ type UseDirectMessagesResult = {
 	isReady: boolean;
 	isEnabling: boolean;
 	error: string | undefined;
-	/** The user's own encryption address (public key) to share with peers. */
+	/** The user's own encryption address (public key) — the raw routing key. */
 	address: string | undefined;
+	/**
+	 * The user's wallet address (agent id) — the human-shareable identifier peers
+	 * use to start a DM. Resolves to {@link address} via the directory.
+	 */
+	walletAddress: string | undefined;
 	enable: () => Promise<void>;
 	peers: Array<ConversationPeer>;
 	threads: Record<string, Array<DirectMessageEntry>>;
@@ -61,6 +67,7 @@ export function useDirectMessages(): UseDirectMessagesResult {
 		enable: enableIdentity,
 	} = useSignalIdentity();
 	const identity = useSignalStore((state) => state.identity);
+	const walletAddress = useAuthStore((state) => state.agentId);
 	const encryptionClient = useMessagingStore((state) => state.encryptionClient);
 	const session = useMessagingStore((state) => state.session);
 
@@ -215,6 +222,7 @@ export function useDirectMessages(): UseDirectMessagesResult {
 		isEnabling: status === "loading",
 		error,
 		address: identity?.signer.publicKeyBase64,
+		walletAddress,
 		enable,
 		peers: resolvedPeers,
 		threads,

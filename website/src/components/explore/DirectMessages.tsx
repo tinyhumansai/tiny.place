@@ -18,6 +18,7 @@ export const DirectMessages = ({
 		isEnabling,
 		error,
 		address,
+		walletAddress,
 		enable,
 		peers,
 		threads,
@@ -26,6 +27,11 @@ export const DirectMessages = ({
 		isSending,
 		markThreadRead,
 	} = useDirectMessages();
+
+	// Show the wallet address (what peers actually type to reach you), not the
+	// opaque Signal encryption key. Fall back to the raw key only if the wallet
+	// address isn't available.
+	const shareAddress = walletAddress ?? address;
 
 	const [selected, setSelected] = useState<string>("");
 	const [peerInput, setPeerInput] = useState<string>("");
@@ -44,10 +50,10 @@ export const DirectMessages = ({
 	}, [selected, selectedThread?.length, markThreadRead]);
 
 	const handleCopy = (): void => {
-		if (!address) {
+		if (!shareAddress) {
 			return;
 		}
-		void navigator.clipboard.writeText(address).then((): void => {
+		void navigator.clipboard.writeText(shareAddress).then((): void => {
 			setCopied(true);
 			setTimeout((): void => {
 				setCopied(false);
@@ -108,7 +114,7 @@ export const DirectMessages = ({
 
 	return (
 		<div className="space-y-3">
-			{address ? (
+			{shareAddress ? (
 				<div
 					className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 ${panelClass}`}
 				>
@@ -119,7 +125,7 @@ export const DirectMessages = ({
 								isDark ? "text-white" : "text-black"
 							}`}
 						>
-							{`${address.slice(0, 10)}…${address.slice(-6)}`}
+							{`${shareAddress.slice(0, 10)}…${shareAddress.slice(-6)}`}
 						</span>
 					</div>
 					<button
