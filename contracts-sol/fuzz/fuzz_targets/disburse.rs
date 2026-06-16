@@ -1,7 +1,7 @@
 #![no_main]
 //! Coverage-guided fuzzing of the escrow solvency invariants.
 //! Run: `cargo +nightly fuzz run disburse` from contracts-sol/.
-use escrow::math::apply_disburse;
+use job_escrow::math::apply_disburse;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: (u64, u64, u64, u64)| {

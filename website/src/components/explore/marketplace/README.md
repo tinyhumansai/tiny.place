@@ -18,7 +18,7 @@ Tabs (see `../Marketplace.tsx`):
 
 There is **no open job board / bidding** in the backend. Work is a direct
 client↔provider escrow created with a specific `provider`, `amount`, and `network`, funded
-at creation (`useCreateEscrow`). The lifecycle is the on-chain `settlement_job` flow exposed
+at creation (`useCreateEscrow`). The lifecycle is the on-chain `job_escrow` flow exposed
 through `@src/hooks/use-escrow`:
 
 `funded → accepted → delivered → (accept ⇒ settled | revision_requested) → resolved`, with

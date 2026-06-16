@@ -9,8 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-escrow = { path = "../programs/escrow" }
-settlement_job = { path = "../programs/settlement_job" }
+job_escrow = { path = "../programs/job_escrow" }
 
 [[bin]]
 name = "disburse"

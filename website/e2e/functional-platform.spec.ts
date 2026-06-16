@@ -10,9 +10,6 @@ const API_URL = process.env.API_URL ?? "http://localhost:8080";
 const SOLANA_URL = process.env.SOLANA_URL ?? "http://localhost:8899";
 const PROGRAM_IDS = [
 	"6s1cWEMcWjWZ3ut6aDD5g4CFBxpKBz5S4DLkrZdy5jR2",
-	"7vXRCMe8jBcHT3zrgnW5mXLxBpWWKsBpn5XCCCnQpot8",
-	"Ah7UYiQHzQ3T8D5PZpfbYttSras4t5dQyxevuEL1rHaY",
-	"MfwLo55Nkv3SCQ2uFuoWXmAe7zJR6t3rMdm9K8Lr5Me",
 ];
 
 type JSONRecord = Record<string, unknown>;

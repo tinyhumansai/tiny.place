@@ -20,13 +20,13 @@ const TOKEN_APPROVE_CHECKED_INSTRUCTION = 13;
 const ATA_CREATE_IDEMPOTENT_INSTRUCTION = 1;
 const USDC_DECIMALS = 6;
 
-// The escrow program and its `deposit_for` Anchor discriminator
-// (sha256("global:deposit_for")[:8]).
+// The job escrow program and its `fund_for` Anchor discriminator
+// (sha256("global:fund_for")[:8]).
 const ESCROW_PROGRAM_ID = "6s1cWEMcWjWZ3ut6aDD5g4CFBxpKBz5S4DLkrZdy5jR2";
 const DEPOSIT_FOR_DISCRIMINATOR = new Uint8Array([
-	193, 39, 228, 88, 160, 254, 92, 53,
+	196, 156, 220, 121, 121, 102, 167, 30,
 ]);
-// Byte offsets into the escrow Vault account (8-byte discriminator + fields).
+// Byte offsets into the job escrow Job account (8-byte discriminator + fields).
 const VAULT_MINT_OFFSET = 136;
 const VAULT_TOKEN_ACCOUNT_OFFSET = 168;
 // Byte offset of last_nonce in the NonceTracker account (disc + owner[32]).
@@ -252,9 +252,9 @@ function nonceTrackerAddress(payer: string): PublicKey {
 }
 
 /**
- * Reads the payer's escrow nonce tracker and returns the next monotonic nonce
+ * Reads the payer's job escrow nonce tracker and returns the next monotonic nonce
  * (last + 1), or 1 when the tracker does not exist yet (it must be initialized
- * once via the escrow `init_nonce` instruction before the first deposit).
+ * once via the job escrow `init_nonce` instruction before the first deposit).
  */
 export async function readEscrowNextNonce(
 	rpcUrl: string,
@@ -270,9 +270,9 @@ export async function readEscrowNextNonce(
 }
 
 /**
- * Builds and session-signs a delegated escrow deposit (`deposit_for`): the
- * session delegate authorizes moving the payer's funds into the named vault,
- * with the facilitator as fee payer (slot left empty). The vault's pinned token
+ * Builds and session-signs a delegated job escrow deposit (`fund_for`): the
+ * session delegate authorizes moving the payer's funds into the named job escrow,
+ * with the facilitator as fee payer (slot left empty). The job's pinned token
  * account and mint are read on-chain so they match what the backend validates.
  * Returns the base64 wire transaction for `POST /payments/settle`.
  */
@@ -293,7 +293,7 @@ export async function buildDelegatedDepositTx(options: {
 		new PublicKey(options.vault)
 	);
 	if (!vaultInfo) {
-		throw new Error(`escrow vault not found: ${options.vault}`);
+		throw new Error(`job escrow not found: ${options.vault}`);
 	}
 	const mint = new PublicKey(
 		vaultInfo.data.subarray(VAULT_MINT_OFFSET, VAULT_MINT_OFFSET + 32)

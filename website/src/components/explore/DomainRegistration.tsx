@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
 	identityPublicKey,
@@ -16,6 +16,7 @@ import {
 } from "@src/components/explore/domain-pricing";
 import { sanitizeHandle } from "@src/components/explore/identity-management";
 import { createClient } from "@src/common/api-client";
+import { queryKeys } from "@src/common/query-keys";
 import { assertValidX402Challenge } from "@src/common/x402-challenge";
 import { signX402ChallengePaymentMap } from "@src/common/auth-payment";
 import { useHandleAvailability } from "@src/hooks/use-registry";
@@ -71,6 +72,7 @@ export const DomainRegistration = ({
 	const agentId = useAuthStore((state) => state.agentId);
 	const client = useMemo(() => createClient(signer), [signer]);
 	const confirmX402 = useOptionalX402Confirm();
+	const queryClient = useQueryClient();
 
 	const [searchInput, setSearchInput] = useState("");
 	const [selectedName, setSelectedName] = useState<string | null>(null);
@@ -133,43 +135,59 @@ export const DomainRegistration = ({
 						publicKey: signer.publicKeyBase64,
 						purpose: challengePayment.metadata?.["purpose"] ?? "registration",
 					};
-					const signRegistrationPayment = async (): Promise<
-						Record<string, string>
-					> => {
-						return signX402ChallengePaymentMap({
+					// Sign the x402 authorization, then settle + register. register()
+					// resolves only after the backend confirms the settlement on-chain
+					// (it waits for finalization), so running this inside the confirm
+					// dialog keeps it in "Confirming…" until the payment is actually
+					// settled — not merely signed — and surfaces a settlement failure
+					// as a dialog error the user can retry.
+					const signAndRegister = async (): Promise<unknown> => {
+						const payment = await signX402ChallengePaymentMap({
 							fallbackFrom: agentId,
 							metadata,
 							noncePrefix: "reg",
 							payment: challengePayment,
 							signer,
 						});
+						return client.registry.register({ ...request, payment });
 					};
-					const payment = confirmX402
-						? ((await confirmX402(
+					return confirmX402
+						? confirmX402(
 								{
 									title: "Register identity",
 									subject: selectedName,
 									amount: challengePayment.amount,
 									asset: challengePayment.asset,
 									recipient: challengePayment.to,
-									note: "Confirm to sign the x402 authorization and register this identity.",
+									note: "Sign the x402 authorization and register — this waits for on-chain settlement to confirm.",
 									confirmLabel: "Sign x402",
 								},
-								signRegistrationPayment
-							)) as Record<string, string>)
-						: await signRegistrationPayment();
-					return client.registry.register({
-						...request,
-						payment,
-					});
+								signAndRegister
+							)
+						: signAndRegister();
 				}
 			})();
-		},
-		onSuccess: () => {
-			setPaymentChallenge(null);
-			setRegistrationComplete(true);
-		},
-	});
+			},
+			onSuccess: () => {
+				setPaymentChallenge(null);
+				setRegistrationComplete(true);
+				void queryClient.invalidateQueries({
+					queryKey: queryKeys.directory.identities(),
+				});
+				if (agentId) {
+					void queryClient.invalidateQueries({
+						queryKey: queryKeys.directory.reverse(agentId),
+					});
+				}
+				if (selectedName) {
+					void queryClient.invalidateQueries({
+						queryKey: queryKeys.registry.availability(
+							selectedName.trim().replace(/^@+/, "")
+						),
+					});
+				}
+			},
+		});
 
 	const handleSearch = useCallback((): void => {
 		if (availabilityQuery.data?.available) {

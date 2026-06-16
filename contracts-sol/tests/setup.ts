@@ -8,7 +8,6 @@ import {
   Keypair,
   PublicKey,
   SystemProgram,
-  SYSVAR_RENT_PUBKEY,
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import {
@@ -24,8 +23,7 @@ export const provider = anchor.AnchorProvider.env();
 anchor.setProvider(provider);
 
 // Anchor populates `workspace` with PascalCase program names from Anchor.toml.
-export const escrowProgram = anchor.workspace.Escrow as anchor.Program<any>;
-export const jobProgram = anchor.workspace.SettlementJob as anchor.Program<any>;
+export const jobEscrowProgram = anchor.workspace.JobEscrow as anchor.Program<any>;
 
 export const payer = (provider.wallet as anchor.Wallet).payer;
 export const connection = provider.connection;
@@ -82,30 +80,24 @@ export async function tokenBalance(account: PublicKey): Promise<bigint> {
 // --- PDA derivations (must match the on-chain seeds) ---
 
 export function vaultPda(vaultId: number[]): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from("vault"), Buffer.from(vaultId)],
-    escrowProgram.programId,
-  )[0];
+  return jobPda(vaultId);
 }
 
 export function noncePda(owner: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("nonce"), owner.toBuffer()],
-    escrowProgram.programId,
+    jobEscrowProgram.programId,
   )[0];
 }
 
 export function vaultAuthorityPda(settlementProgram: PublicKey): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from("vault_authority")],
-    settlementProgram,
-  )[0];
+  return settlementProgram;
 }
 
 export function jobPda(jobId: number[]): PublicKey {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("job"), Buffer.from(jobId)],
-    jobProgram.programId,
+    jobEscrowProgram.programId,
   )[0];
 }
 
@@ -132,50 +124,41 @@ export function payload(
   };
 }
 
-/**
- * Create an escrow vault bound to `settlementProgram` and return its handles.
- * The vault token account is a fresh keypair the escrow program initializes.
- */
-export async function createVault(
-  settlementProgram: PublicKey,
+/** Create a job escrow and return its handles. */
+export async function createJobEscrow(
   mint: PublicKey,
   feeAccount: PublicKey,
   label: string,
-  owner?: PublicKey,
-): Promise<{ vaultId: number[]; vault: PublicKey; vaultToken: PublicKey }> {
-  const vaultId = id32(label);
-  const vault = vaultPda(vaultId);
+  client: Keypair,
+  provider: PublicKey,
+  controller: PublicKey,
+  feeBps: number,
+): Promise<{ jobId: number[]; job: PublicKey; vaultToken: PublicKey }> {
+  const jobId = id32(label);
+  const job = jobPda(jobId);
   const vaultToken = Keypair.generate();
 
-  // A vault is bound 1:1 to the job that will claim it. By convention the
-  // vault label equals the job id label, so derive the owning record's PDA for
-  // settlement_job (callers can override for negative tests). Escrow itself
-  // never checks `owner`; the binding is enforced by settlement_job::create_job.
-  const resolvedOwner =
-    owner ?? (settlementProgram.equals(jobProgram.programId) ? jobPda(vaultId) : payer.publicKey);
-
-  await escrowProgram.methods
-    .createVault(vaultId, settlementProgram, resolvedOwner)
+  await jobEscrowProgram.methods
+    .createJob(jobId, provider, controller, feeBps)
     .accounts({
-      vault,
+      job,
       vaultToken: vaultToken.publicKey,
-      creator: payer.publicKey,
+      client: client.publicKey,
       mint,
       feeAccount,
       tokenProgram: TOKEN_PROGRAM_ID,
-      rent: SYSVAR_RENT_PUBKEY,
       systemProgram: SystemProgram.programId,
     })
-    .signers([vaultToken])
+    .signers([client, vaultToken])
     .rpc();
 
-  return { vaultId, vault, vaultToken: vaultToken.publicKey };
+  return { jobId, job, vaultToken: vaultToken.publicKey };
 }
 
 /** Initialize the x402 nonce tracker for an owner (idempotent-ish; call once). */
 export async function initNonce(owner: Keypair): Promise<PublicKey> {
   const nonceTracker = noncePda(owner.publicKey);
-  await escrowProgram.methods
+  await jobEscrowProgram.methods
     .initNonce()
     .accounts({
       nonceTracker,
