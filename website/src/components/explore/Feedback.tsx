@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import type { FeedbackItem, FeedbackStatus } from "@tinyhumansai/tinyplace";
-import {
-	ArrowDownIcon,
-	ArrowUpIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowDownIcon, ArrowUpIcon } from "@heroicons/react/24/outline";
 
 import type { FunctionComponent } from "@src/common/types";
 import {

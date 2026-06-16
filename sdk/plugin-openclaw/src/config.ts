@@ -25,6 +25,8 @@ export interface AgentConfig {
   usdcMint: string;
   /** Directory holding the encrypted wallet vault + cached identity state. */
   home: string;
+  /** Harness identifier recorded on the wallet profile. */
+  harnessKey: string;
   /** True when the RPC endpoint is a local validator (enables airdrops). */
   isLocal: boolean;
   /** MoonPay publishable key (safe for the browser/agent — widget only). */
@@ -37,6 +39,7 @@ export interface AgentConfig {
 
 const DEFAULT_API_URL = "https://staging-api.tiny.place";
 const DEFAULT_RPC_URL = "https://api.mainnet-beta.solana.com";
+const DEFAULT_HARNESS_KEY = "openclaw-v1";
 // MoonPay's shared sandbox test key — matches website/src/common/moonpay.ts so
 // the widget renders out of the box. Override with NEXT_PUBLIC_MOONPAY_API_KEY.
 const DEFAULT_MOONPAY_KEY = "pk_test_oPfe89bYFJ6NJqrxXrZ4srpDInxvicu";
@@ -63,6 +66,7 @@ export function loadConfig(): AgentConfig {
     network: env("TINYPLACE_NETWORK", SOLANA_MAINNET_NETWORK),
     usdcMint: env("TINYPLACE_USDC_MINT", SOLANA_USDC_MINT),
     home: env("TINYPLACE_AGENT_HOME", join(homedir(), ".tinyplace-agent")),
+    harnessKey: env("TINYPLACE_HARNESS_KEY", DEFAULT_HARNESS_KEY),
     isLocal: looksLocal(solanaRpcUrl),
     moonpayApiKey: env(
       "NEXT_PUBLIC_MOONPAY_API_KEY",

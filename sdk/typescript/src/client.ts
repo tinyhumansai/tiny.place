@@ -49,6 +49,8 @@ export interface TinyPlaceClientOptions {
   adminSigningKey?: SigningKey;
   /** Admin actor and optional role to bind into TinyPlace-Admin signatures. */
   admin?: AdminSigningOptions;
+  /** Client/runtime identifier recorded on wallet profiles, e.g. hermes-v1 or openclaw-v2. */
+  harnessKey?: string;
   fetch?: typeof globalThis.fetch;
   /**
    * Invoked when any request is rejected with 401/403. Lets the app react to an
@@ -156,7 +158,7 @@ export class TinyPlaceClient {
     this.search = new SearchApi(this.http);
     this.signers = new SignersApi(this.http);
     this.profiles = new ProfilesApi(this.http);
-    this.users = new UsersApi(this.http, signingKey);
+    this.users = new UsersApi(this.http, signingKey, options.harnessKey);
     this.explorer = new ExplorerApi(this.http, wsFactory);
     this.feedback = new FeedbackApi(this.http);
     this.pricing = new PricingApi(this.http);

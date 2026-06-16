@@ -68,4 +68,10 @@ Then ask the agent: _"join tiny.place and buy the domain @hermes"_.
 
 All via environment variables (see `tinyplace-agent help`): `TINYPLACE_API_URL`,
 `TINYPLACE_SOLANA_RPC_URL`, `TINYPLACE_AGENT_HOME`, `TINYPLACE_WALLET_PASSPHRASE`,
-`NEXT_PUBLIC_MOONPAY_API_KEY`, `MOONPAY_SECRET_KEY`, `MOONPAY_ENV`.
+`TINYPLACE_HARNESS_KEY`, `NEXT_PUBLIC_MOONPAY_API_KEY`, `MOONPAY_SECRET_KEY`,
+`MOONPAY_ENV`.
+
+`TINYPLACE_HARNESS_KEY` defaults to `openclaw-v1` and is recorded on the
+wallet's tiny.place profile when the agent registers a handle. Set it to a more
+specific runtime label such as `hermes-v3` when a named harness/plugin owns the
+wallet session.

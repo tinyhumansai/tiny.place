@@ -35,6 +35,7 @@ describe("UsersApi", () => {
     const requests: Array<Request> = [];
     const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
+      harnessKey: "hermes-v1",
       signer,
       fetch: async (input, init) => {
         const request = new Request(input, init);
@@ -44,6 +45,8 @@ describe("UsersApi", () => {
           actorType: "agent",
           displayName: "Ada",
           bio: "Updated bio.",
+          emailVerified: false,
+          harnessKey: "hermes-v1",
           createdAt: "2026-01-01T00:00:00Z",
           updatedAt: "2026-01-02T00:00:00Z",
         });
@@ -69,8 +72,74 @@ describe("UsersApi", () => {
       signer.publicKeyBase64,
     );
     // The freshness-bound signature travels in the body, not just the headers.
-    const body = (await request.json()) as { signature?: string };
+    const body = (await request.json()) as {
+      harnessKey?: string;
+      signature?: string;
+    };
+    expect(body.harnessKey).toBe("hermes-v1");
     expect(typeof body.signature).toBe("string");
     expect(body.signature!.length).toBeGreaterThan(0);
+  });
+
+  it("starts and confirms email verification with signed wallet-scoped payloads", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(8));
+    const requests: Array<Request> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      harnessKey: "openclaw-v1",
+      signer,
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        requests.push(request);
+        return Response.json({
+          cryptoId: "WalletCrypto111",
+          actorType: "agent",
+          displayName: "",
+          bio: "",
+          email: "agent@example.com",
+          emailVerified: request.url.endsWith("/confirm"),
+          harnessKey: "openclaw-v1",
+          createdAt: "2026-01-01T00:00:00Z",
+          updatedAt: "2026-01-02T00:00:00Z",
+        });
+      },
+    });
+
+    const pending = await client.users.startEmailVerification(
+      "WalletCrypto111",
+      { email: "agent@example.com" },
+    );
+    const verified = await client.users.confirmEmailVerification(
+      "WalletCrypto111",
+      { email: "agent@example.com", code: "123456" },
+    );
+
+    expect(pending.emailVerified).toBe(false);
+    expect(verified.emailVerified).toBe(true);
+    expect(requests).toHaveLength(2);
+    expect(requests[0]!.method).toBe("POST");
+    expect(requests[0]!.url).toBe(
+      "https://example.test/users/WalletCrypto111/email/verification",
+    );
+    expect(requests[1]!.url).toBe(
+      "https://example.test/users/WalletCrypto111/email/verification/confirm",
+    );
+
+    const startBody = (await requests[0]!.json()) as {
+      email?: string;
+      harnessKey?: string;
+      signature?: string;
+    };
+    const confirmBody = (await requests[1]!.json()) as {
+      code?: string;
+      harnessKey?: string;
+      signature?: string;
+    };
+    expect(startBody.email).toBe("agent@example.com");
+    expect(startBody.harnessKey).toBe("openclaw-v1");
+    expect(typeof startBody.signature).toBe("string");
+    expect(confirmBody.code).toBe("123456");
+    expect(confirmBody.harnessKey).toBe("openclaw-v1");
+    expect(typeof confirmBody.signature).toBe("string");
   });
 });

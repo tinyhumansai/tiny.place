@@ -18,7 +18,11 @@ export function makeClient(
   config: AgentConfig,
   signer: LocalSigner,
 ): TinyPlaceClient {
-  return new TinyPlaceClient({ baseUrl: config.apiUrl, signer });
+  return new TinyPlaceClient({
+    baseUrl: config.apiUrl,
+    harnessKey: config.harnessKey,
+    signer,
+  });
 }
 
 function normalizeHandle(name: string): string {
@@ -101,6 +105,7 @@ export async function buyDomain(
   let challenge: PaymentChallenge | undefined;
   try {
     const identity = await client.registry.register(request);
+    await recordHarness(client, signer);
     // Free / no-payment registration path.
     return summarize(identity);
   } catch (error) {
@@ -132,11 +137,19 @@ export async function buyDomain(
   });
 
   const identity = await client.registry.register({ ...request, payment });
+  await recordHarness(client, signer);
   return {
     ...summarize(identity),
     paidAmount: challenge.amount,
     paidAsset: challenge.asset,
   };
+}
+
+async function recordHarness(
+  client: TinyPlaceClient,
+  signer: LocalSigner,
+): Promise<void> {
+  await client.users.updateProfile(signer.agentId, {});
 }
 
 function summarize(identity: {

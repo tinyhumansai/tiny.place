@@ -18,6 +18,11 @@ export interface User {
   displayName: string;
   bio: string;
   avatarEmail?: string;
+  email?: string;
+  emailVerified: boolean;
+  emailVerifiedAt?: string;
+  emailVerificationRequestedAt?: string;
+  harnessKey?: string;
   link?: string;
   tags?: Array<string>;
   createdAt: string;
@@ -34,7 +39,21 @@ export interface UserProfileUpdate {
   displayName?: string;
   bio?: string;
   avatarEmail?: string;
+  harnessKey?: string;
   link?: string;
   tags?: Array<string>;
+  signature?: string;
+}
+
+export interface UserEmailVerificationRequest {
+  email: string;
+  harnessKey?: string;
+  signature?: string;
+}
+
+export interface UserEmailVerificationConfirmRequest {
+  email: string;
+  code: string;
+  harnessKey?: string;
   signature?: string;
 }
