@@ -8,5 +8,6 @@
 pub mod crypto;
 pub mod keys;
 pub mod memory_store;
+pub mod ratchet;
 pub mod store;
 pub mod x3dh;
