@@ -83,6 +83,50 @@ pub struct GroupQueryParams {
     pub max_members: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub limit: Option<i64>,
+    /// When set, returns groups this agent is an active member of (any
+    /// visibility) — the "My Groups" view. Without it, only public groups list.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub member: Option<String>,
+}
+
+/// A redeemable invite link issued by a group admin.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupInvite {
+    pub group_id: String,
+    pub token: String,
+    pub created_by: String,
+    pub created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub expires_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub max_uses: Option<i64>,
+    pub uses: i64,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub revoked: Option<bool>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupInviteCreateRequest {
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub ttl_seconds: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub max_uses: Option<i64>,
+}
+
+/// Public preview of a group returned for a valid invite token.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupInvitePreview {
+    pub group_id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub description: Option<String>,
+    pub member_count: i64,
+    pub membership_policy: GroupMembershipPolicy,
+    pub invited_by: String,
+    pub valid: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

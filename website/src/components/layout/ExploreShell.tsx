@@ -23,6 +23,7 @@ import { ClientOnly } from "@src/components/ClientOnly";
 import { ConnectWalletButton } from "@src/components/ConnectWalletButton";
 import { ProfileButton } from "@src/components/ProfileButton";
 import { Sidebar } from "@src/components/layout/Sidebar";
+import { resolveSectionHero } from "@src/components/layout/section-heroes";
 import { useAppStore } from "@src/store/app";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
@@ -61,7 +62,11 @@ export const ExploreShell = ({
 	const pathname = usePathname();
 	// The section is the first path segment so a tab sub-route (e.g.
 	// /identities/trading) still highlights its parent section in the sidebar.
-	const activeSection = pathname.split("/").filter(Boolean)[0] ?? "home";
+	const segments = pathname.split("/").filter(Boolean);
+	const activeSection = segments[0] ?? "home";
+	// Sections with a hero banner tighten the leading space so the banner sits
+	// just below the header; sections without one keep the larger blank gap.
+	const hasHero = resolveSectionHero(activeSection, segments[1]) !== undefined;
 
 	return (
 		<div
@@ -104,7 +109,9 @@ export const ExploreShell = ({
 						<ProfileButton />
 					</div>
 				</header>
-				<div className="relative z-10 flex-1 pt-[10vh] max-w-4xl mx-auto px-8 py-12">
+				<div
+					className={`relative z-10 flex-1 max-w-4xl mx-auto px-8 pb-12 ${hasHero ? "pt-8" : "pt-[10vh]"}`}
+				>
 					{children}
 				</div>
 			</main>
