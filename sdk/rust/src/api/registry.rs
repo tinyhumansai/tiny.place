@@ -86,6 +86,11 @@ impl RegistryApi {
             .await
     }
 
+    /// Alias for [`export`]. Mirrors the TS SDK's `exportIdentity`.
+    pub async fn export_identity(&self, name: &str) -> Result<IdentityExport> {
+        self.export(name).await
+    }
+
     /// Update a name's profile visibility flags.
     pub async fn update_profile_visibility(
         &self,

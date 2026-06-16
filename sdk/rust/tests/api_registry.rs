@@ -55,6 +55,15 @@ async fn registry_export() {
 }
 
 #[tokio::test]
+async fn registry_export_identity() {
+    let server = any_empty_ok().await;
+    let client = client_for(&server);
+    let _ = client.registry.export_identity("@alice").await;
+    let req = only_request(&server).await;
+    assert!(req.url.path().ends_with("/export"));
+}
+
+#[tokio::test]
 async fn registry_update_profile_visibility() {
     let server = any_empty_ok().await;
     let client = client_for(&server);

@@ -7,7 +7,9 @@ use crate::auth::sign_fresh_canonical_payload;
 use crate::crypto::canonical_payload;
 use crate::error::Result;
 use crate::http::HttpClient;
-use crate::types::{User, UserProfileUpdate};
+use crate::types::{
+    User, UserEmailVerificationConfirmRequest, UserEmailVerificationRequest, UserProfileUpdate,
+};
 use crate::util::encode;
 
 #[derive(Clone)]
@@ -46,6 +48,54 @@ impl UsersApi {
             )
             .await
     }
+
+    /// Start email verification for a wallet. The backend stores the normalized
+    /// email, marks it unverified, and sends a short-lived code. Signs the
+    /// canonical `user.email.start` payload when a signer is configured.
+    pub async fn start_email_verification(
+        &self,
+        crypto_id: &str,
+        request: UserEmailVerificationRequest,
+    ) -> Result<User> {
+        let mut request = request;
+        if request.signature.is_none() {
+            if let Some(signer) = self.http.signer() {
+                let payload = user_email_start_signature_payload(crypto_id, &request);
+                request.signature =
+                    Some(sign_fresh_canonical_payload(signer.as_ref(), &payload).await?);
+            }
+        }
+        self.http
+            .post_directory_auth(
+                &format!("/users/{}/email/verification", encode(crypto_id)),
+                Some(&request),
+            )
+            .await
+    }
+
+    /// Confirm a wallet email verification code. Verification is scoped to the
+    /// signed wallet `cryptoId` (emails are not unique across wallets). Signs the
+    /// canonical `user.email.confirm` payload when a signer is configured.
+    pub async fn confirm_email_verification(
+        &self,
+        crypto_id: &str,
+        request: UserEmailVerificationConfirmRequest,
+    ) -> Result<User> {
+        let mut request = request;
+        if request.signature.is_none() {
+            if let Some(signer) = self.http.signer() {
+                let payload = user_email_confirm_signature_payload(crypto_id, &request);
+                request.signature =
+                    Some(sign_fresh_canonical_payload(signer.as_ref(), &payload).await?);
+            }
+        }
+        self.http
+            .post_directory_auth(
+                &format!("/users/{}/email/verification/confirm", encode(crypto_id)),
+                Some(&request),
+            )
+            .await
+    }
 }
 
 /// Builds the canonical `user.profile` payload signed for a profile update. The
@@ -80,6 +130,46 @@ fn user_profile_signature_payload(crypto_id: &str, update: &UserProfileUpdate) -
             "harnessKey": or_null(&update.harness_key),
             "link": or_null(&update.link),
             "tags": arr_or_null(&update.tags),
+        }),
+    )
+}
+
+/// Maps `Option<&str>` to a JSON string or `null`, matching the TS SDK's
+/// `harnessKey ?? null`.
+fn or_null(value: Option<&str>) -> serde_json::Value {
+    value.map_or(serde_json::Value::Null, |v| {
+        serde_json::Value::String(v.to_string())
+    })
+}
+
+/// Canonical `user.email.start` payload (key order is normalized by
+/// `canonical_payload`, so it matches the TS SDK regardless of field order).
+fn user_email_start_signature_payload(
+    crypto_id: &str,
+    request: &UserEmailVerificationRequest,
+) -> String {
+    canonical_payload(
+        "user.email.start",
+        serde_json::json!({
+            "cryptoId": crypto_id,
+            "email": request.email,
+            "harnessKey": or_null(request.harness_key.as_deref()),
+        }),
+    )
+}
+
+/// Canonical `user.email.confirm` payload.
+fn user_email_confirm_signature_payload(
+    crypto_id: &str,
+    request: &UserEmailVerificationConfirmRequest,
+) -> String {
+    canonical_payload(
+        "user.email.confirm",
+        serde_json::json!({
+            "code": request.code,
+            "cryptoId": crypto_id,
+            "email": request.email,
+            "harnessKey": or_null(request.harness_key.as_deref()),
         }),
     )
 }
