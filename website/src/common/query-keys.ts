@@ -29,8 +29,13 @@ export const queryKeys = {
 	groups: {
 		list: (parameters?: GroupQueryParams) =>
 			["groups", "list", parameters] as const,
+		mine: (member: string) => ["groups", "mine", member] as const,
 		detail: (groupId: string) => ["groups", "detail", groupId] as const,
 		members: (groupId: string) => ["groups", "members", groupId] as const,
+		invites: (groupId: string, actor: string) =>
+			["groups", "invites", groupId, actor] as const,
+		invitePreview: (groupId: string, token: string) =>
+			["groups", "invite-preview", groupId, token] as const,
 	},
 	channels: {
 		list: (parameters?: ChannelQueryParams) =>

@@ -2,13 +2,18 @@ import {
 	useMutation,
 	useQuery,
 	useQueryClient,
+	type QueryClient,
 	type UseMutationResult,
 	type UseQueryResult,
 } from "@tanstack/react-query";
 import {
 	TinyPlaceError,
 	type GroupCreateRequest,
+	type GroupInvite,
+	type GroupInviteCreateRequest,
+	type GroupInvitePreview,
 	type GroupMember,
+	type GroupMemberRole,
 	type GroupMetadata,
 	type GroupQueryParams,
 	type X402AuthorizationFields,
@@ -43,6 +48,14 @@ function groupPaymentChallenge(error: unknown): GroupPaymentChallenge | null {
 	};
 }
 
+// Invalidating the "groups" prefix refreshes the public directory, the My
+// Groups view, group detail, and member lists in one call — TanStack matches
+// query keys by prefix, so this covers every groups.* key.
+function invalidateGroups(queryClient: QueryClient): void {
+	void queryClient.invalidateQueries({ queryKey: ["groups"] });
+}
+
+/** Public directory: only public (open) groups. */
 export function useGroups(
 	parameters?: GroupQueryParams
 ): UseQueryResult<{ groups: Array<GroupMetadata> }> {
@@ -51,6 +64,19 @@ export function useGroups(
 		queryKey: queryKeys.groups.list(parameters),
 		queryFn: (): Promise<{ groups: Array<GroupMetadata> }> =>
 			client.groups.list(parameters),
+	});
+}
+
+/** My Groups: every group the agent belongs to, including private ones. */
+export function useMyGroups(
+	member: string
+): UseQueryResult<{ groups: Array<GroupMetadata> }> {
+	const client = useApiClient();
+	return useQuery({
+		queryKey: queryKeys.groups.mine(member),
+		queryFn: (): Promise<{ groups: Array<GroupMetadata> }> =>
+			client.groups.list({ member }),
+		enabled: Boolean(member),
 	});
 }
 
@@ -86,10 +112,23 @@ export function useCreateGroup(): UseMutationResult<
 		mutationFn: (request): Promise<GroupMetadata> =>
 			client.groups.create(request),
 		onSuccess: (group): void => {
-			void queryClient.invalidateQueries({ queryKey: ["groups", "list"] });
-			void queryClient.invalidateQueries({
-				queryKey: queryKeys.groups.detail(group.groupId),
-			});
+			// Reflect the new group immediately in My Groups so the UI updates
+			// without waiting for a refetch (private groups never appear in the
+			// public directory, so an optimistic insert here is essential).
+			if (group.createdBy) {
+				queryClient.setQueryData<{ groups: Array<GroupMetadata> }>(
+					queryKeys.groups.mine(group.createdBy),
+					(previous) => ({
+						groups: [
+							group,
+							...(previous?.groups ?? []).filter(
+								(existing) => existing.groupId !== group.groupId
+							),
+						],
+					})
+				);
+			}
+			invalidateGroups(queryClient);
 		},
 	});
 }
@@ -135,14 +174,8 @@ export function useJoinGroup(): UseMutationResult<
 				});
 			}
 		},
-		onSuccess: (member): void => {
-			void queryClient.invalidateQueries({ queryKey: ["groups", "list"] });
-			void queryClient.invalidateQueries({
-				queryKey: queryKeys.groups.detail(member.groupId),
-			});
-			void queryClient.invalidateQueries({
-				queryKey: queryKeys.groups.members(member.groupId),
-			});
+		onSuccess: (): void => {
+			invalidateGroups(queryClient);
 		},
 	});
 }
@@ -186,14 +219,109 @@ export function useRenewGroupSubscription(): UseMutationResult<
 				});
 			}
 		},
+		onSuccess: (): void => {
+			invalidateGroups(queryClient);
+		},
+	});
+}
+
+export function useSetGroupMemberRole(): UseMutationResult<
+	GroupMember,
+	Error,
+	{ actor: string; agentId: string; groupId: string; role: GroupMemberRole }
+> {
+	const client = useApiClient();
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ actor, agentId, groupId, role }): Promise<GroupMember> =>
+			client.groups.setMemberRole(groupId, agentId, role, actor),
 		onSuccess: (member): void => {
-			void queryClient.invalidateQueries({ queryKey: ["groups", "list"] });
-			void queryClient.invalidateQueries({
-				queryKey: queryKeys.groups.detail(member.groupId),
-			});
 			void queryClient.invalidateQueries({
 				queryKey: queryKeys.groups.members(member.groupId),
 			});
+		},
+	});
+}
+
+// --- Invite links ---------------------------------------------------------
+
+/** Active invites for a group, visible to admins only. */
+export function useGroupInvites(
+	groupId: string,
+	actor: string
+): UseQueryResult<{ invites: Array<GroupInvite> }> {
+	const client = useApiClient();
+	return useQuery({
+		queryKey: queryKeys.groups.invites(groupId, actor),
+		queryFn: (): Promise<{ invites: Array<GroupInvite> }> =>
+			client.groups.listInvites(groupId, actor),
+		enabled: Boolean(groupId && actor),
+	});
+}
+
+/** Public preview of the group behind an invite token (no auth). */
+export function useGroupInvitePreview(
+	groupId: string,
+	token: string
+): UseQueryResult<GroupInvitePreview> {
+	const client = useApiClient();
+	return useQuery({
+		queryKey: queryKeys.groups.invitePreview(groupId, token),
+		queryFn: (): Promise<GroupInvitePreview> =>
+			client.groups.previewInvite(groupId, token),
+		enabled: Boolean(groupId && token),
+		retry: false,
+	});
+}
+
+export function useCreateGroupInvite(): UseMutationResult<
+	GroupInvite,
+	Error,
+	{ actor: string; groupId: string; request?: GroupInviteCreateRequest }
+> {
+	const client = useApiClient();
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ actor, groupId, request }): Promise<GroupInvite> =>
+			client.groups.createInvite(groupId, actor, request),
+		onSuccess: (invite, variables): void => {
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.groups.invites(invite.groupId, variables.actor),
+			});
+		},
+	});
+}
+
+export function useRevokeGroupInvite(): UseMutationResult<
+	void,
+	Error,
+	{ actor: string; groupId: string; token: string }
+> {
+	const client = useApiClient();
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ actor, groupId, token }): Promise<void> =>
+			client.groups.revokeInvite(groupId, token, actor),
+		onSuccess: (_result, variables): void => {
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.groups.invites(variables.groupId, variables.actor),
+			});
+		},
+	});
+}
+
+export function useRedeemGroupInvite(): UseMutationResult<
+	GroupMember,
+	Error,
+	{ agentId: string; groupId: string; token: string }
+> {
+	const client = useApiClient();
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ agentId, groupId, token }): Promise<GroupMember> =>
+			client.groups.redeemInvite(groupId, token, agentId),
+		onSuccess: (): void => {
+			invalidateGroups(queryClient);
 		},
 	});
 }
