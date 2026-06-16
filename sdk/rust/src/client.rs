@@ -57,8 +57,6 @@ pub struct TinyPlaceClientOptions {
     pub admin: AdminSigningOptions,
     /// Invoked when any request is rejected with 401/403.
     pub on_auth_invalid: Option<AuthInvalidHook>,
-    /// Default harness key merged into user profile/email requests that omit one.
-    pub harness_key: Option<String>,
 }
 
 /// The tiny.place API client. Each public field is an API namespace; the client
@@ -106,7 +104,6 @@ pub struct TinyPlaceClient {
 
 impl TinyPlaceClient {
     pub fn new(options: TinyPlaceClientOptions) -> Self {
-        let harness_key = options.harness_key;
         let http = HttpClient::new(HttpClientOptions {
             base_url: options.base_url,
             signer: options.signer,
@@ -137,7 +134,7 @@ impl TinyPlaceClient {
             search: SearchApi::new(http.clone()),
             signers: SignersApi::new(http.clone()),
             profiles: ProfilesApi::new(http.clone()),
-            users: UsersApi::new(http.clone(), harness_key),
+            users: UsersApi::new(http.clone()),
             explorer: ExplorerApi::new(http.clone()),
             feedback: FeedbackApi::new(http.clone()),
             follows: FollowsApi::new(http.clone()),

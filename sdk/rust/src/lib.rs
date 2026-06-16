@@ -29,7 +29,7 @@ pub mod error;
 pub mod http;
 pub mod signer;
 pub mod util;
-pub mod ws;
+pub mod websocket;
 pub mod x402;
 
 pub mod api;
@@ -43,9 +43,9 @@ pub use client::{TinyPlaceClient, TinyPlaceClientOptions};
 pub use error::{Error, PaymentChallenge, PaymentRequiredChallenge, Result};
 pub use http::{HttpClient, HttpClientOptions};
 pub use signer::{LocalSigner, Signer};
+pub use websocket::{TinyPlaceWebSocket, WebSocketConnection, WsAuth};
 
 pub use auth::AdminSigningOptions;
-pub use ws::{WebSocketConnection, WebSocketStream};
 pub use x402::{
     build_x402_payment_authorization, build_x402_payment_map, sign_x402_authorization,
     X402Authorization, X402AuthorizationFields, X402PaymentAuthorizationOptions, X402PaymentMap,

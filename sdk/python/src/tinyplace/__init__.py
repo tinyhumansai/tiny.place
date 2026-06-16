@@ -1,5 +1,6 @@
 """Async Python SDK for tiny.place."""
 
+from .api import InboxPage
 from .auth import (
     AdminSigningOptions,
     build_auth_header,
@@ -39,6 +40,7 @@ SDK_VERSION = "0.1.0"
 
 __all__ = [
     "AdminSigningOptions",
+    "InboxPage",
     "LocalSigner",
     "PaymentChallenge",
     "PaymentRequiredChallenge",

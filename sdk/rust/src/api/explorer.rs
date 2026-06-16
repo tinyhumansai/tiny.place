@@ -76,9 +76,8 @@ impl ExplorerApi {
         self.http.get(&path, &[]).await
     }
 
-    /// Live transaction stream (`GET /explorer/live`, WebSocket, no auth). Attach
-    /// callbacks and call [`crate::ws::WebSocketStream::connect`].
-    pub fn live(&self) -> crate::ws::WebSocketStream {
-        crate::ws::WebSocketStream::new(&self.http, "/explorer/live", false)
+    /// Open the public explorer live feed over WebSocket.
+    pub fn live(&self) -> crate::websocket::TinyPlaceWebSocket {
+        self.http.websocket("/explorer/live", false)
     }
 }

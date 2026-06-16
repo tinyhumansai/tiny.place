@@ -10,7 +10,8 @@ use common::*;
 use serde_json::json;
 use tinyplace::api::directory::DirectorySkillsParams;
 use tinyplace::types::{
-    AgentCard, AgentQueryParams, ExtendedAgentCard, IdentityListingQueryParams, UserProfileUpdate,
+    AgentCard, AgentQueryParams, ExtendedAgentCard, IdentityListingQueryParams,
+    UserEmailVerificationConfirmRequest, UserEmailVerificationRequest, UserProfileUpdate,
 };
 
 // --- UsersApi ---
@@ -38,6 +39,45 @@ async fn users_update_profile() {
     assert_eq!(req.method.as_str(), "PUT");
     assert!(req.url.path().contains("users"));
     assert!(req.url.path().ends_with("/profile"));
+}
+
+#[tokio::test]
+async fn users_start_email_verification() {
+    let server = any_empty_ok().await;
+    let client = client_for(&server);
+    let _ = client
+        .users
+        .start_email_verification(
+            "cid123",
+            UserEmailVerificationRequest {
+                email: "a@example.com".into(),
+                ..Default::default()
+            },
+        )
+        .await;
+    let req = only_request(&server).await;
+    assert_eq!(req.method.as_str(), "POST");
+    assert!(req.url.path().ends_with("/email/verification"));
+}
+
+#[tokio::test]
+async fn users_confirm_email_verification() {
+    let server = any_empty_ok().await;
+    let client = client_for(&server);
+    let _ = client
+        .users
+        .confirm_email_verification(
+            "cid123",
+            UserEmailVerificationConfirmRequest {
+                email: "a@example.com".into(),
+                code: "123456".into(),
+                ..Default::default()
+            },
+        )
+        .await;
+    let req = only_request(&server).await;
+    assert_eq!(req.method.as_str(), "POST");
+    assert!(req.url.path().ends_with("/email/verification/confirm"));
 }
 
 // --- ProfilesApi ---

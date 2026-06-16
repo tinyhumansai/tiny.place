@@ -1,0 +1,114 @@
+{
+  "crypto": {
+    "kdf_root_key": {
+      "root_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "dh_output": "2222222222222222222222222222222222222222222222222222222222222222",
+      "next_root_key": "9daeaa1e8c7e8b788d4bc90ec8c2a5b992b4b505d14e74ca049ddb4f9e8ed91b",
+      "chain_key": "1b31f67b64b589df27b980ffa916bb940f0e47fbc13569bf1fd0622d04725dca"
+    },
+    "kdf_chain_key": {
+      "chain_key_in": "3333333333333333333333333333333333333333333333333333333333333333",
+      "next_chain_key": "e66a4bfa6a49b2045fe9a7ca29edf7991fc43ce97b9bbfcd467723a8a90f623c",
+      "message_key": "da9d2383815d52bf414c540d97e91d0facf9b98729f9a3f437ad4a9b571676a0"
+    },
+    "derive_message_keys": {
+      "message_key": "4444444444444444444444444444444444444444444444444444444444444444",
+      "enc_key": "d8c8799e61bfba2725c531ff43ab26694e2ab526f7dbdb7323e0aa7714716036",
+      "mac_key": "995f13fb5baba8ad33376952dca39635c3b3144bdf85ca28f16773949a45ac37",
+      "iv": "f6d710d38259d0cf9fedef47ab1ff756"
+    },
+    "compute_hmac": {
+      "key": "5555555555555555555555555555555555555555555555555555555555555555",
+      "data": "74696e792e706c616365207369676e616c20696e7465726f70",
+      "mac": "2864fb234c64436ee29fb93afc597b9d939b83e3a68fcb5319b79a424d2afa27"
+    },
+    "aead": {
+      "message_key": "6666666666666666666666666666666666666666666666666666666666666666",
+      "plaintext": "68656c6c6f2066726f6d2074686520547970655363726970742053444b20f09f9490",
+      "associated_data": "6173736f6369617465642d64617461",
+      "ciphertext": "dcff15c674e01a880111b1de81161cac536ff64b6735b552300cbe33c238a3d3c5a20bc83946c852b66cc7e4f558c2b4cbdd0e4cee5089d8"
+    },
+    "aead_empty": {
+      "message_key": "6666666666666666666666666666666666666666666666666666666666666666",
+      "plaintext": "",
+      "associated_data": "",
+      "ciphertext": "4e61bbf04625127658aa9e661d3f578598c40f0f5365a031"
+    }
+  },
+  "x3dh": {
+    "alice_identity_priv": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "alice_identity_pub": "c306fb0ef2bf8b7f93bad98155fa37daec74db0c4cbeda6c6f1dba9d36558252",
+    "alice_ephemeral_priv": "a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+    "alice_ephemeral_pub": "3c5c6ce2dd99e10d2c3de05d773aa15e3e6d971ed4e41389c93b4bbdda177212",
+    "bob_identity_priv": "b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1",
+    "bob_identity_pub": "d3337e4d4ee503a66976feb1fadf5bd21ba96fc2b1571b3e980d87cf49797510",
+    "bob_signed_pre_key_priv": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "bob_signed_pre_key_pub": "db48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31a",
+    "bob_one_time_pre_key_priv": "b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3",
+    "bob_one_time_pre_key_pub": "1984e5f45500244a4d4b07a3db3e181e5afcb828c0bdb147239666e16906833a",
+    "shared_secret_with_otk": "5057fd9c5bb7ac15c9bcdd2c2350d95521efb30545c264de7cd13cc6ad619294",
+    "shared_secret_no_otk": "5a6d27878893058f17b4d2de98b72cccb23f66e39330ee8fcd5373c2d3f8da57",
+    "responder_root_key_with_otk": "5057fd9c5bb7ac15c9bcdd2c2350d95521efb30545c264de7cd13cc6ad619294"
+  },
+  "ratchet": {
+    "root_key": "7777777777777777777777777777777777777777777777777777777777777777",
+    "alice_ratchet_priv": "c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1",
+    "alice_ratchet_pub": "42575d5c8a93833255e09f04054a4f6246d36ed163c1c7f80c1fc9a58a0e912d",
+    "bob_ratchet_priv": "c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2",
+    "bob_ratchet_pub": "b63d05558f21e85cf2e5721509301077a508733b05dff3e6f518ea04aec42c65",
+    "associated_data": "616c6963652d3e626f62",
+    "messages": [
+      {
+        "plaintext": "72617463686574206d657373616765206f6e65",
+        "header_public_key": "42575d5c8a93833255e09f04054a4f6246d36ed163c1c7f80c1fc9a58a0e912d",
+        "header_previous_chain_length": 0,
+        "header_message_number": 0,
+        "ciphertext": "62f49bca3506125d31bd030faf071c455e5c3f9ff1dad98ecf3b1c2fb377824995e0bfd29031de7f"
+      },
+      {
+        "plaintext": "7365636f6e64206d657373616765",
+        "header_public_key": "42575d5c8a93833255e09f04054a4f6246d36ed163c1c7f80c1fc9a58a0e912d",
+        "header_previous_chain_length": 0,
+        "header_message_number": 1,
+        "ciphertext": "f1f21d651ee61667a0d36d6dbb214e994b21472dfd5c18e9"
+      },
+      {
+        "plaintext": "746869726420f09f9a80",
+        "header_public_key": "42575d5c8a93833255e09f04054a4f6246d36ed163c1c7f80c1fc9a58a0e912d",
+        "header_previous_chain_length": 0,
+        "header_message_number": 2,
+        "ciphertext": "e67eca75f1e1e14e890f89502ba0702ece77e191da6e2a38"
+      }
+    ]
+  },
+  "sender_key": {
+    "chain_key": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+    "signing_seed": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+    "signing_public_key": "41e8fde132ad670e534cd8b275d2cd7eec77733c66f8db48a1cada7fabfc4555",
+    "distribution": {
+      "chain_key_b64": "0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dE=",
+      "iteration": 0,
+      "signature_public_key_b64": "Qej94TKtZw5TTNiyddLNfux3czxm+NtIocraf6v8RVU="
+    },
+    "messages": [
+      {
+        "plaintext": "67726f75702068656c6c6f",
+        "iteration": 0,
+        "ciphertext_b64": "YzTXu1LRKtxy3nyHjbluWGLX5lyrAN8g",
+        "signature_b64": "XllK0VEUA7+Puq17usxi9FVrTintiAqLvUiHuOVjFFWeTfUcA1UcdLOOHFFSIFuX9ZXOePNk/vYvLiSmpofpAg=="
+      },
+      {
+        "plaintext": "67726f7570207365636f6e64",
+        "iteration": 1,
+        "ciphertext_b64": "3Yo5VOMRp6UXWXZ7+AUP6mT4pP0X0CaN",
+        "signature_b64": "IAa1ZQKd611aU+RdPuTzu5mjNE0Adlh5HGbscxi2L+rU1e4ce21d/SvRYfxGPEfcZdpHXiedUvRXWfO1gN+zAw=="
+      },
+      {
+        "plaintext": "67726f7570207468697264",
+        "iteration": 2,
+        "ciphertext_b64": "9kQpqC1Pr5CL8ZXesk1t2tqhLSHrerM0",
+        "signature_b64": "L91uL2YeOXHlnYHbziv0QW3ngYHgAe8x52QUqYJAs/HioJHekYaosWLpYB2AeXzHA2DO0Ka0mJaopm+sVqivAA=="
+      }
+    ]
+  }
+}

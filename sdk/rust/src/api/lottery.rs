@@ -10,7 +10,6 @@ use crate::types::{
     LotteryRoundQueryParams, LotteryRoundsResponse, LotteryView,
 };
 use crate::util::encode;
-use crate::ws::WebSocketStream;
 
 #[derive(Clone)]
 pub struct LotteryApi {
@@ -119,9 +118,8 @@ impl LotteryApi {
         }
     }
 
-    /// Live lottery stream (`GET /lottery/stream`, WebSocket, no auth). Attach
-    /// callbacks and call [`WebSocketStream::connect`].
-    pub fn stream(&self) -> WebSocketStream {
-        WebSocketStream::new(&self.http, "/lottery/stream", false)
+    /// Open the lottery's real-time WebSocket stream (snapshot + `pot_update`).
+    pub fn stream(&self) -> crate::websocket::TinyPlaceWebSocket {
+        self.http.websocket("/lottery/stream", false)
     }
 }

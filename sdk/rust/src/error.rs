@@ -25,6 +25,10 @@ pub enum Error {
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
 
+    /// A WebSocket connection or protocol error.
+    #[error("websocket error: {0}")]
+    WebSocket(String),
+
     /// A JSON-RPC endpoint (e.g. the Solana proxy) returned an error object or
     /// an unexpected response shape.
     #[error("rpc error: {0}")]

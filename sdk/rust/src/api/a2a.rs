@@ -1,13 +1,11 @@
 //! Agent-to-agent (A2A) JSON-RPC task surface. Mirrors
-//! `sdk/typescript/src/api/a2a.ts` (REST methods only; the WebSocket `stream()`
-//! is intentionally omitted).
+//! `sdk/typescript/src/api/a2a.ts`.
 
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
 use crate::http::HttpClient;
 use crate::util::encode;
-use crate::ws::WebSocketStream;
 
 /// A JSON-RPC 2.0 task request sent to a target agent.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,14 +50,6 @@ impl A2AApi {
         Self { http }
     }
 
-    /// Live A2A message stream for an agent (`GET /a2a/{id}/stream`, WebSocket).
-    /// Always directory-write authenticated (requires a signing key). Attach
-    /// callbacks and call [`WebSocketStream::connect`].
-    pub fn stream(&self, agent_id: &str) -> WebSocketStream {
-        let path = format!("/a2a/{}/stream", encode(agent_id));
-        WebSocketStream::new(&self.http, &path, true)
-    }
-
     /// Send a JSON-RPC task to `agent_id`. When `sender_id` is set, the request
     /// is signed as that directory actor.
     pub async fn send_task(
@@ -97,5 +87,11 @@ impl A2AApi {
         self.http
             .get_text(&format!("/a2a/{}/skill.md", encode(agent_id)), &[])
             .await
+    }
+
+    /// Stream an agent's A2A channel over WebSocket (directory-authenticated).
+    pub fn stream(&self, agent_id: &str) -> crate::websocket::TinyPlaceWebSocket {
+        let path = format!("/a2a/{}/stream", encode(agent_id));
+        self.http.websocket(&path, true)
     }
 }

@@ -1,6 +1,5 @@
 //! Conversations (chats / groups / broadcasts). Mirrors
-//! `sdk/typescript/src/api/conversations.ts`. REST only — the `stream()`
-//! WebSocket method is intentionally omitted.
+//! `sdk/typescript/src/api/conversations.ts`.
 
 use rand::RngCore as _;
 use serde::{Deserialize, Serialize};
@@ -13,7 +12,6 @@ use crate::types::{
     ConversationUpdateRequest,
 };
 use crate::util::encode;
-use crate::ws::{query_suffix, WebSocketStream};
 
 /// `{ conversations: [...] }`. The TS normalizes `null` to `[]`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,30 +54,6 @@ pub struct ConversationsApi {
 impl ConversationsApi {
     pub(crate) fn new(http: HttpClient) -> Self {
         Self { http }
-    }
-
-    /// Live conversation stream (`GET /conversations/{id}/stream`, WebSocket).
-    /// When an `agent_id` is supplied the connection is directory-write
-    /// authenticated. Attach callbacks and call [`WebSocketStream::connect`].
-    pub fn stream(
-        &self,
-        conversation_id: &str,
-        agent_id: Option<&str>,
-        limit: Option<i64>,
-    ) -> WebSocketStream {
-        let mut query: Vec<(String, String)> = Vec::new();
-        if let Some(agent_id) = agent_id {
-            query.push(("X-Agent-ID".into(), agent_id.to_string()));
-        }
-        if let Some(limit) = limit {
-            query.push(("limit".into(), limit.to_string()));
-        }
-        let path = format!(
-            "/conversations/{}/stream{}",
-            encode(conversation_id),
-            query_suffix(&query)
-        );
-        WebSocketStream::new(&self.http, &path, agent_id.is_some())
     }
 
     pub async fn list(
@@ -402,6 +376,31 @@ impl ConversationsApi {
                 .delete_directory_auth::<(), serde_json::Value>(&path, None)
                 .await
         }
+    }
+
+    /// Stream a conversation over WebSocket. Signed with directory auth when an
+    /// `agent_id` is supplied.
+    pub fn stream(
+        &self,
+        conversation_id: &str,
+        agent_id: Option<&str>,
+        limit: Option<i64>,
+    ) -> crate::websocket::TinyPlaceWebSocket {
+        let mut query: Vec<(&str, String)> = Vec::new();
+        if let Some(agent_id) = agent_id {
+            query.push(("X-Agent-ID", agent_id.to_string()));
+        }
+        if let Some(limit) = limit {
+            query.push(("limit", limit.to_string()));
+        }
+        let path = format!(
+            "/conversations/{}/stream",
+            crate::util::encode(conversation_id)
+        );
+        self.http.websocket(
+            &crate::util::append_query(&path, &query),
+            agent_id.is_some(),
+        )
     }
 }
 

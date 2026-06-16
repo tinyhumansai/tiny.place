@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use crate::error::Result;
 use crate::http::HttpClient;
 use crate::util::encode;
-use crate::ws::WebSocketStream;
 
 // --- inline inbox types (TS `types/social.ts`) ------------------------------
 
@@ -321,11 +320,9 @@ impl InboxApi {
         }
     }
 
-    /// Live inbox stream (`GET /inbox/stream`, WebSocket). Signed with the
-    /// client's signing key when present. Attach callbacks and call
-    /// [`WebSocketStream::connect`].
-    pub fn stream(&self) -> WebSocketStream {
-        WebSocketStream::new(&self.http, "/inbox/stream", false)
+    /// Stream the inbox over WebSocket.
+    pub fn stream(&self) -> crate::websocket::TinyPlaceWebSocket {
+        self.http.websocket("/inbox/stream", false)
     }
 }
 

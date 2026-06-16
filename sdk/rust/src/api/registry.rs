@@ -86,7 +86,7 @@ impl RegistryApi {
             .await
     }
 
-    /// Alias for [`RegistryApi::export`], mirroring the TS `exportIdentity`.
+    /// Alias for [`export`]. Mirrors the TS SDK's `exportIdentity`.
     pub async fn export_identity(&self, name: &str) -> Result<IdentityExport> {
         self.export(name).await
     }

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from typing import Any
+
 import aiohttp
 
 from .api import DirectoryApi, DocsApi, KeysApi, MessagesApi, PaymentsApi, RegistryApi, SearchApi
 from .auth import AdminSigningOptions
 from .http import AuthInvalidHook, HttpClient
 from .signer import Signer
-from .types import Json
+from .types import Json, JsonDict
 
 
 class TinyPlaceClient:
@@ -20,6 +22,7 @@ class TinyPlaceClient:
         session: aiohttp.ClientSession | None = None,
         on_auth_invalid: AuthInvalidHook | None = None,
     ) -> None:
+        self._signer = signer
         self.http = HttpClient(
             base_url=base_url,
             signer=signer,
@@ -50,3 +53,51 @@ class TinyPlaceClient:
 
     async def spec(self) -> Json:
         return await self.http.get("/spec")
+
+    # -- Convenience helpers ------------------------------------------------
+    # Flat, task-oriented wrappers over the namespaced APIs. They mirror the
+    # method surface the Hermes plugin (issue #29) drives: domains map to
+    # @handle registry names, identity to the open directory.
+
+    async def search_domain(self, query: str) -> JsonDict:
+        """Check whether a ``@handle`` domain is available to register.
+
+        ``GET /registry/names/{name}`` returns an ``AvailabilityResponse`` with
+        HTTP 200 in all cases for a valid handle (an invalid handle raises). The
+        ``available`` flag comes from that body, not from a 404.
+
+        Returns ``{"name", "available", "record"}`` where ``record`` is the full
+        availability response (includes ``identity``/``lifecycle`` when taken).
+        """
+        name = _normalize_handle(query)
+        response = await self.registry.get(name)
+        available = bool(response.get("available")) if isinstance(response, dict) else False
+        return {"name": name, "available": available, "record": response}
+
+    async def register_domain(self, domain: str, **fields: Any) -> Json:
+        """Register a ``@handle`` domain for the signing agent.
+
+        ``cryptoId`` and ``publicKey`` default to the configured signer's
+        identity; the registration signature is added by :class:`RegistryApi`.
+        Extra registration fields (``actorType``, ``paymentMethods``, ...) may
+        be passed as keyword arguments.
+        """
+        request: JsonDict = {**fields, "username": domain}
+        if self._signer is not None:
+            request.setdefault("cryptoId", self._signer.agent_id)
+            request.setdefault("publicKey", self._signer.public_key_base64)
+        return await self.registry.register(request)
+
+    async def get_identity(self) -> Json:
+        """Resolve the signing agent's own directory identity (reverse lookup)."""
+        if self._signer is None:
+            raise ValueError("get_identity requires a signer")
+        return await self.directory.reverse(self._signer.agent_id)
+
+    async def resolve_user(self, handle: str) -> Json:
+        """Resolve a ``@handle`` to its directory identity + agent card."""
+        return await self.directory.resolve(_normalize_handle(handle))
+
+
+def _normalize_handle(value: str) -> str:
+    return value if value.startswith("@") else f"@{value}"

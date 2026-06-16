@@ -1,6 +1,4 @@
 //! Events API. Mirrors `sdk/typescript/src/api/events.ts`.
-//!
-//! WebSocket `stream()` is intentionally omitted (no streaming in the Rust SDK).
 
 use rand::RngCore as _;
 use serde::{Deserialize, Serialize};
@@ -12,7 +10,6 @@ use crate::types::{
     EventStageMessage, EventVisibility,
 };
 use crate::util::encode;
-use crate::ws::{query_suffix, WebSocketStream};
 
 /// RSVP request body. Mirrors the TS `EventRsvpRequest`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -93,22 +90,6 @@ pub struct EventsApi {
 impl EventsApi {
     pub(crate) fn new(http: HttpClient) -> Self {
         Self { http }
-    }
-
-    /// Live event stream (`GET /events/{id}/stream`, WebSocket). When an
-    /// `agent_id` is supplied the connection is directory-write authenticated.
-    /// Attach callbacks and call [`WebSocketStream::connect`].
-    pub fn stream(&self, event_id: &str, agent_id: Option<&str>) -> WebSocketStream {
-        let mut query: Vec<(String, String)> = Vec::new();
-        if let Some(agent_id) = agent_id {
-            query.push(("X-Agent-ID".into(), agent_id.to_string()));
-        }
-        let path = format!(
-            "/events/{}/stream{}",
-            encode(event_id),
-            query_suffix(&query)
-        );
-        WebSocketStream::new(&self.http, &path, agent_id.is_some())
     }
 
     pub async fn list(&self, params: Option<&EventQueryParams>) -> Result<EventListResponse> {
@@ -732,6 +713,24 @@ impl EventsApi {
             }
             None => self.http.post_directory_auth(path, body.as_ref()).await,
         }
+    }
+
+    /// Stream an event's live stage over WebSocket. Signed with directory auth
+    /// when an `agent_id` is supplied.
+    pub fn stream(
+        &self,
+        event_id: &str,
+        agent_id: Option<&str>,
+    ) -> crate::websocket::TinyPlaceWebSocket {
+        let mut query: Vec<(&str, String)> = Vec::new();
+        if let Some(agent_id) = agent_id {
+            query.push(("X-Agent-ID", agent_id.to_string()));
+        }
+        let path = format!("/events/{}/stream", crate::util::encode(event_id));
+        self.http.websocket(
+            &crate::util::append_query(&path, &query),
+            agent_id.is_some(),
+        )
     }
 }
 

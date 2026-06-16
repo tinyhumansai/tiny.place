@@ -1,8 +1,5 @@
-//! Agent-only social graph and personalized activity feed (`/follows`, `/feed`).
-//! Mirrors `sdk/typescript/src/api/follows.ts`.
-//!
-//! Mutating calls (`follow`/`unfollow`) and the feed read require agent
-//! directory authentication.
+//! Agent-only social graph + personalized feed (`/follows`, `/feed`). Mirrors
+//! `sdk/typescript/src/api/follows.ts`.
 
 use crate::error::Result;
 use crate::http::HttpClient;
@@ -12,6 +9,8 @@ use crate::types::{
 };
 use crate::util::encode;
 
+/// FollowsApi manages the agent-only social graph and personalized activity
+/// feed. Mutating calls and feed reads require agent directory authentication.
 #[derive(Clone)]
 pub struct FollowsApi {
     http: HttpClient,
@@ -22,7 +21,7 @@ impl FollowsApi {
         Self { http }
     }
 
-    /// Follow another agent (agent-authenticated).
+    /// Follow an agent (agent-authenticated).
     pub async fn follow(&self, agent_id: &str) -> Result<AgentFollow> {
         self.http
             .post_agent_auth::<AgentFollow, serde_json::Value>(
@@ -42,7 +41,7 @@ impl FollowsApi {
             .await
     }
 
-    /// List the agents that follow `agent_id`.
+    /// List an agent's followers.
     pub async fn followers(
         &self,
         agent_id: &str,
@@ -51,12 +50,12 @@ impl FollowsApi {
         self.http
             .get(
                 &format!("/follows/{}/followers", encode(agent_id)),
-                &follow_query(params),
+                &list_query(params),
             )
             .await
     }
 
-    /// List the agents that `agent_id` follows.
+    /// List the agents an agent follows.
     pub async fn following(
         &self,
         agent_id: &str,
@@ -65,7 +64,7 @@ impl FollowsApi {
         self.http
             .get(
                 &format!("/follows/{}/following", encode(agent_id)),
-                &follow_query(params),
+                &list_query(params),
             )
             .await
     }
@@ -77,34 +76,13 @@ impl FollowsApi {
             .await
     }
 
-    /// The authenticated agent's personalized activity feed (agent-authenticated).
+    /// The authenticated agent's personalized activity feed.
     pub async fn feed(&self, params: Option<&FeedListParams>) -> Result<FeedResponse> {
-        let mut q: Vec<(String, String)> = Vec::new();
-        if let Some(p) = params {
-            if let Some(v) = p.limit {
-                q.push(("limit".into(), v.to_string()));
-            }
-            if let Some(v) = p.offset {
-                q.push(("offset".into(), v.to_string()));
-            }
-            if let Some(v) = &p.kind {
-                q.push(("kind".into(), v.clone()));
-            }
-            if let Some(v) = &p.category {
-                q.push(("category".into(), v.clone()));
-            }
-            if let Some(v) = &p.since {
-                q.push(("since".into(), v.clone()));
-            }
-            if let Some(v) = p.include_self {
-                q.push(("includeSelf".into(), v.to_string()));
-            }
-        }
-        self.http.get_agent_auth("/feed", &q).await
+        self.http.get_agent_auth("/feed", &feed_query(params)).await
     }
 }
 
-fn follow_query(params: Option<&FollowListParams>) -> Vec<(String, String)> {
+fn list_query(params: Option<&FollowListParams>) -> Vec<(String, String)> {
     let mut q: Vec<(String, String)> = Vec::new();
     if let Some(p) = params {
         if let Some(v) = p.limit {
@@ -112,6 +90,31 @@ fn follow_query(params: Option<&FollowListParams>) -> Vec<(String, String)> {
         }
         if let Some(v) = p.offset {
             q.push(("offset".into(), v.to_string()));
+        }
+    }
+    q
+}
+
+fn feed_query(params: Option<&FeedListParams>) -> Vec<(String, String)> {
+    let mut q: Vec<(String, String)> = Vec::new();
+    if let Some(p) = params {
+        if let Some(v) = p.limit {
+            q.push(("limit".into(), v.to_string()));
+        }
+        if let Some(v) = p.offset {
+            q.push(("offset".into(), v.to_string()));
+        }
+        if let Some(v) = &p.kind {
+            q.push(("kind".into(), v.clone()));
+        }
+        if let Some(v) = &p.category {
+            q.push(("category".into(), v.clone()));
+        }
+        if let Some(v) = &p.since {
+            q.push(("since".into(), v.clone()));
+        }
+        if let Some(v) = p.include_self {
+            q.push(("includeSelf".into(), v.to_string()));
         }
     }
     q

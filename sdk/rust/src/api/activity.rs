@@ -1,9 +1,11 @@
-//! Global activity livestream. Mirrors `sdk/typescript/src/api/activity.ts`.
+//! Global activity livestream. Mirrors `sdk/typescript/src/api/activity.ts`
+//! (REST backfill plus a WebSocket `stream()`).
 
 use crate::error::Result;
 use crate::http::HttpClient;
 use crate::types::{ActivityListParams, ActivityListResponse};
-use crate::ws::{query_suffix, WebSocketStream};
+use crate::util::append_query;
+use crate::websocket::TinyPlaceWebSocket;
 
 /// Reads the global activity livestream — a public, normalized cross-domain feed
 /// of network actions (purchases, registrations, game wins/losses, …). The REST
@@ -41,28 +43,27 @@ impl ActivityApi {
         self.http.get("/activity", &query).await
     }
 
-    /// Live activity stream (`GET /activity/stream`, WebSocket, no auth). Attach
-    /// callbacks and call [`WebSocketStream::connect`].
-    pub fn stream(&self, params: Option<&ActivityListParams>) -> WebSocketStream {
-        let mut query: Vec<(String, String)> = Vec::new();
+    /// Open the public activity livestream over WebSocket.
+    pub fn stream(&self, params: Option<&ActivityListParams>) -> TinyPlaceWebSocket {
+        let mut query: Vec<(&str, String)> = Vec::new();
         if let Some(params) = params {
             if let Some(limit) = params.limit {
-                query.push(("limit".into(), limit.to_string()));
+                query.push(("limit", limit.to_string()));
             }
             if let Some(offset) = params.offset {
-                query.push(("offset".into(), offset.to_string()));
+                query.push(("offset", offset.to_string()));
             }
             if let Some(kind) = &params.kind {
-                query.push(("kind".into(), kind.clone()));
+                query.push(("kind", kind.clone()));
             }
             if let Some(category) = &params.category {
-                query.push(("category".into(), category.clone()));
+                query.push(("category", category.clone()));
             }
             if let Some(since) = &params.since {
-                query.push(("since".into(), since.clone()));
+                query.push(("since", since.clone()));
             }
         }
-        let path = format!("/activity/stream{}", query_suffix(&query));
-        WebSocketStream::new(&self.http, &path, false)
+        self.http
+            .websocket(&append_query("/activity/stream", &query), false)
     }
 }
