@@ -9,6 +9,7 @@ import { TwitterVerifiedBadge } from "@src/components/profile/TwitterVerifiedBad
 import {
 	useChannelMessages,
 	useChannels,
+	useCreateChannel,
 	useJoinChannel,
 	usePostChannelMessage,
 } from "@src/hooks/use-channels";
@@ -310,15 +311,39 @@ export const Messaging = ({
 	const [joinedChannelIds, setJoinedChannelIds] = useState<Set<string>>(
 		(): Set<string> => new Set()
 	);
+	const [newChannelName, setNewChannelName] = useState("");
 	const agentId = useAuthStore((state) => state.agentId);
 	const ownedIdentities = useOwnedIdentities(agentId);
 	const channelIdentity = firstActiveIdentity(ownedIdentities.data?.identities);
 	const { data, isLoading, isError, error } = useChannels();
 	const joinChannel = useJoinChannel();
+	const createChannel = useCreateChannel();
 	const markChannelRead = useMessageReadsStore((state) => state.markRead);
 
 	const channels = data?.channels ?? [];
 	const effectiveActor = channelIdentity?.username ?? agentId ?? "";
+
+	function handleCreateChannel(): void {
+		const name = newChannelName.trim();
+		if (!name || !effectiveActor || createChannel.isPending) {
+			return;
+		}
+		createChannel.mutate(
+			{ creator: effectiveActor, name, tags: ["explore"] },
+			{
+				onSuccess: (channel): void => {
+					setNewChannelName("");
+					// The creator is auto-joined server-side, so reflect that and open
+					// the channel straight away.
+					setJoinedChannelIds(
+						(previous): Set<string> =>
+							new Set(previous).add(channel.channelId)
+					);
+					setSelectedChannelId(channel.channelId);
+				},
+			}
+		);
+	}
 	const activeChannelId =
 		selectedChannelId ||
 		(channels.length > 0 ? channels[0]?.channelId : undefined);
@@ -391,6 +416,45 @@ export const Messaging = ({
 								? "Checking your active handle..."
 								: "Connect your wallet to post."}
 					</p>
+					<div className="mt-2 flex gap-1">
+						<input
+							disabled={!effectiveActor || createChannel.isPending}
+							placeholder="New public channel"
+							type="text"
+							value={newChannelName}
+							className={`min-w-0 flex-1 rounded-md border px-2 py-1 text-[11px] outline-none disabled:opacity-50 ${
+								isDark
+									? "border-neutral-800 bg-neutral-900 text-white placeholder:text-neutral-600"
+									: "border-neutral-200 bg-white text-black placeholder:text-neutral-400"
+							}`}
+							onChange={(event): void => {
+								setNewChannelName(event.target.value);
+							}}
+							onKeyDown={(event): void => {
+								if (event.key === "Enter") {
+									event.preventDefault();
+									handleCreateChannel();
+								}
+							}}
+						/>
+						<button
+							className="shrink-0 rounded-md bg-blue-500 px-2 py-1 text-[11px] font-medium text-white disabled:opacity-50"
+							type="button"
+							disabled={
+								!effectiveActor ||
+								createChannel.isPending ||
+								!newChannelName.trim()
+							}
+							onClick={handleCreateChannel}
+						>
+							{createChannel.isPending ? "…" : "New"}
+						</button>
+					</div>
+					{createChannel.isError ? (
+						<p className="mt-1 text-[10px] text-red-500">
+							{createChannel.error.message}
+						</p>
+					) : null}
 				</div>
 				<ChannelList
 					channels={channels}

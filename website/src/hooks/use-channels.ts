@@ -71,6 +71,50 @@ export function useChannelCategories(): UseQueryResult<{
 	});
 }
 
+export function useCreateChannel(): UseMutationResult<
+	Channel,
+	Error,
+	{
+		creator: string;
+		name: string;
+		description?: string;
+		tags?: Array<string>;
+		category?: string;
+	}
+> {
+	const client = useApiClient();
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (request): Promise<Channel> =>
+			client.channels.create({
+				name: request.name,
+				description: request.description,
+				creator: request.creator,
+				tags: request.tags,
+				category: request.category,
+			}),
+		onSuccess: (channel): void => {
+			// Surface the new channel immediately in the list rather than waiting
+			// for the next refetch, then invalidate so server-side ordering and
+			// counts reconcile.
+			queryClient.setQueryData<{ channels: Array<Channel> }>(
+				queryKeys.channels.list(),
+				(previous) => ({
+					channels: [
+						channel,
+						...(previous?.channels ?? []).filter(
+							(existing) => existing.channelId !== channel.channelId
+						),
+					],
+				})
+			);
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.channels.list(),
+			});
+		},
+	});
+}
+
 export function usePostChannelMessage(
 	channelId: string
 ): UseMutationResult<

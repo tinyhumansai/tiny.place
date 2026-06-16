@@ -8,6 +8,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import type { GroupMember, GroupMetadata } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
+import { useCreateChannel } from "@src/hooks/use-channels";
 import { useGroupMessages } from "@src/hooks/use-group-messages";
 import {
 	useCreateGroup,
@@ -41,7 +42,11 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 	const myGroupsQuery = useMyGroups(actor);
 	const discoverQuery = useGroups();
 	const createGroup = useCreateGroup();
+	const createChannel = useCreateChannel();
 	const joinGroup = useJoinGroup();
+	const [createdChannelName, setCreatedChannelName] = useState<string | null>(
+		null
+	);
 
 	const groupMessages = useGroupMessages(actor);
 	const memberQuery = useGroupMembers(selectedGroupId ?? "");
@@ -73,7 +78,8 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 		activeGroup?.createdBy === actor || myMember?.role === "owner";
 	const isAdmin = isOwner || myMember?.role === "admin";
 
-	const mutationError = createGroup.error ?? joinGroup.error;
+	const mutationError =
+		createGroup.error ?? createChannel.error ?? joinGroup.error;
 
 	// Viewing a group clears its unread marker.
 	const markGroupRead = groupMessages.markGroupRead;
@@ -109,13 +115,32 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 		if (!actor || !name.trim()) {
 			return;
 		}
+		setCreatedChannelName(null);
+		// "Public" means a plaintext, server-readable public channel (per the
+		// constitution spec) — not an encrypted group. Route it to the channels
+		// backend; encrypted groups are always private.
+		if (isPublic) {
+			createChannel.mutate(
+				{
+					creator: actor,
+					name,
+					description,
+					tags: ["explore"],
+				},
+				{
+					onSuccess: (channel): void => {
+						setCreatedChannelName(channel.name);
+					},
+				}
+			);
+			return;
+		}
 		createGroup.mutate(
 			{
 				name,
 				description,
 				createdBy: actor,
-				// Groups are private (invite-only) unless explicitly made public.
-				membershipPolicy: isPublic ? "open" : "invite-only",
+				membershipPolicy: "invite-only",
 				membersPublic: true,
 				tags: ["explore"],
 			},
@@ -204,20 +229,28 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 	};
 
 	const renderGroupDetail = (group: GroupMetadata): React.ReactElement => {
-		const visibility = group.membershipPolicy === "open" ? "Public" : "Private";
+		// Every group here is an encrypted (Signal sender-key) group. Open vs
+		// invite-only is a join policy, NOT plaintext visibility — public, readable
+		// conversations are Channels, a separate surface. Label the join policy so
+		// the badge no longer implies the group is publicly readable.
+		const joinPolicy =
+			group.membershipPolicy === "open" ? "Open" : "Invite-only";
 		const canJoin = !isMember && group.membershipPolicy !== "invite-only";
 		return (
 			<div className="space-y-2">
 				<p className={`text-xs ${mutedClass}`}>{group.description ?? ""}</p>
 				<div className="flex flex-wrap items-center gap-2">
+					<span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-500">
+						🔒 Encrypted
+					</span>
 					<span
 						className={`rounded-full px-2 py-0.5 text-[10px] ${
-							visibility === "Public"
+							joinPolicy === "Open"
 								? "bg-green-500/10 text-green-500"
 								: "bg-amber-500/10 text-amber-500"
 						}`}
 					>
-						{visibility}
+						{joinPolicy}
 					</span>
 					<span className={`text-[10px] ${mutedClass}`}>
 						{group.memberCount} members
@@ -305,7 +338,7 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 							: "bg-amber-500/10 text-amber-500"
 					}`}
 				>
-					{group.membershipPolicy === "open" ? "Public" : "Private"}
+					{group.membershipPolicy === "open" ? "Open" : "Invite-only"}
 				</span>
 			</div>
 			<p className={`mt-1 text-[10px] ${mutedClass}`}>
@@ -397,10 +430,19 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 					/>
 					<button
 						className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-						disabled={createGroup.isPending || !actor || !name.trim()}
 						type="submit"
+						disabled={
+							createGroup.isPending ||
+							createChannel.isPending ||
+							!actor ||
+							!name.trim()
+						}
 					>
-						{createGroup.isPending ? "Creating..." : "Create Group"}
+						{createGroup.isPending || createChannel.isPending
+							? "Creating..."
+							: isPublic
+								? "Create Channel"
+								: "Create Group"}
 					</button>
 				</div>
 				<input
@@ -422,8 +464,15 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 							setIsPublic(event.target.checked);
 						}}
 					/>
-					Public — discoverable by anyone (otherwise invite-only)
+					Public — create a plaintext Channel anyone can read &amp; join
+					(otherwise an encrypted, invite-only group)
 				</label>
+				{createdChannelName ? (
+					<p className="mt-2 text-xs text-green-500">
+						Created public channel “{createdChannelName}”. Open it from the
+						Channels tab to post and read its history.
+					</p>
+				) : null}
 				{mutationError ? (
 					<p className="mt-2 text-xs text-red-500">{mutationError.message}</p>
 				) : null}
