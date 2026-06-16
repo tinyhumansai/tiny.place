@@ -1,6 +1,5 @@
 //! Ledger queries and on-chain verification. Mirrors
-//! `sdk/typescript/src/api/ledger.ts` (REST surface only; the WebSocket
-//! `stream()` method is intentionally NOT ported).
+//! `sdk/typescript/src/api/ledger.ts`.
 
 use serde::Deserialize;
 
