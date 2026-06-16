@@ -134,11 +134,33 @@ export function parseGroupKeyDistribution(
     typeof candidate.groupId !== "string" ||
     typeof candidate.sender !== "string" ||
     typeof candidate.epoch !== "number" ||
-    typeof candidate.distribution !== "object"
+    !isValidSenderKeyDistribution(candidate.distribution)
   ) {
     return null;
   }
   return candidate;
+}
+
+/**
+ * Validates a {@link SenderKeyDistribution} payload before it is fed to
+ * `GroupSenderKeyReceiver.fromDistribution` (which base64-decodes `chainKey` /
+ * `signaturePublicKey` and would throw on a malformed handoff). Requires a
+ * non-empty base64 `chainKey`, a finite numeric `iteration`, and a non-empty
+ * base64 `signaturePublicKey`; anything else is treated as not a handoff.
+ */
+function isValidSenderKeyDistribution(
+  distribution: unknown,
+): distribution is SenderKeyDistribution {
+  if (typeof distribution !== "object" || distribution === null) return false;
+  const candidate = distribution as Record<string, unknown>;
+  return (
+    typeof candidate["chainKey"] === "string" &&
+    candidate["chainKey"].length > 0 &&
+    typeof candidate["iteration"] === "number" &&
+    Number.isFinite(candidate["iteration"]) &&
+    typeof candidate["signaturePublicKey"] === "string" &&
+    candidate["signaturePublicKey"].length > 0
+  );
 }
 
 /**
@@ -198,15 +220,25 @@ function isBackendHintEnvelope(body: string): boolean {
   return decoded === DISTRIBUTION_REQUIRED || decoded === ROTATION_REQUIRED;
 }
 
-/** Resolves a group member's agentId to its base64 encryption public key. */
+/**
+ * Resolves a group member's agentId to its base64 encryption public key.
+ * A member with no directory card (the lookup throws / 404s) is treated as
+ * "no encryption key yet" (returns `undefined`) so a single missing card does
+ * not abort the whole group send — the caller skips that member instead.
+ */
 async function memberEncryptionKey(
   client: TinyPlaceClient,
   agentId: string,
 ): Promise<string | undefined> {
-  const card = (await client.directory.getAgent(agentId)) as {
-    publicKey?: string;
-    metadata?: Record<string, unknown>;
-  } | null;
+  let card: { publicKey?: string; metadata?: Record<string, unknown> } | null;
+  try {
+    card = (await client.directory.getAgent(agentId)) as {
+      publicKey?: string;
+      metadata?: Record<string, unknown>;
+    } | null;
+  } catch {
+    return undefined;
+  }
   const advertised = card?.metadata?.["encryptionPublicKey"];
   return (
     (typeof advertised === "string" && advertised.length > 0 ? advertised : undefined) ??

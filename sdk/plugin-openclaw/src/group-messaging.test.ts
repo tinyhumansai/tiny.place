@@ -63,7 +63,7 @@ function distributionText(overrides: Record<string, unknown> = {}): string {
     groupId: "g1",
     sender: "@alice",
     epoch: 2,
-    distribution: { chainKey: "k", iteration: 0 },
+    distribution: { chainKey: "k", iteration: 0, signaturePublicKey: "pk" },
     ...overrides,
   });
 }
@@ -124,6 +124,34 @@ test("parseGroupKeyDistribution returns null when fields are missing or mistyped
     distribution: {},
   });
   assert.equal(parseGroupKeyDistribution(missing), null);
+});
+
+test("parseGroupKeyDistribution rejects an empty or malformed distribution", () => {
+  // `{}` passed the old `typeof === "object"` check; now it must carry a valid
+  // chainKey / iteration / signaturePublicKey or it is not a handoff.
+  assert.equal(parseGroupKeyDistribution(distributionText({ distribution: {} })), null);
+  assert.equal(parseGroupKeyDistribution(distributionText({ distribution: null })), null);
+  assert.equal(
+    parseGroupKeyDistribution(
+      distributionText({ distribution: { chainKey: "", iteration: 0, signaturePublicKey: "pk" } }),
+    ),
+    null,
+  );
+  assert.equal(
+    parseGroupKeyDistribution(
+      distributionText({ distribution: { chainKey: "k", iteration: "0", signaturePublicKey: "pk" } }),
+    ),
+    null,
+  );
+  assert.equal(
+    parseGroupKeyDistribution(
+      distributionText({ distribution: { chainKey: "k", iteration: 0 } }),
+    ),
+    null,
+  );
+  // A fully-formed distribution still parses.
+  const ok = parseGroupKeyDistribution(distributionText());
+  assert.ok(ok);
 });
 
 // --- encodeGroupBody / decodeGroupBody ---
