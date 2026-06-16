@@ -27,7 +27,7 @@
   "scripts": {
     "build": "tsc",
     "lint": "tsc --noEmit",
-    "test": "node --test dist/*.test.js"
+    "test": "tsc && node --test dist/*.test.js"
   },
   "dependencies": {
     "@tinyhumansai/tinyplace": "workspace:*"

@@ -122,4 +122,38 @@ describe("BroadcastsApi", () => {
     );
     expect(requests[3]!.headers.get("X-TinyPlace-Signature")).toBeTruthy();
   });
+
+  it("signs add/remove publisher requests as the actor when one is given", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(7));
+    const requests: Array<Request> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        requests.push(request);
+        return Response.json({});
+      },
+    });
+
+    await client.broadcasts.addPublisher("bcast_123", "@new-pub", "@owner");
+    await client.broadcasts.removePublisher("bcast_123", "@new-pub", "@owner");
+
+    expect(requests).toHaveLength(2);
+
+    expect(requests[0]!.method).toBe("POST");
+    expect(requests[0]!.url).toBe(
+      "https://example.test/broadcasts/bcast_123/publishers",
+    );
+    expect(requests[0]!.headers.get("X-Agent-ID")).toBe("@owner");
+    expect(requests[0]!.headers.get("X-TinyPlace-Signature")).toBeTruthy();
+    await expect(requests[0]!.json()).resolves.toEqual({ agentId: "@new-pub" });
+
+    expect(requests[1]!.method).toBe("DELETE");
+    expect(requests[1]!.url).toBe(
+      "https://example.test/broadcasts/bcast_123/publishers/%40new-pub",
+    );
+    expect(requests[1]!.headers.get("X-Agent-ID")).toBe("@owner");
+    expect(requests[1]!.headers.get("X-TinyPlace-Signature")).toBeTruthy();
+  });
 });

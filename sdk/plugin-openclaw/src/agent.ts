@@ -13,6 +13,12 @@ import {
 } from "@tinyhumansai/tinyplace";
 
 import type { AgentConfig } from "./config.js";
+import {
+  challengeOf,
+  normalizeHandle,
+  type PaymentChallenge,
+  payFromChallenge,
+} from "./shared.js";
 
 export function makeClient(
   config: AgentConfig,
@@ -23,33 +29,6 @@ export function makeClient(
     harnessKey: config.harnessKey,
     signer,
   });
-}
-
-function normalizeHandle(name: string): string {
-  const trimmed = name.trim();
-  return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
-}
-
-interface PaymentChallenge {
-  scheme?: string;
-  network?: string;
-  asset?: string;
-  amount?: string;
-  from?: string;
-  to?: string;
-  nonce?: string;
-  expiresAt?: string;
-  metadata?: Record<string, string>;
-}
-
-/** Extracts the x402 challenge from a 402 response, if present. */
-function challengeOf(error: unknown): PaymentChallenge | undefined {
-  if (error instanceof TinyPlaceError && error.status === 402) {
-    const body = error.body as { payment?: PaymentChallenge } | undefined;
-    return (error.paymentRequired?.payment as PaymentChallenge | undefined) ??
-      body?.payment;
-  }
-  return undefined;
 }
 
 export interface AvailabilityResult {
@@ -301,5 +280,277 @@ export async function identityStatus(
       expiresAt: identity.expiresAt,
     })),
     hasCard: (response.agents ?? []).length > 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1 — discovery, profile, handle lifecycle, social graph, reputation.
+// All thin wrappers over the flagship SDK; no new HTTP plumbing or state.
+// ---------------------------------------------------------------------------
+
+export interface DiscoveredAgent {
+  agentId: string;
+  name: string;
+  username?: string;
+  description?: string;
+  skills?: Array<string>;
+}
+
+/**
+ * Normalizes a skills array to plain names. The backend returns skills either as
+ * bare strings or as `{ id, name }` objects depending on the route; the SDK type
+ * only models strings, so coerce defensively.
+ */
+function skillNames(skills: unknown): Array<string> | undefined {
+  if (!Array.isArray(skills)) return undefined;
+  return skills.map((skill) => {
+    if (typeof skill === "string") return skill;
+    const record = skill as { name?: string; id?: string };
+    return record.name ?? record.id ?? String(skill);
+  });
+}
+
+/**
+ * Lists / searches agents in the Open Directory. Filter by free-text `q`,
+ * `skill`, or `tag`. Lets an agent find peers to message, hire, or follow.
+ */
+export async function discoverAgents(
+  client: TinyPlaceClient,
+  options: {
+    q?: string;
+    skill?: string;
+    tag?: string;
+    limit?: number;
+  } = {},
+): Promise<Array<DiscoveredAgent>> {
+  const response = await client.directory.listAgents({
+    ...(options.q ? { q: options.q } : {}),
+    ...(options.skill ? { skill: options.skill } : {}),
+    ...(options.tag ? { tag: options.tag } : {}),
+    limit: options.limit ?? 20,
+  });
+  return (response.agents ?? []).map((agent) => ({
+    agentId: agent.agentId,
+    name: agent.name,
+    username: agent.username,
+    description: agent.description,
+    skills: skillNames(agent.skills),
+  }));
+}
+
+export interface ResolveResult {
+  name: string;
+  found: boolean;
+  cryptoId?: string;
+  publicKey?: string;
+  status?: string;
+  agentName?: string;
+}
+
+/** Resolves a `@handle` to its owning wallet + directory card (if any). */
+export async function resolveHandle(
+  client: TinyPlaceClient,
+  name: string,
+): Promise<ResolveResult> {
+  const handle = normalizeHandle(name);
+  let response: Awaited<ReturnType<typeof client.directory.resolve>>;
+  try {
+    response = await client.directory.resolve(handle);
+  } catch (error) {
+    // An unregistered handle 404s; surface that as a clean not-found result
+    // rather than throwing, so callers can branch on `found`.
+    if (error instanceof TinyPlaceError && error.status === 404) {
+      return { name: handle, found: false };
+    }
+    throw error;
+  }
+  const identity = response.identity;
+  return {
+    name: handle,
+    found: Boolean(identity),
+    ...(identity?.cryptoId ? { cryptoId: identity.cryptoId } : {}),
+    ...(identity?.publicKey ? { publicKey: identity.publicKey } : {}),
+    ...(identity?.status ? { status: identity.status } : {}),
+    ...(response.agent?.name ? { agentName: response.agent.name } : {}),
+  };
+}
+
+/** Reads a wallet's User profile (display name, bio, link, tags, email state). */
+export async function getProfile(
+  client: TinyPlaceClient,
+  cryptoId: string,
+): Promise<{
+  cryptoId: string;
+  displayName: string;
+  bio: string;
+  link?: string;
+  tags?: Array<string>;
+  actorType: string;
+  emailVerified: boolean;
+}> {
+  const user = await client.users.get(cryptoId);
+  return {
+    cryptoId: user.cryptoId,
+    displayName: user.displayName,
+    bio: user.bio,
+    link: user.link,
+    tags: user.tags,
+    actorType: user.actorType,
+    emailVerified: user.emailVerified,
+  };
+}
+
+export interface ProfileUpdateInput {
+  displayName?: string;
+  bio?: string;
+  link?: string;
+  tags?: Array<string>;
+  avatarEmail?: string;
+  actorType?: "human" | "agent";
+}
+
+/** Updates the agent's own wallet profile (signs the canonical user.profile). */
+export async function setProfile(
+  client: TinyPlaceClient,
+  signer: LocalSigner,
+  update: ProfileUpdateInput,
+): Promise<{ cryptoId: string; displayName: string; bio: string }> {
+  const user = await client.users.updateProfile(signer.agentId, {
+    ...(update.displayName !== undefined ? { displayName: update.displayName } : {}),
+    ...(update.bio !== undefined ? { bio: update.bio } : {}),
+    ...(update.link !== undefined ? { link: update.link } : {}),
+    ...(update.tags !== undefined ? { tags: update.tags } : {}),
+    ...(update.avatarEmail !== undefined ? { avatarEmail: update.avatarEmail } : {}),
+    ...(update.actorType !== undefined ? { actorType: update.actorType } : {}),
+  });
+  return { cryptoId: user.cryptoId, displayName: user.displayName, bio: user.bio };
+}
+
+/**
+ * Renews a `@handle` the agent owns. Renewal may be free or require an x402
+ * payment — same custodial-settlement pattern as registration.
+ */
+export async function renewDomain(
+  client: TinyPlaceClient,
+  signer: LocalSigner,
+  name: string,
+): Promise<{ username: string; status: string; expiresAt: string }> {
+  const handle = normalizeHandle(name);
+  let challenge: PaymentChallenge | undefined;
+  try {
+    const identity = await client.registry.renew(handle, {});
+    return { username: identity.username, status: identity.status, expiresAt: identity.expiresAt };
+  } catch (error) {
+    challenge = challengeOf(error);
+    if (!challenge) throw error;
+  }
+  const payment = await payFromChallenge(signer, challenge, {
+    identity: handle,
+    purpose: "renewal",
+  });
+  const identity = await client.registry.renew(handle, { payment });
+  return { username: identity.username, status: identity.status, expiresAt: identity.expiresAt };
+}
+
+/** Transfers a `@handle` the agent owns to another wallet (no payment). */
+export async function transferDomain(
+  client: TinyPlaceClient,
+  name: string,
+  recipient: { cryptoId: string; publicKey: string },
+): Promise<{ username: string; cryptoId: string }> {
+  const handle = normalizeHandle(name);
+  const identity = await client.registry.transfer(handle, {
+    cryptoId: recipient.cryptoId,
+    publicKey: recipient.publicKey,
+  });
+  return { username: identity.username, cryptoId: identity.cryptoId };
+}
+
+/** Assigns or unassigns a handle as the wallet's primary identity. */
+export async function setPrimaryHandle(
+  client: TinyPlaceClient,
+  name: string,
+  primary: boolean,
+): Promise<{ username: string; primary: boolean }> {
+  const handle = normalizeHandle(name);
+  const identity = primary
+    ? await client.registry.assignPrimary(handle)
+    : await client.registry.unassignPrimary(handle);
+  return { username: identity.username, primary };
+}
+
+/** Follows another agent (personalized feed input). */
+export async function followAgent(
+  client: TinyPlaceClient,
+  agentId: string,
+): Promise<{ follower: string; followee: string }> {
+  const follow = await client.follows.follow(agentId);
+  return { follower: follow.follower, followee: follow.followee };
+}
+
+/** Unfollows an agent. */
+export async function unfollowAgent(
+  client: TinyPlaceClient,
+  agentId: string,
+): Promise<{ unfollowed: string }> {
+  await client.follows.unfollow(agentId);
+  return { unfollowed: agentId };
+}
+
+/** Follower / following counts for an agent. */
+export async function followStats(
+  client: TinyPlaceClient,
+  agentId: string,
+): Promise<{ agentId: string; followerCount: number; followingCount: number }> {
+  const stats = await client.follows.stats(agentId);
+  return {
+    agentId: stats.agentId,
+    followerCount: stats.followerCount,
+    followingCount: stats.followingCount,
+  };
+}
+
+/** The agent's personalized activity feed (events from agents it follows). */
+export async function feed(
+  client: TinyPlaceClient,
+  options: { limit?: number; since?: string } = {},
+): Promise<PollResult["recentActivity"]> {
+  const response = await client.follows.feed({
+    limit: options.limit ?? 20,
+    ...(options.since ? { since: options.since } : {}),
+  });
+  return response.events.map((event) => ({
+    kind: event.kind,
+    actor: event.actor,
+    target: event.target,
+    amount: event.amount,
+    asset: event.asset,
+    timestamp: event.timestamp,
+  }));
+}
+
+/** Reputation score + recent reviews for an agent. */
+export async function getReputation(
+  client: TinyPlaceClient,
+  agentId: string,
+): Promise<{
+  agentId: string;
+  score: number;
+  breakdown: Record<string, number>;
+  reviewCount: number;
+}> {
+  const score = await client.reputation.getScore(agentId);
+  let reviewCount = 0;
+  try {
+    const reviews = await client.reputation.getReviews(agentId);
+    reviewCount = reviews.reviews.length;
+  } catch {
+    reviewCount = 0;
+  }
+  return {
+    agentId: score.agentId,
+    score: score.score,
+    breakdown: score.breakdown,
+    reviewCount,
   };
 }
