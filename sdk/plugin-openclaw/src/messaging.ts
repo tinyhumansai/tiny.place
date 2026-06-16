@@ -24,6 +24,10 @@ import {
 } from "@tinyhumansai/tinyplace";
 
 import type { AgentConfig } from "./config.js";
+import {
+  installGroupKeyHandoff,
+  parseGroupKeyDistribution,
+} from "./group-messaging.js";
 import { type FileSessionStore, loadSessionStore } from "./signal-store.js";
 
 const encoder = new TextEncoder();
@@ -202,6 +206,8 @@ export interface ReadMessage {
   type: string;
   text?: string;
   error?: string;
+  /** Set for non-chat control DMs (e.g. an installed group sender-key handoff). */
+  control?: string;
 }
 
 /**
@@ -256,16 +262,28 @@ export async function readMessages(
       continue;
     }
 
-    // Persist the advanced ratchet BEFORE acking: the ratchet has moved forward,
-    // so the state must be durable before the message is dropped from the relay
-    // — otherwise a crash between ack and persist would desync the ratchet.
+    // A group sender-key handoff rides the 1:1 channel: detect it, install the
+    // receiving chain (so `group read` can decrypt that sender's messages), and
+    // surface it as a control item rather than a chat message.
+    const text = decoder.decode(plaintext);
+    const handoff = parseGroupKeyDistribution(text);
+    if (handoff) {
+      installGroupKeyHandoff(store, handoff);
+    }
+
+    // Persist the advanced ratchet (and any installed handoff) BEFORE acking: the
+    // ratchet has moved forward, so the state must be durable before the message
+    // is dropped from the relay — otherwise a crash between ack and persist would
+    // desync the ratchet.
     store.persist();
     results.push({
       id: envelope.id,
       from: envelope.from,
       timestamp: envelope.timestamp,
       type: envelope.type,
-      text: decoder.decode(plaintext),
+      ...(handoff
+        ? { control: `group-key:${handoff.groupId}` }
+        : { text }),
     });
     // Acknowledge separately: the message is already decrypted + persisted, so an
     // ack failure must not be reported as a decrypt failure.

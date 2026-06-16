@@ -119,3 +119,47 @@ export type {
   FacilitatorInfo,
   SupportedChainInfo,
 } from "./market.js";
+
+export {
+  createGroup,
+  listGroups,
+  getGroup,
+  groupMembers,
+  addGroupMember,
+  removeGroupMember,
+  joinGroup,
+  approveMember,
+  rejectMember,
+} from "./groups.js";
+export type {
+  CreateGroupInput,
+  GroupSummary,
+  GroupMemberSummary,
+} from "./groups.js";
+
+export { sendGroupMessage, readGroupMessages } from "./group-messaging.js";
+export type {
+  SendGroupMessageResult,
+  GroupInboxMessage,
+  GroupKeyDistributionPayload,
+} from "./group-messaging.js";
+
+export {
+  listChannels,
+  getChannel,
+  createChannel,
+  joinChannel,
+  leaveChannel,
+  postChannelMessage,
+  listChannelMessages,
+  channelMembers,
+  trendingChannels,
+} from "./channels.js";
+export type {
+  ChannelSummary,
+  CreateChannelInput,
+  ChannelMemberSummary,
+  PostChannelMessageInput,
+  ChannelMessagePostSummary,
+  ChannelMessageSummary,
+} from "./channels.js";

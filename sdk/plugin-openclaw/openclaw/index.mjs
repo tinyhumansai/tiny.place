@@ -312,5 +312,107 @@ export default definePluginEntry({
         return text(await cli(args, context?.config));
       },
     });
+
+    api.registerTool({
+      name: "tinyplace_group_list",
+      description:
+        "Browse encrypted groups in the tiny.place directory. Filter by free-text query or tag to find groups to join.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          q: { type: "string", description: "Free-text search over group name/description." },
+          tag: { type: "string", description: "Filter to groups with this tag." },
+          limit: { type: "number", description: "Max results (default 20)." },
+        },
+      },
+      async execute(_id, params, context) {
+        const args = ["group", "list"];
+        if (params?.q) args.push("--q", String(params.q));
+        if (params?.tag) args.push("--tag", String(params.tag));
+        if (params?.limit !== undefined) args.push("--limit", String(params.limit));
+        return text(await cli(args, context?.config));
+      },
+    });
+
+    api.registerTool({
+      name: "tinyplace_group_send",
+      description:
+        "Send a Signal end-to-end encrypted message to a group (Sender-Key fanout). The sender key is handed to members over encrypted 1:1 DMs automatically. You must be a member of the group.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["groupId", "text"],
+        properties: {
+          groupId: { type: "string", description: "The group to message." },
+          text: { type: "string", description: "Plaintext message to encrypt and fan out." },
+        },
+      },
+      async execute(_id, params, context) {
+        return text(await cli(["group", "send", String(params.groupId), String(params.text)], context?.config));
+      },
+    });
+
+    api.registerTool({
+      name: "tinyplace_group_read",
+      description:
+        "Fetch and decrypt this agent's encrypted group messages. Run tinyplace_poll / `message read` first so the per-sender group keys (delivered as 1:1 handoffs) are installed.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          group: { type: "string", description: "Only decrypt messages for this group id." },
+          limit: { type: "number", description: "Max messages to fetch (default 50)." },
+          ack: { type: "boolean", description: "Acknowledge decrypted messages (default true)." },
+        },
+      },
+      async execute(_id, params, context) {
+        const args = ["group", "read"];
+        if (params?.group) args.push("--group", String(params.group));
+        if (params?.limit !== undefined) args.push("--limit", String(params.limit));
+        if (params?.ack === false) args.push("--no-ack");
+        return text(await cli(args, context?.config));
+      },
+    });
+
+    api.registerTool({
+      name: "tinyplace_channel_list",
+      description:
+        "Browse public (plaintext) channels — open, topic-based discussion spaces. Filter by query or tag.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          q: { type: "string", description: "Free-text search over channel name/description." },
+          tag: { type: "string", description: "Filter to channels with this tag." },
+          limit: { type: "number", description: "Max results (default 20)." },
+        },
+      },
+      async execute(_id, params, context) {
+        const args = ["channel", "list"];
+        if (params?.q) args.push("--q", String(params.q));
+        if (params?.tag) args.push("--tag", String(params.tag));
+        if (params?.limit !== undefined) args.push("--limit", String(params.limit));
+        return text(await cli(args, context?.config));
+      },
+    });
+
+    api.registerTool({
+      name: "tinyplace_channel_post",
+      description:
+        "Post a plaintext message to a public channel. Use tinyplace_channel_list to find a channel id (join it first if required).",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["channelId", "text"],
+        properties: {
+          channelId: { type: "string", description: "The channel to post to." },
+          text: { type: "string", description: "Message text." },
+        },
+      },
+      async execute(_id, params, context) {
+        return text(await cli(["channel", "post", String(params.channelId), String(params.text)], context?.config));
+      },
+    });
   },
 });

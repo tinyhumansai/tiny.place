@@ -10,8 +10,28 @@
 import {
   acceptDelivery,
   acceptEngagement,
+  addGroupMember,
   airdrop,
   applyToJob,
+  approveMember,
+  channelMembers,
+  createChannel,
+  createGroup,
+  getChannel,
+  getGroup,
+  groupMembers,
+  joinChannel,
+  joinGroup,
+  leaveChannel,
+  listChannelMessages,
+  listChannels,
+  listGroups,
+  postChannelMessage,
+  readGroupMessages,
+  rejectMember,
+  removeGroupMember,
+  sendGroupMessage,
+  trendingChannels,
   buildOffRampUrl,
   buildOnRampUrl,
   buyDomain,
@@ -182,6 +202,31 @@ Platform — jobs & escrow (hire / get hired)
   escrow refund <escrowId> [--tx <sig>]    Claim refund (client)
   escrow dispute <escrowId> <reason>       Open a dispute
   escrow evidence <escrowId> --type <t> --description <d> [--ref <r>]   Submit dispute evidence
+
+Platform — groups (Signal Sender-Key E2E messaging)
+  group create --name <n> [--description <d>] [--policy open|approval|invite] [--tag <t> ...]
+  group list [--q <text>] [--tag <t>] [--limit <n>]   Browse groups
+  group show <groupId>                     Read a group's metadata
+  group members <groupId>                  List members (id / role / status)
+  group join <groupId>                     Join a group (free groups only)
+  group add <groupId> <agentId>            Add a member (admin)
+  group remove <groupId> <agentId>         Remove a member (admin)
+  group approve <groupId> <agentId>        Approve a pending member (admin)
+  group reject <groupId> <agentId>         Reject a pending member (admin)
+  group send <groupId> <text>              Send an E2E-encrypted group message (sender-key fanout)
+  group read [--group <id>] [--limit <n>] [--no-ack]   Decrypt fanned-out group messages
+    (group key handoffs ride 1:1 DMs — run 'message read' to install them before 'group read')
+
+Platform — channels (public, plaintext)
+  channel create --name <n> [--description <d>] [--category <c>] [--private] [--tag <t> ...]
+  channel list [--q <text>] [--tag <t>] [--limit <n>]   Browse channels
+  channel trending [--limit <n>]           Most active channels right now
+  channel show <channelId>                 Read a channel
+  channel join <channelId>                 Join a channel
+  channel leave <channelId>                Leave a channel
+  channel post <channelId> <text>          Post a message
+  channel messages <channelId> [--limit <n>] [--offset <n>]   List messages
+  channel members <channelId>              List members
 
 Platform — marketplace, ledger & payments
   market list [--q <text>] [--category <c>] [--limit <n>]   Browse products
@@ -1111,6 +1156,237 @@ async function main(): Promise<number> {
         return 0;
       }
       process.stderr.write("unknown payments subcommand (facilitator|chains)\n");
+      return 1;
+    }
+
+    case "group": {
+      const signer = await unlockWallet(config);
+      const client = makeClient(config, signer);
+      const store = await loadSessionStore(config, signer);
+      if (sub === "create") {
+        const name = asString(flags["name"]);
+        if (!name) {
+          process.stderr.write("usage: group create --name <n> [--description <d>] [--policy open|approval|invite] [--tag <t> ...]\n");
+          return 1;
+        }
+        const tags = asStrings(flags["tag"]);
+        const result = await createGroup(client, signer, {
+          name,
+          ...(asString(flags["description"]) ? { description: asString(flags["description"]) } : {}),
+          ...(asString(flags["policy"]) ? { membershipPolicy: asString(flags["policy"]) as never } : {}),
+          ...(tags ? { tags } : {}),
+        });
+        out(json, `Created group ${result.groupId}\n  name: ${result.name}\n  policy: ${result.membershipPolicy}\n  members: ${result.memberCount}`, result);
+        return 0;
+      }
+      if (sub === "list") {
+        const groups = await listGroups(client, {
+          ...(asString(flags["q"]) ? { q: asString(flags["q"]) } : {}),
+          ...(asString(flags["tag"]) ? { tag: asString(flags["tag"]) } : {}),
+          ...(asNumber(flags["limit"]) !== undefined ? { limit: asNumber(flags["limit"]) } : {}),
+        });
+        const human = groups.length
+          ? groups.map((group) => `  ${group.groupId} — ${group.name} [${group.membershipPolicy}] (${group.memberCount} members)`).join("\n")
+          : "  (no groups)";
+        out(json, `groups (${groups.length}):\n${human}`, { groups });
+        return 0;
+      }
+      if (sub === "show") {
+        const groupId = positionals[2];
+        if (!groupId) {
+          process.stderr.write("usage: group show <groupId>\n");
+          return 1;
+        }
+        const result = await getGroup(client, groupId);
+        out(json, `${result.groupId} — ${result.name} [${result.membershipPolicy}]\n  members: ${result.memberCount}\n  epoch: ${result.membershipEpoch}\n  by: ${result.createdBy}`, result);
+        return 0;
+      }
+      if (sub === "members") {
+        const groupId = positionals[2];
+        if (!groupId) {
+          process.stderr.write("usage: group members <groupId>\n");
+          return 1;
+        }
+        const members = await groupMembers(client, groupId);
+        const human = members.length
+          ? members.map((member) => `  ${member.agentId} [${member.role}/${member.status}]`).join("\n")
+          : "  (no members)";
+        out(json, `members (${members.length}):\n${human}`, { members });
+        return 0;
+      }
+      if (sub === "join") {
+        const groupId = positionals[2];
+        if (!groupId) {
+          process.stderr.write("usage: group join <groupId>\n");
+          return 1;
+        }
+        const result = await joinGroup(client, signer, groupId);
+        out(json, `Joined ${groupId} [${result.status}]`, result);
+        return 0;
+      }
+      if (sub === "add" || sub === "remove" || sub === "approve" || sub === "reject") {
+        const groupId = positionals[2];
+        const agentId = positionals[3];
+        if (!groupId || !agentId) {
+          process.stderr.write(`usage: group ${sub} <groupId> <agentId>\n`);
+          return 1;
+        }
+        const result =
+          sub === "add"
+            ? await addGroupMember(client, signer, groupId, agentId)
+            : sub === "remove"
+              ? await removeGroupMember(client, signer, groupId, agentId)
+              : sub === "approve"
+                ? await approveMember(client, signer, groupId, agentId)
+                : await rejectMember(client, signer, groupId, agentId);
+        out(json, `${sub} ${agentId} in ${groupId}`, result);
+        return 0;
+      }
+      if (sub === "send") {
+        const groupId = positionals[2];
+        const text = positionals.slice(3).join(" ").trim();
+        if (!groupId || !text) {
+          process.stderr.write("usage: group send <groupId> <text>\n");
+          return 1;
+        }
+        const result = await sendGroupMessage(config, client, signer, store, groupId, text);
+        out(
+          json,
+          `Sent group message ${result.id} to ${groupId}\n  recipients: ${result.recipients}\n  key handed off to: ${result.distributedTo.length}${result.skipped.length ? ` (skipped ${result.skipped.length} without keys)` : ""}`,
+          result,
+        );
+        return 0;
+      }
+      if (sub === "read") {
+        const messages = await readGroupMessages(config, client, signer, store, {
+          ...(asString(flags["group"]) ? { groupId: asString(flags["group"]) } : {}),
+          ...(asNumber(flags["limit"]) !== undefined ? { limit: asNumber(flags["limit"]) } : {}),
+          ...(flags["no-ack"] === true ? { ack: false } : {}),
+        });
+        const human = messages.length
+          ? messages
+              .map((message) =>
+                message.text !== undefined
+                  ? `  [${message.groupId} ${message.from.slice(0, 8)}…] ${message.text}`
+                  : message.pending
+                    ? `  [${message.groupId}] <pending: run \`message read\` to install the sender key>`
+                    : `  [${message.groupId}] <undecryptable: ${message.error}>`,
+              )
+              .join("\n")
+          : "  (no group messages)";
+        out(json, `group messages (${messages.length}):\n${human}`, { messages });
+        return 0;
+      }
+      process.stderr.write("unknown group subcommand (create|list|show|members|join|add|remove|approve|reject|send|read)\n");
+      return 1;
+    }
+
+    case "channel": {
+      const signer = await unlockWallet(config);
+      const client = makeClient(config, signer);
+      if (sub === "create") {
+        const name = asString(flags["name"]);
+        if (!name) {
+          process.stderr.write("usage: channel create --name <n> [--description <d>] [--category <c>] [--private] [--tag <t> ...]\n");
+          return 1;
+        }
+        const tags = asStrings(flags["tag"]);
+        const result = await createChannel(client, signer, {
+          name,
+          ...(asString(flags["description"]) ? { description: asString(flags["description"]) } : {}),
+          ...(asString(flags["category"]) ? { category: asString(flags["category"]) } : {}),
+          ...(flags["private"] === true ? { isPublic: false } : {}),
+          ...(tags ? { tags } : {}),
+        });
+        out(json, `Created channel ${result.channelId}\n  name: ${result.name}\n  public: ${result.isPublic}`, result);
+        return 0;
+      }
+      if (sub === "list" || sub === "trending") {
+        const channels =
+          sub === "trending"
+            ? await trendingChannels(client, asNumber(flags["limit"]))
+            : await listChannels(client, {
+                ...(asString(flags["q"]) ? { q: asString(flags["q"]) } : {}),
+                ...(asString(flags["tag"]) ? { tag: asString(flags["tag"]) } : {}),
+                ...(asNumber(flags["limit"]) !== undefined ? { limit: asNumber(flags["limit"]) } : {}),
+              });
+        const human = channels.length
+          ? channels.map((channel) => `  ${channel.channelId} — ${channel.name}${channel.category ? ` [${channel.category}]` : ""} (${channel.memberCount} members)`).join("\n")
+          : "  (no channels)";
+        out(json, `channels (${channels.length}):\n${human}`, { channels });
+        return 0;
+      }
+      if (sub === "show") {
+        const channelId = positionals[2];
+        if (!channelId) {
+          process.stderr.write("usage: channel show <channelId>\n");
+          return 1;
+        }
+        const result = await getChannel(client, channelId);
+        out(json, `${result.channelId} — ${result.name}\n  ${result.description ?? ""}\n  members: ${result.memberCount}  public: ${result.isPublic}`, result);
+        return 0;
+      }
+      if (sub === "join") {
+        const channelId = positionals[2];
+        if (!channelId) {
+          process.stderr.write("usage: channel join <channelId>\n");
+          return 1;
+        }
+        const result = await joinChannel(client, signer, channelId);
+        out(json, `Joined ${channelId} [${result.role}]`, result);
+        return 0;
+      }
+      if (sub === "leave") {
+        const channelId = positionals[2];
+        if (!channelId) {
+          process.stderr.write("usage: channel leave <channelId>\n");
+          return 1;
+        }
+        const result = await leaveChannel(client, signer, channelId);
+        out(json, `Left ${channelId}`, result);
+        return 0;
+      }
+      if (sub === "post") {
+        const channelId = positionals[2];
+        const text = positionals.slice(3).join(" ").trim();
+        if (!channelId || !text) {
+          process.stderr.write("usage: channel post <channelId> <text>\n");
+          return 1;
+        }
+        const result = await postChannelMessage(client, signer, channelId, text);
+        out(json, `Posted ${result.messageId} to ${channelId}`, result);
+        return 0;
+      }
+      if (sub === "messages") {
+        const channelId = positionals[2];
+        if (!channelId) {
+          process.stderr.write("usage: channel messages <channelId> [--limit <n>] [--offset <n>]\n");
+          return 1;
+        }
+        const messages = await listChannelMessages(client, channelId, {
+          ...(asNumber(flags["limit"]) !== undefined ? { limit: asNumber(flags["limit"]) } : {}),
+          ...(asNumber(flags["offset"]) !== undefined ? { offset: asNumber(flags["offset"]) } : {}),
+        });
+        const human = messages.length
+          ? messages.map((message) => `  [${message.author.slice(0, 8)}…] ${message.body}`).join("\n")
+          : "  (no messages)";
+        out(json, `messages (${messages.length}):\n${human}`, { messages });
+        return 0;
+      }
+      if (sub === "members") {
+        const channelId = positionals[2];
+        if (!channelId) {
+          process.stderr.write("usage: channel members <channelId>\n");
+          return 1;
+        }
+        const members = await channelMembers(client, channelId);
+        const human = members.length
+          ? members.map((member) => `  ${member.agentId} [${member.role}${member.status ? `/${member.status}` : ""}]`).join("\n")
+          : "  (no members)";
+        out(json, `members (${members.length}):\n${human}`, { members });
+        return 0;
+      }
+      process.stderr.write("unknown channel subcommand (create|list|trending|show|join|leave|post|messages|members)\n");
       return 1;
     }
 

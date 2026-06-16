@@ -22,6 +22,8 @@ import {
   toBase64,
   type LocalSigner,
   type PreKeyPair,
+  type SenderKeyOwnState,
+  type SenderKeyReceiverState,
   type SessionState,
   type SessionStore,
   type SignedPreKeyPair,
@@ -58,13 +60,32 @@ interface SerializedSession {
   skippedKeys: Array<[string, string]>;
 }
 
+/**
+ * This client's sending key for a group: the serialized {@link SenderKeyOwnState}
+ * plus the membership epoch it belongs to and the set of members that have
+ * already received its distribution (so re-sends don't re-hand-off the key). The
+ * SDK's SessionStore interface models only 1:1 ratchet state; group sender keys
+ * are persisted here as an extension so the chain survives across CLI runs.
+ */
+interface OwnSenderKeyEntry {
+  epoch: number;
+  state: SenderKeyOwnState;
+  distributedTo: Array<string>;
+}
+
 interface SerializedState {
   version: 1;
   signedPreKeys: Record<string, SerializedPreKey>;
   activeSignedPreKeyId: string | null;
   preKeys: Record<string, SerializedPreKey>;
   sessions: Record<string, SerializedSession>;
+  /** Own group sending keys, keyed by groupId. */
+  senderKeysOwn?: Record<string, OwnSenderKeyEntry>;
+  /** Received group sender keys, keyed by `${groupId}|${sender}|${epoch}`. */
+  senderKeyReceivers?: Record<string, SenderKeyReceiverState>;
 }
+
+export type { OwnSenderKeyEntry };
 
 function serializeKeyPair(keyPair: X25519KeyPair): SerializedKeyPair {
   return {
@@ -233,6 +254,34 @@ export class FileSessionStore implements SessionStore {
   /** True once a signed pre-key has been generated + uploaded (keys published). */
   hasSignedPreKey(): boolean {
     return this.state.activeSignedPreKeyId !== null;
+  }
+
+  // -------------------------------------------------------------------------
+  // Group sender keys (extension beyond the SDK's SessionStore interface).
+  // Pure persistence: callers create/restore/serialize the GroupSenderKey
+  // objects and hand the serialized state here.
+  // -------------------------------------------------------------------------
+
+  /** This client's sending key for a group, or undefined if none stored yet. */
+  getOwnSenderKey(groupId: string): OwnSenderKeyEntry | undefined {
+    return this.state.senderKeysOwn?.[groupId];
+  }
+
+  /** Stores (or replaces) this client's sending key for a group. */
+  setOwnSenderKey(groupId: string, entry: OwnSenderKeyEntry): void {
+    this.state.senderKeysOwn ??= {};
+    this.state.senderKeysOwn[groupId] = entry;
+  }
+
+  /** A received sender key for a (group, sender, epoch), or undefined. */
+  getReceiverSenderKey(key: string): SenderKeyReceiverState | undefined {
+    return this.state.senderKeyReceivers?.[key];
+  }
+
+  /** Stores (or replaces) a received sender key, keyed by `${groupId}|${sender}|${epoch}`. */
+  setReceiverSenderKey(key: string, state: SenderKeyReceiverState): void {
+    this.state.senderKeyReceivers ??= {};
+    this.state.senderKeyReceivers[key] = state;
   }
 }
 
