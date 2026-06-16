@@ -43,6 +43,7 @@ pub mod job_escrow {
         job.disbursed = 0;
         job.fee_bps = fee_bps;
         job.state = JobState::Open;
+        job.kind = EscrowKind::Job;
         job.bump = ctx.bumps.job;
 
         emit!(JobCreated {
@@ -50,6 +51,47 @@ pub mod job_escrow {
             job_id,
             client: job.client,
             provider,
+            mint: job.mint,
+            vault_token: job.vault_token,
+        });
+        Ok(())
+    }
+
+    /// Create a bounty: the same custody model as a job, but with no provider
+    /// baked in. The sponsor is the `client`; the winner is chosen by the
+    /// controller at `award_bounty` time. Funded via the same `fund`/`fund_for`.
+    pub fn create_bounty(
+        ctx: Context<CreateJob>,
+        job_id: [u8; 32],
+        controller: Pubkey,
+        fee_bps: u16,
+    ) -> Result<()> {
+        require!(
+            (fee_bps as u64) < math::BPS_DENOMINATOR,
+            JobEscrowError::InvalidFee
+        );
+
+        let job = &mut ctx.accounts.job;
+        job.job_id = job_id;
+        job.client = ctx.accounts.client.key();
+        // No provider is known up front; the controller picks the winner later.
+        job.provider = Pubkey::default();
+        job.controller = controller;
+        job.mint = ctx.accounts.mint.key();
+        job.vault_token = ctx.accounts.vault_token.key();
+        job.fee_account = ctx.accounts.fee_account.key();
+        job.deposited = 0;
+        job.disbursed = 0;
+        job.fee_bps = fee_bps;
+        job.state = JobState::Open;
+        job.kind = EscrowKind::Bounty;
+        job.bump = ctx.bumps.job;
+
+        emit!(BountyCreated {
+            job: job.key(),
+            job_id,
+            sponsor: job.client,
+            controller,
             mint: job.mint,
             vault_token: job.vault_token,
         });
@@ -144,6 +186,7 @@ pub mod job_escrow {
 
     pub fn mark_delivered(ctx: Context<UpdateJob>) -> Result<()> {
         let job = &mut ctx.accounts.job;
+        require!(job.kind == EscrowKind::Job, JobEscrowError::InvalidKind);
         require!(job.state == JobState::Open, JobEscrowError::InvalidState);
         require!(
             ctx.accounts.actor.key() == job.provider,
@@ -155,6 +198,10 @@ pub mod job_escrow {
     }
 
     pub fn approve(ctx: Context<Settle>) -> Result<()> {
+        require!(
+            ctx.accounts.job.kind == EscrowKind::Job,
+            JobEscrowError::InvalidKind
+        );
         require!(
             ctx.accounts.job.state == JobState::Delivered,
             JobEscrowError::InvalidState
@@ -185,6 +232,7 @@ pub mod job_escrow {
 
     pub fn dispute(ctx: Context<UpdateJob>) -> Result<()> {
         let job = &mut ctx.accounts.job;
+        require!(job.kind == EscrowKind::Job, JobEscrowError::InvalidKind);
         require!(
             job.state == JobState::Delivered,
             JobEscrowError::InvalidState
@@ -203,6 +251,10 @@ pub mod job_escrow {
     }
 
     pub fn resolve(ctx: Context<Settle>, award_provider: bool) -> Result<()> {
+        require!(
+            ctx.accounts.job.kind == EscrowKind::Job,
+            JobEscrowError::InvalidKind
+        );
         require!(
             ctx.accounts.job.state == JobState::Disputed,
             JobEscrowError::InvalidState
@@ -238,11 +290,86 @@ pub mod job_escrow {
 
     pub fn refund(ctx: Context<Settle>) -> Result<()> {
         require!(
+            ctx.accounts.job.kind == EscrowKind::Job,
+            JobEscrowError::InvalidKind
+        );
+        require!(
             ctx.accounts.job.state == JobState::Open,
             JobEscrowError::InvalidState
         );
         require!(
             ctx.accounts.actor.key() == ctx.accounts.job.client,
+            JobEscrowError::Unauthorized
+        );
+        require!(
+            ctx.accounts.recipient_token.owner == ctx.accounts.job.client,
+            JobEscrowError::Unauthorized
+        );
+        release(
+            &mut ctx.accounts.job,
+            &ctx.accounts.vault_token,
+            &ctx.accounts.recipient_token,
+            &ctx.accounts.fee_token,
+            &ctx.accounts.token_program,
+            false,
+        )?;
+        ctx.accounts.job.state = JobState::Refunded;
+        emit!(JobRefunded {
+            job: ctx.accounts.job.key()
+        });
+        Ok(())
+    }
+
+    /// Award a bounty: the controller (server/council) is the sole disburser and
+    /// picks the winner. Releases the whole available pot (minus rake) to an
+    /// arbitrary `recipient_token`. Bounties have no delivery/dispute lifecycle —
+    /// they go straight from `Open` to `Resolved`.
+    pub fn award_bounty(ctx: Context<Settle>) -> Result<()> {
+        require!(
+            ctx.accounts.job.kind == EscrowKind::Bounty,
+            JobEscrowError::InvalidKind
+        );
+        require!(
+            ctx.accounts.job.state == JobState::Open,
+            JobEscrowError::InvalidState
+        );
+        require!(
+            ctx.accounts.actor.key() == ctx.accounts.job.controller,
+            JobEscrowError::Unauthorized
+        );
+        // The winner is whoever the controller pays; record it for indexers.
+        let winner = ctx.accounts.recipient_token.owner;
+        release(
+            &mut ctx.accounts.job,
+            &ctx.accounts.vault_token,
+            &ctx.accounts.recipient_token,
+            &ctx.accounts.fee_token,
+            &ctx.accounts.token_program,
+            true,
+        )?;
+        ctx.accounts.job.provider = winner;
+        ctx.accounts.job.state = JobState::Resolved;
+        emit!(BountyAwarded {
+            job: ctx.accounts.job.key(),
+            to: ctx.accounts.recipient_token.key(),
+            winner,
+        });
+        Ok(())
+    }
+
+    /// Cancel an un-awarded bounty: controller-only (the sponsor cannot claw the
+    /// pot back mid-bounty). Refunds the whole pot to the sponsor with no rake.
+    pub fn cancel_bounty(ctx: Context<Settle>) -> Result<()> {
+        require!(
+            ctx.accounts.job.kind == EscrowKind::Bounty,
+            JobEscrowError::InvalidKind
+        );
+        require!(
+            ctx.accounts.job.state == JobState::Open,
+            JobEscrowError::InvalidState
+        );
+        require!(
+            ctx.accounts.actor.key() == ctx.accounts.job.controller,
             JobEscrowError::Unauthorized
         );
         require!(
@@ -365,6 +492,19 @@ pub enum JobState {
     Refunded,
 }
 
+/// Distinguishes the two escrow flavors that share this account + custody model.
+/// They differ only in who may disburse the vault:
+///   * `Job`    — the client approves (provider path) / disputes; the controller
+///                only steps in to `resolve` a dispute.
+///   * `Bounty` — the controller (server/council of agents) is the *sole*
+///                disburser: it `award`s the pot to a winner it picks, or
+///                `cancel`s back to the sponsor. The client cannot self-approve.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
+pub enum EscrowKind {
+    Job,
+    Bounty,
+}
+
 #[account]
 pub struct Job {
     pub job_id: [u8; 32],
@@ -379,10 +519,13 @@ pub struct Job {
     pub fee_bps: u16,
     pub state: JobState,
     pub bump: u8,
+    // `kind` is appended last so every byte offset above stays stable for
+    // off-chain parsers that read the account by fixed offset.
+    pub kind: EscrowKind,
 }
 
 impl Job {
-    pub const SIZE: usize = 8 + 32 + 32 + 32 + 32 + 32 + 32 + 32 + 8 + 8 + 2 + 1 + 1;
+    pub const SIZE: usize = 8 + 32 + 32 + 32 + 32 + 32 + 32 + 32 + 8 + 8 + 2 + 1 + 1 + 1;
 }
 
 #[account]
@@ -567,10 +710,29 @@ pub struct JobRefunded {
     pub job: Pubkey,
 }
 
+#[event]
+pub struct BountyCreated {
+    pub job: Pubkey,
+    pub job_id: [u8; 32],
+    pub sponsor: Pubkey,
+    pub controller: Pubkey,
+    pub mint: Pubkey,
+    pub vault_token: Pubkey,
+}
+
+#[event]
+pub struct BountyAwarded {
+    pub job: Pubkey,
+    pub to: Pubkey,
+    pub winner: Pubkey,
+}
+
 #[error_code]
 pub enum JobEscrowError {
     #[msg("Invalid job state for this operation")]
     InvalidState,
+    #[msg("Operation not valid for this escrow kind (job vs bounty)")]
+    InvalidKind,
     #[msg("Unauthorized caller")]
     Unauthorized,
     #[msg("Fee basis points must be below 10000")]

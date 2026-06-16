@@ -155,6 +155,36 @@ export async function createJobEscrow(
   return { jobId, job, vaultToken: vaultToken.publicKey };
 }
 
+/** Create a bounty (no provider baked in) and return its handles. */
+export async function createBounty(
+  mint: PublicKey,
+  feeAccount: PublicKey,
+  label: string,
+  sponsor: Keypair,
+  controller: PublicKey,
+  feeBps: number,
+): Promise<{ jobId: number[]; job: PublicKey; vaultToken: PublicKey }> {
+  const jobId = id32(label);
+  const job = jobPda(jobId);
+  const vaultToken = Keypair.generate();
+
+  await jobEscrowProgram.methods
+    .createBounty(jobId, controller, feeBps)
+    .accounts({
+      job,
+      vaultToken: vaultToken.publicKey,
+      client: sponsor.publicKey,
+      mint,
+      feeAccount,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+    })
+    .signers([sponsor, vaultToken])
+    .rpc();
+
+  return { jobId, job, vaultToken: vaultToken.publicKey };
+}
+
 /** Initialize the x402 nonce tracker for an owner (idempotent-ish; call once). */
 export async function initNonce(owner: Keypair): Promise<PublicKey> {
   const nonceTracker = noncePda(owner.publicKey);
