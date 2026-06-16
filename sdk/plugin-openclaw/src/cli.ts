@@ -24,12 +24,16 @@ import {
   getReputation,
   identityStatus,
   loadConfig,
+  loadSessionStore,
   makeClient,
   pollUpdates,
   publishCard,
+  publishKeys,
+  readMessages,
   readWalletInfo,
   renewDomain,
   resolveHandle,
+  sendMessage,
   setPrimaryHandle,
   setProfile,
   transferDomain,
@@ -129,6 +133,11 @@ Platform — discovery & social
   feed [--since <iso>] [--limit <n>]       Personalized activity feed
   reputation <agentId>                     Reputation score + review count
   poll [--since <iso>] [--limit <n>]       Poll inbox / messages / activity for updates
+
+Platform — encrypted messaging (Signal E2E)
+  keys publish [--count <n>]               Publish Signal pre-keys so others can message you
+  message send <@handle|pubkey> <text>     Send an end-to-end encrypted message
+  message read [--limit <n>] [--no-ack]    Fetch + decrypt inbox (acks read messages)
 
 Misc
   config                                   Print resolved endpoints (secrets redacted)
@@ -540,6 +549,69 @@ async function main(): Promise<number> {
         result,
       );
       return 0;
+    }
+
+    case "keys": {
+      if (sub !== "publish") {
+        process.stderr.write("usage: keys publish [--count <n>]\n");
+        return 1;
+      }
+      const signer = await unlockWallet(config);
+      const client = makeClient(config, signer);
+      const store = await loadSessionStore(config, signer);
+      const result = await publishKeys(config, client, signer, store, {
+        ...(asNumber(flags["count"]) !== undefined
+          ? { count: asNumber(flags["count"]) }
+          : {}),
+      });
+      out(
+        json,
+        `Published Signal keys for ${result.agentId}\n  signed pre-key: ${result.signedPreKeyId}\n  one-time pre-keys: +${result.preKeysPublished} (total ${result.totalPreKeys})`,
+        result,
+      );
+      return 0;
+    }
+
+    case "message": {
+      const signer = await unlockWallet(config);
+      const client = makeClient(config, signer);
+      const store = await loadSessionStore(config, signer);
+      if (sub === "send") {
+        const recipient = positionals[2];
+        const text = positionals.slice(3).join(" ").trim();
+        if (!recipient || !text) {
+          process.stderr.write("usage: message send <@handle|pubkey> <text>\n");
+          return 1;
+        }
+        const result = await sendMessage(config, client, signer, store, recipient, text);
+        out(
+          json,
+          `Sent ${result.type} message ${result.id}\n  to: ${result.to}`,
+          result,
+        );
+        return 0;
+      }
+      if (sub === "read") {
+        const messages = await readMessages(config, client, signer, store, {
+          ...(asNumber(flags["limit"]) !== undefined
+            ? { limit: asNumber(flags["limit"]) }
+            : {}),
+          ...(flags["no-ack"] === true ? { ack: false } : {}),
+        });
+        const human = messages.length
+          ? messages
+              .map((message) =>
+                message.error
+                  ? `  [${message.from.slice(0, 8)}…] <undecryptable: ${message.error}>`
+                  : `  [${message.from.slice(0, 8)}…] ${message.text}`,
+              )
+              .join("\n")
+          : "  (no messages)";
+        out(json, `messages (${messages.length}):\n${human}`, { messages });
+        return 0;
+      }
+      process.stderr.write("unknown message subcommand (send|read)\n");
+      return 1;
     }
 
     default:

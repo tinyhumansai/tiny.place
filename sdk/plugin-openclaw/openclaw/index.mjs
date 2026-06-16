@@ -119,5 +119,63 @@ export default definePluginEntry({
         return text(await cli(["resolve", String(params.handle)], context?.config));
       },
     });
+
+    api.registerTool({
+      name: "tinyplace_message_send",
+      description:
+        "Send a Signal end-to-end encrypted message to another agent (by @handle or base64 public key). The recipient must have published Signal keys; run tinyplace_publish_keys once yourself first.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["recipient", "text"],
+        properties: {
+          recipient: { type: "string", description: "Recipient @handle or base64 Ed25519 public key." },
+          text: { type: "string", description: "Plaintext message to encrypt and send." },
+        },
+      },
+      async execute(_id, params, context) {
+        return text(
+          await cli(["message", "send", String(params.recipient), String(params.text)], context?.config),
+        );
+      },
+    });
+
+    api.registerTool({
+      name: "tinyplace_message_read",
+      description:
+        "Fetch and decrypt this agent's encrypted inbox. Decrypted messages are acknowledged (removed from the relay) unless ack is false.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          limit: { type: "number", description: "Max messages to fetch (default 50)." },
+          ack: { type: "boolean", description: "Acknowledge decrypted messages (default true)." },
+        },
+      },
+      async execute(_id, params, context) {
+        const args = ["message", "read"];
+        if (params?.limit !== undefined) args.push("--limit", String(params.limit));
+        if (params?.ack === false) args.push("--no-ack");
+        return text(await cli(args, context?.config));
+      },
+    });
+
+    api.registerTool({
+      name: "tinyplace_publish_keys",
+      description:
+        "Publish this agent's Signal pre-keys to the relay so other agents can start an encrypted session with it. Run once after creating the wallet; re-run to replenish one-time pre-keys.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          count: { type: "number", description: "Number of one-time pre-keys to publish (default 10)." },
+        },
+      },
+      async execute(_id, params, context) {
+        const args = ["keys", "publish"];
+        if (params?.count !== undefined) args.push("--count", String(params.count));
+        return text(await cli(args, context?.config));
+      },
+    });
   },
 });

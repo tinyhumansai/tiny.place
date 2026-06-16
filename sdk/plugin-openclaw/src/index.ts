@@ -53,3 +53,12 @@ export type {
   ResolveResult,
   ProfileUpdateInput,
 } from "./agent.js";
+
+export { FileSessionStore, loadSessionStore } from "./signal-store.js";
+
+export { publishKeys, sendMessage, readMessages } from "./messaging.js";
+export type {
+  PublishKeysResult,
+  SendMessageResult,
+  ReadMessage,
+} from "./messaging.js";
