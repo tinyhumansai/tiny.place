@@ -1,8 +1,8 @@
 // Maps each explore section — and, where the docs are more granular, an
 // individual open tab — to the GitBook hero artwork shown as a small banner at
-// the top of the section. The images are served from `/heroes`, a symlink to
-// `gitbooks/.gitbook/assets` (the same artwork used as page covers in the
-// written spec). A bare `default` is the section's banner; a `tabs` entry
+// the top of the section. The images are served from `/heroes`, which reads the
+// same GitBook assets used as page covers in the written spec. A bare `default`
+// is the section's banner; a `tabs` entry
 // overrides it for a specific open tab so a sub-view with its own docs page
 // (e.g. Identities → Trading) shows its own cover.
 
