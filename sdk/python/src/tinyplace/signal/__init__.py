@@ -1,17 +1,23 @@
 """Signal Protocol support for the tiny.place Python SDK.
 
-Ported slice-by-slice from the TypeScript SDK. This package currently provides
-crypto primitives (:mod:`tinyplace.signal.crypto`), key management / prekey
-bundles (:mod:`tinyplace.signal.keys`), the session-store contract with an
-in-memory implementation (:mod:`tinyplace.signal.store`), X3DH key agreement
+A complete, byte-compatible port of the flagship TypeScript SDK's Signal stack
+(``sdk/typescript/src/signal/``). The Python SDK now has full Signal end-to-end
+parity: crypto primitives (:mod:`tinyplace.signal.crypto`), key management /
+prekey bundles (:mod:`tinyplace.signal.keys`), the session-store contract with
+an in-memory implementation (:mod:`tinyplace.signal.store` /
+:mod:`tinyplace.signal.memory_store`), X3DH key agreement
 (:mod:`tinyplace.signal.x3dh`), the Double Ratchet
-(:mod:`tinyplace.signal.ratchet`), and the 1:1 session layer that ties them
+(:mod:`tinyplace.signal.ratchet`), Sender Keys for group messaging
+(:mod:`tinyplace.signal.sender_key`), and the 1:1 session layer that ties them
 together (:mod:`tinyplace.signal.session`).
 
-Note: ``crypto``, ``types`` and ``store`` currently each define identical
+Cross-language interop with the TypeScript SDK is verified by
+``tests/test_signal_interop.py`` against vectors generated from the real TS
+implementation (see ``tests/vectors/gen_signal_vectors.mjs``).
+
+Note: ``crypto``, ``types`` and ``store`` each define identical
 ``X25519KeyPair`` (and ``PreKeyPair`` / ``SignedPreKeyPair``) dataclasses; the
-package re-exports the ``types`` ones. Unifying these into a single shared
-module is tracked for the X3DH / session-layer slices (#44 / #46).
+package re-exports the ``types`` ones.
 """
 
 from __future__ import annotations
