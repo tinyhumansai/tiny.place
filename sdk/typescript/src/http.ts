@@ -368,6 +368,10 @@ export class HttpClient {
     return this.request<T>("PUT", path, { body, agentAuth: true });
   }
 
+  postAgentAuth<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>("POST", path, { body, agentAuth: true });
+  }
+
   delete<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("DELETE", path, { body, signed: true });
   }

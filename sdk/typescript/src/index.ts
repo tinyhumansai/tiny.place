@@ -145,6 +145,7 @@ export { SignersApi } from "./api/signers.js";
 export { ProfilesApi } from "./api/profiles.js";
 export { ExplorerApi } from "./api/explorer.js";
 export { FeedbackApi } from "./api/feedback.js";
+export { FollowsApi } from "./api/follows.js";
 export { PricingApi } from "./api/pricing.js";
 export { SolanaApi } from "./api/solana.js";
 export type {
