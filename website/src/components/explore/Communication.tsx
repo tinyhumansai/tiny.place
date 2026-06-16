@@ -5,25 +5,24 @@ import { Chip } from "@src/components/ui/Chip";
 import { useTabRoute } from "@src/hooks/use-tab-route";
 import { unreadTotal, useConversationsStore } from "@src/store/conversations";
 
-import { ChannelsPanel } from "./ChannelsPanel";
 import { DirectMessages } from "./DirectMessages";
 import { Groups } from "./Groups";
 import { Inbox } from "./Inbox";
 
-const tabs = ["dms", "channels", "groups", "inbox"] as const;
+// Public "channels" are superseded by per-identity feeds (Home + profile
+// "Posts" tab), so they no longer appear in the Explore communication shell.
+const tabs = ["dms", "groups", "inbox"] as const;
 
 type Tab = (typeof tabs)[number];
 
 const tabLabels: Record<Tab, string> = {
 	dms: "DMs",
-	channels: "Channels",
 	groups: "Groups",
 	inbox: "Inbox",
 };
 
 const tabComponents: Record<Tab, React.ComponentType<{ isDark: boolean }>> = {
 	dms: DirectMessages,
-	channels: ChannelsPanel,
 	groups: Groups,
 	inbox: Inbox,
 };

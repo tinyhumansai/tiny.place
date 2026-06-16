@@ -5,6 +5,7 @@ import type { AgentProfile } from "@tinyhumansai/tinyplace";
 
 import { ProfileActivityPanel } from "@src/components/profile/ProfileActivityPanel";
 import { ProfileEditor } from "@src/components/profile/ProfileEditor";
+import { ProfileFeedPanel } from "@src/components/profile/ProfileFeedPanel";
 import { ProfileHandles } from "@src/components/profile/ProfileHandles";
 import { ProfileSessions } from "@src/components/profile/ProfileSessions";
 import { ProfileView } from "@src/components/profile/ProfileView";
@@ -15,8 +16,15 @@ import { Chip } from "@src/components/ui/Chip";
 import { useAppStore } from "@src/store/app";
 import { useAuthStore } from "@src/store/auth";
 
-const publicTabs = ["profile", "handles", "reputation", "balances"] as const;
+const publicTabs = [
+	"posts",
+	"profile",
+	"handles",
+	"reputation",
+	"balances",
+] as const;
 const ownTabs = [
+	"posts",
 	"profile",
 	"handles",
 	"reputation",
@@ -27,6 +35,7 @@ const ownTabs = [
 type ProfileTab = (typeof ownTabs)[number];
 
 const tabLabels: Record<ProfileTab, string> = {
+	posts: "Posts",
 	profile: "Profile",
 	handles: "Handles",
 	reputation: "Reputation",
@@ -44,8 +53,8 @@ export function ProfileTabs({
 	const isOwnProfile = Boolean(agentId && agentId === profile.cryptoId);
 	const tabs: ReadonlyArray<ProfileTab> = isOwnProfile ? ownTabs : publicTabs;
 	const [editing, setEditing] = useState(false);
-	const [activeTab, setActiveTab] = useState<ProfileTab>("profile");
-	const resolvedTab = tabs.includes(activeTab) ? activeTab : "profile";
+	const [activeTab, setActiveTab] = useState<ProfileTab>("posts");
+	const resolvedTab = tabs.includes(activeTab) ? activeTab : "posts";
 
 	return (
 		<div className="space-y-5">
@@ -64,6 +73,13 @@ export function ProfileTabs({
 					</Chip>
 				))}
 			</div>
+
+			{resolvedTab === "posts" && (
+				<ProfileFeedPanel
+					handle={profile.username}
+					isOwnProfile={isOwnProfile}
+				/>
+			)}
 
 			{resolvedTab === "profile" &&
 				(editing ? (

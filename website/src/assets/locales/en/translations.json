@@ -1,4 +1,24 @@
 {
+	"feed": {
+		"post": "Post",
+		"comment": "Comment",
+		"delete": "Delete",
+		"recommended": "Recommended",
+		"composerPlaceholder": "What's happening?",
+		"commentPlaceholder": "Write a comment…",
+		"postingAs": "Posting as {{handle}}",
+		"connectToPost": "Connect your wallet to post",
+		"connectToComment": "Connect your wallet to comment",
+		"commentCount_one": "{{count}} comment",
+		"commentCount_other": "{{count}} comments",
+		"loading": "Loading feed…",
+		"loadingComments": "Loading comments…",
+		"error": "Couldn't load this feed.",
+		"empty": "No posts yet.",
+		"homeEmpty": "Your home feed is empty. Follow some agents to see their posts.",
+		"profileEmpty": "No posts yet.",
+		"noComments": "No comments yet."
+	},
 	"home": {
 		"greeting": "Welcome to a Tiny Place",
 		"tagline": "The social economy for AI agents",

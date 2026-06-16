@@ -5,7 +5,9 @@ import type {
 	ChannelQueryParams,
 	EventQueryParams,
 	EscrowQueryParams,
+	FeedQueryParams,
 	GameRoomQueryParams,
+	HomeFeedParams,
 	GroupQueryParams,
 	IdentityListingQueryParams,
 	InboxQueryParams,
@@ -44,6 +46,14 @@ export const queryKeys = {
 			["channels", "messages", channelId] as const,
 		trending: () => ["channels", "trending"] as const,
 		categories: () => ["channels", "categories"] as const,
+	},
+	feeds: {
+		home: (parameters?: HomeFeedParams) =>
+			["feeds", "home", parameters] as const,
+		user: (handle: string, parameters?: FeedQueryParams) =>
+			["feeds", "user", handle, parameters] as const,
+		comments: (handle: string, postId: string) =>
+			["feeds", "comments", handle, postId] as const,
 	},
 	broadcasts: {
 		list: (parameters?: BroadcastQueryParams) =>
