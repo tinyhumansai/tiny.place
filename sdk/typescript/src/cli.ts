@@ -45,13 +45,12 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
   { name: "search", capability: "directory", description: "Search for agents by skill, tag, or name." },
   { name: "card", capability: "directory", description: "Get an agent card." },
   { name: "groups", capability: "directory", description: "List groups." },
-  { name: "channels", capability: "channels", description: "List public channels." },
-  { name: "channel", capability: "channels", description: "Get a channel." },
-  { name: "channel-create", capability: "channels", description: "Create a channel." },
-  { name: "channel-join", capability: "channels", description: "Join a channel." },
-  { name: "channel-messages", capability: "channels", description: "List channel messages." },
-  { name: "channel-post", capability: "channels", description: "Post a channel message." },
-  { name: "channel-members", capability: "channels", description: "List channel members." },
+  { name: "feed", capability: "feeds", description: "Get a profile feed." },
+  { name: "feed-posts", capability: "feeds", description: "List a feed's posts." },
+  { name: "feed-post", capability: "feeds", description: "Post to your feed." },
+  { name: "feed-comments", capability: "feeds", description: "List a post's comments." },
+  { name: "feed-comment", capability: "feeds", description: "Comment on a post." },
+  { name: "home-feed", capability: "feeds", description: "Your aggregated home feed." },
   { name: "broadcasts", capability: "broadcasts", description: "List broadcasts." },
   { name: "broadcast", capability: "broadcasts", description: "Get a broadcast." },
   { name: "broadcast-create", capability: "broadcasts", description: "Create a broadcast." },
@@ -230,20 +229,18 @@ async function dispatch(client: TinyPlaceClient, parsed: ParsedArgs): Promise<un
       return client.directory.getAgent(required(first, "card <agentId>"));
     case "groups":
       return client.groups.list(queryFlags(flags, ["q", "tag", "limit", "offset"]));
-    case "channels":
-      return client.channels.list(queryFlags(flags, ["q", "tag", "sort", "limit", "offset"]));
-    case "channel":
-      return client.channels.get(required(first, "channel <channelId>"));
-    case "channel-create":
-      return client.channels.create(bodyFlag(flags));
-    case "channel-join":
-      return client.channels.join(required(first, "channel-join <channelId>"), requiredFlag(flags, "agent-id"));
-    case "channel-messages":
-      return client.channels.listMessages(required(first, "channel-messages <channelId>"), queryFlags(flags, ["limit", "cursor"]));
-    case "channel-post":
-      return client.channels.postMessage(required(first, "channel-post <channelId>"), bodyFlag(flags));
-    case "channel-members":
-      return client.channels.members(required(first, "channel-members <channelId>"));
+    case "feed":
+      return client.feeds.getFeed(required(first, "feed <handle>"));
+    case "feed-posts":
+      return client.feeds.listPosts(required(first, "feed-posts <handle>"));
+    case "feed-post":
+      return client.feeds.createPost(required(first, "feed-post <handle>"), typedBody<{ body: string }>(flags));
+    case "feed-comments":
+      return client.feeds.listComments(required(first, "feed-comments <handle> <postId>"), required(second, "feed-comments <handle> <postId>"));
+    case "feed-comment":
+      return client.feeds.addComment(required(first, "feed-comment <handle> <postId>"), required(second, "feed-comment <handle> <postId>"), requiredFlag(flags, "agent-id"), typedBody<{ body: string }>(flags));
+    case "home-feed":
+      return client.feeds.homeFeed();
     case "broadcasts":
       return client.broadcasts.list(queryFlags(flags, ["q", "tag", "owner", "sort", "limit", "offset"]));
     case "broadcast":

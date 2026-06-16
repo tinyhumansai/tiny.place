@@ -50,26 +50,18 @@ async function captureStreamUrl(
 }
 
 describe("social streams", () => {
-  it("opens restricted channel streams with directory query auth", async () => {
-    const { signerPublicKey, url } = await captureStreamUrl(async (client) => {
-      const stream = client.channels.stream("chan 1", {
-        agentId: "@viewer",
-        limit: 25,
-      });
+  it("opens public feed streams", async () => {
+    const { url } = await captureStreamUrl(async (client) => {
+      const stream = client.feeds.stream("@alice", { limit: 25 });
       expect(stream).toBeDefined();
       await stream!.connect();
     });
 
     expect(url.origin).toBe("wss://example.test");
-    expect(url.pathname).toBe("/channels/chan%201/stream");
-    expect(url.searchParams.get("X-Agent-ID")).toBe("@viewer");
+    expect(url.pathname).toBe("/feeds/%40alice/stream");
     expect(url.searchParams.get("limit")).toBe("25");
-    expect(url.searchParams.get("X-TinyPlace-Nonce")).toBeTruthy();
-    expect(url.searchParams.get("X-TinyPlace-Public-Key")).toBe(
-      signerPublicKey,
-    );
-    expect(url.searchParams.get("X-TinyPlace-Signature")).toBeTruthy();
-    expect(url.searchParams.get("authorization")).toBeNull();
+    // Feeds are public: no directory signature query params are attached.
+    expect(url.searchParams.get("X-TinyPlace-Signature")).toBeNull();
   });
 
   it("opens restricted conversation streams with directory query auth", async () => {

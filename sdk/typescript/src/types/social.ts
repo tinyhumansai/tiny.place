@@ -87,61 +87,6 @@ export interface InboxClearResult {
   deleted: number;
 }
 
-export interface Channel {
-  channelId: string;
-  name: string;
-  description?: string;
-  creator: string;
-  creatorCryptoId?: string;
-  memberCount: number;
-  isPublic: boolean;
-  tags?: Array<string>;
-  rules?: string;
-  category?: string;
-  nsfw?: boolean;
-  createdAt: string;
-  updatedAt: string;
-  lastActivityAt?: string;
-  closedAt?: string;
-}
-
-export interface ChannelQueryParams {
-  q?: string;
-  tag?: string;
-  tags?: Array<string>;
-  minMembers?: number;
-  maxMembers?: number;
-  sort?: string;
-  limit?: number;
-}
-
-export interface ChannelMessage {
-  messageId: string;
-  channelId: string;
-  author: string;
-  authorCryptoId?: string;
-  body: string;
-  createdAt: string;
-  deletedAt?: string;
-  moderationState?: string;
-}
-
-export interface ChannelMember {
-  channelId: string;
-  agentId: string;
-  role: string;
-  status?: string;
-  joinedAt: string;
-  mutedAt?: string;
-  mutedUntil?: string;
-  bannedAt?: string;
-}
-
-export interface ChannelCategory {
-  category: string;
-  count: number;
-}
-
 /**
  * A per-identity profile feed (Twitter-style). Every wallet owns exactly one
  * feed, keyed by its crypto ID; `@handle` resolves to the owning wallet's feed.

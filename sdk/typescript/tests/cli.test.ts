@@ -17,7 +17,7 @@ describe("tinyplace CLI", () => {
     for (const capability of [
       "identity",
       "directory",
-      "channels",
+      "feeds",
       "broadcasts",
       "messaging",
       "inbox",
@@ -36,7 +36,7 @@ describe("tinyplace CLI", () => {
       expect.arrayContaining([
         "register",
         "search",
-        "channels",
+        "feed",
         "broadcasts",
         "send",
         "inbox",
