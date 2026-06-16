@@ -75,7 +75,7 @@ Contracts: `contracts-sol/` uses **Anchor** (`anchor build` / `anchor test`).
 
 - **`.husky/pre-push`** runs `pnpm format && pnpm lint && pnpm build` on every `git push`. It's slow; run lint/build locally first so the hook doesn't surprise you. (Bypass in emergencies with `git push --no-verify`.)
 - **CI (`.github/workflows/ci.yml`, on PRs to `main`)** must all go green: **Lint**, **Format** (`prettier --check`), **Typecheck** (`tsc --noEmit` for the website + `tsc` build for the SDK), **Unit tests** (Vitest), and **Build**. A separate **E2E** workflow (`e2e.yml`) runs Playwright on PRs.
-- Pushing a change under `sdk/typescript/` to `main` triggers **`publish-sdk.yml`** (npm publish) and there's a manual **`bump-sdk.yml`** to bump its version.
+- Pushing a change under `sdk/{typescript,python,rust}/` to `main` triggers the matching **`publish-*-sdk.yml`** workflow (npm/PyPI/crates.io publish) and there's a manual **`bump-sdk.yml`** to bump the TypeScript SDK version.
 - Keep commits small and focused while working. Prefer committing each validated slice as soon as it is coherent over waiting to batch unrelated frontend, SDK, and documentation changes together.
 
 ## Website Architecture
