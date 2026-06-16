@@ -287,7 +287,7 @@ test.describe("functional platform stack", () => {
 		const spec = await apiJson("/spec");
 		expect(spec.name).toBe("tiny.place Network");
 		expect(spec.documents).toEqual(expect.any(Array));
-		expect(spec.documents).toHaveLength(38);
+		expect(spec.documents).toHaveLength(39);
 		expect(spec.documents).toEqual(
 			expect.arrayContaining([
 				"activity",
@@ -296,6 +296,7 @@ test.describe("functional platform stack", () => {
 				"crypto-identity",
 				"directory",
 				"escrow",
+				"feedback",
 				"games",
 				"harness",
 				"identity-registry",

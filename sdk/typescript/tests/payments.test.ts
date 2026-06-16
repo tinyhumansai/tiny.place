@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   LocalSigner,
+  SOLANA_NATIVE_ASSET,
   SOLANA_MAINNET_NETWORK,
+  TinyPlaceError,
   TinyPlaceClient,
+  type SolanaSettlementFailure,
 } from "../src/index.js";
 
 describe("PaymentsApi", () => {
@@ -229,6 +232,124 @@ describe("PaymentsApi", () => {
       "sendTransaction",
       "getSignatureStatuses",
     ]);
+  });
+
+  it("preserves retry and refund recovery state when settlement fails after Solana execution", async () => {
+    const seed = new Uint8Array(32).fill(49);
+    const signer = await LocalSigner.fromSeed(seed);
+    const secretKey = new Uint8Array(64);
+    secretKey.set(seed, 0);
+    secretKey.set(signer.publicKey, 32);
+    const transaction =
+      "3WcpF4Mp6LXjYQjKX9N1yGrYtAg1N1wPiLPZidFqBtb4ppE9TFkHrGSybvcFJwzo66rucssBmB7yVbK6FFMX2ErW";
+    const settleRequests: Array<Request> = [];
+    const fetch: typeof globalThis.fetch = async (input, init) => {
+      const request = new Request(input, init);
+      if (request.url === "https://example.test/payments/settle") {
+        settleRequests.push(request);
+        return Response.json(
+          { error: "executor failed after payment settlement" },
+          { status: 500 },
+        );
+      }
+
+      const body = JSON.parse(String(init?.body)) as {
+        method: string;
+        params: Array<unknown>;
+      };
+      switch (body.method) {
+        case "getLatestBlockhash":
+          return Response.json({
+            jsonrpc: "2.0",
+            id: body.method,
+            result: { value: { blockhash: "11111111111111111111111111111111" } },
+          });
+        case "sendTransaction":
+          return Response.json({
+            jsonrpc: "2.0",
+            id: body.method,
+            result: transaction,
+          });
+        case "getSignatureStatuses":
+          return Response.json({
+            jsonrpc: "2.0",
+            id: body.method,
+            result: {
+              value: [{ confirmationStatus: "confirmed", err: null }],
+            },
+          });
+        default:
+          return Response.json(
+            {
+              jsonrpc: "2.0",
+              id: body.method,
+              error: { message: `unexpected method ${body.method}` },
+            },
+            { status: 500 },
+          );
+      }
+    };
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch,
+    });
+
+    try {
+      await client.payments.settleWithSolanaPayment({
+        rpcUrl: "https://solana.example.test",
+        secretKey,
+        fetch,
+        network: SOLANA_MAINNET_NETWORK,
+        asset: SOLANA_NATIVE_ASSET,
+        amount: "1",
+        from: signer.agentId,
+        to: "F8zMkwbG3hp1k2t3eQWQh9bsh8qrK8CtqfZ2dBrrW3Ee",
+        nonce: "settle-failure-nonce",
+        expiresAt: "2026-06-13T10:00:00Z",
+        reference: { kind: "swap", operationId: "swap_123" },
+        shielded: true,
+      });
+      expect.fail("should have thrown");
+    } catch (error) {
+      expect(error).toBeInstanceOf(TinyPlaceError);
+      const failure = error as TinyPlaceError & SolanaSettlementFailure;
+      expect(failure.status).toBe(500);
+      expect(failure.onChainTx).toBe(transaction);
+      expect(failure.execution?.signature).toBe(transaction);
+      expect(failure.settlementRecovery).toMatchObject({
+        state: "settlement_failed_after_execution",
+        action: "retry_settlement_or_refund",
+        onChainTx: transaction,
+        retryable: true,
+        refundRequired: true,
+        settlementRequest: {
+          reference: { kind: "swap", operationId: "swap_123" },
+          shielded: true,
+        },
+      });
+      expect(failure.settlementRecovery?.payment).toMatchObject({
+        amount: "1",
+        asset: SOLANA_NATIVE_ASSET,
+        from: signer.agentId,
+        network: SOLANA_MAINNET_NETWORK,
+        to: "F8zMkwbG3hp1k2t3eQWQh9bsh8qrK8CtqfZ2dBrrW3Ee",
+        nonce: "settle-failure-nonce",
+        metadata: {
+          domain: "tiny.place",
+          onChainTx: transaction,
+          publicKey: signer.publicKeyBase64,
+          transaction,
+          tx: transaction,
+        },
+      });
+    }
+
+    expect(settleRequests).toHaveLength(1);
+    await expect(settleRequests[0]!.json()).resolves.toMatchObject({
+      reference: { kind: "swap", operationId: "swap_123" },
+      shielded: true,
+    });
   });
 
   it("signs operator payment maintenance routes with admin authorization", async () => {

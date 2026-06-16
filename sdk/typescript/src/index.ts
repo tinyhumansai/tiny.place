@@ -109,7 +109,10 @@ export { DirectoryApi } from "./api/directory.js";
 export { GroupsApi } from "./api/groups.js";
 export { PaymentsApi } from "./api/payments.js";
 export type {
+  SolanaSettlementFailure,
   SolanaSettlementOptions,
+  SolanaSettlementRecovery,
+  SolanaSettlementRecoveryState,
   SolanaSettlementResult,
 } from "./api/payments.js";
 export { LedgerApi } from "./api/ledger.js";

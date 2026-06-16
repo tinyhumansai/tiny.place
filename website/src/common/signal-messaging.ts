@@ -69,9 +69,13 @@ export async function publishKeyBundle(
 		identity.signer,
 		`spk_${new Date().getTime()}`
 	);
+	// Use a unique start id (not a fixed 1) so prekey ids differ on every publish.
+	// Re-publishing then ADDS fresh prekeys instead of colliding (relay 409) and
+	// orphaning the relay's copy: the local store keeps a private for whatever
+	// prekey the relay advertises, which is what X3DH on the sender side needs.
 	const preKeys = await generatePreKeys(
 		identity.signer,
-		1,
+		Date.now(),
 		ONE_TIME_PREKEY_COUNT
 	);
 
@@ -181,6 +185,19 @@ export async function fetchInbox(
 			plaintext = await session.decrypt(envelope.from, senderX25519, envelope);
 		} catch (error) {
 			console.warn(`Failed to decrypt message ${envelope.id}:`, error);
+			// An envelope we can't decrypt is unreadable regardless, so acknowledge
+			// it to drop it from the relay and avoid re-fetching it on every poll
+			// (an unbounded retry loop). Trade-off: we discard a message we could
+			// never have read.
+			try {
+				// eslint-disable-next-line no-await-in-loop
+				await encClient.messages.acknowledge(envelope.id, address);
+			} catch (ackError) {
+				console.warn(
+					`Failed to acknowledge undecryptable message ${envelope.id}:`,
+					ackError
+				);
+			}
 			continue;
 		}
 

@@ -10,7 +10,9 @@ import {
   tokenBalance,
   createVault,
   initNonce,
+  jobPda,
   noncePda,
+  vaultAuthorityPda,
   payload,
   expectRevert,
   BN,
@@ -29,7 +31,7 @@ describe("escrow (custody)", () => {
   });
 
   it("creates a vault bound to a settlement program", async () => {
-    const { vault, vaultToken } = await createVault(
+    const { vaultId, vault, vaultToken } = await createVault(
       jobProgram.programId,
       mint,
       feeAccount,
@@ -37,8 +39,11 @@ describe("escrow (custody)", () => {
     );
     const acc = await escrowProgram.account.vault.fetch(vault);
     assert.equal(acc.settlementProgram.toBase58(), jobProgram.programId.toBase58());
+    assert.equal(acc.owner.toBase58(), jobPda(vaultId).toBase58());
+    assert.equal(acc.authority.toBase58(), vaultAuthorityPda(jobProgram.programId).toBase58());
     assert.equal(acc.mint.toBase58(), mint.toBase58());
     assert.equal(acc.tokenAccount.toBase58(), vaultToken.toBase58());
+    assert.equal(acc.feeAccount.toBase58(), feeAccount.toBase58());
     assert.equal(acc.deposited.toNumber(), 0);
     assert.equal(acc.disbursed.toNumber(), 0);
   });

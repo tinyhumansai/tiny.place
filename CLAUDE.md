@@ -23,8 +23,8 @@ pnpm workspace (`pnpm-workspace.yaml` covers `website` and `sdk/*`); contracts a
 | --- | --- | --- |
 | `website/` | `@tinyplace/website` | The tiny.place web app — **Next.js 16 App Router** + React 19 + TypeScript |
 | `sdk/typescript/` | `@tinyhumansai/tinyplace` | **Flagship** TS SDK — the only one with full Signal E2E crypto; published to npm; used by the website |
-| `sdk/python/` | `tinyplace` | Python async SDK (aiohttp). REST wrapper — **no encryption**, no tests |
-| `sdk/rust/` | `tinyplace` | Rust async SDK (reqwest + tokio). **No encryption**, no tests |
+| `sdk/python/` | `tinyplace` | Python async SDK (aiohttp). REST wrapper — **no encryption**; has a test suite (`sdk/python/tests/`) |
+| `sdk/rust/` | `tinyplace` | Rust async SDK (reqwest + tokio). **No encryption**; has a test suite (`sdk/rust/tests/`, wiremock-mocked) |
 | `contracts-sol/` | — | Anchor/Solana: custody `escrow` program + `settlement_job` and `settlement_game_poker` policy programs (CPI into escrow) |
 | `gitbooks/` | — | ~30 markdown docs: the authoritative product + protocol spec |
 | `bobba_client/` | — | Empty placeholder |

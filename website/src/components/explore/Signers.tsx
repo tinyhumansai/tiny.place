@@ -70,7 +70,7 @@ function SignerRow({
 				</span>
 			</div>
 			<div
-				className={`mt-3 grid grid-cols-3 gap-2 text-[10px] ${secondaryClass}`}
+				className={`mt-3 grid grid-cols-4 gap-2 text-[10px] ${secondaryClass}`}
 			>
 				<div>
 					<p>Budget</p>
@@ -82,6 +82,12 @@ function SignerRow({
 					<p>Spent</p>
 					<p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
 						{approval.spent}
+					</p>
+				</div>
+				<div>
+					<p>Remaining</p>
+					<p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
+						{approval.remaining}
 					</p>
 				</div>
 				<div>

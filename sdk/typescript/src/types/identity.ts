@@ -83,6 +83,28 @@ export interface IdentityExport {
   ledgerTransactions: Array<import("./ledger.js").LedgerTransaction>;
   exportedAt: string;
   verification: Record<string, string>;
+  proofs: IdentityExportProofs;
+}
+
+export interface IdentityExportProofs {
+  ownership: IdentityOwnershipProof;
+  ledgerReferences: Array<IdentityLedgerReferenceProof>;
+}
+
+export interface IdentityOwnershipProof {
+  algorithm: string;
+  cryptoId: string;
+  publicKey: string;
+  publicKeyMatchesCryptoId: boolean;
+}
+
+export interface IdentityLedgerReferenceProof {
+  txId: string;
+  onChainTx: string;
+  network: string;
+  status: import("./ledger.js").LedgerStatus;
+  type: import("./ledger.js").LedgerType;
+  reference: import("./ledger.js").LedgerReference;
 }
 
 export interface IdentityLifecycle {

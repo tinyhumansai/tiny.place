@@ -51,6 +51,26 @@ export interface SolanaSettlementResult {
   settlement: X402SettleResponse;
 }
 
+export type SolanaSettlementRecoveryState =
+  "settlement_failed_after_execution";
+
+export interface SolanaSettlementRecovery {
+  state: SolanaSettlementRecoveryState;
+  action: "retry_settlement_or_refund";
+  onChainTx: string;
+  payment: X402VerifyRequest;
+  settlementRequest: X402SettleRequest;
+  retryable: true;
+  refundRequired: true;
+}
+
+export interface SolanaSettlementFailure extends Error {
+  execution?: SolanaX402PaymentExecution;
+  settlementRecovery?: SolanaSettlementRecovery;
+  onChainTx?: string;
+  payment?: X402VerifyRequest;
+}
+
 function sleep(intervalMs: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, intervalMs);
@@ -175,13 +195,21 @@ export class PaymentsApi {
         metadata,
       },
     });
-    const settlement = await this.settle({
-      payment: paymentMapToVerifyRequest(execution.payment),
+    const payment = paymentMapToVerifyRequest(execution.payment);
+    const settlementRequest: X402SettleRequest = {
+      payment,
       settledAmount,
       feeQuoteId,
       reference,
       shielded,
-    });
+    };
+
+    let settlement: X402SettleResponse;
+    try {
+      settlement = await this.settle(settlementRequest);
+    } catch (error) {
+      throw attachSolanaSettlementRecovery(error, execution, settlementRequest);
+    }
 
     return { execution, settlement };
   }
@@ -246,6 +274,29 @@ export class PaymentsApi {
       request,
     );
   }
+}
+
+function attachSolanaSettlementRecovery(
+  error: unknown,
+  execution: SolanaX402PaymentExecution,
+  settlementRequest: X402SettleRequest,
+): unknown {
+  if (typeof error === "object" && error !== null) {
+    const failure = error as SolanaSettlementFailure;
+    failure.execution = execution;
+    failure.onChainTx = execution.signature;
+    failure.payment = settlementRequest.payment;
+    failure.settlementRecovery = {
+      state: "settlement_failed_after_execution",
+      action: "retry_settlement_or_refund",
+      onChainTx: execution.signature,
+      payment: settlementRequest.payment,
+      settlementRequest,
+      retryable: true,
+      refundRequired: true,
+    };
+  }
+  return error;
 }
 
 function paymentMapToVerifyRequest(

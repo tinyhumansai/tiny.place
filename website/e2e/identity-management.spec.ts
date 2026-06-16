@@ -18,6 +18,11 @@ async function openRegistryTab(page: Page): Promise<void> {
 }
 
 test.describe("identity handle input", () => {
+	test.skip(
+		!process.env.E2E_API_URL,
+		"live registry availability requires an explicit backend"
+	);
+
 	test("sanitizes handle input to a-z0-9_ (no spaces/uppercase/punctuation)", async ({
 		page,
 	}) => {
