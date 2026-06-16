@@ -73,11 +73,12 @@ fn user_profile_signature_payload(crypto_id: &str, update: &UserProfileUpdate) -
         "user.profile",
         serde_json::json!({
             "actorType": or_null(&update.actor_type),
-            "avatar": or_null(&update.avatar),
+            "avatarEmail": or_null(&update.avatar_email),
             "bio": or_null(&update.bio),
             "cryptoId": crypto_id,
             "displayName": or_null(&update.display_name),
-            "links": arr_or_null(&update.links),
+            "harnessKey": or_null(&update.harness_key),
+            "link": or_null(&update.link),
             "tags": arr_or_null(&update.tags),
         }),
     )
