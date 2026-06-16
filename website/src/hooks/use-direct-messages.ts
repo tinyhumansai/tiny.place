@@ -1,10 +1,13 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useApiClient } from "@src/common/api-context";
-import { resolveEncryptionAddress } from "@src/common/encryption-discovery";
+import {
+	lookupAgentByEncryptionKey,
+	resolveEncryptionAddress,
+} from "@src/common/encryption-discovery";
 import {
 	groupKeyManager,
 	parseGroupKeyDistribution,
@@ -15,6 +18,7 @@ import {
 	type DecryptedMessage,
 } from "@src/common/signal-messaging";
 import { useSignalIdentity } from "@src/hooks/use-signal-identity";
+import { addressLabel, useAddressBookStore } from "@src/store/address-book";
 import {
 	useConversationsStore,
 	type ConversationPeer,
@@ -66,6 +70,50 @@ export function useDirectMessages(): UseDirectMessagesResult {
 	const appendOutgoing = useConversationsStore((state) => state.appendOutgoing);
 	const appendIncoming = useConversationsStore((state) => state.appendIncoming);
 	const markThreadRead = useConversationsStore((state) => state.markThreadRead);
+
+	const addressBook = useAddressBookStore((state) => state.entries);
+	const recordIdentity = useAddressBookStore((state) => state.record);
+
+	// Resolve each peer's label from the registry (handle / wallet id), falling
+	// back to whatever label the peer was stored with (a truncated key). This is
+	// what upgrades an opaque base64 sender to a recognizable name once resolved.
+	const resolvedPeers = useMemo(
+		(): Array<ConversationPeer> =>
+			peers.map((peer) => ({
+				...peer,
+				label: addressBook[peer.address]
+					? addressLabel(addressBook, peer.address)
+					: peer.label,
+			})),
+		[peers, addressBook]
+	);
+
+	// Encryption keys we've already attempted to reverse-resolve this session, so
+	// the 5s inbox poll doesn't re-scan the directory for the same stranger. Kept
+	// in a ref (not persisted) so a reload re-attempts unresolved keys.
+	const attemptedLookups = useRef<Set<string>>(new Set());
+
+	useEffect((): void => {
+		const unknown = peers.filter(
+			(peer) =>
+				!addressBook[peer.address] &&
+				!attemptedLookups.current.has(peer.address)
+		);
+		for (const peer of unknown) {
+			attemptedLookups.current.add(peer.address);
+			void lookupAgentByEncryptionKey(walletClient, peer.address).then(
+				(resolved): void => {
+					if (resolved) {
+						recordIdentity({
+							encryptionKey: peer.address,
+							agentId: resolved.agentId,
+							username: resolved.username,
+						});
+					}
+				}
+			);
+		}
+	}, [peers, addressBook, walletClient, recordIdentity]);
 
 	useQuery({
 		queryKey: ["direct-messages", "inbox", identity?.signer.publicKeyBase64],
@@ -125,15 +173,23 @@ export function useDirectMessages(): UseDirectMessagesResult {
 			}
 			if (trimmed.startsWith("@") || SOLANA_ADDRESS_PATTERN.test(trimmed)) {
 				const card = await walletClient.directory.getAgent(trimmed);
+				const address = resolveEncryptionAddress(card);
+				// Record the encryption-key → identity mapping so this peer (and any
+				// future inbound messages from them) resolve to a real label.
+				recordIdentity({
+					encryptionKey: address,
+					agentId: card.agentId,
+					username: card.username,
+				});
 				addPeerToStore({
-					address: resolveEncryptionAddress(card),
+					address,
 					label: card.username ?? card.agentId,
 				});
 				return;
 			}
 			addPeerToStore({ address: trimmed, label: `${trimmed.slice(0, 10)}…` });
 		},
-		[walletClient, addPeerToStore]
+		[walletClient, addPeerToStore, recordIdentity]
 	);
 
 	const send = useCallback(
@@ -160,7 +216,7 @@ export function useDirectMessages(): UseDirectMessagesResult {
 		error,
 		address: identity?.signer.publicKeyBase64,
 		enable,
-		peers,
+		peers: resolvedPeers,
 		threads,
 		addPeer,
 		send,

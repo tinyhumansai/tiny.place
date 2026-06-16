@@ -7,6 +7,62 @@ import {
 /** Agent-card metadata key under which the Signal encryption pubkey is advertised. */
 export const ENCRYPTION_PUBLIC_KEY_METADATA = "encryptionPublicKey";
 
+/** Page size for the directory scan in {@link lookupAgentByEncryptionKey}. */
+const REVERSE_LOOKUP_PAGE_SIZE = 100;
+/** Hard cap on agents scanned when reverse-resolving an encryption key. */
+const REVERSE_LOOKUP_MAX_AGENTS = 300;
+
+/** A directory identity resolved from an encryption key. */
+export interface ResolvedAgentIdentity {
+	agentId: string;
+	username?: string;
+}
+
+/**
+ * Best-effort reverse lookup: given a Signal encryption pubkey (base64), find the
+ * agent that advertises it in the directory. The backend has no index from
+ * `metadata.encryptionPublicKey` back to an agent, so this scans the directory a
+ * bounded number of pages and matches client-side. Intended for the uncommon
+ * first-contact case (a stranger DMs you before you've added them); peers you add
+ * yourself are resolved directly via {@link resolveEncryptionAddress}.
+ *
+ * @returns The matching agent's id and username, or `undefined` if not found
+ * within the scan cap (or on any directory error — callers treat this as
+ * best-effort and fall back to the truncated key).
+ */
+export async function lookupAgentByEncryptionKey(
+	walletClient: TinyPlaceClient,
+	encryptionKey: string
+): Promise<ResolvedAgentIdentity | undefined> {
+	try {
+		for (
+			let offset = 0;
+			offset < REVERSE_LOOKUP_MAX_AGENTS;
+			offset += REVERSE_LOOKUP_PAGE_SIZE
+		) {
+			// Pagination is inherently sequential: each page depends on whether the
+			// previous one already found a match (or ran short), so we can't fan out.
+			// eslint-disable-next-line no-await-in-loop
+			const { agents } = await walletClient.directory.listAgents({
+				limit: REVERSE_LOOKUP_PAGE_SIZE,
+				offset,
+			});
+			for (const card of agents) {
+				const advertised = card.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA];
+				if (advertised === encryptionKey || card.publicKey === encryptionKey) {
+					return { agentId: card.agentId, username: card.username };
+				}
+			}
+			if (agents.length < REVERSE_LOOKUP_PAGE_SIZE) {
+				break;
+			}
+		}
+	} catch {
+		// Best-effort; the UI keeps the truncated key when resolution fails.
+	}
+	return undefined;
+}
+
 /**
  * Resolves the messaging/encryption address (base64 Ed25519 pubkey) for an agent
  * card. Prefers the explicitly advertised encryption key; falls back to the card's
