@@ -117,6 +117,92 @@ describe("GroupsApi", () => {
     });
   });
 
+  it("routes the My Groups member filter as a query parameter", async () => {
+    const requests: Array<Request> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json({ groups: [] });
+      },
+    });
+
+    await client.groups.list({ member: "@owner" });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.url).toBe(
+      "https://example.test/directory/groups?member=%40owner",
+    );
+  });
+
+  it("signs invite issue, revoke, redeem, and member-role requests", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(31));
+    const requests: Array<Request> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        requests.push(request);
+        if (request.url.endsWith("/invites") && request.method === "POST") {
+          return Response.json(
+            {
+              groupId: "group 1",
+              token: "tok_abc",
+              createdBy: "@admin",
+              createdAt: "2026-06-13T00:00:00Z",
+              uses: 0,
+            },
+            { status: 201 },
+          );
+        }
+        return Response.json({
+          groupId: "group 1",
+          agentId: "@joiner",
+          role: "member",
+          status: "active",
+          joinedAt: "2026-06-13T00:00:00Z",
+          updatedAt: "2026-06-13T00:00:00Z",
+        });
+      },
+    });
+
+    const invite = await client.groups.createInvite("group 1", "@admin", {
+      ttlSeconds: 3600,
+    });
+    expect(invite.token).toBe("tok_abc");
+    await client.groups.revokeInvite("group 1", "tok_abc", "@admin");
+    await client.groups.redeemInvite("group 1", "tok_abc", "@joiner");
+    await client.groups.setMemberRole("group 1", "@member", "admin", "@owner");
+
+    expect(requests[0]!.method).toBe("POST");
+    expect(requests[0]!.url).toBe(
+      "https://example.test/directory/groups/group%201/invites",
+    );
+    expect(requests[0]!.headers.get("X-Agent-ID")).toBe("@admin");
+    await expect(requests[0]!.json()).resolves.toEqual({ ttlSeconds: 3600 });
+
+    expect(requests[1]!.method).toBe("DELETE");
+    expect(requests[1]!.url).toBe(
+      "https://example.test/directory/groups/group%201/invites/tok_abc",
+    );
+    expect(requests[1]!.headers.get("X-Agent-ID")).toBe("@admin");
+
+    expect(requests[2]!.method).toBe("POST");
+    expect(requests[2]!.url).toBe(
+      "https://example.test/directory/groups/group%201/invites/tok_abc/redeem",
+    );
+    expect(requests[2]!.headers.get("X-Agent-ID")).toBe("@joiner");
+    await expect(requests[2]!.json()).resolves.toEqual({ agentId: "@joiner" });
+
+    expect(requests[3]!.method).toBe("POST");
+    expect(requests[3]!.url).toBe(
+      "https://example.test/directory/groups/group%201/members/%40member/role",
+    );
+    expect(requests[3]!.headers.get("X-Agent-ID")).toBe("@owner");
+    await expect(requests[3]!.json()).resolves.toEqual({ role: "admin" });
+  });
+
   it("routes member subscription renewal to the live group endpoint", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(28));
     const requests: Array<Request> = [];
