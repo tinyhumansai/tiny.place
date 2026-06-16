@@ -176,6 +176,19 @@ def test_parse_key_bundle_requires_ed25519_key(bob: Identity) -> None:
         )
 
 
+def test_parse_key_bundle_rejects_mismatched_x25519_identity(
+    bob: Identity, alice: Identity
+) -> None:
+    # The supplied X25519 identity must derive from the verified Ed25519 key;
+    # passing someone else's X25519 (Alice's) against Bob's Ed25519 is rejected.
+    with pytest.raises(ValueError, match="does not match"):
+        parse_key_bundle(
+            bob.bundle,
+            ed25519_pub_to_x25519_pub(alice.ed25519_public_key),
+            bob.ed25519_public_key,
+        )
+
+
 def test_parse_key_bundle_rejects_tampered_signed_pre_key(bob: Identity) -> None:
     tampered = {**bob.bundle, "signedPreKey": {**bob.bundle["signedPreKey"]}}
     # Flip the advertised public key but keep the original signature.
@@ -413,7 +426,10 @@ async def test_send_and_poll_decrypted_round_trip(
     )
     bob_session = _session(bob)
 
-    decrypted = await client.messages.poll_inbox_decrypted(bob_session, bob.address)
+    # acknowledge defaults to False; opt in so the message is deleted after read.
+    decrypted = await client.messages.poll_inbox_decrypted(
+        bob_session, bob.address, acknowledge=True
+    )
     assert len(decrypted) == 1
     msg = decrypted[0]
     assert isinstance(msg, DecryptedMessage)
@@ -421,6 +437,30 @@ async def test_send_and_poll_decrypted_round_trip(
     assert msg.sender == alice.address
     # The message was acknowledged (DELETE issued).
     assert any(r["method"] == "DELETE" for r in fake.requests)
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_poll_decrypted_does_not_acknowledge_by_default(
+    alice: Identity, bob: Identity
+) -> None:
+    # Default acknowledge=False: the message is returned but NOT deleted, so the
+    # caller can durably persist it before opting into acknowledgement.
+    alice_session = _session(alice)
+    enc = await alice_session.encrypt(
+        bob.address, _bob_x25519(bob), b"keep me", bob.bundle, bob.ed25519_public_key
+    )
+    envelope = _envelope(alice.address, bob.address, enc)
+    envelope["timestamp"] = "2026-06-16T00:00:00Z"
+
+    client, fake = _client([FakeResponse(200, {"messages": [envelope]})])
+    bob_session = _session(bob)
+
+    decrypted = await client.messages.poll_inbox_decrypted(bob_session, bob.address)
+    assert len(decrypted) == 1
+    assert decrypted[0].plaintext == b"keep me"
+    # No DELETE was issued — the relay copy is preserved.
+    assert not any(r["method"] == "DELETE" for r in fake.requests)
     await client.close()
 
 
@@ -450,7 +490,10 @@ async def test_poll_decrypted_skips_undecryptable(
 
     errors: list[tuple[dict, Exception]] = []
     decrypted = await client.messages.poll_inbox_decrypted(
-        bob_session, bob.address, on_error=lambda env, exc: errors.append((env, exc))
+        bob_session,
+        bob.address,
+        acknowledge=True,
+        on_error=lambda env, exc: errors.append((env, exc)),
     )
     assert decrypted == []
     assert len(errors) == 1

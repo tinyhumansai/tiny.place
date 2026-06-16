@@ -35,6 +35,7 @@ across the package — that cleanup is left as a documented seam.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
@@ -101,6 +102,18 @@ class SignalSession:
     ) -> None:
         self._store = store
         self._our_identity_public_key = our_identity_public_key
+        # Per-peer locks serialize the load -> ratchet -> store critical section
+        # so two concurrent encrypts/decrypts to the same peer cannot read the
+        # same state and emit duplicate ratchet message numbers or lose a skipped
+        # key. (A cross-process durable store would additionally need CAS/txns.)
+        self._locks: dict[str, asyncio.Lock] = {}
+
+    def _lock_for(self, address: str) -> asyncio.Lock:
+        lock = self._locks.get(address)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._locks[address] = lock
+        return lock
 
     async def encrypt(
         self,
@@ -133,51 +146,52 @@ class SignalSession:
         Raises:
             ValueError: if no session exists and no usable bundle is supplied.
         """
-        session = await self._store.get_session(recipient_address)
-        is_pre_key_message = False
-        ephemeral_public_key: bytes | None = None
-        signed_pre_key_id: str | None = None
-        one_time_pre_key_id: str | None = None
+        async with self._lock_for(recipient_address):
+            session = await self._store.get_session(recipient_address)
+            is_pre_key_message = False
+            ephemeral_public_key: bytes | None = None
+            signed_pre_key_id: str | None = None
+            one_time_pre_key_id: str | None = None
 
-        if session is None and recipient_bundle is not None:
-            bundle = parse_key_bundle(
-                recipient_bundle,
+            if session is None and recipient_bundle is not None:
+                bundle = parse_key_bundle(
+                    recipient_bundle,
+                    recipient_identity_key,
+                    recipient_identity_ed25519_key,
+                )
+                identity_key_pair = await self._store.get_identity_x25519_key_pair()
+                result = x3dh_initiate(_to_crypto_key_pair(identity_key_pair), bundle)
+                session = result.session
+                ephemeral_public_key = result.ephemeral_public_key
+                signed_pre_key_id = result.signed_pre_key_id
+                one_time_pre_key_id = result.one_time_pre_key_id
+                is_pre_key_message = True
+
+            if session is None:
+                raise ValueError(
+                    f"No session for {recipient_address}. "
+                    "Provide a key bundle for initial message."
+                )
+
+            associated_data = build_associated_data(
+                self._our_identity_public_key,
                 recipient_identity_key,
-                recipient_identity_ed25519_key,
             )
-            identity_key_pair = await self._store.get_identity_x25519_key_pair()
-            result = x3dh_initiate(_to_crypto_key_pair(identity_key_pair), bundle)
-            session = result.session
-            ephemeral_public_key = result.ephemeral_public_key
-            signed_pre_key_id = result.signed_pre_key_id
-            one_time_pre_key_id = result.one_time_pre_key_id
-            is_pre_key_message = True
+            message = ratchet_encrypt(session, plaintext, associated_data)
+            await self._store.store_session(recipient_address, session)
 
-        if session is None:
-            raise ValueError(
-                f"No session for {recipient_address}. "
-                "Provide a key bundle for initial message."
+            signal = _build_signal_metadata(
+                message.header,
+                ephemeral_public_key,
+                signed_pre_key_id,
+                one_time_pre_key_id,
             )
 
-        associated_data = build_associated_data(
-            self._our_identity_public_key,
-            recipient_identity_key,
-        )
-        message = ratchet_encrypt(session, plaintext, associated_data)
-        await self._store.store_session(recipient_address, session)
-
-        signal = _build_signal_metadata(
-            message.header,
-            ephemeral_public_key,
-            signed_pre_key_id,
-            one_time_pre_key_id,
-        )
-
-        return EncryptedMessage(
-            body=to_base64(message.ciphertext),
-            type="PREKEY_BUNDLE" if is_pre_key_message else "CIPHERTEXT",
-            signal=signal,
-        )
+            return EncryptedMessage(
+                body=to_base64(message.ciphertext),
+                type="PREKEY_BUNDLE" if is_pre_key_message else "CIPHERTEXT",
+                signal=signal,
+            )
 
     async def decrypt(
         self,
@@ -201,39 +215,49 @@ class SignalSession:
         Raises:
             ValueError: if no session can be found or established for the sender.
         """
-        session = await self._store.get_session(sender_address)
-        ciphertext = from_base64(str(envelope["body"]))
-        signal = envelope.get("signal")
+        async with self._lock_for(sender_address):
+            session = await self._store.get_session(sender_address)
+            ciphertext = from_base64(str(envelope["body"]))
+            signal = envelope.get("signal")
 
-        if envelope.get("type") == "PREKEY_BUNDLE" and signal:
-            session = await self._process_pre_key_message(
-                sender_identity_key, signal
+            consumed_one_time_pre_key_id: str | None = None
+            if envelope.get("type") == "PREKEY_BUNDLE" and signal:
+                session, consumed_one_time_pre_key_id = (
+                    await self._process_pre_key_message(sender_identity_key, signal)
+                )
+
+            if session is None:
+                raise ValueError(f"No session for {sender_address}")
+
+            header = _parse_signal_header(signal)
+            associated_data = build_associated_data(
+                sender_identity_key,
+                self._our_identity_public_key,
             )
+            ratchet_message = RatchetMessage(header=header, ciphertext=ciphertext)
+            # ratchet_decrypt authenticates the ciphertext (MAC) before mutating;
+            # if it raises, we must NOT have consumed our one-time pre-key, or a
+            # forged PREKEY_BUNDLE could permanently burn it.
+            plaintext = ratchet_decrypt(session, ratchet_message, associated_data)
+            if consumed_one_time_pre_key_id is not None:
+                await self._store.remove_pre_key(consumed_one_time_pre_key_id)
+            await self._store.store_session(sender_address, session)
 
-        if session is None:
-            raise ValueError(f"No session for {sender_address}")
-
-        header = _parse_signal_header(signal)
-        associated_data = build_associated_data(
-            sender_identity_key,
-            self._our_identity_public_key,
-        )
-        ratchet_message = RatchetMessage(header=header, ciphertext=ciphertext)
-        plaintext = ratchet_decrypt(session, ratchet_message, associated_data)
-        await self._store.store_session(sender_address, session)
-
-        return plaintext
+            return plaintext
 
     async def _process_pre_key_message(
         self,
         sender_identity_key: bytes,
         signal: Mapping[str, Any],
-    ) -> SessionState:
+    ) -> tuple[SessionState, str | None]:
         """Run the X3DH responder side for an inbound ``PREKEY_BUNDLE``.
 
-        Looks up the signed pre-key the sender selected and, if present, consumes
-        (and removes) the one-time pre-key, then derives the responder's session
-        state. Mirrors ``processPreKeyMessage`` in ``session.ts``.
+        Looks up the signed pre-key the sender selected and, if the sender used a
+        one-time pre-key, loads it, then derives the responder's session state.
+        Returns ``(session_state, one_time_pre_key_id_to_consume)``. The one-time
+        pre-key is **not** removed here — the caller removes it only after the
+        first ciphertext authenticates, so a forged or corrupted bundle cannot
+        permanently consume it. Mirrors ``processPreKeyMessage`` in ``session.ts``.
         """
         identity_key_pair = await self._store.get_identity_x25519_key_pair()
         signed_pre_key_id = signal.get("signedPreKeyId")
@@ -246,22 +270,29 @@ class SignalSession:
             raise ValueError(f"Signed pre-key {signed_pre_key_id} not found")
 
         one_time_pre_key_pair: CryptoKeyPair | None = None
+        consumed_one_time_pre_key_id: str | None = None
         one_time_pre_key_id = signal.get("oneTimePreKeyId")
         if one_time_pre_key_id:
             one_time_pre_key = await self._store.get_pre_key(str(one_time_pre_key_id))
-            if one_time_pre_key is not None:
-                one_time_pre_key_pair = _to_crypto_key_pair(one_time_pre_key.key_pair)
-                await self._store.remove_pre_key(str(one_time_pre_key_id))
+            # When the sender names a one-time pre-key it must exist, otherwise the
+            # X3DH secrets cannot match and we would silently derive a dead session.
+            if one_time_pre_key is None:
+                raise ValueError(
+                    f"One-time pre-key {one_time_pre_key_id} not found"
+                )
+            one_time_pre_key_pair = _to_crypto_key_pair(one_time_pre_key.key_pair)
+            consumed_one_time_pre_key_id = str(one_time_pre_key_id)
 
         ephemeral_key = from_base64(str(signal["ephemeralKey"]))
 
-        return x3dh_respond(
+        session = x3dh_respond(
             _to_crypto_key_pair(identity_key_pair),
             _to_crypto_key_pair(signed_pre_key.key_pair),
             sender_identity_key,
             ephemeral_key,
             one_time_pre_key_pair,
         )
+        return session, consumed_one_time_pre_key_id
 
     async def has_session(self, address: str) -> bool:
         """Return whether a session already exists for ``address``."""
@@ -304,6 +335,20 @@ def parse_key_bundle(
         raise ValueError(
             "Key bundle rejected: peer Ed25519 identity key is required to "
             "verify the signed pre-key signature"
+        )
+
+    # The X3DH identity used for the DH must be the X25519 form of the *same*
+    # Ed25519 key we verify signatures against — otherwise a caller could pass a
+    # mismatched pair and bind the session to an identity the signatures never
+    # authenticated. Derive it from the verified Ed25519 key rather than trusting
+    # the supplied X25519 value.
+    derived_x25519_identity_key = ed25519_pub_to_x25519_pub(
+        recipient_ed25519_identity_key
+    )
+    if recipient_x25519_identity_key != derived_x25519_identity_key:
+        raise ValueError(
+            "Key bundle rejected: X25519 identity key does not match the peer's "
+            "Ed25519 identity key"
         )
 
     signed_pre_key = bundle["signedPreKey"]

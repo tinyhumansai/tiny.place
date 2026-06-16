@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -154,7 +155,7 @@ class MessagesApi:
         session: "SignalSession",
         agent_id: str,
         *,
-        acknowledge: bool = True,
+        acknowledge: bool = False,
         on_error: Optional[Callable[[JsonDict, Exception], None]] = None,
     ) -> list[DecryptedMessage]:
         """Fetch, decrypt and (optionally) acknowledge all pending messages.
@@ -166,12 +167,17 @@ class MessagesApi:
         message); ``on_error`` is invoked for it if provided. Mirrors the TS
         ``fetchInbox``.
 
+        ``acknowledge`` defaults to ``False``: acknowledgement deletes the
+        message from the relay, so the caller must opt in **after** it has
+        durably persisted the returned plaintext, otherwise a crash between the
+        ack and that persistence would lose the message irrecoverably.
+
         Args:
             session: The recipient's :class:`~tinyplace.signal.session.SignalSession`.
             agent_id: The recipient's messaging address (its own base64 Ed25519
                 encryption public key) — both the mailbox key and ack identity.
             acknowledge: Acknowledge each processed message so it is dropped from
-                the relay.
+                the relay. Opt in only once the plaintext is durably stored.
             on_error: Optional callback ``(envelope, exception)`` for an
                 undecryptable message.
 
@@ -224,10 +230,14 @@ class MessagesApi:
         try:
             await self.acknowledge(message_id, agent_id)
         except Exception:  # noqa: BLE001 - best-effort cleanup
-            pass
+            _LOGGER.debug(
+                "Failed to acknowledge inbox message %s", message_id, exc_info=True
+            )
 
 
 _CURSOR_SEP = "|"
+
+_LOGGER = logging.getLogger(__name__)
 
 _message_counter = 0
 
