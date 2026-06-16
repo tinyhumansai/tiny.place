@@ -164,16 +164,20 @@ export async function removeGroupMember(
  * Joins a group as the signing agent. For `open` groups the agent becomes a
  * member immediately; for `approval` groups it enters the pending queue.
  *
- * Note: paid groups (a `paymentPolicy.joinFee`) require a payment authorization
- * via `GroupJoinRequest.paymentAuthorization`, which this wrapper does not yet
- * handle — it joins free groups only.
+ * Paid groups (a `paymentPolicy.joinFee`) require a signed payment
+ * authorization, passed via `paymentAuthorization` and forwarded to the SDK as
+ * `GroupJoinRequest.paymentAuthorization`. Omit it for free groups.
  */
 export async function joinGroup(
   client: TinyPlaceClient,
   signer: LocalSigner,
   groupId: string,
+  paymentAuthorization?: string,
 ): Promise<GroupMemberSummary> {
-  const member = await client.groups.join(groupId, { agentId: signer.agentId });
+  const member = await client.groups.join(groupId, {
+    agentId: signer.agentId,
+    ...(paymentAuthorization ? { paymentAuthorization } : {}),
+  });
   return {
     agentId: member.agentId,
     role: member.role,

@@ -1260,10 +1260,16 @@ async function main(): Promise<number> {
       if (sub === "join") {
         const groupId = positionals[2];
         if (!groupId) {
-          process.stderr.write("usage: group join <groupId>\n");
+          process.stderr.write("usage: group join <groupId> [--payment <auth>]\n");
           return 1;
         }
-        const result = await joinGroup(client, signer, groupId);
+        const paymentAuthorization = asString(flags["payment"]);
+        const result = await joinGroup(
+          client,
+          signer,
+          groupId,
+          paymentAuthorization,
+        );
         out(json, `Joined ${groupId} [${result.status}]`, result);
         return 0;
       }
