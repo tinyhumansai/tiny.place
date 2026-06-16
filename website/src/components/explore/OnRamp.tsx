@@ -1,6 +1,6 @@
 "use client";
 
-import { MoonPayBuyWidget, MoonPaySellWidget } from "@moonpay/moonpay-react";
+import { MoonPaySellWidget } from "@moonpay/moonpay-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -8,6 +8,7 @@ import { useState } from "react";
 import type { FunctionComponent } from "@src/common/types";
 import { buildDeBridgeFundUrl } from "@src/common/debridge";
 import {
+	buildMoonPayBuyUrl,
 	MOONPAY_BASE_CURRENCY_CODE,
 	MOONPAY_USDC_SOLANA_CURRENCY_CODE,
 } from "@src/common/moonpay";
@@ -51,23 +52,47 @@ type WidgetProperties = {
 	walletAddress?: string;
 };
 
-type OnRampWidgetProperties = WidgetProperties & {
+type CardFundPanelProperties = WidgetProperties & {
 	baseCurrencyAmount?: string;
 };
 
-// Funds the SOL wallet with USDC via a fiat card payment (fiat → USDC on Solana).
-const OnRampWidget = ({
+// Funds the SOL wallet with USDC via a fiat card payment (fiat → USDC on
+// Solana), redirecting to MoonPay's hosted widget.
+const CardFundPanel = ({
 	baseCurrencyAmount,
+	isDark,
 	walletAddress,
-}: OnRampWidgetProperties): FunctionComponent => (
-	<MoonPayBuyWidget
-		visible
-		baseCurrencyAmount={baseCurrencyAmount}
-		baseCurrencyCode={MOONPAY_BASE_CURRENCY_CODE}
-		defaultCurrencyCode={MOONPAY_USDC_SOLANA_CURRENCY_CODE}
-		variant="embedded"
-		walletAddress={walletAddress}
-	/>
+}: CardFundPanelProperties): FunctionComponent => (
+	<div
+		className={`space-y-3 rounded-lg border p-4 ${
+			isDark
+				? "border-neutral-800 bg-neutral-950"
+				: "border-neutral-200 bg-neutral-50"
+		}`}
+	>
+		<p
+			className={`text-sm ${isDark ? "text-neutral-400" : "text-neutral-600"}`}
+		>
+			Pay with a credit or debit card through MoonPay. You complete the purchase
+			on MoonPay&apos;s hosted page
+			{baseCurrencyAmount === undefined
+				? ""
+				: ` (prefilled to $${baseCurrencyAmount})`}
+			; USDC settles straight to your Solana wallet.
+		</p>
+		<a
+			href={buildMoonPayBuyUrl({ walletAddress, baseCurrencyAmount })}
+			rel="noreferrer"
+			target="_blank"
+			className={`inline-flex items-center rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+				isDark
+					? "bg-white text-black hover:bg-neutral-200"
+					: "bg-black text-white hover:bg-neutral-800"
+			}`}
+		>
+			Fund with card on MoonPay →
+		</a>
+	</div>
 );
 
 // Funds the SOL wallet with USDC by bridging crypto from another chain via
@@ -186,7 +211,7 @@ export const OnRamp = ({ isDark }: OnRampProperties): FunctionComponent => {
 					}`}
 				>
 					Connect your wallet to prefill the destination address. You can also
-					enter one manually in the widget below.
+					enter one on MoonPay after you continue.
 				</p>
 			)}
 
@@ -223,7 +248,7 @@ export const OnRamp = ({ isDark }: OnRampProperties): FunctionComponent => {
 						))}
 					</div>
 					{fundingMethod === "card" ? (
-						<OnRampWidget
+						<CardFundPanel
 							baseCurrencyAmount={amount}
 							isDark={isDark}
 							walletAddress={walletAddress}
