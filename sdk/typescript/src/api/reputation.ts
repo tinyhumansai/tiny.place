@@ -21,6 +21,9 @@ import type {
   TrustGraph,
   TrustGraphQueryParams,
   TrustScore,
+  TwitterChallengeRequest,
+  TwitterChallengeResult,
+  TwitterVerificationStatus,
 } from "../types/index.js";
 
 export class ReputationApi {
@@ -84,8 +87,7 @@ export class ReputationApi {
     if (this.signingKey && !attestation.signature) {
       attestation = {
         ...attestation,
-        attestationId:
-          attestation.attestationId ?? nextReputationId("att"),
+        attestationId: attestation.attestationId ?? nextReputationId("att"),
       };
       attestation.signature = await signCanonicalPayload(
         this.signingKey,
@@ -95,6 +97,60 @@ export class ReputationApi {
     }
 
     return this.http.post<Attestation>("/reputation/attestations", attestation);
+  }
+
+  /**
+   * Request a Twitter/X verification challenge. The returned `challengeCode`
+   * must be posted verbatim as a tweet from the account being claimed, after
+   * which the tweet URL is submitted via {@link submitTwitterAttestation}.
+   * Signed with the same payload as an attestation (empty proofUrl).
+   */
+  async requestTwitterChallenge(
+    request: TwitterChallengeRequest,
+  ): Promise<TwitterChallengeResult> {
+    const platform = request.platform ?? "twitter";
+    const body: TwitterChallengeRequest = { ...request, platform };
+    if (this.signingKey && !body.signature) {
+      body.signature = await signCanonicalPayload(
+        this.signingKey,
+        attestationSignaturePayload({
+          agent: body.agent,
+          agentCryptoId: body.agentCryptoId,
+          handle: body.handle,
+          platform,
+        }),
+      );
+      body.signerPublicKey ??= this.http.signingPublicKey();
+    }
+    return this.http.post<TwitterChallengeResult>(
+      "/reputation/attestations/twitter/challenge",
+      body,
+    );
+  }
+
+  /**
+   * Submit a tweet as proof for a Twitter/X attestation. The `proofUrl` must be
+   * the status URL of the tweet containing the challenge. Verification is
+   * asynchronous: this returns the attestation in its `pending` state; poll
+   * {@link getTwitterVerificationStatus} for the outcome.
+   */
+  submitTwitterAttestation(
+    attestation: AttestationCreate,
+  ): Promise<Attestation> {
+    return this.createAttestation({
+      ...attestation,
+      platform: attestation.platform ?? "twitter",
+    });
+  }
+
+  /** Poll the async verification status of a submitted Twitter/X attestation. */
+  getTwitterVerificationStatus(
+    attestationId: string,
+  ): Promise<TwitterVerificationStatus> {
+    return this.http.get<TwitterVerificationStatus>(
+      "/reputation/attestations/twitter/status",
+      { attestationId },
+    );
   }
 
   async deleteAttestation(attestationId: string): Promise<void> {
@@ -283,9 +339,7 @@ function vouchRevokeSignaturePayload(vouchId: string): string {
   });
 }
 
-function attestationSignaturePayload(
-  attestation: AttestationCreate,
-): string {
+function attestationSignaturePayload(attestation: AttestationCreate): string {
   return canonicalPayload("reputation.attestation", {
     agent: attestation.agent,
     agentCryptoId: attestation.agentCryptoId,

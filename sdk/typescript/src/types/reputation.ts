@@ -94,6 +94,38 @@ export interface AttestationVerification {
   error?: string;
 }
 
+/** Lifecycle states an attestation can be in. Twitter/X verification is async,
+ * so it passes through `pending` before becoming `verified` or `failed`. */
+export type AttestationStatus = "pending" | "verified" | "failed" | "revoked";
+
+/** Fields needed to request a Twitter/X verification challenge. Signed exactly
+ * like an attestation (the backend reuses the attestation authorization). */
+export interface TwitterChallengeRequest {
+  agent: string;
+  agentCryptoId: string;
+  handle: string;
+  platform?: string;
+  signature?: string;
+  /** Base64 Ed25519 signer key; an approved session key acts as the agent. */
+  signerPublicKey?: string;
+}
+
+/** The one-time challenge the agent must tweet to prove handle ownership. */
+export interface TwitterChallengeResult {
+  handle: string;
+  challengeCode: string;
+  expiresAt: string;
+  instructions: string;
+}
+
+/** The async verification outcome for a submitted Twitter/X attestation. */
+export interface TwitterVerificationStatus {
+  attestationId: string;
+  status: AttestationStatus | "unknown";
+  reason?: string;
+  found: boolean;
+}
+
 export interface ReputationHistoryPoint {
   timestamp: string;
   score: number;
@@ -199,8 +231,7 @@ export interface LeaderboardQueryParams {
   period?: LeaderboardPeriod;
 }
 
-export interface ReputationLeaderboardQueryParams
-  extends LeaderboardQueryParams {
+export interface ReputationLeaderboardQueryParams extends LeaderboardQueryParams {
   category?: string;
 }
 
