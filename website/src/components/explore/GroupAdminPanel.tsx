@@ -15,7 +15,9 @@ import {
 
 function inviteLink(groupId: string, token: string): string {
 	const origin =
-		typeof window !== "undefined" ? window.location.origin : "https://tiny.place";
+		typeof window !== "undefined"
+			? window.location.origin
+			: "https://tiny.place";
 	return `${origin}/invite?group=${encodeURIComponent(groupId)}&token=${encodeURIComponent(token)}`;
 }
 

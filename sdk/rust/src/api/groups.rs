@@ -6,9 +6,10 @@ use serde::Deserialize;
 use crate::error::Result;
 use crate::http::HttpClient;
 use crate::types::{
-    GroupCreateRequest, GroupJoinRequest, GroupMember, GroupMessageFanoutRequest,
-    GroupMessageFanoutResponse, GroupMetadata, GroupQueryParams, GroupRevenueShareRequest,
-    GroupRevenueShareResponse, GroupSubscriptionEnforceResponse, GroupSubscriptionRenewRequest,
+    GroupCreateRequest, GroupInvite, GroupInviteCreateRequest, GroupInvitePreview, GroupJoinRequest,
+    GroupMember, GroupMessageFanoutRequest, GroupMessageFanoutResponse, GroupMetadata,
+    GroupQueryParams, GroupRevenueShareRequest, GroupRevenueShareResponse,
+    GroupSubscriptionEnforceResponse, GroupSubscriptionRenewRequest,
 };
 use crate::util::encode;
 
@@ -21,6 +22,17 @@ pub struct GroupListResponse {
 #[derive(Deserialize)]
 struct GroupListPayload {
     groups: Option<Vec<GroupMetadata>>,
+}
+
+/// Wrapper for the `{ invites: [...] }` response.
+pub struct GroupInvitesResponse {
+    pub invites: Vec<GroupInvite>,
+}
+
+/// The raw invites payload, where `invites` may be `null`.
+#[derive(Deserialize)]
+struct GroupInvitesPayload {
+    invites: Option<Vec<GroupInvite>>,
 }
 
 /// Wrapper for the `{ members: [...] }` response.
@@ -238,6 +250,98 @@ impl GroupsApi {
             .post_directory_auth_as(&path, &actor, Some(&message))
             .await
     }
+
+    /// Promote or demote an active member between "admin" and "member".
+    /// Owner-signed (or `actor`).
+    pub async fn set_member_role(
+        &self,
+        group_id: &str,
+        agent_id: &str,
+        role: &str,
+        actor: Option<&str>,
+    ) -> Result<GroupMember> {
+        let path = format!(
+            "/directory/groups/{}/members/{}/role",
+            encode(group_id),
+            encode(agent_id)
+        );
+        let body = serde_json::json!({ "role": role });
+        if let Some(actor) = actor {
+            self.http
+                .post_directory_auth_as(&path, actor, Some(&body))
+                .await
+        } else {
+            self.http.post_directory_auth(&path, Some(&body)).await
+        }
+    }
+
+    /// Issue (or rotate) the acting admin's invite link for a group.
+    pub async fn create_invite(
+        &self,
+        group_id: &str,
+        actor: &str,
+        request: Option<GroupInviteCreateRequest>,
+    ) -> Result<GroupInvite> {
+        let path = format!("/directory/groups/{}/invites", encode(group_id));
+        let body = request.unwrap_or_default();
+        self.http
+            .post_directory_auth_as(&path, actor, Some(&body))
+            .await
+    }
+
+    /// List the active invites for a group (admin-signed).
+    pub async fn list_invites(&self, group_id: &str, actor: &str) -> Result<GroupInvitesResponse> {
+        let path = format!("/directory/groups/{}/invites", encode(group_id));
+        let result: GroupInvitesPayload = self.http.get_directory_auth_as(&path, actor, &[]).await?;
+        Ok(GroupInvitesResponse {
+            invites: result.invites.unwrap_or_default(),
+        })
+    }
+
+    /// Public preview of the group behind a valid invite token (no auth).
+    pub async fn preview_invite(
+        &self,
+        group_id: &str,
+        token: &str,
+    ) -> Result<GroupInvitePreview> {
+        let path = format!(
+            "/directory/groups/{}/invites/{}",
+            encode(group_id),
+            encode(token)
+        );
+        self.http.get(&path, &[]).await
+    }
+
+    /// Revoke an invite token (admin-signed).
+    pub async fn revoke_invite(&self, group_id: &str, token: &str, actor: &str) -> Result<()> {
+        let path = format!(
+            "/directory/groups/{}/invites/{}",
+            encode(group_id),
+            encode(token)
+        );
+        let body = serde_json::json!({});
+        self.http
+            .delete_directory_auth_as(&path, actor, Some(&body))
+            .await
+    }
+
+    /// Redeem an invite token, joining the group regardless of policy.
+    pub async fn redeem_invite(
+        &self,
+        group_id: &str,
+        token: &str,
+        agent_id: &str,
+    ) -> Result<GroupMember> {
+        let path = format!(
+            "/directory/groups/{}/invites/{}/redeem",
+            encode(group_id),
+            encode(token)
+        );
+        let body = serde_json::json!({ "agentId": agent_id });
+        self.http
+            .post_directory_auth_as(&path, agent_id, Some(&body))
+            .await
+    }
 }
 
 /// Build the query vector for `list`, mirroring the TS object-to-query encoding.
@@ -271,6 +375,9 @@ fn groups_query(params: Option<&GroupQueryParams>) -> Vec<(String, String)> {
     }
     if let Some(v) = p.limit {
         q.push(("limit".into(), v.to_string()));
+    }
+    if let Some(v) = &p.member {
+        q.push(("member".into(), v.clone()));
     }
     q
 }

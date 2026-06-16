@@ -308,7 +308,9 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 					{group.membershipPolicy === "open" ? "Public" : "Private"}
 				</span>
 			</div>
-			<p className={`mt-1 text-[10px] ${mutedClass}`}>{group.description ?? ""}</p>
+			<p className={`mt-1 text-[10px] ${mutedClass}`}>
+				{group.description ?? ""}
+			</p>
 			<div className="mt-2 flex items-center justify-between">
 				<span className={`text-[10px] ${mutedClass}`}>
 					{group.memberCount} members
@@ -334,8 +336,8 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 				<p className={`text-xs ${mutedClass}`}>{emptyLabel}</p>
 			) : (
 				<div className="grid grid-cols-2 gap-2">
-					{groups.map((group): React.ReactElement =>
-						renderGroupCard(group, mine)
+					{groups.map(
+						(group): React.ReactElement => renderGroupCard(group, mine)
 					)}
 				</div>
 			)}
@@ -425,9 +427,7 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 				{mutationError ? (
 					<p className="mt-2 text-xs text-red-500">{mutationError.message}</p>
 				) : null}
-				<p
-					className={`mt-2 text-xs ${actor ? mutedClass : "text-red-500"}`}
-				>
+				<p className={`mt-2 text-xs ${actor ? mutedClass : "text-red-500"}`}>
 					{actor
 						? `Acting as ${actor}`
 						: "Connect your wallet to create or join groups."}

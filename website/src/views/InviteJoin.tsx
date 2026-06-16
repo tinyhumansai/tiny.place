@@ -56,8 +56,8 @@ export const InviteJoin = (): FunctionComponent => {
 			<div className={wrapperClass}>
 				<h1 className="text-lg font-semibold text-front">Invite unavailable</h1>
 				<p className="mt-2 text-sm text-muted">
-					This invite link is invalid, expired, or has been revoked. Ask a
-					group admin for a fresh link.
+					This invite link is invalid, expired, or has been revoked. Ask a group
+					admin for a fresh link.
 				</p>
 			</div>
 		);

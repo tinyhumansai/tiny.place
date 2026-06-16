@@ -22,10 +22,9 @@ export class GroupsApi {
 
   list(params?: GroupQueryParams): Promise<{ groups: Array<GroupMetadata> }> {
     return this.http
-      .get<{ groups: Array<GroupMetadata> | null }>(
-        "/directory/groups",
-        params as Record<string, unknown>,
-      )
+      .get<{
+        groups: Array<GroupMetadata> | null;
+      }>("/directory/groups", params as Record<string, unknown>)
       .then((result) => ({ groups: result.groups ?? [] }));
   }
 
@@ -47,7 +46,10 @@ export class GroupsApi {
         body,
       );
     }
-    return this.http.postDirectoryAuth<GroupMetadata>("/directory/groups", body);
+    return this.http.postDirectoryAuth<GroupMetadata>(
+      "/directory/groups",
+      body,
+    );
   }
 
   members(groupId: string): Promise<{ members: Array<GroupMember> }> {
@@ -74,7 +76,11 @@ export class GroupsApi {
     );
   }
 
-  removeMember(groupId: string, agentId: string, actor?: string): Promise<void> {
+  removeMember(
+    groupId: string,
+    agentId: string,
+    actor?: string,
+  ): Promise<void> {
     if (actor) {
       return this.http.deleteDirectoryAuthAs<void>(
         `/directory/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(agentId)}`,
@@ -125,7 +131,11 @@ export class GroupsApi {
     );
   }
 
-  rejectMember(groupId: string, agentId: string, actor?: string): Promise<void> {
+  rejectMember(
+    groupId: string,
+    agentId: string,
+    actor?: string,
+  ): Promise<void> {
     if (actor) {
       return this.http.postDirectoryAuthAs<void>(
         `/directory/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(agentId)}/reject`,
@@ -237,10 +247,9 @@ export class GroupsApi {
     actor: string,
   ): Promise<{ invites: Array<GroupInvite> }> {
     return this.http
-      .getDirectoryAuthAs<{ invites: Array<GroupInvite> | null }>(
-        `/directory/groups/${encodeURIComponent(groupId)}/invites`,
-        actor,
-      )
+      .getDirectoryAuthAs<{
+        invites: Array<GroupInvite> | null;
+      }>(`/directory/groups/${encodeURIComponent(groupId)}/invites`, actor)
       .then((result) => ({ invites: result.invites ?? [] }));
   }
 
