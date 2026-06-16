@@ -57,14 +57,14 @@ export interface GroupKeyDistributionPayload {
   distribution: SenderKeyDistribution;
 }
 
-interface ParsedSenderKeyId {
+export interface ParsedSenderKeyId {
   groupId: string;
   sender: string;
   epoch: number;
 }
 
 /** Builds the backend-required sender-key id: `{groupId}:{sender}:epoch:{n}`. */
-function groupSenderKeyId(groupId: string, sender: string, epoch: number): string {
+export function groupSenderKeyId(groupId: string, sender: string, epoch: number): string {
   return `${groupId}:${sender}:epoch:${epoch}`;
 }
 
@@ -78,7 +78,7 @@ function receiverKey(groupId: string, sender: string, epoch: number): string {
  * colon, so the first segment is the group and the remainder up to `:epoch:` is
  * the sender. Returns null for anything that does not match the shape.
  */
-function parseSenderKeyId(id: string): ParsedSenderKeyId | null {
+export function parseSenderKeyId(id: string): ParsedSenderKeyId | null {
   const marker = ":epoch:";
   const markerIndex = id.lastIndexOf(marker);
   if (markerIndex < 0) return null;
@@ -159,7 +159,7 @@ export function installGroupKeyHandoff(
 }
 
 /** Serialises an encrypted group message into an opaque envelope body. */
-function encodeGroupBody(message: SenderKeyMessage): string {
+export function encodeGroupBody(message: SenderKeyMessage): string {
   const signature = fromBase64(message.signature);
   const ciphertext = fromBase64(message.ciphertext);
   const bytes = new Uint8Array(1 + signature.length + ciphertext.length);
@@ -170,7 +170,7 @@ function encodeGroupBody(message: SenderKeyMessage): string {
 }
 
 /** Reconstructs a {@link SenderKeyMessage} from a body + the iteration metadata. */
-function decodeGroupBody(body: string, iteration: number): SenderKeyMessage | null {
+export function decodeGroupBody(body: string, iteration: number): SenderKeyMessage | null {
   let bytes: Uint8Array;
   try {
     bytes = fromBase64(body);

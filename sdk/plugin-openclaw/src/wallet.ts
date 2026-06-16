@@ -35,7 +35,11 @@ import { LocalSigner } from "@tinyhumansai/tinyplace";
 import type { AgentConfig } from "./config.js";
 
 const VAULT_VERSION = 1;
-const SCRYPT_PARAMS = { N: 1 << 15, r: 8, p: 1 } as const;
+// maxmem must exceed scrypt's ~128*N*r bytes (≈33.5 MiB at N=2^15, r=8), which
+// is above Node's 32 MiB default — without it scryptSync throws
+// ERR_CRYPTO_INVALID_SCRYPT_PARAMS and passphrase-protected vaults can be
+// neither created nor unlocked.
+const SCRYPT_PARAMS = { N: 1 << 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 } as const;
 
 interface VaultFile {
   v: number;
