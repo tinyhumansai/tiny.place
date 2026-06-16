@@ -71,3 +71,47 @@ describe("useConversationsStore", () => {
 		store.getState().reset();
 	});
 });
+
+describe("useConversationsStore ensureOwner scoping", () => {
+	it("keeps threads when re-bound to the same owner (reload of same wallet)", () => {
+		const store = useConversationsStore;
+		store.getState().reset();
+
+		store.getState().ensureOwner("wallet-a");
+		store
+			.getState()
+			.appendIncoming([
+				{ id: "m1", from: "alice", text: "hi", at: "2026-01-01T00:00:00.000Z" },
+			]);
+		expect(store.getState().threads.alice).toHaveLength(1);
+
+		// Re-binding the same owner (as enable() does on every load) must preserve
+		// the persisted history.
+		store.getState().ensureOwner("wallet-a");
+		expect(store.getState().owner).toBe("wallet-a");
+		expect(store.getState().threads.alice).toHaveLength(1);
+
+		store.getState().reset();
+	});
+
+	it("clears threads when re-bound to a different owner (wallet switch)", () => {
+		const store = useConversationsStore;
+		store.getState().reset();
+
+		store.getState().ensureOwner("wallet-a");
+		store
+			.getState()
+			.appendIncoming([
+				{ id: "m1", from: "alice", text: "hi", at: "2026-01-01T00:00:00.000Z" },
+			]);
+		expect(store.getState().threads.alice).toHaveLength(1);
+
+		// A different identity must never inherit the previous wallet's history.
+		store.getState().ensureOwner("wallet-b");
+		expect(store.getState().owner).toBe("wallet-b");
+		expect(store.getState().threads).toEqual({});
+		expect(store.getState().peers).toEqual([]);
+
+		store.getState().reset();
+	});
+});

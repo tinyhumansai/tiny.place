@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 /** A single direct message in a conversation thread. */
 export interface DirectMessageEntry {
@@ -19,9 +20,21 @@ export interface ConversationPeer {
 }
 
 type ConversationsState = {
+	/**
+	 * Encryption address the persisted threads belong to. Conversations are
+	 * scoped to one identity so a different wallet never sees the previous user's
+	 * (decrypted) history rehydrated from storage.
+	 */
+	owner: string | undefined;
 	peers: Array<ConversationPeer>;
 	/** Messages keyed by peer address, oldest first. */
 	threads: Record<string, Array<DirectMessageEntry>>;
+	/**
+	 * Binds the store to `owner`, clearing any persisted threads that belonged to
+	 * a different identity. A no-op when already bound to the same owner, so a
+	 * reload of the same wallet keeps its history.
+	 */
+	ensureOwner: (owner: string) => void;
 	/** Registers a peer to converse with (no-op if already present). */
 	addPeer: (peer: ConversationPeer) => void;
 	/** Appends an outgoing message to a peer's thread. */
@@ -61,74 +74,100 @@ export function unreadForPeer(
 	).length;
 }
 
-export const useConversationsStore = create<ConversationsState>()((set) => ({
-	peers: [],
-	threads: {},
-	addPeer: (peer): void => {
-		set((state) => {
-			if (state.peers.some((existing) => existing.address === peer.address)) {
-				return state;
-			}
-			return { peers: [...state.peers, peer] };
-		});
-	},
-	appendOutgoing: (address, message): void => {
-		set((state) => ({
-			threads: {
-				...state.threads,
-				[address]: [...(state.threads[address] ?? []), message],
+type PersistedConversationsState = Pick<
+	ConversationsState,
+	"owner" | "peers" | "threads"
+>;
+
+export const useConversationsStore = create<ConversationsState>()(
+	persist(
+		(set) => ({
+			owner: undefined,
+			peers: [],
+			threads: {},
+			ensureOwner: (owner): void => {
+				set((state) =>
+					state.owner === owner ? state : { owner, peers: [], threads: {} }
+				);
 			},
-		}));
-	},
-	appendIncoming: (messages): void => {
-		if (messages.length === 0) {
-			return;
-		}
-		set((state) => {
-			const threads = { ...state.threads };
-			const peers = [...state.peers];
-			for (const message of messages) {
-				const existing = threads[message.from] ?? [];
-				if (existing.some((entry) => entry.id === message.id)) {
-					continue;
-				}
-				threads[message.from] = [
-					...existing,
-					{
-						id: message.id,
-						text: message.text,
-						at: message.at,
-						outgoing: false,
-						read: false,
+			addPeer: (peer): void => {
+				set((state) => {
+					if (
+						state.peers.some((existing) => existing.address === peer.address)
+					) {
+						return state;
+					}
+					return { peers: [...state.peers, peer] };
+				});
+			},
+			appendOutgoing: (address, message): void => {
+				set((state) => ({
+					threads: {
+						...state.threads,
+						[address]: [...(state.threads[address] ?? []), message],
 					},
-				];
-				if (!peers.some((peer) => peer.address === message.from)) {
-					peers.push({
-						address: message.from,
-						label: `${message.from.slice(0, 10)}…`,
-					});
+				}));
+			},
+			appendIncoming: (messages): void => {
+				if (messages.length === 0) {
+					return;
 				}
-			}
-			return { threads, peers };
-		});
-	},
-	markThreadRead: (address): void => {
-		set((state) => {
-			const thread = state.threads[address];
-			if (!thread || thread.every((entry) => entry.read)) {
-				return state;
-			}
-			return {
-				threads: {
-					...state.threads,
-					[address]: thread.map((entry) =>
-						entry.read ? entry : { ...entry, read: true }
-					),
-				},
-			};
-		});
-	},
-	reset: (): void => {
-		set({ peers: [], threads: {} });
-	},
-}));
+				set((state) => {
+					const threads = { ...state.threads };
+					const peers = [...state.peers];
+					for (const message of messages) {
+						const existing = threads[message.from] ?? [];
+						if (existing.some((entry) => entry.id === message.id)) {
+							continue;
+						}
+						threads[message.from] = [
+							...existing,
+							{
+								id: message.id,
+								text: message.text,
+								at: message.at,
+								outgoing: false,
+								read: false,
+							},
+						];
+						if (!peers.some((peer) => peer.address === message.from)) {
+							peers.push({
+								address: message.from,
+								label: `${message.from.slice(0, 10)}…`,
+							});
+						}
+					}
+					return { threads, peers };
+				});
+			},
+			markThreadRead: (address): void => {
+				set((state) => {
+					const thread = state.threads[address];
+					if (!thread || thread.every((entry) => entry.read)) {
+						return state;
+					}
+					return {
+						threads: {
+							...state.threads,
+							[address]: thread.map((entry) =>
+								entry.read ? entry : { ...entry, read: true }
+							),
+						},
+					};
+				});
+			},
+			reset: (): void => {
+				set({ owner: undefined, peers: [], threads: {} });
+			},
+		}),
+		{
+			name: "tinyplace:conversations",
+			partialize: (state): PersistedConversationsState => ({
+				owner: state.owner,
+				peers: state.peers,
+				threads: state.threads,
+			}),
+			storage: createJSONStorage(() => localStorage),
+		}
+	)
+);
