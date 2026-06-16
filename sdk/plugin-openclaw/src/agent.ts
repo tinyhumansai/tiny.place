@@ -13,6 +13,12 @@ import {
 } from "@tinyhumansai/tinyplace";
 
 import type { AgentConfig } from "./config.js";
+import {
+  challengeOf,
+  normalizeHandle,
+  type PaymentChallenge,
+  payFromChallenge,
+} from "./shared.js";
 
 export function makeClient(
   config: AgentConfig,
@@ -23,33 +29,6 @@ export function makeClient(
     harnessKey: config.harnessKey,
     signer,
   });
-}
-
-function normalizeHandle(name: string): string {
-  const trimmed = name.trim();
-  return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
-}
-
-interface PaymentChallenge {
-  scheme?: string;
-  network?: string;
-  asset?: string;
-  amount?: string;
-  from?: string;
-  to?: string;
-  nonce?: string;
-  expiresAt?: string;
-  metadata?: Record<string, string>;
-}
-
-/** Extracts the x402 challenge from a 402 response, if present. */
-function challengeOf(error: unknown): PaymentChallenge | undefined {
-  if (error instanceof TinyPlaceError && error.status === 402) {
-    const body = error.body as { payment?: PaymentChallenge } | undefined;
-    return (error.paymentRequired?.payment as PaymentChallenge | undefined) ??
-      body?.payment;
-  }
-  return undefined;
 }
 
 export interface AvailabilityResult {
@@ -308,30 +287,6 @@ export async function identityStatus(
 // Phase 1 — discovery, profile, handle lifecycle, social graph, reputation.
 // All thin wrappers over the flagship SDK; no new HTTP plumbing or state.
 // ---------------------------------------------------------------------------
-
-/** Builds an x402 payment map from a 402 challenge (shared by buy/renew). */
-async function payFromChallenge(
-  signer: LocalSigner,
-  challenge: PaymentChallenge,
-  metadata: Record<string, string>,
-): Promise<Record<string, string>> {
-  if (!challenge.network || !challenge.asset || !challenge.amount || !challenge.to) {
-    throw new Error("payment challenge is missing network/asset/amount/to");
-  }
-  return buildX402PaymentMap(signer, {
-    scheme: challenge.scheme as never,
-    network: challenge.network,
-    asset: challenge.asset,
-    amount: challenge.amount,
-    from: challenge.from || signer.agentId,
-    to: challenge.to,
-    nonce: challenge.nonce || `tp-${Date.now().toString(36)}`,
-    ...(challenge.expiresAt ? { expiresAt: challenge.expiresAt } : {}),
-    expiresInMs: 5 * 60 * 1000,
-    publicKeyBase64: signer.publicKeyBase64,
-    metadata: { ...(challenge.metadata ?? {}), ...metadata },
-  });
-}
 
 export interface DiscoveredAgent {
   agentId: string;

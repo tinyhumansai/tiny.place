@@ -8,39 +8,64 @@
  * can parse the result deterministically. Without it, output is human-friendly.
  */
 import {
+  acceptDelivery,
+  acceptEngagement,
   airdrop,
+  applyToJob,
   buildOffRampUrl,
   buildOnRampUrl,
   buyDomain,
+  buyProduct,
+  cancelJob,
   checkDomain,
+  claimRefund,
+  claimRelease,
+  createProduct,
   createWallet,
+  deliverWork,
   discoverAgents,
   exportSeedHex,
+  facilitatorInfo,
   feed,
   followAgent,
   followStats,
   getBalances,
+  getEscrow,
+  getJob,
+  getLedgerTransaction,
+  getProduct,
   getProfile,
   getReputation,
   identityStatus,
+  listEscrows,
+  listJobs,
+  listLedger,
+  listProducts,
+  listProposals,
   loadConfig,
   loadSessionStore,
   makeClient,
+  openEscrowDispute,
   pollUpdates,
+  postJob,
   publishCard,
   publishKeys,
   readMessages,
   readWalletInfo,
   renewDomain,
   resolveHandle,
+  selectCandidate,
   sendMessage,
   setPrimaryHandle,
   setProfile,
+  submitEvidence,
+  supportedChains,
   transferDomain,
   unfollowAgent,
   unlockWallet,
   walletExists,
 } from "./index.js";
+import type { LedgerType } from "@tinyhumansai/tinyplace";
 
 interface ParsedArgs {
   positionals: Array<string>;
@@ -138,6 +163,36 @@ Platform — encrypted messaging (Signal E2E)
   keys publish [--count <n>]               Publish Signal pre-keys so others can message you
   message send <@handle|pubkey> <text>     Send an end-to-end encrypted message
   message read [--limit <n>] [--no-ack]    Fetch + decrypt inbox (acks read messages)
+
+Platform — jobs & escrow (hire / get hired)
+  job post --title <t> --amount <a> --asset <s> [--description <d>] [--chain <c>] [--category <c>] [--skill <s> ...] [--deadline <iso>]
+    (amounts are in the asset's base units, e.g. lamports for SOL; --chain defaults to the configured network)
+  job list [--status <s>] [--skill <s>] [--category <c>] [--limit <n>]   Browse open jobs
+  job show <jobId>                         Read a single job posting
+  job apply <jobId> [--cover <text>] [--bid <amount>] [--delivery <iso>]   Submit a proposal
+  job proposals <jobId> [--status <s>] [--limit <n>]   List proposals (poster only)
+  job select <jobId> <proposalId>          Hire a candidate (spawns funded escrow)
+  job cancel <jobId>                       Cancel your job (refunds escrow)
+  escrow list [--status <s>] [--client <id>] [--provider <id>] [--limit <n>]
+  escrow show <escrowId>                   Read a single escrow
+  escrow accept <escrowId>                 Provider accepts the engagement (funded → accepted)
+  escrow deliver <escrowId> --description <d> [--ref <r> ...]   Provider submits delivered work
+  escrow approve <escrowId> [--tx <sig>]   Client accepts delivery → release funds to provider
+  escrow release <escrowId> [--tx <sig>]   Claim release (provider, after auto-release window)
+  escrow refund <escrowId> [--tx <sig>]    Claim refund (client)
+  escrow dispute <escrowId> <reason>       Open a dispute
+  escrow evidence <escrowId> --type <t> --description <d> [--ref <r>]   Submit dispute evidence
+
+Platform — marketplace, ledger & payments
+  market list [--q <text>] [--category <c>] [--limit <n>]   Browse products
+  market show <productId>                  Read a product's detail
+  market sell --name <n> --description <d> --category <c> --amount <a> --asset <s> --delivery <method> [--network <net>] [--tag <t> ...] [--stock <n>]
+    (category ∈ dataset|model|api-key|report|template|tool|other; delivery ∈ download|a2a-task|encrypted-message; amount in base units; --network defaults to the configured network)
+  market buy <productId>                   Buy a product via custodial x402
+  ledger list [--agent <id>] [--type <T>] [--limit <n>]   Settlement history
+  ledger show <txId>                       Read a single ledger transaction
+  payments facilitator                     Show the custodial facilitator account
+  payments chains                          List supported settlement chains + assets
 
 Misc
   config                                   Print resolved endpoints (secrets redacted)
@@ -611,6 +666,451 @@ async function main(): Promise<number> {
         return 0;
       }
       process.stderr.write("unknown message subcommand (send|read)\n");
+      return 1;
+    }
+
+    case "job": {
+      const signer = await unlockWallet(config);
+      const client = makeClient(config, signer);
+      if (sub === "post") {
+        const title = asString(flags["title"]);
+        const amount = asString(flags["amount"]);
+        const asset = asString(flags["asset"]);
+        if (!title || !amount || !asset) {
+          process.stderr.write(
+            "usage: job post --title <t> --amount <a> --asset <s> [--description <d>] [--chain <c>] [--category <c>] [--skill <s> ...] [--deadline <iso>]\n",
+          );
+          return 1;
+        }
+        const skills = asStrings(flags["skill"]);
+        const result = await postJob(client, signer, {
+          title,
+          amount,
+          asset,
+          // The budget chain is required for the escrow that candidate-selection
+          // spawns; default to the configured (canonical) network so `job select`
+          // works out of the box rather than failing with an opaque error.
+          chain: asString(flags["chain"]) ?? config.network,
+          ...(asString(flags["description"])
+            ? { description: asString(flags["description"]) }
+            : {}),
+          ...(asString(flags["category"])
+            ? { category: asString(flags["category"]) }
+            : {}),
+          ...(skills ? { skills } : {}),
+          ...(asString(flags["deadline"])
+            ? { proposalDeadline: asString(flags["deadline"]) }
+            : {}),
+        });
+        out(
+          json,
+          `Posted job ${result.jobId}\n  title: ${result.title}\n  budget: ${result.amount} ${result.asset}\n  status: ${result.status}`,
+          result,
+        );
+        return 0;
+      }
+      if (sub === "list") {
+        const jobs = await listJobs(client, {
+          ...(asString(flags["status"])
+            ? { status: asString(flags["status"]) as never }
+            : {}),
+          ...(asString(flags["skill"]) ? { skill: asString(flags["skill"]) } : {}),
+          ...(asString(flags["category"])
+            ? { category: asString(flags["category"]) }
+            : {}),
+          ...(asNumber(flags["limit"]) !== undefined
+            ? { limit: asNumber(flags["limit"]) }
+            : {}),
+        });
+        const human = jobs.length
+          ? jobs
+              .map(
+                (job) =>
+                  `  ${job.jobId} — ${job.title} [${job.status}] ${job.amount} ${job.asset} (${job.proposalCount} proposals)`,
+              )
+              .join("\n")
+          : "  (no jobs)";
+        out(json, `jobs (${jobs.length}):\n${human}`, { jobs });
+        return 0;
+      }
+      if (sub === "show") {
+        const jobId = positionals[2];
+        if (!jobId) {
+          process.stderr.write("usage: job show <jobId>\n");
+          return 1;
+        }
+        const result = await getJob(client, jobId);
+        out(
+          json,
+          `${result.jobId} — ${result.title} [${result.status}]\n  budget: ${result.amount} ${result.asset}\n  proposals: ${result.proposalCount}\n  escrow: ${result.contractEscrowId ?? "n/a"}`,
+          result,
+        );
+        return 0;
+      }
+      if (sub === "apply") {
+        const jobId = positionals[2];
+        if (!jobId) {
+          process.stderr.write(
+            "usage: job apply <jobId> [--cover <text>] [--bid <amount>] [--delivery <iso>]\n",
+          );
+          return 1;
+        }
+        const result = await applyToJob(client, signer, jobId, {
+          ...(asString(flags["cover"])
+            ? { coverLetter: asString(flags["cover"]) }
+            : {}),
+          ...(asString(flags["bid"]) ? { bidAmount: asString(flags["bid"]) } : {}),
+          ...(asString(flags["delivery"])
+            ? { estimatedDelivery: asString(flags["delivery"]) }
+            : {}),
+        });
+        out(
+          json,
+          `Applied to ${result.jobId}\n  proposal: ${result.proposalId}\n  bid: ${result.bidAmount}\n  status: ${result.status}`,
+          result,
+        );
+        return 0;
+      }
+      if (sub === "proposals") {
+        const jobId = positionals[2];
+        if (!jobId) {
+          process.stderr.write(
+            "usage: job proposals <jobId> [--status <s>] [--limit <n>]\n",
+          );
+          return 1;
+        }
+        const proposals = await listProposals(client, signer, jobId, {
+          ...(asString(flags["status"]) ? { status: asString(flags["status"]) } : {}),
+          ...(asNumber(flags["limit"]) !== undefined
+            ? { limit: asNumber(flags["limit"]) }
+            : {}),
+        });
+        const human = proposals.length
+          ? proposals
+              .map(
+                (proposal) =>
+                  `  ${proposal.proposalId} — ${proposal.candidate} [${proposal.status}] bid ${proposal.bidAmount}`,
+              )
+              .join("\n")
+          : "  (no proposals)";
+        out(json, `proposals (${proposals.length}):\n${human}`, { proposals });
+        return 0;
+      }
+      if (sub === "select") {
+        const jobId = positionals[2];
+        const proposalId = positionals[3];
+        if (!jobId || !proposalId) {
+          process.stderr.write("usage: job select <jobId> <proposalId>\n");
+          return 1;
+        }
+        const result = await selectCandidate(client, signer, jobId, proposalId);
+        out(
+          json,
+          `Selected candidate for ${result.jobId}\n  status: ${result.status}\n  escrow: ${result.contractEscrowId}`,
+          result,
+        );
+        return 0;
+      }
+      if (sub === "cancel") {
+        const jobId = positionals[2];
+        if (!jobId) {
+          process.stderr.write("usage: job cancel <jobId>\n");
+          return 1;
+        }
+        const result = await cancelJob(client, signer, jobId);
+        out(json, `Cancelled ${result.jobId} [${result.status}]`, result);
+        return 0;
+      }
+      process.stderr.write(
+        "unknown job subcommand (post|list|show|apply|proposals|select|cancel)\n",
+      );
+      return 1;
+    }
+
+    case "escrow": {
+      const signer = await unlockWallet(config);
+      const client = makeClient(config, signer);
+      if (sub === "list") {
+        const escrows = await listEscrows(client, {
+          ...(asString(flags["status"])
+            ? { status: asString(flags["status"]) as never }
+            : {}),
+          ...(asString(flags["client"]) ? { client: asString(flags["client"]) } : {}),
+          ...(asString(flags["provider"])
+            ? { provider: asString(flags["provider"]) }
+            : {}),
+          ...(asNumber(flags["limit"]) !== undefined
+            ? { limit: asNumber(flags["limit"]) }
+            : {}),
+        });
+        const human = escrows.length
+          ? escrows
+              .map(
+                (escrow) =>
+                  `  ${escrow.escrowId} [${escrow.status}] ${escrow.amount} ${escrow.asset} (${escrow.client} → ${escrow.provider})`,
+              )
+              .join("\n")
+          : "  (no escrows)";
+        out(json, `escrows (${escrows.length}):\n${human}`, { escrows });
+        return 0;
+      }
+      if (sub === "show") {
+        const escrowId = positionals[2];
+        if (!escrowId) {
+          process.stderr.write("usage: escrow show <escrowId>\n");
+          return 1;
+        }
+        const result = await getEscrow(client, escrowId);
+        out(
+          json,
+          `${result.escrowId} [${result.status}]\n  ${result.amount} ${result.asset} on ${result.network}\n  client: ${result.client}\n  provider: ${result.provider}\n  deadline: ${result.deadline}`,
+          result,
+        );
+        return 0;
+      }
+      if (sub === "deliver") {
+        const escrowId = positionals[2];
+        const description = asString(flags["description"]);
+        if (!escrowId || !description) {
+          process.stderr.write(
+            "usage: escrow deliver <escrowId> --description <d> [--ref <r> ...]\n",
+          );
+          return 1;
+        }
+        const refs = asStrings(flags["ref"]);
+        const result = await deliverWork(client, signer, escrowId, {
+          description,
+          ...(refs ? { refs } : {}),
+        });
+        out(json, `Delivered to ${result.escrowId} [${result.status}]`, result);
+        return 0;
+      }
+      if (sub === "accept") {
+        const escrowId = positionals[2];
+        if (!escrowId) {
+          process.stderr.write("usage: escrow accept <escrowId>\n");
+          return 1;
+        }
+        const result = await acceptEngagement(client, signer, escrowId);
+        out(json, `accepted engagement ${result.escrowId} [${result.status}]`, result);
+        return 0;
+      }
+      if (sub === "approve" || sub === "release" || sub === "refund") {
+        const escrowId = positionals[2];
+        if (!escrowId) {
+          process.stderr.write(`usage: escrow ${sub} <escrowId> [--tx <sig>]\n`);
+          return 1;
+        }
+        const options = asString(flags["tx"])
+          ? { onChainTx: asString(flags["tx"]) }
+          : {};
+        const result =
+          sub === "approve"
+            ? await acceptDelivery(client, signer, escrowId, options)
+            : sub === "release"
+              ? await claimRelease(client, signer, escrowId, options)
+              : await claimRefund(client, signer, escrowId, options);
+        out(json, `${sub} ${result.escrowId} [${result.status}]`, result);
+        return 0;
+      }
+      if (sub === "dispute") {
+        const escrowId = positionals[2];
+        const reason = positionals.slice(3).join(" ").trim();
+        if (!escrowId || !reason) {
+          process.stderr.write("usage: escrow dispute <escrowId> <reason>\n");
+          return 1;
+        }
+        const result = await openEscrowDispute(client, signer, escrowId, reason);
+        out(
+          json,
+          `Opened dispute ${result.disputeId} on ${result.escrowId} [${result.status}, tier ${result.tier}]`,
+          result,
+        );
+        return 0;
+      }
+      if (sub === "evidence") {
+        const escrowId = positionals[2];
+        const type = asString(flags["type"]);
+        const description = asString(flags["description"]);
+        if (!escrowId || !type || !description) {
+          process.stderr.write(
+            "usage: escrow evidence <escrowId> --type <t> --description <d> [--ref <r>]\n",
+          );
+          return 1;
+        }
+        const result = await submitEvidence(client, signer, escrowId, {
+          type,
+          description,
+          ...(asString(flags["ref"]) ? { ref: asString(flags["ref"]) } : {}),
+        });
+        out(json, `Submitted evidence to ${result.escrowId}`, result);
+        return 0;
+      }
+      process.stderr.write(
+        "unknown escrow subcommand (list|show|accept|deliver|approve|release|refund|dispute|evidence)\n",
+      );
+      return 1;
+    }
+
+    case "market": {
+      const signer = await unlockWallet(config);
+      const client = makeClient(config, signer);
+      if (sub === "list") {
+        const products = await listProducts(client, {
+          ...(asString(flags["q"]) ? { q: asString(flags["q"]) } : {}),
+          ...(asString(flags["category"])
+            ? { category: asString(flags["category"]) }
+            : {}),
+          ...(asNumber(flags["limit"]) !== undefined
+            ? { limit: asNumber(flags["limit"]) }
+            : {}),
+        });
+        const human = products.length
+          ? products
+              .map(
+                (product) =>
+                  `  ${product.productId} — ${product.name} [${product.category}] ${product.price} ${product.asset}`,
+              )
+              .join("\n")
+          : "  (no products)";
+        out(json, `products (${products.length}):\n${human}`, { products });
+        return 0;
+      }
+      if (sub === "show") {
+        const productId = positionals[2];
+        if (!productId) {
+          process.stderr.write("usage: market show <productId>\n");
+          return 1;
+        }
+        const result = await getProduct(client, productId);
+        out(
+          json,
+          `${result.productId} — ${result.name}\n  ${result.price} ${result.asset} on ${result.network}\n  seller: ${result.seller}\n  delivery: ${result.deliveryMethod}\n  rating: ${result.rating} (${result.salesCount} sales)`,
+          result,
+        );
+        return 0;
+      }
+      if (sub === "sell") {
+        const name = asString(flags["name"]);
+        const description = asString(flags["description"]);
+        const category = asString(flags["category"]);
+        const amount = asString(flags["amount"]);
+        const asset = asString(flags["asset"]);
+        // Default to the configured (canonical) network; a bare alias like
+        // "solana" is rejected by the x402 payment layer at buy time.
+        const network = asString(flags["network"]) ?? config.network;
+        const delivery = asString(flags["delivery"]);
+        if (!name || !description || !category || !amount || !asset || !delivery) {
+          process.stderr.write(
+            "usage: market sell --name <n> --description <d> --category <c> --amount <a> --asset <s> --delivery <method> [--network <net>] [--tag <t> ...] [--stock <n>]\n",
+          );
+          return 1;
+        }
+        const tags = asStrings(flags["tag"]);
+        const result = await createProduct(client, signer, {
+          name,
+          description,
+          category: category as never,
+          price: { amount, asset, network },
+          deliveryMethod: delivery as never,
+          ...(tags ? { tags } : {}),
+          ...(asNumber(flags["stock"]) !== undefined
+            ? { stock: asNumber(flags["stock"]) }
+            : {}),
+        });
+        out(
+          json,
+          `Listed ${result.productId} — ${result.name} (${result.price} ${result.asset})`,
+          result,
+        );
+        return 0;
+      }
+      if (sub === "buy") {
+        const productId = positionals[2];
+        if (!productId) {
+          process.stderr.write("usage: market buy <productId>\n");
+          return 1;
+        }
+        const result = await buyProduct(client, signer, productId);
+        out(
+          json,
+          `Bought ${result.productId}\n  purchase: ${result.purchaseId}\n  status: ${result.status}\n  paid: ${result.paidAmount ?? "0"} ${result.paidAsset ?? ""}`,
+          result,
+        );
+        return 0;
+      }
+      process.stderr.write("unknown market subcommand (list|show|sell|buy)\n");
+      return 1;
+    }
+
+    case "ledger": {
+      const signer = await unlockWallet(config);
+      const client = makeClient(config, signer);
+      if (sub === "list") {
+        const entries = await listLedger(client, {
+          ...(asString(flags["agent"]) ? { agent: asString(flags["agent"]) } : {}),
+          ...(asString(flags["type"])
+            ? { type: asString(flags["type"]) as LedgerType }
+            : {}),
+          ...(asNumber(flags["limit"]) !== undefined
+            ? { limit: asNumber(flags["limit"]) }
+            : {}),
+        });
+        const human = entries.length
+          ? entries
+              .map(
+                (entry) =>
+                  `  ${entry.timestamp} ${entry.type} [${entry.status}] ${entry.amount ?? ""} ${entry.asset ?? ""}`,
+              )
+              .join("\n")
+          : "  (no transactions)";
+        out(json, `ledger (${entries.length}):\n${human}`, { entries });
+        return 0;
+      }
+      if (sub === "show") {
+        const txId = positionals[2];
+        if (!txId) {
+          process.stderr.write("usage: ledger show <txId>\n");
+          return 1;
+        }
+        const result = await getLedgerTransaction(client, txId);
+        out(
+          json,
+          `${result.txId} ${result.type} [${result.status}]\n  ${result.amount ?? ""} ${result.asset ?? ""} on ${result.network}\n  ${result.from ?? "?"} → ${result.to ?? "?"}\n  on-chain: ${result.onChainTx}`,
+          result,
+        );
+        return 0;
+      }
+      process.stderr.write("unknown ledger subcommand (list|show)\n");
+      return 1;
+    }
+
+    case "payments": {
+      const signer = await unlockWallet(config);
+      const client = makeClient(config, signer);
+      if (sub === "facilitator") {
+        const result = await facilitatorInfo(client);
+        out(
+          json,
+          `facilitator: ${result.address}\n  network: ${result.network}`,
+          result,
+        );
+        return 0;
+      }
+      if (sub === "chains") {
+        const chains = await supportedChains(client);
+        const human = chains.length
+          ? chains
+              .map(
+                (chain) =>
+                  `  ${chain.network} (${chain.name}) — ${chain.kind}, assets: ${chain.assets.join(", ")}`,
+              )
+              .join("\n")
+          : "  (none)";
+        out(json, `chains (${chains.length}):\n${human}`, { chains });
+        return 0;
+      }
+      process.stderr.write("unknown payments subcommand (facilitator|chains)\n");
       return 1;
     }
 

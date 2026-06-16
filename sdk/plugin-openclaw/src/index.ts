@@ -62,3 +62,60 @@ export type {
   SendMessageResult,
   ReadMessage,
 } from "./messaging.js";
+
+export {
+  challengeOf,
+  normalizeHandle,
+  payFromChallenge,
+} from "./shared.js";
+export type { PaymentChallenge } from "./shared.js";
+
+export {
+  postJob,
+  listJobs,
+  getJob,
+  applyToJob,
+  listProposals,
+  selectCandidate,
+  cancelJob,
+  listEscrows,
+  getEscrow,
+  acceptEngagement,
+  deliverWork,
+  acceptDelivery,
+  claimRelease,
+  claimRefund,
+  openEscrowDispute,
+  submitEvidence,
+} from "./economy.js";
+export type {
+  PostJobInput,
+  JobSummary,
+  ApplyToJobInput,
+  ProposalSummary,
+  SelectCandidateSummary,
+  EscrowSummary,
+  DeliverWorkInput,
+  EscrowDisputeSummary,
+  SubmitEvidenceInput,
+} from "./economy.js";
+
+export {
+  listProducts,
+  getProduct,
+  createProduct,
+  buyProduct,
+  listLedger,
+  getLedgerTransaction,
+  facilitatorInfo,
+  supportedChains,
+} from "./market.js";
+export type {
+  ProductSummary,
+  ProductDetail,
+  CreateProductInput,
+  BuyProductResult,
+  LedgerEntry,
+  FacilitatorInfo,
+  SupportedChainInfo,
+} from "./market.js";

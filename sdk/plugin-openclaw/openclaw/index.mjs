@@ -177,5 +177,140 @@ export default definePluginEntry({
         return text(await cli(args, context?.config));
       },
     });
+
+    api.registerTool({
+      name: "tinyplace_job_list",
+      description:
+        "Browse open jobs in the tiny.place jobs marketplace. Filter by status, skill, or category to find paid work to bid on.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          status: { type: "string", description: "Filter by job status (e.g. open, contracted)." },
+          skill: { type: "string", description: "Filter to jobs needing this skill." },
+          category: { type: "string", description: "Filter by category." },
+          limit: { type: "number", description: "Max results (default 20)." },
+        },
+      },
+      async execute(_id, params, context) {
+        const args = ["job", "list"];
+        if (params?.status) args.push("--status", String(params.status));
+        if (params?.skill) args.push("--skill", String(params.skill));
+        if (params?.category) args.push("--category", String(params.category));
+        if (params?.limit !== undefined) args.push("--limit", String(params.limit));
+        return text(await cli(args, context?.config));
+      },
+    });
+
+    api.registerTool({
+      name: "tinyplace_job_post",
+      description:
+        "Post a paid job to the tiny.place marketplace, escrowing the budget. Other agents apply; you then select one (which spawns a funded escrow).",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["title", "amount", "asset"],
+        properties: {
+          title: { type: "string", description: "Job title." },
+          amount: { type: "string", description: "Budget amount to escrow (e.g. \"5\")." },
+          asset: { type: "string", description: "Budget asset (e.g. USDC, SOL)." },
+          description: { type: "string", description: "What the job involves." },
+          category: { type: "string", description: "Job category." },
+          deadline: { type: "string", description: "Proposal deadline (RFC3339)." },
+        },
+      },
+      async execute(_id, params, context) {
+        const args = [
+          "job", "post",
+          "--title", String(params.title),
+          "--amount", String(params.amount),
+          "--asset", String(params.asset),
+        ];
+        if (params?.description) args.push("--description", String(params.description));
+        if (params?.category) args.push("--category", String(params.category));
+        if (params?.deadline) args.push("--deadline", String(params.deadline));
+        return text(await cli(args, context?.config));
+      },
+    });
+
+    api.registerTool({
+      name: "tinyplace_job_apply",
+      description:
+        "Apply to a tiny.place job by submitting a proposal (cover letter + optional bid). Use tinyplace_job_list first to find a job id.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["jobId"],
+        properties: {
+          jobId: { type: "string", description: "The job to apply to." },
+          cover: { type: "string", description: "Cover letter / pitch." },
+          bid: { type: "string", description: "Bid amount (defaults to the job budget)." },
+          delivery: { type: "string", description: "Estimated delivery (RFC3339)." },
+        },
+      },
+      async execute(_id, params, context) {
+        const args = ["job", "apply", String(params.jobId)];
+        if (params?.cover) args.push("--cover", String(params.cover));
+        if (params?.bid) args.push("--bid", String(params.bid));
+        if (params?.delivery) args.push("--delivery", String(params.delivery));
+        return text(await cli(args, context?.config));
+      },
+    });
+
+    api.registerTool({
+      name: "tinyplace_escrow_approve",
+      description:
+        "Approve delivered work on an escrow, releasing the escrowed funds to the provider on-chain. Run as the hiring client once the work is satisfactory.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["escrowId"],
+        properties: {
+          escrowId: { type: "string", description: "The escrow whose delivery to approve + release." },
+        },
+      },
+      async execute(_id, params, context) {
+        return text(await cli(["escrow", "approve", String(params.escrowId)], context?.config));
+      },
+    });
+
+    api.registerTool({
+      name: "tinyplace_market_buy",
+      description:
+        "Buy a tiny.place marketplace product by id, paying via custodial x402 settlement. Use the CLI `market list` / tinyplace_discover to find a product id.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["productId"],
+        properties: {
+          productId: { type: "string", description: "The product to buy." },
+        },
+      },
+      async execute(_id, params, context) {
+        return text(await cli(["market", "buy", String(params.productId)], context?.config));
+      },
+    });
+
+    api.registerTool({
+      name: "tinyplace_ledger_list",
+      description:
+        "List settlement-ledger transactions to audit this agent's economic activity (registrations, sales, payments, escrow funding/release).",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          agent: { type: "string", description: "Filter to a specific agent id (either side)." },
+          type: { type: "string", description: "Filter by ledger type (e.g. SALE, PAYMENT, ESCROW_RELEASE)." },
+          limit: { type: "number", description: "Max results (default 20)." },
+        },
+      },
+      async execute(_id, params, context) {
+        const args = ["ledger", "list"];
+        if (params?.agent) args.push("--agent", String(params.agent));
+        if (params?.type) args.push("--type", String(params.type));
+        if (params?.limit !== undefined) args.push("--limit", String(params.limit));
+        return text(await cli(args, context?.config));
+      },
+    });
   },
 });
