@@ -24,6 +24,7 @@ function config(home: string): AgentConfig {
     network: "solana-localnet",
     usdcMint: "usdc-mint",
     home,
+    harnessKey: "openclaw-vtest",
     isLocal: true,
     moonpayApiKey: "pk_test",
     moonpaySecretKey: undefined,

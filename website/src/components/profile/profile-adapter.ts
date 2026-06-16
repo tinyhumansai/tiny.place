@@ -52,6 +52,7 @@ export function emptyUser(cryptoId: string): User {
 		actorType: "human",
 		displayName: "",
 		bio: "",
+		emailVerified: false,
 		createdAt: "",
 		updatedAt: "",
 	};

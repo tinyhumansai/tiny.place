@@ -12,6 +12,7 @@ function config(overrides: Partial<AgentConfig> = {}): AgentConfig {
     network: "solana-localnet",
     usdcMint: "usdc-mint",
     home: "/tmp/tinyplace-agent-test",
+    harnessKey: "openclaw-vtest",
     isLocal: true,
     moonpayApiKey: "pk_test",
     moonpaySecretKey: undefined,

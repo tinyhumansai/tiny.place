@@ -2,7 +2,12 @@ import type { SigningKey } from "../auth.js";
 import { signFreshCanonicalPayload } from "../auth.js";
 import { canonicalPayload } from "../crypto.js";
 import type { HttpClient } from "../http.js";
-import type { User, UserProfileUpdate } from "../types/index.js";
+import type {
+  User,
+  UserEmailVerificationConfirmRequest,
+  UserEmailVerificationRequest,
+  UserProfileUpdate,
+} from "../types/index.js";
 
 /**
  * UsersApi reads and writes the per-wallet User profile — the single source of
@@ -14,6 +19,7 @@ export class UsersApi {
   constructor(
     private readonly http: HttpClient,
     private readonly signingKey?: SigningKey,
+    private readonly harnessKey?: string,
   ) {}
 
   /** Fetch a wallet's profile by its cryptoId. */
@@ -30,6 +36,7 @@ export class UsersApi {
     cryptoId: string,
     update: UserProfileUpdate,
   ): Promise<User> {
+    update = withDefaultHarnessKey(update, this.harnessKey);
     if (this.signingKey && !update.signature) {
       const payload = userProfileSignaturePayload(cryptoId, update);
       update = {
@@ -40,6 +47,51 @@ export class UsersApi {
     return this.http.putDirectoryAuth<User>(
       `/users/${encodeURIComponent(cryptoId)}/profile`,
       update,
+    );
+  }
+
+  /**
+   * Start email verification for a wallet. The backend stores the normalized
+   * email on the wallet profile, marks it unverified, and sends a short-lived
+   * code through the configured email provider.
+   */
+  async startEmailVerification(
+    cryptoId: string,
+    request: UserEmailVerificationRequest,
+  ): Promise<User> {
+    request = withDefaultHarnessKey(request, this.harnessKey);
+    if (this.signingKey && !request.signature) {
+      const payload = userEmailStartSignaturePayload(cryptoId, request);
+      request = {
+        ...request,
+        signature: await signFreshCanonicalPayload(this.signingKey, payload),
+      };
+    }
+    return this.http.postDirectoryAuth<User>(
+      `/users/${encodeURIComponent(cryptoId)}/email/verification`,
+      request,
+    );
+  }
+
+  /**
+   * Confirm a wallet email verification code. Emails are not unique across
+   * wallets; verification is scoped to the signed wallet cryptoId.
+   */
+  async confirmEmailVerification(
+    cryptoId: string,
+    request: UserEmailVerificationConfirmRequest,
+  ): Promise<User> {
+    request = withDefaultHarnessKey(request, this.harnessKey);
+    if (this.signingKey && !request.signature) {
+      const payload = userEmailConfirmSignaturePayload(cryptoId, request);
+      request = {
+        ...request,
+        signature: await signFreshCanonicalPayload(this.signingKey, payload),
+      };
+    }
+    return this.http.postDirectoryAuth<User>(
+      `/users/${encodeURIComponent(cryptoId)}/email/verification/confirm`,
+      request,
     );
   }
 }
@@ -60,7 +112,41 @@ function userProfileSignaturePayload(
     bio: update.bio ?? null,
     cryptoId,
     displayName: update.displayName ?? null,
+    harnessKey: update.harnessKey ?? null,
     link: update.link ?? null,
     tags: update.tags ?? null,
   });
+}
+
+function userEmailStartSignaturePayload(
+  cryptoId: string,
+  request: UserEmailVerificationRequest,
+): string {
+  return canonicalPayload("user.email.start", {
+    cryptoId,
+    email: request.email,
+    harnessKey: request.harnessKey ?? null,
+  });
+}
+
+function userEmailConfirmSignaturePayload(
+  cryptoId: string,
+  request: UserEmailVerificationConfirmRequest,
+): string {
+  return canonicalPayload("user.email.confirm", {
+    code: request.code,
+    cryptoId,
+    email: request.email,
+    harnessKey: request.harnessKey ?? null,
+  });
+}
+
+function withDefaultHarnessKey<T extends { harnessKey?: string }>(
+  value: T,
+  harnessKey: string | undefined,
+): T {
+  if (value.harnessKey || !harnessKey) {
+    return value;
+  }
+  return { ...value, harnessKey };
 }
