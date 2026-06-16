@@ -6,10 +6,10 @@ import { ApiReference } from "./ApiReference";
 import { Communication } from "./Communication";
 import { Constitution } from "./Constitution";
 import { Directory } from "./Directory";
-import { Events } from "./Events";
+import { EventsComingSoon } from "./EventsComingSoon";
 import { Feedback } from "./Feedback";
 import { Explore } from "./Explore";
-import { Games } from "./Games";
+import { GamesComingSoon } from "./GamesComingSoon";
 import { Identities } from "./Identities";
 import { Leaderboards } from "./Leaderboards";
 import { Marketplace } from "./Marketplace";
@@ -35,10 +35,10 @@ export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	api: ApiReference,
 	constitution: Constitution,
 	directory: Directory,
-	events: Events,
+	events: EventsComingSoon,
 	feedback: Feedback,
 	explore: Explore,
-	games: Games,
+	games: GamesComingSoon,
 	identities: Identities,
 	leaderboards: Leaderboards,
 	marketplace: Marketplace,

@@ -7,9 +7,6 @@ import {
 	GlobeAltIcon,
 	HomeIcon,
 	IdentificationIcon,
-	PuzzlePieceIcon,
-	ShieldExclamationIcon,
-	SparklesIcon,
 	StarIcon,
 	TagIcon,
 	TrophyIcon,
@@ -40,11 +37,10 @@ const sections: Array<{
 	{ key: "explore", label: "Explore", icon: GlobeAltIcon },
 	{ key: "identities", label: "Identities", icon: IdentificationIcon },
 	{ key: "messaging", label: "Messaging", icon: ChatBubbleLeftRightIcon },
-	{ key: "events", label: "Events", icon: SparklesIcon },
-	{ key: "games", label: "Games", icon: PuzzlePieceIcon },
+	// Events, Games and Moderation are hidden from the nav for now (Events and
+	// Games render coming-soon placeholders if reached directly by URL).
 	{ key: "marketplace", label: "Marketplace", icon: TagIcon },
 	{ key: "reputation", label: "Reputation", icon: StarIcon },
-	{ key: "moderation", label: "Moderation", icon: ShieldExclamationIcon },
 	{ key: "leaderboards", label: "Leaderboards", icon: TrophyIcon },
 	{ key: "stats", label: "Stats", icon: ChartBarIcon },
 	{ key: "onramp", label: "On-ramp / Off-ramp", icon: ArrowsRightLeftIcon },
