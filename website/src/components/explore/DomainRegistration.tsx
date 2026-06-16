@@ -167,27 +167,27 @@ export const DomainRegistration = ({
 						: signAndRegister();
 				}
 			})();
-			},
-			onSuccess: () => {
-				setPaymentChallenge(null);
-				setRegistrationComplete(true);
+		},
+		onSuccess: () => {
+			setPaymentChallenge(null);
+			setRegistrationComplete(true);
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.directory.identities(),
+			});
+			if (agentId) {
 				void queryClient.invalidateQueries({
-					queryKey: queryKeys.directory.identities(),
+					queryKey: queryKeys.directory.reverse(agentId),
 				});
-				if (agentId) {
-					void queryClient.invalidateQueries({
-						queryKey: queryKeys.directory.reverse(agentId),
-					});
-				}
-				if (selectedName) {
-					void queryClient.invalidateQueries({
-						queryKey: queryKeys.registry.availability(
-							selectedName.trim().replace(/^@+/, "")
-						),
-					});
-				}
-			},
-		});
+			}
+			if (selectedName) {
+				void queryClient.invalidateQueries({
+					queryKey: queryKeys.registry.availability(
+						selectedName.trim().replace(/^@+/, "")
+					),
+				});
+			}
+		},
+	});
 
 	const handleSearch = useCallback((): void => {
 		if (availabilityQuery.data?.available) {

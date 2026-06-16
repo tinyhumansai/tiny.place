@@ -29,9 +29,7 @@ const signer = {} as Signer;
 describe("confirmAndSettleX402", () => {
 	it("signs then submits and returns the settled result when no dialog is set", async () => {
 		const submit = vi
-			.fn<
-				(p: Record<string, string>) => Promise<Record<string, string>>
-			>()
+			.fn<(p: Record<string, string>) => Promise<Record<string, string>>>()
 			.mockImplementation((payment) => Promise.resolve(payment));
 
 		const result = await confirmAndSettleX402({

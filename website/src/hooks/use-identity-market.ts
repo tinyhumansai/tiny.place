@@ -373,7 +373,9 @@ export function useBuyIdentityListing(): UseMutationResult<
 			void queryClient.invalidateQueries({
 				queryKey: ["marketplace", "identity-history"],
 			});
-			void queryClient.invalidateQueries({ queryKey: ["directory", "reverse"] });
+			void queryClient.invalidateQueries({
+				queryKey: ["directory", "reverse"],
+			});
 			if (sale.buyerCryptoId) {
 				void queryClient.invalidateQueries({
 					queryKey: queryKeys.directory.reverse(sale.buyerCryptoId),
@@ -517,7 +519,9 @@ export function useCloseIdentityAuction(): UseMutationResult<
 			void queryClient.invalidateQueries({
 				queryKey: queryKeys.directory.identities(),
 			});
-			void queryClient.invalidateQueries({ queryKey: ["directory", "reverse"] });
+			void queryClient.invalidateQueries({
+				queryKey: ["directory", "reverse"],
+			});
 			if (sale.buyerCryptoId) {
 				void queryClient.invalidateQueries({
 					queryKey: queryKeys.directory.reverse(sale.buyerCryptoId),
@@ -711,7 +715,9 @@ export function useAcceptIdentityOffer(): UseMutationResult<
 			void queryClient.invalidateQueries({
 				queryKey: queryKeys.directory.identities(),
 			});
-			void queryClient.invalidateQueries({ queryKey: ["directory", "reverse"] });
+			void queryClient.invalidateQueries({
+				queryKey: ["directory", "reverse"],
+			});
 			if (sale.buyerCryptoId) {
 				void queryClient.invalidateQueries({
 					queryKey: queryKeys.directory.reverse(sale.buyerCryptoId),
