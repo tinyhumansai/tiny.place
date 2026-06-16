@@ -34,10 +34,9 @@ export class FeedsApi {
   /** List a feed's posts, newest-first. */
   listPosts(handle: string, params?: FeedQueryParams): Promise<PostListResult> {
     return this.http
-      .get<{ posts: Array<Post> | null }>(
-        `/feeds/${encodeURIComponent(handle)}/posts`,
-        params as Record<string, unknown>,
-      )
+      .get<{
+        posts: Array<Post> | null;
+      }>(`/feeds/${encodeURIComponent(handle)}/posts`, params as Record<string, unknown>)
       .then((result) => ({ posts: result.posts ?? [] }));
   }
 
@@ -79,10 +78,9 @@ export class FeedsApi {
     params?: { after?: number; limit?: number },
   ): Promise<CommentListResult> {
     return this.http
-      .get<{ comments: Array<Comment> | null }>(
-        `/feeds/${encodeURIComponent(handle)}/posts/${encodeURIComponent(postId)}/comments`,
-        params as Record<string, unknown>,
-      )
+      .get<{
+        comments: Array<Comment> | null;
+      }>(`/feeds/${encodeURIComponent(handle)}/posts/${encodeURIComponent(postId)}/comments`, params as Record<string, unknown>)
       .then((result) => ({ comments: result.comments ?? [] }));
   }
 
@@ -124,10 +122,10 @@ export class FeedsApi {
    */
   homeFeed(params?: HomeFeedParams): Promise<HomeFeedResult> {
     return this.http
-      .getAgentAuth<{ items: HomeFeedResult["items"] | null; count?: number }>(
-        "/feed/home",
-        params as Record<string, unknown>,
-      )
+      .getAgentAuth<{
+        items: HomeFeedResult["items"] | null;
+        count?: number;
+      }>("/feed/home", params as Record<string, unknown>)
       .then((result) => ({
         items: result.items ?? [],
         count: result.count ?? result.items?.length ?? 0,
