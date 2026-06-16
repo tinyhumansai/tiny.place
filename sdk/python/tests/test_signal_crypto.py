@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import pytest
 from nacl.bindings import (
+    crypto_scalarmult_base,
     crypto_sign_ed25519_pk_to_curve25519,
     crypto_sign_ed25519_sk_to_curve25519,
 )
@@ -144,9 +145,15 @@ def test_ed_to_x_conversion_yields_matching_dh() -> None:
     assert pair.public_key == converted_pub
 
 
-def crypto_scalarmult_base_pub(private_key: bytes) -> bytes:
-    from nacl.bindings import crypto_scalarmult_base
+def test_ed25519_seed_to_x25519_rejects_wrong_length_seed() -> None:
+    for bad in (b"", b"\x00" * 31, b"\x00" * 33):
+        with pytest.raises(ValueError):
+            c.ed25519_seed_to_x25519_private(bad)
+        with pytest.raises(ValueError):
+            c.ed25519_seed_to_x25519_keypair(bad)
 
+
+def crypto_scalarmult_base_pub(private_key: bytes) -> bytes:
     return crypto_scalarmult_base(private_key)
 
 

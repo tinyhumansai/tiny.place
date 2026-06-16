@@ -20,6 +20,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac as _hmac
+import os
 from dataclasses import dataclass
 from hashlib import sha512
 from hmac import compare_digest
@@ -91,8 +92,6 @@ def x25519_shared_secret(private_key: bytes, public_key: bytes) -> bytes:
 
 
 def _random_clamped_scalar() -> bytes:
-    import os
-
     scalar = bytearray(os.urandom(32))
     scalar[0] &= 248
     scalar[31] &= 127
@@ -111,6 +110,8 @@ def ed25519_seed_to_x25519_private(seed: bytes) -> bytes:
     Hashes the seed with SHA-512 and clamps the low 32 bytes, exactly like
     the reference and libsodium's ``crypto_sign_ed25519_sk_to_curve25519``.
     """
+    if len(seed) != 32:
+        raise ValueError(f"Ed25519 seed must be 32 bytes, got {len(seed)}")
     digest = bytearray(sha512(seed).digest()[:32])
     digest[0] &= 248
     digest[31] &= 127
