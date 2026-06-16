@@ -48,6 +48,14 @@ from .keys import (
 from .memory_store import MemorySessionStore
 from .store import SenderKeyState, SessionState, SessionStore, skipped_key_id
 from .types import PreKeyPair, SignedPreKeyPair, X25519KeyPair
+from .x3dh import (
+    X3DHBundle,
+    X3DHInitResult,
+    build_associated_data,
+    verify_pre_key_signature_raw,
+    x3dh_initiate,
+    x3dh_respond,
+)
 
 __all__ = [
     # key material types
@@ -90,4 +98,11 @@ __all__ = [
     "SessionState",
     "SessionStore",
     "skipped_key_id",
+    # X3DH key agreement
+    "X3DHBundle",
+    "X3DHInitResult",
+    "x3dh_initiate",
+    "x3dh_respond",
+    "build_associated_data",
+    "verify_pre_key_signature_raw",
 ]
