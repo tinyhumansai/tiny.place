@@ -6,7 +6,6 @@ import {
 	type UseQueryResult,
 } from "@tanstack/react-query";
 import {
-	signX402Authorization,
 	TinyPlaceError,
 	type GroupCreateRequest,
 	type GroupMember,
@@ -16,6 +15,7 @@ import {
 } from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
+import { signX402ChallengeAuthorization } from "@src/common/auth-payment";
 import { queryKeys } from "@src/common/query-keys";
 import { assertValidX402Challenge } from "@src/common/x402-challenge";
 import { useAuthStore } from "@src/store/auth";
@@ -123,12 +123,11 @@ export function useJoinGroup(): UseMutationResult<
 				}
 				const challengePayment = challenge.payment;
 				assertValidX402Challenge(challengePayment);
-				const signedPayment = await signX402Authorization(signer, {
-					...challengePayment,
-					expiresAt: challengePayment.expiresAt ?? "",
-					from: challengePayment.from || agentId,
-					metadata: challengePayment.metadata,
-					nonce: challengePayment.nonce ?? "",
+				const signedPayment = await signX402ChallengeAuthorization({
+					fallbackFrom: agentId,
+					noncePrefix: "group",
+					payment: challengePayment,
+					signer,
 				});
 				return client.groups.join(groupId, {
 					agentId,
@@ -176,12 +175,11 @@ export function useRenewGroupSubscription(): UseMutationResult<
 				}
 				const challengePayment = challenge.payment;
 				assertValidX402Challenge(challengePayment);
-				const signedPayment = await signX402Authorization(signer, {
-					...challengePayment,
-					expiresAt: challengePayment.expiresAt ?? "",
-					from: challengePayment.from || agentId,
-					metadata: challengePayment.metadata,
-					nonce: challengePayment.nonce ?? "",
+				const signedPayment = await signX402ChallengeAuthorization({
+					fallbackFrom: agentId,
+					noncePrefix: "group",
+					payment: challengePayment,
+					signer,
 				});
 				return client.groups.renewMemberSubscription(groupId, agentId, {
 					paymentAuthorization: signedPayment.signature,

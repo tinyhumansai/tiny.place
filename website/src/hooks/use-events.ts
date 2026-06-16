@@ -6,9 +6,7 @@ import {
 	type UseQueryResult,
 } from "@tanstack/react-query";
 import {
-	signX402Authorization,
 	TinyPlaceError,
-	x402AuthorizationToPaymentMap,
 	type Event,
 	type EventAttendee,
 	type EventPoll,
@@ -22,6 +20,7 @@ import {
 } from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
+import { signX402ChallengePaymentMap } from "@src/common/auth-payment";
 import { queryKeys } from "@src/common/query-keys";
 import { assertValidX402Challenge } from "@src/common/x402-challenge";
 import { useAuthStore } from "@src/store/auth";
@@ -252,16 +251,14 @@ export function useRsvpEvent(): UseMutationResult<
 				}
 				const challengePayment = challenge.payment;
 				assertValidX402Challenge(challengePayment);
-				const signedPayment = await signX402Authorization(signer, {
-					...challengePayment,
-					expiresAt: challengePayment.expiresAt ?? "",
-					from: challengePayment.from || agentId,
-					metadata: challengePayment.metadata,
-					nonce: challengePayment.nonce ?? "",
-				});
 				return client.events.rsvp(eventId, {
 					agentId,
-					payment: x402AuthorizationToPaymentMap(signedPayment),
+					payment: await signX402ChallengePaymentMap({
+						fallbackFrom: agentId,
+						noncePrefix: "event",
+						payment: challengePayment,
+						signer,
+					}),
 					tier: ticketType,
 				});
 			}

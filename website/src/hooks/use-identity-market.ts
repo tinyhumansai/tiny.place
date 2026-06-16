@@ -6,12 +6,8 @@ import {
 	type UseQueryResult,
 } from "@tanstack/react-query";
 import {
-	generateNonce,
 	identityPublicKey,
-	signX402Authorization,
-	signerPaymentMetadata,
 	TinyPlaceError,
-	x402AuthorizationToPaymentMap,
 	type IdentityBid,
 	type IdentityBuyRequest,
 	type IdentityFloor,
@@ -24,16 +20,14 @@ import {
 } from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
+import { signX402ChallengePaymentMap } from "@src/common/auth-payment";
 import { queryKeys } from "@src/common/query-keys";
 import {
 	useOptionalX402Confirm,
 	type X402ConfirmContextValue,
 	type X402ConfirmRequest,
 } from "@src/components/explore/x402-confirm";
-import {
-	assertValidX402Challenge,
-	type ExpectedX402Payment,
-} from "@src/common/x402-challenge";
+import type { ExpectedX402Payment } from "@src/common/x402-challenge";
 import { useAuthStore } from "@src/store/auth";
 
 /** Lists identities currently listed for sale on the marketplace. */
@@ -189,22 +183,14 @@ async function signIdentityPaymentChallenge(
 	confirmRequest?: X402ConfirmRequest
 ): Promise<Record<string, string>> {
 	const challengePayment = challenge.payment;
-	assertValidX402Challenge(challengePayment, expected);
 	const sign = async (): Promise<Record<string, string>> => {
-		const signedPayment = await signX402Authorization(signer, {
-			...challengePayment,
-			expiresAt:
-				challengePayment.expiresAt ??
-				new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-			from: challengePayment.from || fallbackFrom,
-			metadata: {
-				...challengePayment.metadata,
-				...signerPaymentMetadata(signer),
-			},
-			nonce: challengePayment.nonce || generateNonce(noncePrefix),
+		return signX402ChallengePaymentMap({
+			expected,
+			fallbackFrom,
+			noncePrefix,
+			payment: challengePayment,
+			signer,
 		});
-
-		return x402AuthorizationToPaymentMap(signedPayment);
 	};
 
 	if (!confirmX402) {

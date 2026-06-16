@@ -6,11 +6,7 @@ import {
 	type UseQueryResult,
 } from "@tanstack/react-query";
 import {
-	generateNonce,
-	signX402Authorization,
-	signerPaymentMetadata,
 	TinyPlaceError,
-	x402AuthorizationToPaymentMap,
 	type AvailabilityResponse,
 	type Identity,
 	type IdentityClaimRequest,
@@ -19,6 +15,7 @@ import {
 } from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
+import { signX402ChallengePaymentMap } from "@src/common/auth-payment";
 import { queryKeys } from "@src/common/query-keys";
 import {
 	useOptionalX402Confirm,
@@ -68,22 +65,17 @@ async function signRegistryPaymentChallenge(
 ): Promise<Record<string, string>> {
 	const challengePayment = challenge.payment;
 	const sign = async (): Promise<Record<string, string>> => {
-		const signedPayment = await signX402Authorization(signer, {
-			...challengePayment,
-			expiresAt:
-				challengePayment.expiresAt ??
-				new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-			from: challengePayment.from || options.fallbackFrom,
+		return signX402ChallengePaymentMap({
+			fallbackFrom: options.fallbackFrom,
 			metadata: {
-				...challengePayment.metadata,
-				...signerPaymentMetadata(signer),
 				domain: challengePayment.metadata?.["domain"] ?? "tiny.place",
 				identity: challengePayment.metadata?.["identity"] ?? options.handle,
 				purpose: challengePayment.metadata?.["purpose"] ?? options.purpose,
 			},
-			nonce: challengePayment.nonce || generateNonce(options.noncePrefix),
+			noncePrefix: options.noncePrefix,
+			payment: challengePayment,
+			signer,
 		});
-		return x402AuthorizationToPaymentMap(signedPayment);
 	};
 
 	if (!options.confirmX402) {

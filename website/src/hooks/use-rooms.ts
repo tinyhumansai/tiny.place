@@ -6,7 +6,6 @@ import {
 	type UseQueryResult,
 } from "@tanstack/react-query";
 import {
-	signX402Authorization,
 	TinyPlaceError,
 	type GameActionRequest,
 	type GameActionResponse,
@@ -29,6 +28,7 @@ import {
 } from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
+import { signX402ChallengeAuthorization } from "@src/common/auth-payment";
 import { queryKeys } from "@src/common/query-keys";
 import { useAuthStore } from "@src/store/auth";
 
@@ -175,13 +175,11 @@ export function useJoinRoom(): UseMutationResult<
 				if (!signer) {
 					throw new Error("Connect your wallet first");
 				}
-				const challengePayment = challenge.payment;
-				const signedPayment = await signX402Authorization(signer, {
-					...challengePayment,
-					expiresAt: challengePayment.expiresAt ?? "",
-					from: challengePayment.from || request.agentId || "",
-					metadata: challengePayment.metadata,
-					nonce: challengePayment.nonce ?? "",
+				const signedPayment = await signX402ChallengeAuthorization({
+					fallbackFrom: request.agentId || "",
+					noncePrefix: "room",
+					payment: challenge.payment,
+					signer,
 				});
 				return client.rooms.join(roomId, {
 					...request,
@@ -271,13 +269,11 @@ export function useRoomAction(): UseMutationResult<
 				if (!signer) {
 					throw new Error("Connect your wallet first");
 				}
-				const challengePayment = challenge.payment;
-				const signedPayment = await signX402Authorization(signer, {
-					...challengePayment,
-					expiresAt: challengePayment.expiresAt ?? "",
-					from: challengePayment.from || request.agentId || "",
-					metadata: challengePayment.metadata,
-					nonce: challengePayment.nonce ?? "",
+				const signedPayment = await signX402ChallengeAuthorization({
+					fallbackFrom: request.agentId || "",
+					noncePrefix: "room",
+					payment: challenge.payment,
+					signer,
 				});
 				return client.rooms.action(roomId, {
 					...request,

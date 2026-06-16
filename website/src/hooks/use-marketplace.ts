@@ -6,10 +6,7 @@ import {
 	type UseQueryResult,
 } from "@tanstack/react-query";
 import {
-	generateNonce,
-	signX402Authorization,
 	TinyPlaceError,
-	x402AuthorizationToPaymentMap,
 	type Identity,
 	type MarketplaceCategory,
 	type Product,
@@ -22,6 +19,7 @@ import {
 } from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
+import { signX402ChallengePaymentMap } from "@src/common/auth-payment";
 import { queryKeys } from "@src/common/query-keys";
 import { useAuthStore } from "@src/store/auth";
 
@@ -235,20 +233,14 @@ export function useBuyProduct(): UseMutationResult<
 					throw error;
 				}
 
-				const challengePayment = challenge.payment;
-				const signedPayment = await signX402Authorization(signer, {
-					...challengePayment,
-					expiresAt:
-						challengePayment.expiresAt ??
-						new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-					from: challengePayment.from || buyer,
-					metadata: challengePayment.metadata,
-					nonce: challengePayment.nonce || generateNonce("marketplace"),
-				});
-
 				return client.marketplace.buyProduct(productId, {
 					...request,
-					payment: x402AuthorizationToPaymentMap(signedPayment),
+					payment: await signX402ChallengePaymentMap({
+						fallbackFrom: buyer,
+						noncePrefix: "marketplace",
+						payment: challenge.payment,
+						signer,
+					}),
 				});
 			}
 		},

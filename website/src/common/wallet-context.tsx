@@ -18,13 +18,16 @@ import {
 
 import type { FunctionComponent } from "@src/common/types";
 import { createClient } from "@src/common/api-client";
-import { SessionWalletSigner } from "@src/common/session-wallet";
+import {
+	SessionWalletSigner,
+	WalletSigner,
+	setAuthSession,
+} from "@src/common/auth-payment";
 import { setSessionInvalidHandler } from "@src/common/session-recovery";
 import {
 	primarySolanaRpcUrl,
 	solanaConnectionConfig,
 } from "@src/common/solana-rpc";
-import { WalletSigner } from "@src/common/wallet-signer";
 import { useAuthStore } from "@src/store/auth";
 import { useAppStore } from "@src/store/app";
 
@@ -190,7 +193,6 @@ function LoginSignatureDialog({
 
 const WalletAuthSync = (): FunctionComponent => {
 	const { connected, publicKey, signMessage } = useWallet();
-	const setSigner = useAuthStore((state) => state.setSigner);
 	const clearSession = useAuthStore((state) => state.clearSession);
 	const isDark = useAppStore((state) => state.theme === "dark");
 	const [loginSignature, setLoginSignature] =
@@ -270,18 +272,18 @@ const WalletAuthSync = (): FunctionComponent => {
 					if (activeWalletId.current !== walletId) return;
 					// The session key signs routine calls, but registration must be
 					// signed by the wallet (grantor), whose key derives the cryptoId.
-					setSigner(signer, signer.agentId, signer.walletSigner);
+					setAuthSession(signer, signer.walletSigner);
 				})
 				.catch(() => {
 					if (activeWalletId.current !== walletId) return;
 					const fallback = new WalletSigner(publicKeyBytes, signMessage);
-					setSigner(fallback, fallback.agentId);
+					setAuthSession(fallback);
 				})
 				.finally(() => {
 					inFlight.current = null;
 				});
 		},
-		[connected, publicKey, signMessage, setSigner, confirmLoginSignature]
+		[connected, publicKey, signMessage, confirmLoginSignature]
 	);
 
 	useEffect(() => {

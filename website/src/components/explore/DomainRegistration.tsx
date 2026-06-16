@@ -4,10 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import {
-	generateNonce,
-	signX402Authorization,
 	TinyPlaceError,
-	x402AuthorizationToPaymentMap,
 	type X402AuthorizationFields,
 } from "@tinyhumansai/tinyplace";
 import type { FunctionComponent } from "@src/common/types";
@@ -19,6 +16,7 @@ import {
 import { sanitizeHandle } from "@src/components/explore/identity-management";
 import { createClient } from "@src/common/api-client";
 import { assertValidX402Challenge } from "@src/common/x402-challenge";
+import { signX402ChallengePaymentMap } from "@src/common/auth-payment";
 import { useHandleAvailability } from "@src/hooks/use-registry";
 import { useOwnedIdentities } from "@src/hooks/use-marketplace";
 import { useAuthStore } from "@src/store/auth";
@@ -132,16 +130,13 @@ export const DomainRegistration = ({
 					const signRegistrationPayment = async (): Promise<
 						Record<string, string>
 					> => {
-						const signedPayment = await signX402Authorization(signer, {
-							...challengePayment,
-							expiresAt:
-								challengePayment.expiresAt ??
-								new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-							from: agentId,
+						return signX402ChallengePaymentMap({
+							fallbackFrom: agentId,
 							metadata,
-							nonce: challengePayment.nonce || generateNonce("reg"),
+							noncePrefix: "reg",
+							payment: challengePayment,
+							signer,
 						});
-						return x402AuthorizationToPaymentMap(signedPayment);
 					};
 					const payment = confirmX402
 						? ((await confirmX402(

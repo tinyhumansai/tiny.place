@@ -4,7 +4,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { SessionWalletSigner } from "@src/common/session-wallet";
+import { SessionWalletSigner } from "@src/common/auth-payment";
 import type { FunctionComponent } from "@src/common/types";
 import { useAppStore } from "@src/store/app";
 import { useAuthStore } from "@src/store/auth";

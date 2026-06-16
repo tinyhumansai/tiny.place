@@ -5,11 +5,11 @@ import { useCallback, useMemo } from "react";
 
 import { createClient } from "@src/common/api-client";
 import {
+	SessionWalletSigner,
 	enableDelegatedSpending,
 	payViaSessionDelegate,
 	type SessionPaymentOptions,
-} from "@src/common/session-payments";
-import { SessionWalletSigner } from "@src/common/session-wallet";
+} from "@src/common/auth-payment";
 import { primarySolanaRpcUrl } from "@src/common/solana-rpc";
 import { useAuthStore } from "@src/store/auth";
 

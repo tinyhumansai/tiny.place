@@ -7,7 +7,6 @@ import {
 } from "@tanstack/react-query";
 import {
 	generateNonce,
-	signX402Authorization,
 	type Subscription,
 	type SubscriptionCreateRequest,
 	type SubscriptionRenewRequest,
@@ -20,6 +19,7 @@ import {
 } from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
+import { signX402ChallengeAuthorization } from "@src/common/auth-payment";
 import { queryKeys } from "@src/common/query-keys";
 import { useAuthStore } from "@src/store/auth";
 
@@ -96,15 +96,17 @@ export function useCreateSubscription(): UseMutationResult<
 				if (!signer) {
 					throw new Error("Connect your wallet first");
 				}
-				const authorization = await signX402Authorization(
-					signer,
-					buildSubscriptionAuthorizationFields({
+				const authorization = await signX402ChallengeAuthorization({
+					fallbackFrom: subscriber,
+					noncePrefix: "sub",
+					payment: buildSubscriptionAuthorizationFields({
 						subscriptionId: nextSubscriptionId,
 						plan: request.plan,
 						from: subscriber,
 						to: request.provider,
-					})
-				);
+					}),
+					signer,
+				});
 				return client.payments.createSubscription({
 					...request,
 					subscriptionId: nextSubscriptionId,
@@ -153,15 +155,17 @@ export function useRenewSubscription(): UseMutationResult<
 				throw new Error("Connect your wallet first");
 			}
 			const subscription = await client.payments.getSubscription(id);
-			const authorization = await signX402Authorization(
-				signer,
-				buildSubscriptionAuthorizationFields({
+			const authorization = await signX402ChallengeAuthorization({
+				fallbackFrom: subscription.subscriber,
+				noncePrefix: "sub",
+				payment: buildSubscriptionAuthorizationFields({
 					subscriptionId: subscription.subscriptionId,
 					plan: subscription.plan,
 					from: subscription.subscriber,
 					to: subscription.provider,
-				})
-			);
+				}),
+				signer,
+			});
 			return client.payments.renewSubscription(id, {
 				paymentAuthorization: authorization.signature,
 				settledAmount: request?.settledAmount,
