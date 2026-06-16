@@ -25,6 +25,16 @@ async-trait = "0.1"
 tokio-tungstenite = { version = "0.24", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 
+# Signal protocol (E2E encryption) primitives. Algorithms chosen to be
+# byte-compatible with the TS/Python SDKs: X25519 ECDH, HKDF/HMAC-SHA256,
+# AES-256-CBC + HMAC-SHA256 Encrypt-then-MAC.
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+curve25519-dalek = "4"
+hkdf = "0.12"
+hmac = "0.12"
+aes = "0.8"
+cbc = { version = "0.1", features = ["alloc"] }
+
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 wiremock = "0.6"
