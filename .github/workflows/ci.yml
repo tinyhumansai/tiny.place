@@ -131,3 +131,37 @@ jobs:
           name: website-dist
           path: website/.next
           retention-days: 7
+
+  rust-sdk:
+    name: Rust SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # This job executes repo code (cargo build/test); don't persist the
+          # token in git config.
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: sdk/rust
+
+      - name: Check formatting
+        run: cargo fmt --check
+        working-directory: sdk/rust
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: sdk/rust
+
+      - name: Build
+        run: cargo build --all-targets
+        working-directory: sdk/rust
+
+      - name: Test
+        run: cargo test
+        working-directory: sdk/rust
