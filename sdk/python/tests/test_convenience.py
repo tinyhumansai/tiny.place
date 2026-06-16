@@ -99,24 +99,30 @@ async def test_poll_inbox_disambiguates_equal_timestamps_by_id() -> None:
 # -- search_domain ----------------------------------------------------------
 
 
-async def test_search_domain_available_on_404() -> None:
-    session = FakeSession([FakeResponse(404, {"error": "not found"})])
+async def test_search_domain_available_from_body_flag() -> None:
+    # The backend returns 200 with an AvailabilityResponse, not a 404.
+    response = {"available": True, "name": "@cooldomain"}
+    session = FakeSession([FakeResponse(200, response)])
     client = _client(session)
 
     result = await client.search_domain("cooldomain")
 
-    assert result == {"name": "@cooldomain", "available": True, "record": None}
+    assert result == {"name": "@cooldomain", "available": True, "record": response}
 
 
 async def test_search_domain_taken_returns_record() -> None:
-    record = {"username": "@taken", "cryptoId": "abc"}
-    session = FakeSession([FakeResponse(200, record)])
+    response = {
+        "available": False,
+        "name": "@taken",
+        "identity": {"username": "@taken", "cryptoId": "abc"},
+    }
+    session = FakeSession([FakeResponse(200, response)])
     client = _client(session)
 
     result = await client.search_domain("@taken")
 
     assert result["available"] is False
-    assert result["record"] == record
+    assert result["record"] == response
     assert session.requests[0]["url"].endswith("/registry/names/%40taken")
 
 
@@ -135,6 +141,17 @@ async def test_register_domain_fills_identity_from_signer() -> None:
     assert body["cryptoId"] == client._signer.agent_id
     assert body["publicKey"] == client._signer.public_key_base64
     assert body["signature"]  # registration is signed
+
+
+async def test_register_domain_argument_wins_over_fields() -> None:
+    session = FakeSession([FakeResponse(200, {"ok": True})])
+    client = _client(session)
+
+    # A stray username in **fields must not override the explicit domain arg.
+    await client.register_domain("mybot", username="@evil")
+
+    body = json.loads(session.requests[0]["data"])
+    assert body["username"] == "@mybot"
 
 
 # -- get_identity / resolve_user -------------------------------------------
