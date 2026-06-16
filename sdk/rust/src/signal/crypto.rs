@@ -158,7 +158,7 @@ pub fn decrypt(
 
 // --- internal helpers ------------------------------------------------------
 
-fn hkdf_sha256(ikm: &[u8], salt: Option<&[u8]>, info: &[u8], length: usize) -> Vec<u8> {
+pub(crate) fn hkdf_sha256(ikm: &[u8], salt: Option<&[u8]>, info: &[u8], length: usize) -> Vec<u8> {
     let hk = Hkdf::<Sha256>::new(salt, ikm);
     let mut okm = vec![0u8; length];
     hk.expand(info, &mut okm)
