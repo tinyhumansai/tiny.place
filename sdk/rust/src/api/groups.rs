@@ -6,9 +6,9 @@ use serde::Deserialize;
 use crate::error::Result;
 use crate::http::HttpClient;
 use crate::types::{
-    GroupCreateRequest, GroupInvite, GroupInviteCreateRequest, GroupInvitePreview, GroupJoinRequest,
-    GroupMember, GroupMessageFanoutRequest, GroupMessageFanoutResponse, GroupMetadata,
-    GroupQueryParams, GroupRevenueShareRequest, GroupRevenueShareResponse,
+    GroupCreateRequest, GroupInvite, GroupInviteCreateRequest, GroupInvitePreview,
+    GroupJoinRequest, GroupMember, GroupMessageFanoutRequest, GroupMessageFanoutResponse,
+    GroupMetadata, GroupQueryParams, GroupRevenueShareRequest, GroupRevenueShareResponse,
     GroupSubscriptionEnforceResponse, GroupSubscriptionRenewRequest,
 };
 use crate::util::encode;
@@ -292,18 +292,15 @@ impl GroupsApi {
     /// List the active invites for a group (admin-signed).
     pub async fn list_invites(&self, group_id: &str, actor: &str) -> Result<GroupInvitesResponse> {
         let path = format!("/directory/groups/{}/invites", encode(group_id));
-        let result: GroupInvitesPayload = self.http.get_directory_auth_as(&path, actor, &[]).await?;
+        let result: GroupInvitesPayload =
+            self.http.get_directory_auth_as(&path, actor, &[]).await?;
         Ok(GroupInvitesResponse {
             invites: result.invites.unwrap_or_default(),
         })
     }
 
     /// Public preview of the group behind a valid invite token (no auth).
-    pub async fn preview_invite(
-        &self,
-        group_id: &str,
-        token: &str,
-    ) -> Result<GroupInvitePreview> {
+    pub async fn preview_invite(&self, group_id: &str, token: &str) -> Result<GroupInvitePreview> {
         let path = format!(
             "/directory/groups/{}/invites/{}",
             encode(group_id),
