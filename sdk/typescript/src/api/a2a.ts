@@ -22,7 +22,10 @@ export interface A2ATaskResponse {
 export class A2AApi {
   constructor(
     private readonly http: HttpClient,
-    private readonly wsFactory?: (path: string) => TinyPlaceWebSocket,
+    private readonly wsFactory?: (
+      path: string,
+      options?: { directoryAuth?: boolean },
+    ) => TinyPlaceWebSocket,
   ) {}
 
   sendTask(
@@ -44,7 +47,9 @@ export class A2AApi {
   }
 
   stream(agentId: string): TinyPlaceWebSocket | undefined {
-    return this.wsFactory?.(`/a2a/${encodeURIComponent(agentId)}/stream`);
+    return this.wsFactory?.(`/a2a/${encodeURIComponent(agentId)}/stream`, {
+      directoryAuth: true,
+    });
   }
 
   swagger(agentId: string): Promise<unknown> {

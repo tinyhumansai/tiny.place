@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { TinyPlaceClient } from "@tinyhumansai/tinyplace";
+import {
+	LocalSigner,
+	signDirectoryWrite,
+	TinyPlaceClient,
+	TinyPlaceError,
+} from "@tinyhumansai/tinyplace";
 
 const API_URL = process.env.API_URL ?? "http://localhost:8080";
 const SOLANA_URL = process.env.SOLANA_URL ?? "http://localhost:8899";
@@ -11,6 +16,7 @@ const PROGRAM_IDS = [
 ];
 
 type JSONRecord = Record<string, unknown>;
+type StreamFrame = { type?: string; data?: unknown };
 
 async function api(path: string, init?: RequestInit): Promise<Response> {
 	return fetch(`${API_URL}${path}`, init);
@@ -51,6 +57,60 @@ function record(value: unknown): JSONRecord {
 	return value as JSONRecord;
 }
 
+function uniq(prefix: string): string {
+	return `${prefix}-${Date.now().toString(36)}-${Math.random()
+		.toString(36)
+		.slice(2, 8)}`;
+}
+
+function isTinyPlaceStatus(error: unknown, status: number): boolean {
+	return error instanceof TinyPlaceError && error.status === status;
+}
+
+function tinyPlaceBody(error: unknown): JSONRecord {
+	expect(error).toBeInstanceOf(TinyPlaceError);
+	return record((error as TinyPlaceError).body);
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+	let binary = "";
+	for (const byte of bytes) {
+		binary += String.fromCharCode(byte);
+	}
+	return btoa(binary);
+}
+
+async function sha256Hex(body: string): Promise<string> {
+	const digest = await crypto.subtle.digest(
+		"SHA-256",
+		new TextEncoder().encode(body)
+	);
+	return Array.from(new Uint8Array(digest))
+		.map((byte) => byte.toString(16).padStart(2, "0"))
+		.join("");
+}
+
+async function signedDirectoryHeaders(
+	signer: LocalSigner,
+	method: string,
+	requestUri: string,
+	body: string,
+	options?: { timestamp?: string; nonce?: string }
+): Promise<Record<string, string>> {
+	const timestamp = options?.timestamp ?? new Date().toISOString();
+	const nonce = options?.nonce ?? uniq("nonce");
+	const bodyHash = await sha256Hex(body);
+	const payload = `${method}\n${requestUri}\n${timestamp}\n${nonce}\n${bodyHash}`;
+	const signature = await signer.sign(new TextEncoder().encode(payload));
+	return {
+		"Content-Type": "application/json",
+		"X-TinyPlace-Date": timestamp,
+		"X-TinyPlace-Nonce": nonce,
+		"X-TinyPlace-Public-Key": signer.publicKeyBase64,
+		"X-TinyPlace-Signature": bytesToBase64(signature),
+	};
+}
+
 function pathOperation(
 	paths: JSONRecord,
 	path: string,
@@ -77,6 +137,106 @@ function responseSchema(
 	const content = record(response.content);
 	const typedContent = record(content[contentType]);
 	return record(typedContent.schema);
+}
+
+type McpResponse = {
+	body: JSONRecord;
+	sessionId: string | null;
+};
+
+async function mcp(
+	message: JSONRecord,
+	sessionId?: string
+): Promise<McpResponse> {
+	const response = await api("/mcp", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			...(sessionId ? { "Mcp-Session-Id": sessionId } : {}),
+		},
+		body: JSON.stringify(message),
+	});
+	expect(response.status, JSON.stringify(message)).toBe(200);
+	expect(response.headers.get("content-type")).toContain("application/json");
+	return {
+		body: (await response.json()) as JSONRecord,
+		sessionId: response.headers.get("Mcp-Session-Id"),
+	};
+}
+
+function mcpResult(response: McpResponse): JSONRecord {
+	expect(response.body.error).toBeUndefined();
+	return record(response.body.result);
+}
+
+function mcpError(response: McpResponse): JSONRecord {
+	expect(response.body.result).toBeUndefined();
+	return record(response.body.error);
+}
+
+function mcpTextContent(result: JSONRecord): string {
+	const content = result.content;
+	expect(content).toEqual(expect.any(Array));
+	const first = record((content as Array<unknown>)[0]);
+	expect(first.type).toBe("text");
+	expect(first.text).toEqual(expect.any(String));
+	return first.text as string;
+}
+
+async function mcpStreamText(
+	sessionId: string,
+	resource?: string
+): Promise<string> {
+	const params = new URLSearchParams();
+	if (resource) {
+		params.set("resource", resource);
+	}
+	const controller = new AbortController();
+	const response = await api(`/mcp${params.size ? `?${params}` : ""}`, {
+		headers: { "Mcp-Session-Id": sessionId },
+		signal: controller.signal,
+	});
+	expect(response.status).toBe(200);
+	expect(response.headers.get("content-type")).toContain("text/event-stream");
+	expect(response.headers.get("Mcp-Session-Id")).toBe(sessionId);
+	const reader = response.body?.getReader();
+	expect(reader).toBeDefined();
+	const decoder = new TextDecoder();
+	let text = "";
+	try {
+		const first = await reader!.read();
+		if (!first.done) {
+			text += decoder.decode(first.value, { stream: true });
+		}
+	} finally {
+		controller.abort();
+		reader?.releaseLock();
+	}
+	return text;
+}
+
+function waitForStreamMessage(
+	socket: NonNullable<ReturnType<TinyPlaceClient["a2a"]["stream"]>>
+): Promise<StreamFrame> {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(() => {
+			cleanup();
+			reject(new Error("timed out waiting for A2A stream message"));
+		}, 5000);
+		const offMessage = socket.on<StreamFrame>("message", (message) => {
+			cleanup();
+			resolve(message);
+		});
+		const offError = socket.on("error", (error) => {
+			cleanup();
+			reject(error instanceof Error ? error : new Error(String(error)));
+		});
+		function cleanup(): void {
+			clearTimeout(timer);
+			offMessage();
+			offError();
+		}
+	});
 }
 
 test.describe("functional platform stack", () => {
@@ -329,6 +489,506 @@ test.describe("functional platform stack", () => {
 				const rejected = await api(asset.path, { method });
 				expect(rejected.status, `${asset.path} ${method}`).toBe(405);
 				expect(rejected.headers.get("allow")).toBe("GET, HEAD");
+			}
+		}
+	});
+
+	test("F013-F017,F020-F022,F024-F025: MCP transport, catalogs, dispatch, resources, and prompts work live", async () => {
+		const client = new TinyPlaceClient({ baseUrl: API_URL });
+		const initialized = await client.mcp.initialize();
+		const sessionId = initialized.sessionId;
+		expect(sessionId).toMatch(/^tinyplace-\d+-\d+$/);
+		expect(initialized.body.result).toMatchObject({
+			protocolVersion: "2025-03-26",
+			serverInfo: { name: "tinyplace", version: "1.0.0" },
+		});
+		expect(
+			record(record(initialized.body.result).capabilities).resources
+		).toEqual(expect.objectContaining({ subscribe: true, listChanged: true }));
+
+		const tools = await client.mcp.listTools({ sessionId: sessionId! });
+		expect(tools.sessionId).toBe(sessionId);
+		const toolRows = record(tools.body.result).tools as Array<JSONRecord>;
+		const toolsByName = new Map(
+			toolRows.map((tool) => [tool.name as string, tool])
+		);
+		for (const name of [
+			"tinyplace_system_health",
+			"tinyplace_directory_search",
+			"tinyplace_register",
+			"tinyplace_payments_verify",
+			"tinyplace_signer_create",
+			"tinyplace_signer_revoke",
+			"tinyplace_escrow_create",
+			"tinyplace_escrow_dispute_vote",
+			"tinyplace_ledger",
+		]) {
+			expect(toolsByName.get(name), `missing MCP tool ${name}`).toBeDefined();
+		}
+		expect(toolsByName.get("tinyplace_system_health")).toMatchObject({
+			authRequired: false,
+			route: "GET /healthz",
+		});
+		expect(toolsByName.get("tinyplace_register")).toMatchObject({
+			authRequired: true,
+			route: "POST /registry/names",
+		});
+		expect(toolsByName.get("tinyplace_signer_create")).toMatchObject({
+			authRequired: true,
+			route: "POST /signers",
+		});
+		expect(toolsByName.get("tinyplace_escrow_create")).toMatchObject({
+			authRequired: true,
+			route: "POST /escrow",
+		});
+		expect(toolsByName.get("tinyplace_ledger")).toMatchObject({
+			authRequired: false,
+			route: "GET /ledger/transactions",
+		});
+
+		const resources = await client.mcp.listResources({ sessionId: sessionId! });
+		expect(resources.sessionId).toBe(sessionId);
+		const resourceRows = record(resources.body.result)
+			.resources as Array<JSONRecord>;
+		expect(resourceRows).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					uri: "tinyplace://ledger/recent",
+					subscribable: true,
+				}),
+				expect.objectContaining({
+					uri: "tinyplace://stats/overview",
+					subscribable: true,
+				}),
+				expect.objectContaining({
+					uri: "tinyplace://inbox",
+					subscribable: true,
+				}),
+			])
+		);
+
+		const prompts = await client.mcp.listPrompts({ sessionId: sessionId! });
+		expect(prompts.sessionId).toBe(sessionId);
+		const promptRows = record(prompts.body.result).prompts as Array<JSONRecord>;
+		expect(promptRows).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: "discover-agent" }),
+				expect.objectContaining({ name: "send-payment" }),
+				expect.objectContaining({ name: "marketplace-search" }),
+			])
+		);
+
+		const healthCall = mcpResult(
+			await mcp(
+				{
+					jsonrpc: "2.0",
+					id: "health",
+					method: "tools/call",
+					params: { name: "tinyplace_system_health", arguments: {} },
+				},
+				sessionId!
+			)
+		);
+		expect(healthCall.status).toBe(200);
+		expect(healthCall.contentType).toContain("application/json");
+		expect(JSON.parse(mcpTextContent(healthCall))).toMatchObject({
+			service: "tinyplace",
+			status: "ok",
+		});
+
+		const authError = mcpError(
+			await mcp(
+				{
+					jsonrpc: "2.0",
+					id: "auth-required",
+					method: "tools/call",
+					params: { name: "tinyplace_register", arguments: { body: {} } },
+				},
+				sessionId!
+			)
+		);
+		expect(authError).toMatchObject({
+			code: -32001,
+			message: "authorization required",
+		});
+
+		const resourceRead = mcpResult(
+			await mcp(
+				{
+					jsonrpc: "2.0",
+					id: "read-stats",
+					method: "resources/read",
+					params: { uri: "tinyplace://stats/overview" },
+				},
+				sessionId!
+			)
+		);
+		expect(resourceRead.status).toBe(200);
+		const contents = resourceRead.contents as Array<JSONRecord>;
+		expect(contents[0]).toMatchObject({
+			uri: "tinyplace://stats/overview",
+		});
+		expect(JSON.parse(contents[0]?.text as string)).toEqual(expect.any(Object));
+
+		const subscription = mcpResult(
+			await mcp(
+				{
+					jsonrpc: "2.0",
+					id: "subscribe",
+					method: "resources/subscribe",
+					params: { uri: "tinyplace://stats/overview" },
+				},
+				sessionId!
+			)
+		);
+		expect(subscription).toEqual({
+			uri: "tinyplace://stats/overview",
+			subscribed: true,
+		});
+		const subscribedStream = await mcpStreamText(sessionId!);
+		expect(subscribedStream).toContain("notifications/tinyplace/connected");
+		expect(subscribedStream).toContain("notifications/resources/updated");
+		expect(subscribedStream).toContain("tinyplace://stats/overview");
+
+		const isolated = await mcpStreamText("isolated-functional-session");
+		expect(isolated).toContain("notifications/tinyplace/connected");
+		expect(isolated).not.toContain("tinyplace://stats/overview");
+
+		const unsubscribed = mcpResult(
+			await mcp(
+				{
+					jsonrpc: "2.0",
+					id: "unsubscribe",
+					method: "resources/unsubscribe",
+					params: { uri: "tinyplace://stats/overview" },
+				},
+				sessionId!
+			)
+		);
+		expect(unsubscribed).toEqual({
+			uri: "tinyplace://stats/overview",
+			subscribed: false,
+		});
+
+		const renderedPrompt = mcpResult(
+			await mcp(
+				{
+					jsonrpc: "2.0",
+					id: "prompt",
+					method: "prompts/get",
+					params: {
+						name: "send-payment",
+						arguments: { recipient: "@seller", amount: "1 SOL" },
+					},
+				},
+				sessionId!
+			)
+		);
+		expect(renderedPrompt.description).toBe("Walk through sending a payment.");
+		expect(JSON.stringify(renderedPrompt.messages)).toContain("@seller");
+		expect(JSON.stringify(renderedPrompt.messages)).toContain("1 SOL");
+
+		const promptError = mcpError(
+			await mcp(
+				{
+					jsonrpc: "2.0",
+					id: "prompt-error",
+					method: "prompts/get",
+					params: { name: "missing-prompt" },
+				},
+				sessionId!
+			)
+		);
+		expect(promptError).toMatchObject({
+			code: -32602,
+			message: "unknown prompt",
+		});
+
+		const terminated = await client.mcp.terminate({ sessionId: sessionId! });
+		expect(terminated.status).toBe("terminated");
+		const afterTerminate = await mcpStreamText(sessionId!);
+		expect(afterTerminate).toContain("notifications/tinyplace/connected");
+		expect(afterTerminate).not.toContain("tinyplace://stats/overview");
+	});
+
+	test("F026-F028: A2A docs, signed JSON-RPC relay, stream auth, and wire errors work live", async () => {
+		const signer = await LocalSigner.generate();
+		const client = new TinyPlaceClient({ baseUrl: API_URL, signer });
+		const agentName = uniq("functional-a2a-agent");
+		const skillDoc = `# ${agentName}\n\n## Skill\n\nEcho signed JSON-RPC tasks.`;
+		const swaggerMarkdown = `# ${agentName} API\n\nPOST /task`;
+		const swaggerJson = {
+			openapi: "3.1.0",
+			info: { title: agentName, version: "1.0.0" },
+			paths: { "/task": { post: { summary: "Run task" } } },
+		};
+		const now = new Date().toISOString();
+
+		await client.directory.upsertAgent(signer.agentId, {
+			agentId: signer.agentId,
+			cryptoId: signer.agentId,
+			name: agentName,
+			description: "Functional A2A agent with inline docs",
+			publicKey: signer.publicKeyBase64,
+			url: `${API_URL}/a2a/${encodeURIComponent(signer.agentId)}`,
+			skills: ["echo"],
+			capabilities: ["streaming", "json-rpc"],
+			tags: ["functional", "a2a"],
+			docs: {
+				skillMd: skillDoc,
+				swaggerMd: swaggerMarkdown,
+				swaggerJson: JSON.stringify(swaggerJson),
+			},
+			createdAt: now,
+			updatedAt: now,
+		});
+
+		try {
+			const fetched = await client.directory.getAgent(signer.agentId);
+			expect(fetched).toMatchObject({
+				agentId: signer.agentId,
+				name: agentName,
+				cryptoId: signer.agentId,
+				publicKey: signer.publicKeyBase64,
+			});
+			expect(fetched.docs?.skillMdUrl).toBe(
+				`/a2a/${signer.agentId}/skill.md`
+			);
+			expect(fetched.docs?.swaggerJsonUrl).toBe(
+				`/a2a/${signer.agentId}/swagger.json`
+			);
+			expect(fetched.docs?.swaggerMdUrl).toBe(
+				`/a2a/${signer.agentId}/swagger.md`
+			);
+
+			await expect(client.a2a.skillDescription(signer.agentId)).resolves.toBe(
+				skillDoc
+			);
+			await expect(client.a2a.swaggerMarkdown(signer.agentId)).resolves.toBe(
+				swaggerMarkdown
+			);
+			await expect(client.a2a.swagger(signer.agentId)).resolves.toEqual(
+				swaggerJson
+			);
+
+			let unsupported: JSONRecord | undefined;
+			try {
+				await client.a2a.sendTask(
+					signer.agentId,
+					{
+						jsonrpc: "2.0",
+						id: "unsupported",
+						method: "tasks/unknown",
+						params: { message: "hello" },
+					},
+					signer.publicKeyBase64
+				);
+			} catch (error) {
+				expect(isTinyPlaceStatus(error, 404)).toBe(true);
+				unsupported = tinyPlaceBody(error);
+			}
+			expect(unsupported).toMatchObject({
+				jsonrpc: "2.0",
+				id: "unsupported",
+				error: {
+					code: -32601,
+					message: "method not found",
+					data: { method: "tasks/unknown" },
+				},
+			});
+
+			let taskRelay: JSONRecord | undefined;
+			try {
+				await client.a2a.sendTask(
+					signer.agentId,
+					{
+						jsonrpc: "2.0",
+						id: "task-required-envelope",
+						method: "tasks/send",
+						params: { message: { role: "user", parts: [] } },
+					},
+					signer.publicKeyBase64
+				);
+			} catch (error) {
+				expect(isTinyPlaceStatus(error, 400)).toBe(true);
+				taskRelay = tinyPlaceBody(error);
+			}
+			expect(taskRelay).toMatchObject({
+				jsonrpc: "2.0",
+				id: "task-required-envelope",
+				error: {
+					code: -32600,
+					message: "encrypted MessageEnvelope required",
+					data: { to: signer.agentId },
+				},
+			});
+
+			const unsigned = new TinyPlaceClient({ baseUrl: API_URL });
+			let unsignedRelay: JSONRecord | undefined;
+			try {
+				await unsigned.a2a.sendTask(signer.agentId, {
+					jsonrpc: "2.0",
+					id: "missing-sender",
+					method: "tasks/send",
+					params: {},
+				});
+			} catch (error) {
+				expect(isTinyPlaceStatus(error, 400)).toBe(true);
+				unsignedRelay = tinyPlaceBody(error);
+			}
+			expect(unsignedRelay).toMatchObject({
+				jsonrpc: "2.0",
+				id: "missing-sender",
+				error: {
+					code: -32600,
+					message: "sender is required",
+				},
+			});
+
+			const stream = client.a2a.stream(signer.agentId);
+			expect(stream).toBeDefined();
+			const firstMessage = waitForStreamMessage(stream!);
+			await stream!.connect();
+			const snapshot = await firstMessage;
+			expect(snapshot.type).toBe("snapshot");
+			expect(snapshot.data === null || Array.isArray(snapshot.data)).toBe(true);
+			stream!.close();
+
+			const unsignedStream = unsigned.a2a.stream(signer.agentId);
+			expect(unsignedStream).toBeDefined();
+			await expect(unsignedStream!.connect()).rejects.toBeTruthy();
+			unsignedStream!.close();
+		} finally {
+			try {
+				await client.directory.deleteAgent(signer.agentId);
+			} catch (error) {
+				if (!isTinyPlaceStatus(error, 404)) {
+					throw error;
+				}
+			}
+		}
+	});
+
+	test("F034-F036: directory auth binds request details and rejects replayed or stale signatures", async () => {
+		const signer = await LocalSigner.generate();
+		const client = new TinyPlaceClient({ baseUrl: API_URL, signer });
+		const requestUri = `/directory/agents/${encodeURIComponent(signer.agentId)}`;
+		const now = new Date().toISOString();
+		const card = {
+			agentId: signer.agentId,
+			cryptoId: signer.agentId,
+			name: uniq("functional-auth-agent"),
+			description: "Functional auth signature probe",
+			publicKey: signer.publicKeyBase64,
+			url: `${API_URL}/a2a/${encodeURIComponent(signer.agentId)}`,
+			skills: ["auth"],
+			capabilities: ["directory-write"],
+			tags: ["functional", "auth"],
+			createdAt: now,
+			updatedAt: now,
+		};
+		const body = JSON.stringify(card);
+		const replayHeaders = await signDirectoryWrite(
+			signer,
+			signer.publicKeyBase64,
+			"PUT",
+			requestUri,
+			body
+		);
+		const headers = {
+			"Content-Type": "application/json",
+			...replayHeaders,
+		};
+
+		try {
+			const created = await api(requestUri, {
+				method: "PUT",
+				headers,
+				body,
+			});
+			expect(created.status).toBe(200);
+			await expect(created.json()).resolves.toMatchObject({
+				agentId: signer.agentId,
+				name: card.name,
+			});
+
+			const replayed = await api(requestUri, {
+				method: "PUT",
+				headers,
+				body,
+			});
+			expect(replayed.status).toBe(403);
+			await expect(replayed.json()).resolves.toMatchObject({
+				error: "directory write signature required",
+			});
+
+			const signedOriginal = await signDirectoryWrite(
+				signer,
+				signer.publicKeyBase64,
+				"PUT",
+				requestUri,
+				body
+			);
+			const tampered = await api(requestUri, {
+				method: "PUT",
+				headers: {
+					"Content-Type": "application/json",
+					...signedOriginal,
+				},
+				body: JSON.stringify({ ...card, name: `${card.name}-tampered` }),
+			});
+			expect(tampered.status).toBe(403);
+
+			const staleBody = JSON.stringify({
+				...card,
+				name: `${card.name}-stale`,
+			});
+			const stale = await api(requestUri, {
+				method: "PUT",
+				headers: await signedDirectoryHeaders(
+					signer,
+					"PUT",
+					requestUri,
+					staleBody,
+					{
+						timestamp: new Date(Date.now() - 10 * 60_000).toISOString(),
+						nonce: uniq("stale"),
+					}
+				),
+				body: staleBody,
+			});
+			expect(stale.status).toBe(403);
+
+			const missingNonceBody = JSON.stringify({
+				...card,
+				name: `${card.name}-missing-nonce`,
+			});
+			const missingNonce = await api(requestUri, {
+				method: "PUT",
+				headers: await signedDirectoryHeaders(
+					signer,
+					"PUT",
+					requestUri,
+					missingNonceBody,
+					{ nonce: "" }
+				),
+				body: missingNonceBody,
+			});
+			expect(missingNonce.status).toBe(403);
+
+			const unsignedStream = new TinyPlaceClient({ baseUrl: API_URL }).a2a.stream(
+				signer.agentId
+			);
+			expect(unsignedStream).toBeDefined();
+			await expect(unsignedStream!.connect()).rejects.toBeTruthy();
+			unsignedStream!.close();
+		} finally {
+			try {
+				await client.directory.deleteAgent(signer.agentId);
+			} catch (error) {
+				if (!isTinyPlaceStatus(error, 404)) {
+					throw error;
+				}
 			}
 		}
 	});

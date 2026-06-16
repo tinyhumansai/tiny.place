@@ -67,8 +67,8 @@ test.describe("reputation explore page", () => {
 		await expect(page.getByText("Reputation Leaderboard")).toBeVisible();
 		await expect(page.getByText("@alice")).toBeVisible();
 		await expect(page.getByText("@bob")).toBeVisible();
-		// Username rows link to the @handle route; wallet-only rows to /u/.
-		await expect(page.locator('a[href="/@alice"]')).toBeVisible();
+		// Username rows link to the handle detail route; wallet-only rows to /u/.
+		await expect(page.locator('a[href="/handles/alice"]')).toBeVisible();
 		await expect(page.locator('a[href="/u/WALLET3333"]')).toBeVisible();
 	});
 

@@ -32,10 +32,15 @@ describe("ConversationsApi", () => {
       "@pending",
       "@moderator",
     );
+    await client.conversations.rejectMember(
+      "conv_123",
+      "@blocked",
+      "@moderator",
+    );
     await client.conversations.addModerator("conv_123", "@mod", "@creator");
     await client.conversations.addPublisher("conv_123", "@publisher", "@creator");
 
-    expect(requests).toHaveLength(7);
+    expect(requests).toHaveLength(8);
 
     expect(requests[0]!.method).toBe("POST");
     expect(requests[0]!.url).toBe("https://example.test/conversations");
@@ -88,19 +93,28 @@ describe("ConversationsApi", () => {
 
     expect(requests[5]!.method).toBe("POST");
     expect(requests[5]!.url).toBe(
-      "https://example.test/conversations/conv_123/moderators",
+      "https://example.test/conversations/conv_123/reject",
     );
-    expect(requests[5]!.headers.get("X-Agent-ID")).toBe("@creator");
+    expect(requests[5]!.headers.get("X-Agent-ID")).toBe("@moderator");
     await expect(requests[5]!.json()).resolves.toEqual({
-      agentId: "@mod",
+      agentId: "@blocked",
     });
 
     expect(requests[6]!.method).toBe("POST");
     expect(requests[6]!.url).toBe(
-      "https://example.test/conversations/conv_123/publishers",
+      "https://example.test/conversations/conv_123/moderators",
     );
     expect(requests[6]!.headers.get("X-Agent-ID")).toBe("@creator");
     await expect(requests[6]!.json()).resolves.toEqual({
+      agentId: "@mod",
+    });
+
+    expect(requests[7]!.method).toBe("POST");
+    expect(requests[7]!.url).toBe(
+      "https://example.test/conversations/conv_123/publishers",
+    );
+    expect(requests[7]!.headers.get("X-Agent-ID")).toBe("@creator");
+    await expect(requests[7]!.json()).resolves.toEqual({
       agentId: "@publisher",
     });
   });
@@ -112,13 +126,18 @@ describe("ConversationsApi", () => {
       baseUrl: "https://example.test",
       signer,
       fetch: async (input, init) => {
-        requests.push(new Request(input, init));
+        const request = new Request(input, init);
+        requests.push(request);
+        if (request.method === "GET") {
+          return Response.json({ messages: [] });
+        }
         return new Response(null, { status: 204 });
       },
     });
 
     await client.conversations.leave("conv_123", "@member");
     await client.conversations.removeMember("conv_123", "@member", "@moderator");
+    await client.conversations.listMessages("conv_123", { limit: 10 });
     await client.conversations.deleteMessage("conv_123", "msg_123", "@author");
     await client.conversations.removeModerator("conv_123", "@mod", "@creator");
     await client.conversations.removePublisher(
@@ -131,17 +150,27 @@ describe("ConversationsApi", () => {
     expect(requests.map((request) => request.method)).toEqual([
       "DELETE",
       "DELETE",
+      "GET",
       "DELETE",
       "DELETE",
       "DELETE",
       "DELETE",
     ]);
     expect(requests.map((request) => request.headers.get("X-Agent-ID"))).toEqual(
-      ["@member", "@moderator", "@author", "@creator", "@creator", "@creator"],
+      [
+        "@member",
+        "@moderator",
+        null,
+        "@author",
+        "@creator",
+        "@creator",
+        "@creator",
+      ],
     );
     expect(requests.map((request) => request.url)).toEqual([
       "https://example.test/conversations/conv_123/leave?agentId=%40member",
       "https://example.test/conversations/conv_123/members/%40member",
+      "https://example.test/conversations/conv_123/messages?limit=10",
       "https://example.test/conversations/conv_123/messages/msg_123",
       "https://example.test/conversations/conv_123/moderators/%40mod",
       "https://example.test/conversations/conv_123/publishers/%40publisher",

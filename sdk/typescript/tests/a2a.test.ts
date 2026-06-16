@@ -1,7 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { LocalSigner, TinyPlaceClient } from "../src/index.js";
+import { A2AApi } from "../src/api/a2a.js";
 
 describe("A2AApi", () => {
+  it("opens A2A streams with directory-write query auth", () => {
+    const calls: Array<{
+      path: string;
+      options?: { directoryAuth?: boolean };
+    }> = [];
+    const api = new A2AApi(
+      {} as never,
+      (path, options) => {
+        calls.push({ path, options });
+        return {} as never;
+      },
+    );
+
+    api.stream("@agent");
+
+    expect(calls).toEqual([
+      {
+        path: "/a2a/%40agent/stream",
+        options: { directoryAuth: true },
+      },
+    ]);
+  });
+
   it("reads agent markdown docs as text", async () => {
     const requests: Array<Request> = [];
     const client = new TinyPlaceClient({

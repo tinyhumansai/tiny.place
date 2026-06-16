@@ -42,7 +42,7 @@ export default defineConfig({
 
 	/* Build output is produced by `pnpm build`; serve it for the tests. */
 	webServer: {
-		command: `pnpm exec next start -p ${PORT}`,
+		command: `TINYPLACE_BASIC_AUTH_ENABLED=false pnpm exec next start -p ${PORT}`,
 		url: BASE_URL,
 		reuseExistingServer: !process.env.CI,
 		timeout: 120_000,

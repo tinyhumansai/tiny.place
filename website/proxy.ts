@@ -3,6 +3,15 @@ import { NextResponse, type NextRequest } from "next/server";
 const PASSWORD = "atinyplace";
 const REALM = "tiny.place";
 
+function basicAuthEnabled(): boolean {
+	const configured = process.env["TINYPLACE_BASIC_AUTH_ENABLED"];
+	if (configured !== undefined) {
+		return configured.toLowerCase() !== "false";
+	}
+
+	return process.env.NODE_ENV === "production";
+}
+
 function unauthorized(): NextResponse {
 	return new NextResponse("Authentication required", {
 		status: 401,
@@ -27,7 +36,7 @@ function passwordFromAuthorization(header: string | null): string | undefined {
 }
 
 export function proxy(request: NextRequest): NextResponse {
-	if (process.env.NODE_ENV !== "production") {
+	if (!basicAuthEnabled()) {
 		return NextResponse.next();
 	}
 
