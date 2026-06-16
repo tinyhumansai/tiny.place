@@ -10,6 +10,16 @@ import {
 
 import { createSolanaConnection } from "@src/common/solana-rpc";
 
+/**
+ * The USDC mint to settle in. Defaults to the SDK's mainnet mint but is
+ * overridable via NEXT_PUBLIC_SOLANA_USDC_MINT so devnet/test stacks (which use
+ * a different mint) derive the correct token accounts. Mirrors the override used
+ * by use-wallet-balances.ts.
+ */
+export function publicUsdcMint(): string {
+	return process.env["NEXT_PUBLIC_SOLANA_USDC_MINT"] ?? SOLANA_USDC_MINT;
+}
+
 // The Associated Token Account program. Not exported by the SDK, so it is
 // defined here alongside the other Solana program ids it complements.
 const ASSOCIATED_TOKEN_PROGRAM_ID =
@@ -192,11 +202,23 @@ export async function buildDelegatedTransferTx(options: {
 	mint?: string;
 	decimals?: number;
 	createPayeeAccount?: boolean;
+	/**
+	 * When present, prepends a gasless SPL ApproveChecked (owner = payer) that
+	 * grants the session key delegate authority over `allowance` of the mint, and
+	 * has the owner sign the transaction via `signOwner`. The facilitator still
+	 * fee-pays, so the buyer spends no gas to fold the one-time grant into this
+	 * first payment. Omit once the delegate is already approved.
+	 */
+	approve?: {
+		allowance: string;
+		signOwner: (message: Uint8Array) => Promise<Uint8Array>;
+	};
 }): Promise<string> {
-	const mint = options.mint ?? SOLANA_USDC_MINT;
+	const mint = options.mint ?? publicUsdcMint();
 	const decimals = options.decimals ?? USDC_DECIMALS;
 	const facilitator = new PublicKey(options.facilitator);
 	const mintKey = new PublicKey(mint);
+	const owner = new PublicKey(options.payer);
 	const payerAccount = associatedTokenAddress(options.payer, mint);
 	const payeeAccount = associatedTokenAddress(options.payee, mint);
 	const sessionKey = new PublicKey(
@@ -209,6 +231,18 @@ export async function buildDelegatedTransferTx(options: {
 	const transaction = new Transaction();
 	transaction.feePayer = facilitator;
 	transaction.recentBlockhash = blockhash;
+	if (options.approve) {
+		transaction.add(
+			approveCheckedInstruction({
+				ownerTokenAccount: payerAccount,
+				mint: mintKey,
+				delegate: sessionKey,
+				owner,
+				amount: options.approve.allowance,
+				decimals,
+			})
+		);
+	}
 	if (options.createPayeeAccount ?? true) {
 		transaction.add(
 			createIdempotentAtaInstruction({
@@ -230,16 +264,59 @@ export async function buildDelegatedTransferTx(options: {
 		})
 	);
 
-	// Session-sign the message; leave the facilitator (fee-payer) slot empty.
+	// Session-signs the transfer authority; when folding in the grant, the owner
+	// (payer) also signs the prepended approve. Both sign the same serialized
+	// message; the facilitator (fee-payer) slot is left empty for the backend.
 	const message = transaction.serializeMessage();
-	const signature = await options.signSession(new Uint8Array(message));
-	transaction.addSignature(sessionKey, Buffer.from(signature));
+	const sessionSignature = await options.signSession(new Uint8Array(message));
+	transaction.addSignature(sessionKey, Buffer.from(sessionSignature));
+	if (options.approve) {
+		const ownerSignature = await options.approve.signOwner(
+			new Uint8Array(message)
+		);
+		transaction.addSignature(owner, Buffer.from(ownerSignature));
+	}
 
 	const wire = transaction.serialize({
 		requireAllSignatures: false,
 		verifySignatures: false,
 	});
 	return wire.toString("base64");
+}
+
+/**
+ * Reads how much of `mint` the owner has currently delegated to `delegate` (the
+ * session key), in base units. Returns 0 when the owner's token account does not
+ * exist or its delegate is a different key — i.e. the caller must (re)approve
+ * before a delegated transfer can move funds.
+ */
+export async function readDelegateAllowance(options: {
+	rpcUrl: string;
+	owner: string;
+	delegate: string;
+	mint?: string;
+}): Promise<bigint> {
+	const mint = options.mint ?? publicUsdcMint();
+	const connection = createSolanaConnection(options.rpcUrl);
+	const ata = associatedTokenAddress(options.owner, mint);
+	const parsed = await connection.getParsedAccountInfo(ata);
+	const data = parsed.value?.data;
+	if (!data || !("parsed" in data)) {
+		return 0n;
+	}
+	const info = (data.parsed as { info?: Record<string, unknown> }).info ?? {};
+	if (info["delegate"] !== options.delegate) {
+		return 0n;
+	}
+	const delegated = info["delegatedAmount"] as { amount?: string } | undefined;
+	if (!delegated?.amount) {
+		return 0n;
+	}
+	try {
+		return BigInt(delegated.amount);
+	} catch {
+		return 0n;
+	}
 }
 
 /** Derives the escrow per-payer nonce tracker PDA. */

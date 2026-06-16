@@ -11,8 +11,10 @@ import {
 
 import { createClient } from "@src/common/api-client";
 import {
+	buildDelegatedTxForPaymentMap,
 	enableDelegatedSpending,
 	payViaSessionDelegate,
+	X402_DELEGATED_TX_METADATA_KEY,
 	type SessionPaymentOptions,
 } from "@src/common/session-payments";
 import { SessionWalletSigner } from "@src/common/session-wallet";
@@ -117,6 +119,29 @@ export async function signX402ChallengeAuthorization({
 export async function signX402ChallengePaymentMap(
 	options: X402PaymentSigningOptions
 ): Promise<Record<string, string>> {
-	const signedPayment = await signX402ChallengeAuthorization(options);
-	return x402AuthorizationToPaymentMap(signedPayment);
+	const signer = options.signer ?? requireAuthSession().signer;
+	const signedPayment = await signX402ChallengeAuthorization({
+		...options,
+		signer,
+	});
+	const payment = x402AuthorizationToPaymentMap(signedPayment);
+
+	// Delegate the spend so the PAYER's own funds move (the facilitator only
+	// fee-pays), instead of the backend custodially fronting them. Carried as
+	// metadata.delegatedTx; the backend routes any payment bearing it to the
+	// delegated settler. Only session wallets can do this; other signers and
+	// non-delegatable payments keep the existing path.
+	if (signer instanceof SessionWalletSigner) {
+		const delegatedTx = await buildDelegatedTxForPaymentMap(signer, {
+			amount: payment["amount"] ?? "",
+			asset: payment["asset"],
+			from: payment["from"] ?? "",
+			network: payment["network"],
+			to: payment["to"] ?? "",
+		});
+		if (delegatedTx) {
+			payment[`metadata.${X402_DELEGATED_TX_METADATA_KEY}`] = delegatedTx;
+		}
+	}
+	return payment;
 }

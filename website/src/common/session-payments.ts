@@ -1,4 +1,4 @@
-import type { Transaction } from "@solana/web3.js";
+import { PublicKey, type Transaction } from "@solana/web3.js";
 import {
 	buildX402PaymentAuthorization,
 	SOLANA_MAINNET_NETWORK,
@@ -6,14 +6,122 @@ import {
 	type X402SettleResponse,
 } from "@tinyhumansai/tinyplace";
 
-import { createSolanaConnection } from "@src/common/solana-rpc";
+import { createClient } from "@src/common/api-client";
+import {
+	createSolanaConnection,
+	primarySolanaRpcUrl,
+} from "@src/common/solana-rpc";
 import {
 	buildApproveTransaction,
 	buildDelegatedDepositTx,
 	buildDelegatedTransferTx,
+	publicUsdcMint,
+	readDelegateAllowance,
 	readEscrowNextNonce,
 } from "@src/common/delegated-payment";
 import type { SessionWalletSigner } from "@src/common/session-wallet";
+
+// SPL delegate cap granted on the first payment (100 USDC, 6-decimal base
+// units) — matches the session grant budget so later payments up to the cap
+// need no re-approval.
+const SPL_DELEGATE_CAP = "100000000";
+
+/** The x402 metadata key that carries the session-signed delegated wire tx. */
+export const X402_DELEGATED_TX_METADATA_KEY = "delegatedTx";
+
+function isDelegatableSolanaUsdc(fields: {
+	to: string;
+	amount: string;
+	asset?: string;
+	network?: string;
+}): boolean {
+	if (fields.asset && fields.asset.toUpperCase() !== "USDC") {
+		return false;
+	}
+	if (fields.network && !fields.network.toLowerCase().startsWith("solana")) {
+		return false;
+	}
+	return Boolean(fields.amount) && Boolean(fields.to);
+}
+
+function isBase58Address(value: string): boolean {
+	try {
+		// Throws for @handles or otherwise non-base58 recipients.
+		void new PublicKey(value);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Builds the base64, session-signed delegated transfer for an x402 challenge so
+ * the payer's OWN funds move to the recipient (the facilitator only fee-pays),
+ * to be carried as `metadata.delegatedTx` in the payment map. On the first
+ * payment — when the session key is not yet an SPL delegate of the payer's USDC
+ * — it folds in a gasless, owner-signed ApproveChecked.
+ *
+ * Returns undefined when the payment is not a delegatable Solana USDC transfer
+ * to a base58 recipient (e.g. an @handle recipient, or a non-USDC asset), so the
+ * caller keeps its existing behavior for those.
+ */
+export async function buildDelegatedTxForPaymentMap(
+	signer: SessionWalletSigner,
+	fields: {
+		from: string;
+		to: string;
+		amount: string;
+		asset?: string;
+		network?: string;
+	}
+): Promise<string | undefined> {
+	if (!isDelegatableSolanaUsdc(fields)) {
+		return undefined;
+	}
+	if (!isBase58Address(fields.to) || !isBase58Address(fields.from)) {
+		return undefined;
+	}
+
+	const rpcUrl = primarySolanaRpcUrl();
+	const mint = publicUsdcMint();
+	const client = createClient(signer);
+	const facilitator = (await client.payments.facilitator()).address;
+	const payer = fields.from;
+	const sessionPublicKeyBase64 = signer.publicKeyBase64;
+	const sessionAddress = new PublicKey(
+		Buffer.from(sessionPublicKeyBase64, "base64")
+	).toBase58();
+
+	const need = BigInt(fields.amount);
+	const allowance = await readDelegateAllowance({
+		rpcUrl,
+		owner: payer,
+		delegate: sessionAddress,
+		mint,
+	});
+	const approve =
+		allowance >= need
+			? undefined
+			: {
+					allowance:
+						BigInt(SPL_DELEGATE_CAP) >= need ? SPL_DELEGATE_CAP : fields.amount,
+					signOwner: (message: Uint8Array): Promise<Uint8Array> =>
+						signer.walletSigner.sign(message),
+				};
+
+	return buildDelegatedTransferTx({
+		rpcUrl,
+		facilitator,
+		payer,
+		payee: fields.to,
+		amount: fields.amount,
+		sessionPublicKeyBase64,
+		signSession: (message: Uint8Array): Promise<Uint8Array> =>
+			signer.sign(message),
+		mint,
+		approve,
+	});
+}
 
 type SignTransactionFunction = (
 	transaction: Transaction
