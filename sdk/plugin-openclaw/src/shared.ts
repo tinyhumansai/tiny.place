@@ -14,10 +14,14 @@ import {
   TinyPlaceError,
 } from "@tinyhumansai/tinyplace";
 
-/** Ensures a handle has a leading `@`. */
+/** Ensures a handle has a leading `@`. Rejects empty / whitespace-only input. */
 export function normalizeHandle(name: string): string {
   const trimmed = name.trim();
-  return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
+  const normalized = trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
+  if (normalized.length <= 1) {
+    throw new Error("handle is empty");
+  }
+  return normalized;
 }
 
 export interface PaymentChallenge {
@@ -65,7 +69,7 @@ export async function payFromChallenge(
     amount: challenge.amount,
     from: challenge.from || signer.agentId,
     to: challenge.to,
-    nonce: challenge.nonce || `tp-${Date.now().toString(36)}`,
+    nonce: challenge.nonce || `tp-${globalThis.crypto.randomUUID()}`,
     ...(challenge.expiresAt ? { expiresAt: challenge.expiresAt } : {}),
     expiresInMs: 5 * 60 * 1000,
     publicKeyBase64: signer.publicKeyBase64,

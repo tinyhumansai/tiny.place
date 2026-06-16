@@ -37,6 +37,13 @@ test("normalizeHandle trims surrounding whitespace", () => {
   assert.equal(normalizeHandle("  @foo "), "@foo");
 });
 
+test("normalizeHandle rejects empty / whitespace-only input", () => {
+  assert.throws(() => normalizeHandle(""), /handle is empty/);
+  assert.throws(() => normalizeHandle("   "), /handle is empty/);
+  assert.throws(() => normalizeHandle("@"), /handle is empty/);
+  assert.throws(() => normalizeHandle("  @ "), /handle is empty/);
+});
+
 test("challengeOf extracts the payment challenge from a 402 body", () => {
   const error = new TinyPlaceError(402, { payment: { amount: "5", to: "@a" } });
   const challenge = challengeOf(error);
