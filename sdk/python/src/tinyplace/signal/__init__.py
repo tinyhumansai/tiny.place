@@ -2,8 +2,11 @@
 
 Ported slice-by-slice from the TypeScript SDK. This package currently provides
 crypto primitives (:mod:`tinyplace.signal.crypto`), key management / prekey
-bundles (:mod:`tinyplace.signal.keys`), and the session-store contract with an
-in-memory implementation (:mod:`tinyplace.signal.store`).
+bundles (:mod:`tinyplace.signal.keys`), the session-store contract with an
+in-memory implementation (:mod:`tinyplace.signal.store`), X3DH key agreement
+(:mod:`tinyplace.signal.x3dh`), the Double Ratchet
+(:mod:`tinyplace.signal.ratchet`), and the 1:1 session layer that ties them
+together (:mod:`tinyplace.signal.session`).
 
 Note: ``crypto``, ``types`` and ``store`` currently each define identical
 ``X25519KeyPair`` (and ``PreKeyPair`` / ``SignedPreKeyPair``) dataclasses; the
@@ -54,6 +57,7 @@ from .ratchet import (
     ratchet_decrypt,
     ratchet_encrypt,
 )
+from .session import EncryptedMessage, SignalSession, parse_key_bundle
 from .store import SenderKeyState, SessionState, SessionStore, skipped_key_id
 from .types import PreKeyPair, SignedPreKeyPair, X25519KeyPair
 from .x3dh import (
@@ -120,4 +124,8 @@ __all__ = [
     "encode_header",
     "ratchet_encrypt",
     "ratchet_decrypt",
+    # 1:1 session layer
+    "EncryptedMessage",
+    "SignalSession",
+    "parse_key_bundle",
 ]
