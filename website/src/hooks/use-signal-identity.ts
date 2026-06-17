@@ -97,7 +97,7 @@ export function useSignalIdentity(): UseSignalIdentityResult {
 		if (encryptionClient) {
 			if (!useMessagingStore.getState().bundlePublished) {
 				try {
-					await publishKeyBundle(encryptionClient, readyIdentity);
+					await publishKeyBundle(encryptionClient);
 					useMessagingStore.getState().markBundlePublished();
 				} catch (publishError) {
 					console.warn("Failed to publish key bundle:", publishError);
