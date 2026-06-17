@@ -43,39 +43,78 @@ const ENCRYPTION_PUBLIC_KEY_METADATA = "encryptionPublicKey";
 function randomId(prefix: string): string {
   const bytes = new Uint8Array(8);
   globalThis.crypto.getRandomValues(bytes);
-  const suffix = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  const suffix = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(
+    "",
+  );
   return `${prefix}-${Date.now().toString(36)}-${suffix}`;
 }
 
-/** Looks like a raw base64 Ed25519 public key (44 chars, base64) vs a @handle. */
-function isPublicKey(value: string): boolean {
-  return !value.startsWith("@") && /^[A-Za-z0-9+/]{42,46}={0,2}$/.test(value);
+/**
+ * Looks like a raw base64 Ed25519 public key. A base64-encoded 32-byte key is
+ * always 44 chars ending in a single `=` pad. We require that trailing pad so a
+ * base58 cryptoId/agentId — which is also ~44 chars of [A-Za-z0-9] but never
+ * contains `+`, `/`, or `=` — is NOT misread as a raw key (that misread sent the
+ * bundle fetch to `/keys/<cryptoId>/bundle`, which 404s instead of resolving the
+ * recipient's card to its advertised encryption key).
+ */
+export function isPublicKey(value: string): boolean {
+  return /^[A-Za-z0-9+/]{43}=$/.test(value);
+}
+
+/** Picks the messaging address from a card: advertised encryption key, else the card's own key. */
+function cardEncryptionAddress(
+  advertised: unknown,
+  publicKey: string | undefined,
+  identityKey: string | undefined,
+  recipient: string,
+): string {
+  const address =
+    (typeof advertised === "string" && advertised.length > 0
+      ? advertised
+      : undefined) ??
+    publicKey ??
+    identityKey;
+  if (!address) {
+    throw new Error(
+      `could not resolve ${recipient} to an encryption public key`,
+    );
+  }
+  return address;
 }
 
 /**
- * Resolves a recipient (a @handle or a raw base64 public key) to the base64
- * encryption public key to address messages + bundles to. Mirrors the web app's
- * `resolveEncryptionAddress`: prefer the card's advertised encryption key, then
- * the card's own public key (single-key agents, like this CLI), then the
- * identity key. This is what lets the CLI message web-app users that run a
- * distinct encryption identity.
+ * Resolves a recipient to the base64 encryption public key to address messages +
+ * bundles to. Accepts three forms: a raw base64 key (used as-is), an `@handle`
+ * (directory.resolve), or a base58 cryptoId/agentId (directory.getAgent). For the
+ * latter two it mirrors the web app's `resolveEncryptionAddress`: prefer the
+ * card's advertised encryption key, then the card's own public key (single-key
+ * agents, like this CLI), then the identity key. This is what lets the CLI
+ * message web-app users that run a distinct encryption identity.
  */
-async function resolveRecipientKey(
+export async function resolveRecipientKey(
   client: TinyPlaceClient,
   recipient: string,
 ): Promise<string> {
   if (isPublicKey(recipient)) return recipient;
-  const handle = recipient.startsWith("@") ? recipient : `@${recipient}`;
-  const resolved = await client.directory.resolve(handle);
-  const advertised = resolved.agent?.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA];
-  const address =
-    (typeof advertised === "string" && advertised.length > 0 ? advertised : undefined) ??
-    resolved.agent?.publicKey ??
-    resolved.identity?.publicKey;
-  if (!address) {
-    throw new Error(`could not resolve ${recipient} to an encryption public key`);
+
+  if (recipient.startsWith("@")) {
+    const resolved = await client.directory.resolve(recipient);
+    return cardEncryptionAddress(
+      resolved.agent?.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA],
+      resolved.agent?.publicKey,
+      resolved.identity?.publicKey,
+      recipient,
+    );
   }
-  return address;
+
+  // A bare base58 cryptoId / agentId: look up its directory card directly.
+  const card = await client.directory.getAgent(recipient);
+  return cardEncryptionAddress(
+    card.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA],
+    card.publicKey,
+    undefined,
+    recipient,
+  );
 }
 
 export interface PublishKeysResult {
@@ -281,9 +320,7 @@ export async function readMessages(
       from: envelope.from,
       timestamp: envelope.timestamp,
       type: envelope.type,
-      ...(handoff
-        ? { control: `group-key:${handoff.groupId}` }
-        : { text }),
+      ...(handoff ? { control: `group-key:${handoff.groupId}` } : { text }),
     });
     // Acknowledge separately: the message is already decrypted + persisted, so an
     // ack failure must not be reported as a decrypt failure.
