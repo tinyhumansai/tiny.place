@@ -43,3 +43,11 @@ def test_prefers_base58_when_ambiguous() -> None:
     pub = os.urandom(32)
     crypto_id = derive_crypto_id(pub)
     assert decode_agent_address(crypto_id) == pub
+
+
+def test_rejects_address_of_wrong_length() -> None:
+    # A base64 value that decodes to != 32 bytes must raise a clear error, not
+    # return malformed key bytes that crash deeper in the Signal stack.
+    short = public_key_to_base64(os.urandom(16))
+    with pytest.raises(ValueError, match="32-byte"):
+        decode_agent_address(short)

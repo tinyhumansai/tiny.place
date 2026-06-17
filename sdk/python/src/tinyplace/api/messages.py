@@ -259,7 +259,12 @@ def decode_agent_address(address: str) -> bytes:
             return raw
     except Exception:  # noqa: BLE001 - not base58; fall back to base64 below
         pass
-    return from_base64(address)
+    raw = from_base64(address)
+    if len(raw) != 32:
+        raise ValueError(
+            f"Agent address must decode to a 32-byte Ed25519 public key, got {len(raw)}"
+        )
+    return raw
 
 
 def _next_message_id() -> str:
