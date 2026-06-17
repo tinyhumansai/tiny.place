@@ -69,6 +69,47 @@ export function deriveCryptoId(publicKey: Uint8Array): string {
   return publicKeyToSolanaAddress(publicKey);
 }
 
+function decodeBase58(value: string): Uint8Array {
+  if (value.length === 0) {
+    return new Uint8Array();
+  }
+  let decoded = 0n;
+  for (const char of value) {
+    const digit = BASE58_ALPHABET.indexOf(char);
+    if (digit === -1) {
+      throw new Error(`Invalid base58 character: ${char}`);
+    }
+    decoded = decoded * 58n + BigInt(digit);
+  }
+  const bytes: Array<number> = [];
+  while (decoded > 0n) {
+    bytes.push(Number(decoded & 0xffn));
+    decoded >>= 8n;
+  }
+  bytes.reverse();
+  let leadingZeroes = 0;
+  for (const char of value) {
+    if (char !== "1") break;
+    leadingZeroes += 1;
+  }
+  const result = new Uint8Array(leadingZeroes + bytes.length);
+  result.set(bytes, leadingZeroes);
+  return result;
+}
+
+/**
+ * Recovers the base64 public key from a cryptoId (the inverse of
+ * {@link deriveCryptoId}, since a wallet cryptoId is the base58 encoding of its
+ * Ed25519 public key). Directory-card writers use this so a wallet-only card's
+ * `publicKey` derives its `cryptoId`, independent of which key currently signs
+ * requests (e.g. a hot session key that differs from the wallet key).
+ *
+ * @throws If `cryptoId` is not valid base58 (e.g. an `@handle`).
+ */
+export function cryptoIdToPublicKeyBase64(cryptoId: string): string {
+  return publicKeyToBase64(decodeBase58(cryptoId));
+}
+
 export function sha256Hex(data: Uint8Array | string): string {
   const input =
     typeof data === "string" ? new TextEncoder().encode(data) : data;
