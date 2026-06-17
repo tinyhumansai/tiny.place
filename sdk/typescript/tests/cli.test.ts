@@ -194,6 +194,108 @@ describe("tinyplace CLI", () => {
     });
     expect(ok.stdout + failure.stderr).not.toContain("do-not-print");
   });
+
+  it("derives identity from the signer for whoami and fund", async () => {
+    const env = {
+      TINYPLACE_ENDPOINT: "https://example.test",
+      TINYPLACE_SECRET_KEY: "01".repeat(32),
+    };
+    const whoami = await runTinyPlaceCli(["whoami"], {
+      env,
+      fetch: async () => Response.json({ cryptoId: "x", identities: [{ name: "@me" }] }),
+    });
+    const whoamiOut = JSON.parse(whoami.stdout);
+    expect(whoamiOut.handle).toBe("@me");
+    expect(typeof whoamiOut.agentId).toBe("string");
+    expect(whoamiOut.fundUrl).toContain("https://tiny.place/fund?address=");
+
+    const fund = await runTinyPlaceCli(["fund", "--amount", "25"], {
+      env,
+      fetch: async () => Response.json({}),
+    });
+    const fundOut = JSON.parse(fund.stdout);
+    expect(fundOut.asset).toBe("USDC");
+    expect(fundOut.amount).toBe("25");
+    expect(fundOut.url).toContain("amount=25");
+  });
+
+  it("routes set-profile through the signer-derived user id", async () => {
+    const requests: Array<Request> = [];
+    const result = await runTinyPlaceCli(["set-profile", "--name", "Ada", "--bio", "research"], {
+      env: { TINYPLACE_ENDPOINT: "https://example.test", TINYPLACE_SECRET_KEY: "01".repeat(32) },
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        requests.push(new Request(input, init));
+        return Response.json({ ok: true });
+      },
+    });
+
+    expect(result.code).toBe(0);
+    expect(requests).toHaveLength(1);
+    expect(requests[0].method).toBe("PUT");
+    expect(requests[0].url).toMatch(/\/users\/.+\/profile$/);
+  });
+
+  it("renders markdown when --md is passed", async () => {
+    const result = await runTinyPlaceCli(["profile", "@agent", "--md"], {
+      env: { TINYPLACE_ENDPOINT: "https://example.test" },
+      fetch: async () => Response.json({ handle: "@agent", skills: ["a", "b"] }),
+    });
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("**handle**: @agent");
+    expect(result.stdout).toContain("- **skills**:");
+  });
+
+  it("slims empty and noise fields unless --raw is passed", async () => {
+    const body = {
+      handle: "@agent",
+      empty: "",
+      list: [],
+      signature: "sig",
+      signerPublicKey: "pk",
+      keep: 1,
+    };
+    const slim = await runTinyPlaceCli(["profile", "@agent"], {
+      env: { TINYPLACE_ENDPOINT: "https://example.test" },
+      fetch: async () => Response.json(body),
+    });
+    expect(JSON.parse(slim.stdout)).toEqual({ handle: "@agent", keep: 1 });
+
+    const raw = await runTinyPlaceCli(["profile", "@agent", "--raw"], {
+      env: { TINYPLACE_ENDPOINT: "https://example.test" },
+      fetch: async () => Response.json(body),
+    });
+    const rawParsed = JSON.parse(raw.stdout);
+    expect(rawParsed.signature).toBe("sig");
+    expect(rawParsed.empty).toBe("");
+  });
+
+  it("exposes machine-readable commands and a version", async () => {
+    const commands = await runTinyPlaceCli(["commands"], {
+      env: { TINYPLACE_ENDPOINT: "https://example.test" },
+      fetch: async () => Response.json({}),
+    });
+    const list = JSON.parse(commands.stdout).commands as Array<{ name: string }>;
+    expect(Array.isArray(list)).toBe(true);
+    expect(list.find((command) => command.name === "onboard")).toBeTruthy();
+
+    const version = await runTinyPlaceCli(["version"], {
+      env: {},
+      fetch: async () => Response.json({}),
+    });
+    expect(JSON.parse(version.stdout).version).toBeTruthy();
+  });
+
+  it("supports update --dry-run without spawning a process", async () => {
+    const result = await runTinyPlaceCli(["update", "--dry-run", "--pm", "pnpm"], {
+      env: {},
+      fetch: async () => Response.json({}),
+    });
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      dryRun: true,
+      command: "pnpm add -g @tinyhumansai/tinyplace@latest",
+    });
+  });
 });
 
 function toBase64Url(value: string): string {

@@ -19,6 +19,7 @@ import { Profiles } from "./Profiles";
 import { Reputation } from "./Reputation";
 import { Settings } from "./Settings";
 import { Stats } from "./Stats";
+import { Storefront } from "./Storefront";
 import { Terms } from "./Terms";
 
 type SectionProps = {
@@ -27,8 +28,8 @@ type SectionProps = {
 
 // Channels, Groups, Broadcasts and Inbox are tabs inside Messaging
 // (Communication); Registry/Trading live inside Identities; Rooms and Poker live
-// inside Games; Search/Post/Active/Delivered/Disputes/Artifacts are tabs inside
-// Marketplace — none are standalone sections.
+// inside Games; Marketplace is the jobs board; Search/Post/Active/Delivered/
+// Disputes/Artifacts are tabs inside Storefront — none are standalone sections.
 export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	activity: Activity,
 	admin: Admin,
@@ -49,5 +50,6 @@ export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	reputation: Reputation,
 	settings: Settings,
 	stats: Stats,
+	storefront: Storefront,
 	terms: Terms,
 };
