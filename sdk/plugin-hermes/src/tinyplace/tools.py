@@ -20,6 +20,7 @@ from ._sdk import sdk_import
 from .runtime import TinyPlaceRuntime, get_runtime
 
 TinyPlaceError = sdk_import("http").TinyPlaceError
+_decode_agent_address = sdk_import("api.messages").decode_agent_address
 
 # Agent-card metadata key the directory advertises the messaging key under
 # (mirrors website/src/common/encryption-discovery.ts).
@@ -240,7 +241,7 @@ async def _resolve_address(runtime: TinyPlaceRuntime, to: str) -> str:
     card's ``encryptionPublicKey`` metadata, falling back to its ``publicKey``
     (single-key agents). Mirrors website/src/common/encryption-discovery.ts.
     """
-    if not to.startswith("@") and _looks_like_base64_key(to):
+    if not to.startswith("@") and _is_messaging_address(to):
         return to
 
     client = await runtime.get_client()
@@ -271,14 +272,18 @@ def _agent_card(resolved: Any) -> dict[str, Any]:
     return resolved
 
 
-def _looks_like_base64_key(value: str) -> bool:
-    import base64
+def _is_messaging_address(value: str) -> bool:
+    """True if ``value`` is a raw messaging address, not a handle to resolve.
 
+    A messaging address is the agent's 32-byte Ed25519 key encoded as a base58
+    cryptoId (the canonical form) or base64. Anything else (e.g. a bare handle
+    like ``alice``) is resolved through the directory.
+    """
     try:
-        decoded = base64.b64decode(value, validate=True)
-    except Exception:  # noqa: BLE001
+        _decode_agent_address(value)
+        return True
+    except Exception:  # noqa: BLE001 - not a 32-byte address; treat as a handle
         return False
-    return len(decoded) == 32
 
 
 def _decode_text(plaintext: bytes) -> str:
