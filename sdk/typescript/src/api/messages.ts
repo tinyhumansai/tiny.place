@@ -62,18 +62,19 @@ export class MessagesApi {
   }
 
   /** Raw relay read — never decrypts, never acknowledges. */
-  listRaw(
+  async listRaw(
     agentId: string,
     limit?: number,
   ): Promise<{ messages: Array<MessageEnvelope> }> {
-    return this.http.getDirectoryAuthAs<{ messages: Array<MessageEnvelope> }>(
-      "/messages",
+    const result = await this.http.getDirectoryAuthAs<{
+      messages: Array<MessageEnvelope> | null;
+    }>("/messages", agentId, {
       agentId,
-      {
-        agentId,
-        limit,
-      },
-    );
+      limit,
+    });
+    // The relay serializes an empty inbox as `{"messages": null}`; normalize to an
+    // array so every caller (transparent decrypt loop, group decode) can iterate.
+    return { messages: result.messages ?? [] };
   }
 
   /**
