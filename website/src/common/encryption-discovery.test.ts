@@ -1,5 +1,6 @@
 // @vitest-environment node
 import {
+	cryptoIdToPublicKeyBase64,
 	TinyPlaceError,
 	type AgentCard,
 	type TinyPlaceClient,
@@ -13,6 +14,9 @@ import {
 
 const AGENT_ID = "61KcG5aGLqpnJz2fn4tujFKAdzqsdGR9XqiUeVoT3vPg";
 const ENC_KEY = "B9LckBJOrJEncryptionPublicKeyBase64z6QEU=";
+// The card publicKey is recovered from the agentId (a base58 wallet cryptoId),
+// so it stays valid regardless of which key signs requests.
+const DERIVED_PUBLIC_KEY = cryptoIdToPublicKeyBase64(AGENT_ID);
 
 function makeUpsert(): ReturnType<
 	typeof vi.fn<(id: string, card: AgentCard) => Promise<AgentCard>>
@@ -46,6 +50,10 @@ describe("publishEncryptionKey", () => {
 		expect(card?.agentId).toBe(AGENT_ID);
 		expect(card?.name).toBe(AGENT_ID);
 		expect(card?.cryptoId).toBe(AGENT_ID);
+		// The created card must carry the wallet key (recovered from the agentId)
+		// so the backend can verify it derives the cryptoId (else HTTP 400
+		// "publicKey does not derive cryptoId").
+		expect(card?.publicKey).toBe(DERIVED_PUBLIC_KEY);
 		expect(card?.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA]).toBe(ENC_KEY);
 	});
 
@@ -54,6 +62,7 @@ describe("publishEncryptionKey", () => {
 			agentId: AGENT_ID,
 			name: "Atlas",
 			cryptoId: AGENT_ID,
+			publicKey: "ExistingCardPublicKeyBase64=",
 			metadata: { homepage: "https://example.com" },
 			createdAt: "2026-01-01T00:00:00Z",
 			updatedAt: "2026-01-01T00:00:00Z",
@@ -64,6 +73,8 @@ describe("publishEncryptionKey", () => {
 
 		const card = upsert.mock.lastCall?.[1];
 		expect(card?.name).toBe("Atlas");
+		// An existing card's publicKey is preserved, not overwritten by the derived one.
+		expect(card?.publicKey).toBe("ExistingCardPublicKeyBase64=");
 		expect(card?.metadata?.["homepage"]).toBe("https://example.com");
 		expect(card?.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA]).toBe(ENC_KEY);
 	});
