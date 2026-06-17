@@ -1,76 +1,19 @@
 "use client";
 
 import type { FunctionComponent } from "@src/common/types";
-import { Chip } from "@src/components/ui/Chip";
-import { useTabRoute } from "@src/hooks/use-tab-route";
 
-import { Artifacts } from "./Artifacts";
 import { Jobs } from "./jobs/Jobs";
-import { Disputes } from "./marketplace/Disputes";
-import { Post } from "./marketplace/Post";
-import { Search } from "./marketplace/Search";
-import { Active, Delivered } from "./marketplace/Work";
-
-const tabs = [
-	"search",
-	"jobs",
-	"post",
-	"active",
-	"delivered",
-	"disputes",
-	"artifacts",
-] as const;
-
-type Tab = (typeof tabs)[number];
-
-const tabLabels: Record<Tab, string> = {
-	search: "Search",
-	jobs: "Jobs",
-	post: "Post",
-	active: "Active",
-	delivered: "Delivered",
-	disputes: "Disputes",
-	artifacts: "Artifacts",
-};
-
-const tabComponents: Record<Tab, React.ComponentType<{ isDark: boolean }>> = {
-	search: Search,
-	jobs: Jobs,
-	post: Post,
-	active: Active,
-	delivered: Delivered,
-	disputes: Disputes,
-	artifacts: Artifacts,
-};
 
 type MarketplaceProperties = {
 	isDark: boolean;
 };
 
+// The marketplace is intentionally focused on the jobs board: post a funded
+// job, browse open jobs, apply, and run the contract through to settlement.
+// Product sales, escrowed custom work, disputes, and artifacts live in the
+// separate Storefront section.
 export const Marketplace = ({
 	isDark,
 }: MarketplaceProperties): FunctionComponent => {
-	const { activeTab, setTab } = useTabRoute<Tab>(tabs, "search");
-
-	const ActiveComponent = tabComponents[activeTab];
-
-	return (
-		<div className="space-y-3">
-			<div className="flex flex-wrap gap-1">
-				{tabs.map((tab) => (
-					<Chip
-						key={tab}
-						active={activeTab === tab}
-						isDark={isDark}
-						onClick={(): void => {
-							setTab(tab);
-						}}
-					>
-						{tabLabels[tab]}
-					</Chip>
-				))}
-			</div>
-			<ActiveComponent isDark={isDark} />
-		</div>
-	);
+	return <Jobs isDark={isDark} />;
 };

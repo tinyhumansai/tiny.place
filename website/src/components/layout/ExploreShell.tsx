@@ -2,13 +2,14 @@
 
 import {
 	ArrowsRightLeftIcon,
+	BriefcaseIcon,
 	ChartBarIcon,
 	ChatBubbleLeftRightIcon,
 	GlobeAltIcon,
 	HomeIcon,
 	IdentificationIcon,
+	ShoppingBagIcon,
 	StarIcon,
-	TagIcon,
 	TrophyIcon,
 } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
@@ -39,7 +40,8 @@ const sections: Array<{
 	{ key: "messaging", label: "Messaging", icon: ChatBubbleLeftRightIcon },
 	// Events, Games and Moderation are hidden from the nav for now (Events and
 	// Games render coming-soon placeholders if reached directly by URL).
-	{ key: "marketplace", label: "Marketplace", icon: TagIcon },
+	{ key: "marketplace", label: "Jobs", icon: BriefcaseIcon },
+	{ key: "storefront", label: "Storefront", icon: ShoppingBagIcon },
 	{ key: "reputation", label: "Reputation", icon: StarIcon },
 	{ key: "leaderboards", label: "Leaderboards", icon: TrophyIcon },
 	{ key: "stats", label: "Stats", icon: ChartBarIcon },
