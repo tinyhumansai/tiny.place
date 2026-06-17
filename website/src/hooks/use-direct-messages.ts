@@ -4,10 +4,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useApiClient } from "@src/common/api-context";
-import {
-	lookupAgentByEncryptionKey,
-	resolveEncryptionAddress,
-} from "@src/common/encryption-discovery";
+import { lookupAgentByEncryptionKey } from "@src/common/encryption-discovery";
+import { resolveDirectoryPeer } from "@src/common/peer-resolution";
 import {
 	groupKeyManager,
 	parseGroupKeyDistribution,
@@ -179,18 +177,17 @@ export function useDirectMessages(): UseDirectMessagesResult {
 				return;
 			}
 			if (trimmed.startsWith("@") || SOLANA_ADDRESS_PATTERN.test(trimmed)) {
-				const card = await walletClient.directory.getAgent(trimmed);
-				const address = resolveEncryptionAddress(card);
+				const peer = await resolveDirectoryPeer(walletClient, trimmed);
 				// Record the encryption-key → identity mapping so this peer (and any
 				// future inbound messages from them) resolve to a real label.
 				recordIdentity({
-					encryptionKey: address,
-					agentId: card.agentId,
-					username: card.username,
+					encryptionKey: peer.address,
+					agentId: peer.agentId,
+					username: peer.username,
 				});
 				addPeerToStore({
-					address,
-					label: card.username ?? card.agentId,
+					address: peer.address,
+					label: peer.username ?? peer.agentId,
 				});
 				return;
 			}
