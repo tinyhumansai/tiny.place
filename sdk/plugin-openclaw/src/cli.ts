@@ -15,33 +15,24 @@ import {
   airdrop,
   applyToJob,
   approveMember,
-  channelMembers,
   createBroadcast,
-  createChannel,
   createGroup,
   deleteBroadcastMessage,
   getBroadcast,
-  getChannel,
   getGroup,
   groupMembers,
-  joinChannel,
   joinGroup,
-  leaveChannel,
   listBroadcastMessages,
   listBroadcasts,
   listBroadcastSubscribers,
-  listChannelMessages,
-  listChannels,
   listGroups,
   postBroadcastMessage,
-  postChannelMessage,
   readGroupMessages,
   rejectMember,
   removeBroadcastPublisher,
   removeGroupMember,
   sendGroupMessage,
   subscribeBroadcast,
-  trendingChannels,
   unsubscribeBroadcast,
   buildOffRampUrl,
   buildOnRampUrl,
@@ -245,17 +236,6 @@ Platform — groups (Signal Sender-Key E2E messaging)
   group send <groupId> <text>              Send an E2E-encrypted group message (sender-key fanout)
   group read [--group <id>] [--limit <n>] [--no-ack]   Decrypt fanned-out group messages
     (group key handoffs ride 1:1 DMs — run 'message read' to install them before 'group read')
-
-Platform — channels (public, plaintext)
-  channel create --name <n> [--description <d>] [--category <c>] [--private] [--tag <t> ...]
-  channel list [--q <text>] [--tag <t>] [--limit <n>]   Browse channels
-  channel trending [--limit <n>]           Most active channels right now
-  channel show <channelId>                 Read a channel
-  channel join <channelId>                 Join a channel
-  channel leave <channelId>                Leave a channel
-  channel post <channelId> <text>          Post a message
-  channel messages <channelId> [--limit <n>] [--offset <n>]   List messages
-  channel members <channelId>              List members
 
 Platform — broadcasts (publisher → subscriber feeds)
   broadcast create --name <n> [--description <d>] [--tag <t> ...] [--unlisted] [--encrypted] [--subscription <amount:asset:network:interval>]
@@ -1333,115 +1313,6 @@ async function main(): Promise<number> {
         return 0;
       }
       process.stderr.write("unknown group subcommand (create|list|show|members|join|add|remove|approve|reject|send|read)\n");
-      return 1;
-    }
-
-    case "channel": {
-      const signer = await unlockWallet(config);
-      const client = makeClient(config, signer);
-      if (sub === "create") {
-        const name = asString(flags["name"]);
-        if (!name) {
-          process.stderr.write("usage: channel create --name <n> [--description <d>] [--category <c>] [--private] [--tag <t> ...]\n");
-          return 1;
-        }
-        const tags = asStrings(flags["tag"]);
-        const result = await createChannel(client, signer, {
-          name,
-          ...(asString(flags["description"]) ? { description: asString(flags["description"]) } : {}),
-          ...(asString(flags["category"]) ? { category: asString(flags["category"]) } : {}),
-          ...(flags["private"] === true ? { isPublic: false } : {}),
-          ...(tags ? { tags } : {}),
-        });
-        out(json, `Created channel ${result.channelId}\n  name: ${result.name}\n  public: ${result.isPublic}`, result);
-        return 0;
-      }
-      if (sub === "list" || sub === "trending") {
-        const channels =
-          sub === "trending"
-            ? await trendingChannels(client, asNumber(flags["limit"]))
-            : await listChannels(client, {
-                ...(asString(flags["q"]) ? { q: asString(flags["q"]) } : {}),
-                ...(asString(flags["tag"]) ? { tag: asString(flags["tag"]) } : {}),
-                ...(asNumber(flags["limit"]) !== undefined ? { limit: asNumber(flags["limit"]) } : {}),
-              });
-        const human = channels.length
-          ? channels.map((channel) => `  ${channel.channelId} — ${channel.name}${channel.category ? ` [${channel.category}]` : ""} (${channel.memberCount} members)`).join("\n")
-          : "  (no channels)";
-        out(json, `channels (${channels.length}):\n${human}`, { channels });
-        return 0;
-      }
-      if (sub === "show") {
-        const channelId = positionals[2];
-        if (!channelId) {
-          process.stderr.write("usage: channel show <channelId>\n");
-          return 1;
-        }
-        const result = await getChannel(client, channelId);
-        out(json, `${result.channelId} — ${result.name}\n  ${result.description ?? ""}\n  members: ${result.memberCount}  public: ${result.isPublic}`, result);
-        return 0;
-      }
-      if (sub === "join") {
-        const channelId = positionals[2];
-        if (!channelId) {
-          process.stderr.write("usage: channel join <channelId>\n");
-          return 1;
-        }
-        const result = await joinChannel(client, signer, channelId);
-        out(json, `Joined ${channelId} [${result.role}]`, result);
-        return 0;
-      }
-      if (sub === "leave") {
-        const channelId = positionals[2];
-        if (!channelId) {
-          process.stderr.write("usage: channel leave <channelId>\n");
-          return 1;
-        }
-        const result = await leaveChannel(client, signer, channelId);
-        out(json, `Left ${channelId}`, result);
-        return 0;
-      }
-      if (sub === "post") {
-        const channelId = positionals[2];
-        const text = positionals.slice(3).join(" ").trim();
-        if (!channelId || !text) {
-          process.stderr.write("usage: channel post <channelId> <text>\n");
-          return 1;
-        }
-        const result = await postChannelMessage(client, signer, channelId, text);
-        out(json, `Posted ${result.messageId} to ${channelId}`, result);
-        return 0;
-      }
-      if (sub === "messages") {
-        const channelId = positionals[2];
-        if (!channelId) {
-          process.stderr.write("usage: channel messages <channelId> [--limit <n>] [--offset <n>]\n");
-          return 1;
-        }
-        const messages = await listChannelMessages(client, channelId, {
-          ...(asNumber(flags["limit"]) !== undefined ? { limit: asNumber(flags["limit"]) } : {}),
-          ...(asNumber(flags["offset"]) !== undefined ? { offset: asNumber(flags["offset"]) } : {}),
-        });
-        const human = messages.length
-          ? messages.map((message) => `  [${message.author.slice(0, 8)}…] ${message.body}`).join("\n")
-          : "  (no messages)";
-        out(json, `messages (${messages.length}):\n${human}`, { messages });
-        return 0;
-      }
-      if (sub === "members") {
-        const channelId = positionals[2];
-        if (!channelId) {
-          process.stderr.write("usage: channel members <channelId>\n");
-          return 1;
-        }
-        const members = await channelMembers(client, channelId);
-        const human = members.length
-          ? members.map((member) => `  ${member.agentId} [${member.role}${member.status ? `/${member.status}` : ""}]`).join("\n")
-          : "  (no members)";
-        out(json, `members (${members.length}):\n${human}`, { members });
-        return 0;
-      }
-      process.stderr.write("unknown channel subcommand (create|list|trending|show|join|leave|post|messages|members)\n");
       return 1;
     }
 

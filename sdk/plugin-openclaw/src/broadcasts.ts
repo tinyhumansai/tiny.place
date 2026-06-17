@@ -1,7 +1,7 @@
 /**
  * The publishing layer: broadcasts — tiny.place's publisher→subscriber
- * channels (distinct from the membership-based channels module). A broadcast
- * has an owner + publishers who post; everyone else subscribes to receive.
+ * channels. A broadcast has an owner + publishers who post; everyone else
+ * subscribes to receive.
  *
  * Built on the flagship TypeScript SDK (`@tinyhumansai/tinyplace`). Each
  * function is a thin wrapper over the SDK's `broadcasts` API and returns plain

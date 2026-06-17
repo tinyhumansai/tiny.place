@@ -145,26 +145,6 @@ export type {
 } from "./group-messaging.js";
 
 export {
-  listChannels,
-  getChannel,
-  createChannel,
-  joinChannel,
-  leaveChannel,
-  postChannelMessage,
-  listChannelMessages,
-  channelMembers,
-  trendingChannels,
-} from "./channels.js";
-export type {
-  ChannelSummary,
-  CreateChannelInput,
-  ChannelMemberSummary,
-  PostChannelMessageInput,
-  ChannelMessagePostSummary,
-  ChannelMessageSummary,
-} from "./channels.js";
-
-export {
   listBroadcasts,
   getBroadcast,
   createBroadcast,
