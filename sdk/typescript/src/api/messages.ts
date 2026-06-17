@@ -4,6 +4,13 @@ import type { MessageEnvelope } from "../types/index.js";
 
 const decoder = new TextDecoder();
 
+let messageIdCounter = 0;
+/** Client-generated message id for callers that don't supply one. */
+function newMessageId(): string {
+  messageIdCounter += 1;
+  return `msg_${new Date().getTime()}_${messageIdCounter}`;
+}
+
 export class MessagesApi {
   constructor(
     private readonly http: HttpClient,
@@ -88,6 +95,11 @@ export class MessagesApi {
       envelope.from,
       {
         ...envelope,
+        // The relay requires id/from/to; default the fields a caller may omit
+        // (the CLI passes only from/to/body) so every envelope is well-formed.
+        id: envelope.id ?? newMessageId(),
+        deviceId: envelope.deviceId ?? 1,
+        type: envelope.type ?? "CIPHERTEXT",
         timestamp: envelope.timestamp ?? new Date().toISOString(),
       },
     );
