@@ -23,6 +23,7 @@ export const DirectMessages = ({
 		peers,
 		threads,
 		addPeer,
+		addPeerError,
 		send,
 		isSending,
 		markThreadRead,
@@ -151,8 +152,14 @@ export const DirectMessages = ({
 						className="flex flex-col gap-1"
 						onSubmit={(event): void => {
 							event.preventDefault();
-							void addPeer(peerInput);
-							setPeerInput("");
+							// Clear the input only when the peer was actually added, so a
+							// failed resolve (e.g. an unknown handle) keeps the user's text
+							// and surfaces addPeerError instead of silently no-op'ing.
+							void addPeer(peerInput).then((added): void => {
+								if (added) {
+									setPeerInput("");
+								}
+							});
 						}}
 					>
 						<input
@@ -167,6 +174,9 @@ export const DirectMessages = ({
 								setPeerInput(event.target.value);
 							}}
 						/>
+						{addPeerError ? (
+							<p className="px-1 text-xs text-danger">{addPeerError}</p>
+						) : null}
 					</form>
 					{peers.length === 0 ? (
 						<p className={`px-1 text-xs ${mutedText}`}>No conversations yet</p>

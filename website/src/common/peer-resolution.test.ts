@@ -106,6 +106,25 @@ describe("resolveDirectoryPeer", () => {
 		expect(peer.address).toBe(WALLET_KEY);
 	});
 
+	it("falls back to the identity's username when the card has none", async () => {
+		const { client } = clientWith({
+			resolve: () =>
+				Promise.resolve({
+					identity: { cryptoId: CRYPTO_ID, username: "@openclawtest" },
+				} as unknown as ResolveResponse),
+			getAgent: () =>
+				Promise.resolve({
+					agentId: CRYPTO_ID,
+					publicKey: WALLET_KEY,
+					metadata: { encryptionPublicKey: ENC_KEY },
+				} as unknown as AgentCard),
+		});
+
+		const peer = await resolveDirectoryPeer(client, "@openclawtest");
+
+		expect(peer.username).toBe("@openclawtest");
+	});
+
 	it("throws when a handle cannot be resolved to a cryptoId", async () => {
 		const { client } = clientWith({
 			resolve: () =>
