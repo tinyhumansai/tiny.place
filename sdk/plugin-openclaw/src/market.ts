@@ -117,6 +117,49 @@ export interface CreateProductInput {
 }
 
 /**
+ * Delivery methods a seller can list through the CLI/plugin.
+ *
+ * `encrypted-message` is a valid `DeliveryMethod` in the protocol, but the
+ * backend rejects a listing unless the seller attaches an *encrypted*
+ * deliverable body — and the CLI has no path to collect or encrypt one. So it
+ * is deliberately excluded here: listing it would only earn an opaque backend
+ * `HTTP 400 {"error":"encrypted-message delivery requires encrypted body"}`.
+ */
+const CLI_SUPPORTED_DELIVERY_METHODS = ["download", "a2a-task"] as const;
+
+/**
+ * Validates a `--delivery` value before any network call so the seller gets an
+ * actionable, client-side error instead of an opaque backend 400.
+ *
+ * Throws a plain `Error` when:
+ * - the value is `encrypted-message` (a real protocol method, but unusable via
+ *   the CLI because there is no way to attach an encrypted deliverable body), or
+ * - the value is not one of the known `DeliveryMethod` values at all.
+ *
+ * Returns the value narrowed to a CLI-supported method on success.
+ */
+export function assertSupportedDeliveryMethod(
+  method: string,
+): (typeof CLI_SUPPORTED_DELIVERY_METHODS)[number] {
+  if (method === "encrypted-message") {
+    throw new Error(
+      `delivery method "encrypted-message" is not supported via the CLI: ` +
+        `it requires an encrypted deliverable body, which the CLI cannot ` +
+        `attach. Supported delivery methods: ${CLI_SUPPORTED_DELIVERY_METHODS.join(", ")}.`,
+    );
+  }
+  if (
+    !(CLI_SUPPORTED_DELIVERY_METHODS as ReadonlyArray<string>).includes(method)
+  ) {
+    throw new Error(
+      `unknown delivery method "${method}". ` +
+        `Supported delivery methods: ${CLI_SUPPORTED_DELIVERY_METHODS.join(", ")}.`,
+    );
+  }
+  return method as (typeof CLI_SUPPORTED_DELIVERY_METHODS)[number];
+}
+
+/**
  * Lists a new product for sale. The seller is the signing agent; the SDK signs
  * the canonical `marketplace.product` payload with the wallet key.
  */
@@ -125,6 +168,9 @@ export async function createProduct(
   signer: LocalSigner,
   input: CreateProductInput,
 ): Promise<ProductDetail> {
+  // Reject CLI-unsupported delivery methods up front so the seller gets a
+  // clear, actionable error instead of an opaque backend 400.
+  assertSupportedDeliveryMethod(input.deliveryMethod);
   const request: ProductCreateRequest = {
     seller: signer.agentId,
     sellerCryptoId: signer.agentId,
