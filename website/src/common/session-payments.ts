@@ -15,9 +15,10 @@ import {
 	buildApproveTransaction,
 	buildDelegatedDepositTx,
 	buildDelegatedTransferTx,
-	publicUsdcMint,
+	buildPayAiExactTransferTx,
 	readDelegateAllowance,
 	readEscrowNextNonce,
+	resolveSplAsset,
 } from "@src/common/delegated-payment";
 import type { SessionWalletSigner } from "@src/common/session-wallet";
 
@@ -29,16 +30,32 @@ const SPL_DELEGATE_CAP = "100000000";
 /** The x402 metadata key that carries the session-signed delegated wire tx. */
 export const X402_DELEGATED_TX_METADATA_KEY = "delegatedTx";
 
-function isDelegatableSolanaUsdc(fields: {
+/**
+ * Whether the active facilitator backend is PayAI (mirrors the backend's
+ * TINYPLACE_FACILITATOR_BACKEND). PayAI requires the strict "exact" transaction
+ * shape and pre-approved session delegates.
+ */
+function isPayAiBackend(): boolean {
+	return (
+		(
+			process.env["NEXT_PUBLIC_FACILITATOR_BACKEND"] ?? "local"
+		).toLowerCase() === "payai"
+	);
+}
+
+function isDelegatableSolanaSpl(fields: {
 	to: string;
 	amount: string;
 	asset?: string;
 	network?: string;
 }): boolean {
-	if (fields.asset && fields.asset.toUpperCase() !== "USDC") {
+	if (fields.network && !fields.network.toLowerCase().startsWith("solana")) {
 		return false;
 	}
-	if (fields.network && !fields.network.toLowerCase().startsWith("solana")) {
+	// Only SPL assets we can resolve to a mint settle via the delegated path:
+	// USDC, or CASH when its mint is configured. Native SOL is excluded (the
+	// PayAI facilitator cannot settle it).
+	if (!resolveSplAsset(fields.asset)) {
 		return false;
 	}
 	return Boolean(fields.amount) && Boolean(fields.to);
@@ -75,19 +92,42 @@ export async function buildDelegatedTxForPaymentMap(
 		network?: string;
 	}
 ): Promise<string | undefined> {
-	if (!isDelegatableSolanaUsdc(fields)) {
+	if (!isDelegatableSolanaSpl(fields)) {
 		return undefined;
 	}
 	if (!isBase58Address(fields.to) || !isBase58Address(fields.from)) {
 		return undefined;
 	}
+	const asset = resolveSplAsset(fields.asset);
+	if (!asset) {
+		return undefined;
+	}
 
 	const rpcUrl = primarySolanaRpcUrl();
-	const mint = publicUsdcMint();
+	const { mint, decimals } = asset;
 	const client = createClient(signer);
 	const facilitator = (await client.payments.facilitator()).address;
 	const payer = fields.from;
 	const sessionPublicKeyBase64 = signer.publicKeyBase64;
+
+	// PayAI's exact scheme forbids ApproveChecked and create-ATA in the payment
+	// transaction, so the session delegate must already be approved (done once at
+	// login) and the payee ATA must exist. Build the strict 3-instruction tx.
+	if (isPayAiBackend()) {
+		return buildPayAiExactTransferTx({
+			rpcUrl,
+			facilitator,
+			payer,
+			payee: fields.to,
+			amount: fields.amount,
+			sessionPublicKeyBase64,
+			signSession: (message: Uint8Array): Promise<Uint8Array> =>
+				signer.sign(message),
+			mint,
+			decimals,
+		});
+	}
+
 	const sessionAddress = new PublicKey(
 		Buffer.from(sessionPublicKeyBase64, "base64")
 	).toBase58();
@@ -119,6 +159,7 @@ export async function buildDelegatedTxForPaymentMap(
 		signSession: (message: Uint8Array): Promise<Uint8Array> =>
 			signer.sign(message),
 		mint,
+		decimals,
 		approve,
 	});
 }
@@ -209,15 +250,37 @@ export async function payViaSessionDelegate(
 				"payViaSessionDelegate requires `to` for a direct transfer"
 			);
 		}
-		delegatedTx = await buildDelegatedTransferTx({
-			rpcUrl: options.rpcUrl,
-			facilitator,
-			payer,
-			payee: options.to,
-			amount: options.amount,
-			sessionPublicKeyBase64,
-			signSession,
-		});
+		const asset = resolveSplAsset(options.asset);
+		if (!asset) {
+			throw new Error(
+				`payViaSessionDelegate: unsupported asset ${options.asset ?? "USDC"} (SPL only)`
+			);
+		}
+		if (isPayAiBackend()) {
+			delegatedTx = await buildPayAiExactTransferTx({
+				rpcUrl: options.rpcUrl,
+				facilitator,
+				payer,
+				payee: options.to,
+				amount: options.amount,
+				sessionPublicKeyBase64,
+				signSession,
+				mint: asset.mint,
+				decimals: asset.decimals,
+			});
+		} else {
+			delegatedTx = await buildDelegatedTransferTx({
+				rpcUrl: options.rpcUrl,
+				facilitator,
+				payer,
+				payee: options.to,
+				amount: options.amount,
+				sessionPublicKeyBase64,
+				signSession,
+				mint: asset.mint,
+				decimals: asset.decimals,
+			});
+		}
 		recipient = options.to;
 	}
 

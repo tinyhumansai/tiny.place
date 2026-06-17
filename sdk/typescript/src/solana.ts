@@ -12,6 +12,15 @@ export const SOLANA_MAINNET_NETWORK =
   "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 export const SOLANA_USDC_MINT =
   "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+/**
+ * The CASH stablecoin ($1, 6 decimals) SPL mint. CASH has no fixed mainnet
+ * mint baked into the SDK — it is configured per environment (a dev mint
+ * locally, the real mint in production), so this constant is empty and callers
+ * resolve the mint from configuration (e.g. NEXT_PUBLIC_SOLANA_CASH_MINT).
+ */
+export const SOLANA_CASH_MINT = "";
+/** Decimals of the CASH stablecoin (matches USDC at 6 dp). */
+export const SOLANA_CASH_DECIMALS = 6;
 export const SOLANA_TOKEN_PROGRAM_ID =
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 /** The System program, used to transfer native SOL (lamports). */

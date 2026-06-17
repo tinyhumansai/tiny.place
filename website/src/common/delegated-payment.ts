@@ -4,6 +4,8 @@ import {
 	TransactionInstruction,
 } from "@solana/web3.js";
 import {
+	SOLANA_CASH_DECIMALS,
+	SOLANA_CASH_MINT,
 	SOLANA_TOKEN_PROGRAM_ID,
 	SOLANA_USDC_MINT,
 } from "@tinyhumansai/tinyplace";
@@ -20,6 +22,15 @@ export function publicUsdcMint(): string {
 	return process.env["NEXT_PUBLIC_SOLANA_USDC_MINT"] ?? SOLANA_USDC_MINT;
 }
 
+/**
+ * The CASH ($1 stablecoin) mint, from NEXT_PUBLIC_SOLANA_CASH_MINT (a dev mint
+ * locally, the real mint in production). Returns "" when unconfigured — CASH is
+ * only offered once a mint is set, mirroring the backend's CASH_MINT gate.
+ */
+export function publicCashMint(): string {
+	return process.env["NEXT_PUBLIC_SOLANA_CASH_MINT"] ?? SOLANA_CASH_MINT;
+}
+
 // The Associated Token Account program. Not exported by the SDK, so it is
 // defined here alongside the other Solana program ids it complements.
 const ASSOCIATED_TOKEN_PROGRAM_ID =
@@ -29,6 +40,26 @@ const TOKEN_TRANSFER_CHECKED_INSTRUCTION = 12;
 const TOKEN_APPROVE_CHECKED_INSTRUCTION = 13;
 const ATA_CREATE_IDEMPOTENT_INSTRUCTION = 1;
 const USDC_DECIMALS = 6;
+
+/**
+ * Resolves an x402 asset symbol to its SPL mint + decimals for the Solana
+ * settlement path. Returns undefined for assets that cannot settle as an SPL
+ * TransferChecked — notably native SOL, which the PayAI facilitator does not
+ * support. CASH resolves only when its mint is configured.
+ */
+export function resolveSplAsset(
+	asset?: string
+): { mint: string; decimals: number } | undefined {
+	const symbol = (asset ?? "USDC").toUpperCase();
+	if (symbol === "USDC") {
+		return { mint: publicUsdcMint(), decimals: USDC_DECIMALS };
+	}
+	if (symbol === "CASH") {
+		const mint = publicCashMint();
+		return mint ? { mint, decimals: SOLANA_CASH_DECIMALS } : undefined;
+	}
+	return undefined;
+}
 
 // The job escrow program and its `fund_for` Anchor discriminator
 // (sha256("global:fund_for")[:8]).
@@ -90,6 +121,53 @@ function transferCheckedInstruction(options: {
 			{ pubkey: options.destination, isSigner: false, isWritable: true },
 			{ pubkey: options.authority, isSigner: true, isWritable: false },
 		],
+		data: Buffer.from(data),
+	});
+}
+
+// The ComputeBudget program and its instruction discriminators. PayAI's "exact"
+// Solana scheme requires SetComputeUnitLimit (<=40000) then SetComputeUnitPrice
+// (<=5 microlamports/CU) as the first two instructions before the
+// TransferChecked.
+const COMPUTE_BUDGET_PROGRAM_ID = "ComputeBudget111111111111111111111111111111";
+const COMPUTE_BUDGET_SET_UNIT_LIMIT_INSTRUCTION = 2;
+const COMPUTE_BUDGET_SET_UNIT_PRICE_INSTRUCTION = 3;
+const PAYAI_COMPUTE_UNIT_LIMIT = 40_000;
+const PAYAI_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS = "1";
+
+/** Encodes a value (base units) as a little-endian u32. */
+function encodeU32LittleEndian(value: number): Uint8Array {
+	const bytes = new Uint8Array(4);
+	let remaining = value;
+	for (let index = 0; index < 4; index += 1) {
+		bytes[index] = remaining & 0xff;
+		remaining >>>= 8;
+	}
+	return bytes;
+}
+
+/** ComputeBudget SetComputeUnitLimit (caps the transaction's compute units). */
+function setComputeUnitLimitInstruction(units: number): TransactionInstruction {
+	const data = new Uint8Array(5);
+	data[0] = COMPUTE_BUDGET_SET_UNIT_LIMIT_INSTRUCTION;
+	data.set(encodeU32LittleEndian(units), 1);
+	return new TransactionInstruction({
+		programId: new PublicKey(COMPUTE_BUDGET_PROGRAM_ID),
+		keys: [],
+		data: Buffer.from(data),
+	});
+}
+
+/** ComputeBudget SetComputeUnitPrice (priority fee, in microlamports/CU). */
+function setComputeUnitPriceInstruction(
+	microLamports: string
+): TransactionInstruction {
+	const data = new Uint8Array(9);
+	data[0] = COMPUTE_BUDGET_SET_UNIT_PRICE_INSTRUCTION;
+	data.set(encodeU64LittleEndian(microLamports), 1);
+	return new TransactionInstruction({
+		programId: new PublicKey(COMPUTE_BUDGET_PROGRAM_ID),
+		keys: [],
 		data: Buffer.from(data),
 	});
 }
@@ -276,6 +354,65 @@ export async function buildDelegatedTransferTx(options: {
 		);
 		transaction.addSignature(owner, Buffer.from(ownerSignature));
 	}
+
+	const wire = transaction.serialize({
+		requireAllSignatures: false,
+		verifySignatures: false,
+	});
+	return wire.toString("base64");
+}
+
+/**
+ * Builds a PayAI-conformant, session-signed delegated transfer. PayAI's "exact"
+ * Solana scheme allows ONLY [SetComputeUnitLimit, SetComputeUnitPrice,
+ * TransferChecked] (plus optional wallet-added Lighthouse) — no ApproveChecked
+ * and no create-ATA. The session key must already be an approved delegate (done
+ * once at login via enableDelegatedSpending), and the payee's token account must
+ * already exist. The PayAI fee-payer slot is left empty for PayAI to fill.
+ */
+export async function buildPayAiExactTransferTx(options: {
+	rpcUrl: string;
+	facilitator: string;
+	payer: string;
+	payee: string;
+	amount: string;
+	sessionPublicKeyBase64: string;
+	signSession: (message: Uint8Array) => Promise<Uint8Array>;
+	mint: string;
+	decimals: number;
+}): Promise<string> {
+	const facilitator = new PublicKey(options.facilitator);
+	const mintKey = new PublicKey(options.mint);
+	const payerAccount = associatedTokenAddress(options.payer, options.mint);
+	const payeeAccount = associatedTokenAddress(options.payee, options.mint);
+	const sessionKey = new PublicKey(
+		Buffer.from(options.sessionPublicKeyBase64, "base64")
+	);
+
+	const connection = createSolanaConnection(options.rpcUrl);
+	const { blockhash } = await connection.getLatestBlockhash("confirmed");
+
+	const transaction = new Transaction();
+	transaction.feePayer = facilitator;
+	transaction.recentBlockhash = blockhash;
+	transaction.add(setComputeUnitLimitInstruction(PAYAI_COMPUTE_UNIT_LIMIT));
+	transaction.add(
+		setComputeUnitPriceInstruction(PAYAI_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS)
+	);
+	transaction.add(
+		transferCheckedInstruction({
+			source: payerAccount,
+			mint: mintKey,
+			destination: payeeAccount,
+			authority: sessionKey,
+			amount: options.amount,
+			decimals: options.decimals,
+		})
+	);
+
+	const message = transaction.serializeMessage();
+	const sessionSignature = await options.signSession(new Uint8Array(message));
+	transaction.addSignature(sessionKey, Buffer.from(sessionSignature));
 
 	const wire = transaction.serialize({
 		requireAllSignatures: false,
