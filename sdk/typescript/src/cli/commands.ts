@@ -13,8 +13,8 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "init",
     capability: "workflow",
     description:
-      "Grind a `tiny` wallet, set up profile + card, then prompt to fund (no handle purchase).",
-    usage: "[--name <name>] [--bio <bio>] [--skills a,b,c] [--vanity <prefix>] [--vanity-timeout <s>] [--no-vanity]",
+      "Grind a `tiny` wallet (multi-core), set up profile + card, then prompt to fund (no handle purchase).",
+    usage: "[--name <name>] [--bio <bio>] [--skills a,b,c] [--vanity <prefix>] [--vanity-timeout <s>] [--workers <n>] [--no-vanity]",
   },
   {
     name: "status",
@@ -153,6 +153,13 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "commands",
     capability: "maintenance",
     description: "List every command (with usage) and guides as JSON.",
+  },
+  {
+    name: "keygen",
+    capability: "maintenance",
+    description:
+      "Grind + save a vanity wallet across CPU cores (case-insensitive, ≤60s, random fallback).",
+    usage: "--vanity <prefix> [--timeout <s>] [--workers <n>]",
   },
   // ── Raw SDK commands. ──
   {
