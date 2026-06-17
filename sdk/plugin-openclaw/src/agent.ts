@@ -124,11 +124,23 @@ export async function buyDomain(
   };
 }
 
+/**
+ * Records this client's harness key on the wallet profile. This is best-effort
+ * telemetry, never load-bearing: a failure here (e.g. the profile endpoint
+ * rejecting the write) must NOT abort a registration that already succeeded —
+ * otherwise a successful (and possibly paid) `domain buy` reports a false
+ * failure. The error is swallowed with a warning rather than propagated.
+ */
 async function recordHarness(
   client: TinyPlaceClient,
   signer: LocalSigner,
 ): Promise<void> {
-  await client.users.updateProfile(signer.agentId, {});
+  try {
+    await client.users.updateProfile(signer.agentId, {});
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`warning: could not record harness key: ${reason}\n`);
+  }
 }
 
 function summarize(identity: {
