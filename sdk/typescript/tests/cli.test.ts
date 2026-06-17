@@ -466,6 +466,115 @@ describe("tinyplace CLI", () => {
     ).toBe(true);
   });
 
+  it("gates buy-domain behind --execute and performs nothing without it", async () => {
+    const requests: Array<Request> = [];
+    const result = await runTinyPlaceCli(["buy-domain", "l1"], {
+      env: {
+        TINYPLACE_ENDPOINT: "https://example.test",
+        TINYPLACE_SECRET_KEY: "01".repeat(32),
+      },
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        requests.push(new Request(input, init));
+        return Response.json({ identities: [{ listingId: "l1", username: "@cool" }] });
+      },
+    });
+
+    expect(result.code).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.status).toBe("needs-confirmation");
+    expect(parsed.preview).toMatchObject({ listingId: "l1", username: "@cool" });
+    expect(parsed.suggestions[0].run).toBe("tinyplace buy-domain l1 --execute");
+    // No purchase POST may have happened — only the read-only preview list.
+    expect(requests.some((request) => request.url.includes("/buy"))).toBe(false);
+  });
+
+  it("turns an x402 challenge into payment-required guidance, not a crash", async () => {
+    const result = await runTinyPlaceCli(["buy-domain", "l1", "--execute"], {
+      env: {
+        TINYPLACE_ENDPOINT: "https://example.test",
+        TINYPLACE_SECRET_KEY: "01".repeat(32),
+      },
+      fetch: async (input: RequestInfo | URL) => {
+        const url = String(input instanceof Request ? input.url : input);
+        if (url.includes("/buy")) {
+          return Response.json(
+            {
+              error: "payment required",
+              payment: { asset: "SOL", amount: "5", network: "solana:mainnet" },
+            },
+            { status: 402 },
+          );
+        }
+        return Response.json({ identities: [{ listingId: "l1" }] });
+      },
+    });
+
+    expect(result.code).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.status).toBe("payment-required");
+    expect(parsed.payment).toMatchObject({ asset: "SOL", amount: "5" });
+    expect(parsed.suggestions.map((s: { run: string }) => s.run)).toEqual([
+      "tinyplace fund --asset SOL --amount 5",
+      "tinyplace buy-domain l1 --execute",
+    ]);
+  });
+
+  it("resolves a @handle before sending a message and suggests checking replies", async () => {
+    const requests: Array<Request> = [];
+    const result = await runTinyPlaceCli(["message", "@peer", "hello there"], {
+      env: {
+        TINYPLACE_ENDPOINT: "https://example.test",
+        TINYPLACE_SECRET_KEY: "01".repeat(32),
+      },
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        requests.push(new Request(input, init));
+        const url = String(input instanceof Request ? input.url : input);
+        if (url.includes("/directory/resolve")) {
+          return Response.json({ identity: { cryptoId: "c1" }, agent: { publicKey: "PEERPUB" } });
+        }
+        return Response.json({ id: "m-new", to: "PEERPUB" });
+      },
+    });
+
+    expect(result.code).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.status).toBe("done");
+    expect(parsed.suggestions[0].run).toBe("tinyplace read");
+    expect(requests.some((request) => request.url.includes("/directory/resolve"))).toBe(true);
+    const send = requests.find((request) => request.method === "PUT");
+    expect(send?.url).toContain("/messages");
+  });
+
+  it("status surfaces ready-to-run suggestions alongside attention", async () => {
+    const result = await runTinyPlaceCli(["status"], {
+      env: {
+        TINYPLACE_ENDPOINT: "https://example.test",
+        TINYPLACE_SECRET_KEY: "01".repeat(32),
+      },
+      fetch: async (input: RequestInfo | URL) => {
+        const url = String(input instanceof Request ? input.url : input);
+        if (url.includes("/inbox/counts")) return Response.json({ unread: 1 });
+        if (url.includes("/inbox")) return Response.json({ items: [{ id: "i1" }] });
+        if (url.includes("/escrow")) return Response.json({ escrows: [{ id: "e1" }] });
+        if (url.includes("/jobs")) return Response.json({ jobs: [] });
+        if (url.includes("/keys/")) return Response.json({ lowOneTimePreKeys: false });
+        return Response.json({ messages: [{ id: "m1" }] });
+      },
+    });
+
+    expect(result.code).toBe(0);
+    const runs = (JSON.parse(result.stdout).suggestions as Array<{ run: string }>).map(
+      (suggestion) => suggestion.run,
+    );
+    expect(runs).toEqual(
+      expect.arrayContaining([
+        "tinyplace raw inbox-read i1",
+        "tinyplace read",
+        "tinyplace raw escrow e1",
+      ]),
+    );
+  });
+
   it("help separates workflows from raw commands", async () => {
     const help = await runTinyPlaceCli([], {});
     expect(help.code).toBe(0);
