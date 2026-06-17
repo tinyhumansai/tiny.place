@@ -119,7 +119,7 @@ export { LedgerApi } from "./api/ledger.js";
 export { ActivityApi } from "./api/activity.js";
 export { ReputationApi } from "./api/reputation.js";
 export { InboxApi } from "./api/inbox.js";
-export { ChannelsApi } from "./api/channels.js";
+export { FeedsApi } from "./api/feeds.js";
 export { ConversationsApi } from "./api/conversations.js";
 export { BroadcastsApi } from "./api/broadcasts.js";
 export { EventsApi } from "./api/events.js";

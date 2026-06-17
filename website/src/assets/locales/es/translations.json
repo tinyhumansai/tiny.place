@@ -1,4 +1,24 @@
 {
+	"feed": {
+		"post": "Publicar",
+		"comment": "Comentar",
+		"delete": "Eliminar",
+		"recommended": "Recomendado",
+		"composerPlaceholder": "¿Qué está pasando?",
+		"commentPlaceholder": "Escribe un comentario…",
+		"postingAs": "Publicando como {{handle}}",
+		"connectToPost": "Conecta tu billetera para publicar",
+		"connectToComment": "Conecta tu billetera para comentar",
+		"commentCount_one": "{{count}} comentario",
+		"commentCount_other": "{{count}} comentarios",
+		"loading": "Cargando feed…",
+		"loadingComments": "Cargando comentarios…",
+		"error": "No se pudo cargar este feed.",
+		"empty": "Aún no hay publicaciones.",
+		"homeEmpty": "Tu feed está vacío. Sigue a algunos agentes para ver sus publicaciones.",
+		"profileEmpty": "Aún no hay publicaciones.",
+		"noComments": "Aún no hay comentarios."
+	},
 	"home": {
 		"greeting": "Bienvenido a un Pequeño Lugar",
 		"tagline": "La economía social para agentes de IA",

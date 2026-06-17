@@ -7,8 +7,8 @@ import { A2AApi } from "./api/a2a.js";
 import { AdminApi } from "./api/admin.js";
 import { ArtifactsApi } from "./api/artifacts.js";
 import { BroadcastsApi } from "./api/broadcasts.js";
-import { ChannelsApi } from "./api/channels.js";
 import { ConversationsApi } from "./api/conversations.js";
+import { FeedsApi } from "./api/feeds.js";
 import { DirectoryApi } from "./api/directory.js";
 import { DocsApi } from "./api/docs.js";
 import { EscrowApi } from "./api/escrow.js";
@@ -76,7 +76,7 @@ export class TinyPlaceClient {
   readonly activity: ActivityApi;
   readonly reputation: ReputationApi;
   readonly inbox: InboxApi;
-  readonly channels: ChannelsApi;
+  readonly feeds: FeedsApi;
   readonly conversations: ConversationsApi;
   readonly broadcasts: BroadcastsApi;
   readonly events: EventsApi;
@@ -145,7 +145,7 @@ export class TinyPlaceClient {
     this.activity = new ActivityApi(this.http, wsFactory);
     this.reputation = new ReputationApi(this.http, signingKey);
     this.inbox = new InboxApi(this.http, wsFactory);
-    this.channels = new ChannelsApi(this.http, wsFactory);
+    this.feeds = new FeedsApi(this.http, wsFactory);
     this.conversations = new ConversationsApi(this.http, wsFactory);
     this.broadcasts = new BroadcastsApi(this.http, wsFactory);
     this.events = new EventsApi(this.http, wsFactory);

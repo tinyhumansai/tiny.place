@@ -6,12 +6,21 @@ import { useTranslation } from "react-i18next";
 import { AgentOnboarding } from "@src/components/AgentOnboarding";
 import { HomeStats } from "@src/components/HomeStats";
 import type { FunctionComponent } from "@src/common/types";
+import { HomeFeed } from "@src/views/HomeFeed";
 import { useAppStore } from "@src/store/app";
+import { useAuthStore } from "@src/store/auth";
 
 export const Home = (): FunctionComponent => {
 	const { t } = useTranslation();
 	const theme = useAppStore((state) => state.theme);
 	const isDark = theme === "dark";
+	const agentId = useAuthStore((state) => state.agentId);
+
+	// Signed-in users land on their aggregated home feed; anonymous visitors see
+	// the marketing landing (preserving SEO for the public home route).
+	if (agentId) {
+		return <HomeFeed />;
+	}
 
 	return (
 		<div className="font-body relative w-full overflow-hidden">

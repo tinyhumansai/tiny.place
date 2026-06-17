@@ -7,11 +7,11 @@ import { ApiProvider } from "@src/common/api-context";
 
 import { useCreateChannel } from "./use-channels";
 
-const createChannel = vi.hoisted(() => vi.fn());
+const createConversation = vi.hoisted(() => vi.fn());
 const createClient = vi.hoisted(() =>
 	vi.fn((signer: Signer | undefined) => {
 		void signer;
-		return { channels: { create: createChannel } };
+		return { conversations: { create: createConversation } };
 	})
 );
 
@@ -35,9 +35,10 @@ function wrapper({
 }
 
 describe("useCreateChannel", () => {
-	it("creates a plaintext public channel via the channels endpoint", async () => {
-		createChannel.mockResolvedValueOnce({
-			channelId: "chan_1",
+	it("creates a plaintext public group as a public_group conversation", async () => {
+		createConversation.mockResolvedValueOnce({
+			conversationId: "conv_1",
+			type: "public_group",
 			name: "Open Desk",
 			creator: "@alice",
 		});
@@ -55,15 +56,15 @@ describe("useCreateChannel", () => {
 			expect(result.current.isSuccess).toBe(true);
 		});
 
-		// Public groups must go through the channel (plaintext) backend, NOT the
-		// encrypted group fanout.
-		expect(createChannel).toHaveBeenCalledTimes(1);
-		expect(createChannel).toHaveBeenCalledWith({
+		// Public groups are plaintext public_group conversations, NOT encrypted
+		// group fanout (the standalone channels feature was removed).
+		expect(createConversation).toHaveBeenCalledTimes(1);
+		expect(createConversation).toHaveBeenCalledWith({
+			type: "public_group",
 			name: "Open Desk",
 			description: "anyone can read",
 			creator: "@alice",
 			tags: ["explore"],
-			category: undefined,
 		});
 	});
 });

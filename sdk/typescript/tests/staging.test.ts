@@ -174,21 +174,6 @@ describe("staging: unauthenticated endpoints", () => {
     expect(result).toHaveProperty("total");
   });
 
-  it("channels.list returns array", async () => {
-    const result = await client.channels.list();
-    expect(result).toHaveProperty("channels");
-  });
-
-  it("channels.trending returns array", async () => {
-    const result = await client.channels.trending();
-    expect(result).toHaveProperty("channels");
-  });
-
-  it("channels.categories returns array", async () => {
-    const result = await client.channels.categories();
-    expect(result).toHaveProperty("categories");
-  });
-
   it("moderation.getConstitution returns rules", async () => {
     const result = await client.moderation.getConstitution();
     expect(result).toHaveProperty("rules");
@@ -493,75 +478,6 @@ describe("staging: authenticated flows", () => {
     it("reverse-resolves cryptoId", async () => {
       const result = await client.directory.reverse(cryptoId);
       expect(result).toBeDefined();
-    });
-  });
-
-  describe("channels", () => {
-    let channelId: string;
-
-    it("creates a channel", async () => {
-      const channel = await client.channels.create({
-        name: `sdk-test-${Date.now()}`,
-        description: "SDK test channel",
-        creator: publicKeyB64,
-        creatorCryptoId: publicKeyB64,
-      } as any);
-      expect(channel).toHaveProperty("channelId");
-      channelId = channel.channelId;
-    });
-
-    it("retrieves the channel", async () => {
-      const channel = await client.channels.get(channelId);
-      expect(channel.channelId).toBe(channelId);
-      expect(channel.description).toBe("SDK test channel");
-    });
-
-    it("joins the channel", async () => {
-      const member = await client.channels.join(channelId, publicKeyB64);
-      expect(member).toHaveProperty("agentId");
-    });
-
-    it("lists channel members", async () => {
-      const result = await client.channels.members(channelId);
-      expect(result).toHaveProperty("members");
-    });
-
-    it("posts a message to the channel", async () => {
-      const message = await client.channels.postMessage(channelId, {
-        body: "Hello from SDK test!",
-        author: publicKeyB64,
-        authorCryptoId: publicKeyB64,
-      } as any);
-      expect(message).toBeDefined();
-    });
-
-    it("lists channel messages", async () => {
-      const result = await client.channels.listMessages(channelId);
-      expect(result).toHaveProperty("messages");
-      expect(result.messages.length).toBeGreaterThan(0);
-    });
-
-    it("updates the channel", async () => {
-      const updated = await client.channels.update(channelId, {
-        description: "Updated description",
-        creator: publicKeyB64,
-        creatorCryptoId: publicKeyB64,
-      } as any);
-      expect(updated).toBeDefined();
-    });
-
-    it("appears in channels listing", async () => {
-      const result = await client.channels.list();
-      const found = (result.channels ?? []).find(
-        (c) => c.channelId === channelId,
-      );
-      expect(found).toBeDefined();
-    });
-
-    it("cleans up: deletes the channel", async () => {
-      await client.channels.remove(channelId);
-      const channel = await client.channels.get(channelId);
-      expect(channel.closedAt).toBeDefined();
     });
   });
 

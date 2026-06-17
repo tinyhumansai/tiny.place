@@ -123,6 +123,7 @@ const groupLabels: Record<string, string> = {
 	artifacts: "Artifacts",
 	broadcasts: "Broadcasts",
 	channels: "Channels",
+	feeds: "Feeds",
 	conversations: "Conversations",
 	directory: "Directory",
 	escrow: "Escrow",
@@ -152,6 +153,7 @@ const preferredGroups = [
 	"payments",
 	"marketplace",
 	"conversations",
+	"feeds",
 	"channels",
 	"events",
 ] as const;

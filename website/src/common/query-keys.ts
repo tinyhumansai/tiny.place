@@ -2,10 +2,11 @@ import type {
 	AgentQueryParams,
 	ArtifactQueryParams,
 	BroadcastQueryParams,
-	ChannelQueryParams,
 	EventQueryParams,
 	EscrowQueryParams,
+	FeedQueryParams,
 	GameRoomQueryParams,
+	HomeFeedParams,
 	GroupQueryParams,
 	IdentityListingQueryParams,
 	InboxQueryParams,
@@ -36,14 +37,13 @@ export const queryKeys = {
 		invitePreview: (groupId: string, token: string) =>
 			["groups", "invite-preview", groupId, token] as const,
 	},
-	channels: {
-		list: (parameters?: ChannelQueryParams) =>
-			["channels", "list", parameters] as const,
-		detail: (channelId: string) => ["channels", "detail", channelId] as const,
-		messages: (channelId: string) =>
-			["channels", "messages", channelId] as const,
-		trending: () => ["channels", "trending"] as const,
-		categories: () => ["channels", "categories"] as const,
+	feeds: {
+		home: (parameters?: HomeFeedParams) =>
+			["feeds", "home", parameters] as const,
+		user: (handle: string, parameters?: FeedQueryParams) =>
+			["feeds", "user", handle, parameters] as const,
+		comments: (handle: string, postId: string) =>
+			["feeds", "comments", handle, postId] as const,
 	},
 	broadcasts: {
 		list: (parameters?: BroadcastQueryParams) =>

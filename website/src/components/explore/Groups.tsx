@@ -129,7 +129,7 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 				},
 				{
 					onSuccess: (channel): void => {
-						setCreatedChannelName(channel.name);
+						setCreatedChannelName(channel.name ?? name);
 					},
 				}
 			);

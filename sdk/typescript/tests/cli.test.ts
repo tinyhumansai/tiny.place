@@ -17,7 +17,7 @@ describe("tinyplace CLI", () => {
     for (const capability of [
       "identity",
       "directory",
-      "channels",
+      "feeds",
       "broadcasts",
       "messaging",
       "inbox",
@@ -29,14 +29,16 @@ describe("tinyplace CLI", () => {
       "ledger",
     ]) {
       expect(byCapability.get(capability), capability).toBeTruthy();
-      expect(byCapability.get(capability)!.length, capability).toBeGreaterThan(0);
+      expect(byCapability.get(capability)!.length, capability).toBeGreaterThan(
+        0,
+      );
     }
 
     expect(HARNESS_CLI_COMMANDS.map((command) => command.name)).toEqual(
       expect.arrayContaining([
         "register",
         "search",
-        "channels",
+        "feed",
         "broadcasts",
         "send",
         "inbox",
@@ -60,11 +62,25 @@ describe("tinyplace CLI", () => {
     const env = { TINYPLACE_ENDPOINT: "https://example.test" };
 
     const pricing = await runTinyPlaceCli(
-      ["pricing-quote", "--base", "SOL", "--quote", "USDC", "--network", "solana:local"],
+      [
+        "pricing-quote",
+        "--base",
+        "SOL",
+        "--quote",
+        "USDC",
+        "--network",
+        "solana:local",
+      ],
       { env, fetch },
     );
-    const ledger = await runTinyPlaceCli(["ledger", "--recent"], { env, fetch });
-    const profile = await runTinyPlaceCli(["profile", "@agent"], { env, fetch });
+    const ledger = await runTinyPlaceCli(["ledger", "--recent"], {
+      env,
+      fetch,
+    });
+    const profile = await runTinyPlaceCli(["profile", "@agent"], {
+      env,
+      fetch,
+    });
 
     expect([pricing.code, ledger.code, profile.code]).toEqual([0, 0, 0]);
     expect(JSON.parse(pricing.stdout)).toEqual({ ok: true });
@@ -202,7 +218,8 @@ describe("tinyplace CLI", () => {
     };
     const whoami = await runTinyPlaceCli(["whoami"], {
       env,
-      fetch: async () => Response.json({ cryptoId: "x", identities: [{ name: "@me" }] }),
+      fetch: async () =>
+        Response.json({ cryptoId: "x", identities: [{ name: "@me" }] }),
     });
     const whoamiOut = JSON.parse(whoami.stdout);
     expect(whoamiOut.handle).toBe("@me");
@@ -221,13 +238,19 @@ describe("tinyplace CLI", () => {
 
   it("routes set-profile through the signer-derived user id", async () => {
     const requests: Array<Request> = [];
-    const result = await runTinyPlaceCli(["set-profile", "--name", "Ada", "--bio", "research"], {
-      env: { TINYPLACE_ENDPOINT: "https://example.test", TINYPLACE_SECRET_KEY: "01".repeat(32) },
-      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
-        requests.push(new Request(input, init));
-        return Response.json({ ok: true });
+    const result = await runTinyPlaceCli(
+      ["set-profile", "--name", "Ada", "--bio", "research"],
+      {
+        env: {
+          TINYPLACE_ENDPOINT: "https://example.test",
+          TINYPLACE_SECRET_KEY: "01".repeat(32),
+        },
+        fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+          requests.push(new Request(input, init));
+          return Response.json({ ok: true });
+        },
       },
-    });
+    );
 
     expect(result.code).toBe(0);
     expect(requests).toHaveLength(1);
@@ -238,7 +261,8 @@ describe("tinyplace CLI", () => {
   it("renders markdown when --md is passed", async () => {
     const result = await runTinyPlaceCli(["profile", "@agent", "--md"], {
       env: { TINYPLACE_ENDPOINT: "https://example.test" },
-      fetch: async () => Response.json({ handle: "@agent", skills: ["a", "b"] }),
+      fetch: async () =>
+        Response.json({ handle: "@agent", skills: ["a", "b"] }),
     });
 
     expect(result.code).toBe(0);
@@ -275,7 +299,9 @@ describe("tinyplace CLI", () => {
       env: { TINYPLACE_ENDPOINT: "https://example.test" },
       fetch: async () => Response.json({}),
     });
-    const list = JSON.parse(commands.stdout).commands as Array<{ name: string }>;
+    const list = JSON.parse(commands.stdout).commands as Array<{
+      name: string;
+    }>;
     expect(Array.isArray(list)).toBe(true);
     expect(list.find((command) => command.name === "onboard")).toBeTruthy();
 
@@ -287,10 +313,13 @@ describe("tinyplace CLI", () => {
   });
 
   it("supports update --dry-run without spawning a process", async () => {
-    const result = await runTinyPlaceCli(["update", "--dry-run", "--pm", "pnpm"], {
-      env: {},
-      fetch: async () => Response.json({}),
-    });
+    const result = await runTinyPlaceCli(
+      ["update", "--dry-run", "--pm", "pnpm"],
+      {
+        env: {},
+        fetch: async () => Response.json({}),
+      },
+    );
     expect(JSON.parse(result.stdout)).toMatchObject({
       dryRun: true,
       command: "pnpm add -g @tinyhumansai/tinyplace@latest",
@@ -307,28 +336,39 @@ describe("tinyplace CLI", () => {
       },
     });
     expect(JSON.parse(routed.stdout)).toEqual({ ok: true });
-    expect(requests[0].url).toBe("https://example.test/registry/names/%40agent");
+    expect(requests[0].url).toBe(
+      "https://example.test/registry/names/%40agent",
+    );
 
     const list = await runTinyPlaceCli(["raw"], {
       env: { TINYPLACE_ENDPOINT: "https://example.test" },
       fetch: async () => Response.json({}),
     });
-    const commands = JSON.parse(list.stdout).commands as Array<{ name: string }>;
-    expect(commands.find((command) => command.name === "channels")).toBeTruthy();
+    const commands = JSON.parse(list.stdout).commands as Array<{
+      name: string;
+    }>;
+    expect(commands.find((command) => command.name === "feed")).toBeTruthy();
     expect(commands.find((command) => command.name === "status")).toBeFalsy();
   });
 
   it("aggregates the steady-state snapshot with `status`", async () => {
-    const env = { TINYPLACE_ENDPOINT: "https://example.test", TINYPLACE_SECRET_KEY: "01".repeat(32) };
+    const env = {
+      TINYPLACE_ENDPOINT: "https://example.test",
+      TINYPLACE_SECRET_KEY: "01".repeat(32),
+    };
     const result = await runTinyPlaceCli(["status"], {
       env,
       fetch: async (input: RequestInfo | URL) => {
         const url = String(input instanceof Request ? input.url : input);
         if (url.includes("/inbox/counts")) return Response.json({ unread: 2 });
-        if (url.includes("/inbox")) return Response.json({ items: [{ id: "i1" }] });
-        if (url.includes("/escrow")) return Response.json({ escrows: [{ id: "e1" }] });
-        if (url.includes("/jobs")) return Response.json({ jobs: [{ id: "j1" }] });
-        if (url.includes("/keys/")) return Response.json({ lowOneTimePreKeys: true });
+        if (url.includes("/inbox"))
+          return Response.json({ items: [{ id: "i1" }] });
+        if (url.includes("/escrow"))
+          return Response.json({ escrows: [{ id: "e1" }] });
+        if (url.includes("/jobs"))
+          return Response.json({ jobs: [{ id: "j1" }] });
+        if (url.includes("/keys/"))
+          return Response.json({ lowOneTimePreKeys: true });
         return Response.json({ messages: [{ id: "m1" }] });
       },
     });
@@ -336,7 +376,9 @@ describe("tinyplace CLI", () => {
     const snapshot = JSON.parse(result.stdout);
     expect(snapshot.counts.unread).toBe(2);
     expect(snapshot.escrows.count).toBe(1);
-    expect(snapshot.attention).toEqual(expect.arrayContaining([expect.stringContaining("unread")]));
+    expect(snapshot.attention).toEqual(
+      expect.arrayContaining([expect.stringContaining("unread")]),
+    );
   });
 
   it("aggregates discovery sources with `discover`", async () => {
@@ -344,15 +386,14 @@ describe("tinyplace CLI", () => {
       env: { TINYPLACE_ENDPOINT: "https://example.test" },
       fetch: async (input: RequestInfo | URL) => {
         const url = String(input instanceof Request ? input.url : input);
-        if (url.includes("/groups")) return Response.json({ groups: [{ id: "g1" }] });
-        if (url.includes("/channels")) return Response.json({ channels: [{ id: "c1" }] });
+        if (url.includes("/groups"))
+          return Response.json({ groups: [{ id: "g1" }] });
         return Response.json({ agents: [{ id: "a1" }] });
       },
     });
     expect(result.code).toBe(0);
     const discover = JSON.parse(result.stdout);
     expect(discover.groups.count).toBe(1);
-    expect(discover.channels.count).toBe(1);
     expect(discover.agents.count).toBe(1);
   });
 
@@ -377,7 +418,8 @@ describe("tinyplace CLI", () => {
     } finally {
       if (savedConfig === undefined) delete process.env.TINYPLACE_CONFIG;
       else process.env.TINYPLACE_CONFIG = savedConfig;
-      if (savedSecret !== undefined) process.env.TINYPLACE_SECRET_KEY = savedSecret;
+      if (savedSecret !== undefined)
+        process.env.TINYPLACE_SECRET_KEY = savedSecret;
     }
   });
 
@@ -396,22 +438,32 @@ describe("tinyplace CLI", () => {
 
   it("init sets up wallet + profile/card and prompts to fund SOL, without registering a handle", async () => {
     const requests: Array<Request> = [];
-    const result = await runTinyPlaceCli(["init", "--name", "Ada", "--bio", "research agent"], {
-      env: { TINYPLACE_ENDPOINT: "https://example.test", TINYPLACE_SECRET_KEY: "01".repeat(32) },
-      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
-        requests.push(new Request(input, init));
-        return Response.json({ ok: true });
+    const result = await runTinyPlaceCli(
+      ["init", "--name", "Ada", "--bio", "research agent"],
+      {
+        env: {
+          TINYPLACE_ENDPOINT: "https://example.test",
+          TINYPLACE_SECRET_KEY: "01".repeat(32),
+        },
+        fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+          requests.push(new Request(input, init));
+          return Response.json({ ok: true });
+        },
       },
-    });
+    );
     expect(result.code).toBe(0);
     const parsed = JSON.parse(result.stdout);
     expect(parsed.wallet.agentId).toBeTruthy();
     expect(parsed.fundUrl).toContain("asset=SOL");
     expect(parsed.next.join(" ")).toContain("register");
     // init must not register a handle.
-    expect(requests.some((request) => request.url.includes("/register"))).toBe(false);
+    expect(requests.some((request) => request.url.includes("/register"))).toBe(
+      false,
+    );
     // it does update the profile.
-    expect(requests.some((request) => /\/users\/.+\/profile$/.test(request.url))).toBe(true);
+    expect(
+      requests.some((request) => /\/users\/.+\/profile$/.test(request.url)),
+    ).toBe(true);
   });
 
   it("help separates workflows from raw commands", async () => {
@@ -424,5 +476,8 @@ describe("tinyplace CLI", () => {
 });
 
 function toBase64Url(value: string): string {
-  return btoa(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return btoa(value)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
 }

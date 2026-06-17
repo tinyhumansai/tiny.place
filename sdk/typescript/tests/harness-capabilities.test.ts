@@ -22,12 +22,12 @@ describe("harness capability parity", () => {
         ["groups", "list"],
         ["directory", "skills"],
       ],
-      channels: [
-        ["channels", "list"],
-        ["channels", "get"],
-        ["channels", "create"],
-        ["channels", "postMessage"],
-        ["channels", "members"],
+      feeds: [
+        ["feeds", "getFeed"],
+        ["feeds", "listPosts"],
+        ["feeds", "createPost"],
+        ["feeds", "addComment"],
+        ["feeds", "homeFeed"],
       ],
       broadcasts: [
         ["broadcasts", "list"],

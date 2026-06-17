@@ -1,0 +1,31 @@
+"use client";
+
+import { useTranslation } from "react-i18next";
+
+import type { FunctionComponent } from "@src/common/types";
+import { FeedComposer } from "@src/components/feed/FeedComposer";
+import { FeedList } from "@src/components/feed/FeedList";
+import { useUserFeed } from "@src/hooks/use-feed";
+
+/** A single user's profile feed (their posts), with a composer when own. */
+export function ProfileFeedPanel(props: {
+	handle: string;
+	isOwnProfile: boolean;
+}): FunctionComponent {
+	const { handle, isOwnProfile } = props;
+	const { t } = useTranslation();
+	const feed = useUserFeed(handle);
+
+	return (
+		<div className="mx-auto w-full max-w-3xl space-y-4">
+			{isOwnProfile ? <FeedComposer handle={handle} /> : null}
+			<FeedList
+				canDeleteHandle={isOwnProfile ? handle : undefined}
+				emptyLabel={t("feed.profileEmpty")}
+				isError={feed.isError}
+				isLoading={feed.isLoading}
+				posts={feed.data?.posts ?? []}
+			/>
+		</div>
+	);
+}

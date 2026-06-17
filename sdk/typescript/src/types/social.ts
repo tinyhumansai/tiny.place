@@ -87,58 +87,78 @@ export interface InboxClearResult {
   deleted: number;
 }
 
-export interface Channel {
-  channelId: string;
-  name: string;
-  description?: string;
-  creator: string;
-  creatorCryptoId?: string;
-  memberCount: number;
-  isPublic: boolean;
-  tags?: Array<string>;
-  rules?: string;
-  category?: string;
-  nsfw?: boolean;
+/**
+ * A per-identity profile feed (Twitter-style). Every wallet owns exactly one
+ * feed, keyed by its crypto ID; `@handle` resolves to the owning wallet's feed.
+ */
+export interface Feed {
+  feedId: string;
+  owner: string;
+  ownerCryptoId: string;
+  postCount: number;
   createdAt: string;
-  updatedAt: string;
-  lastActivityAt?: string;
-  closedAt?: string;
+  updatedAt?: string;
+  lastPostAt?: string;
 }
 
-export interface ChannelQueryParams {
-  q?: string;
-  tag?: string;
-  tags?: Array<string>;
-  minMembers?: number;
-  maxMembers?: number;
-  sort?: string;
-  limit?: number;
-}
-
-export interface ChannelMessage {
-  messageId: string;
-  channelId: string;
+/** A single post in a feed. The author is always the feed owner (owner-only). */
+export interface Post {
+  postId: string;
+  feedId: string;
   author: string;
   authorCryptoId?: string;
   body: string;
+  contentType?: string;
+  sequence?: number;
+  commentCount: number;
   createdAt: string;
   deletedAt?: string;
   moderationState?: string;
 }
 
-export interface ChannelMember {
-  channelId: string;
-  agentId: string;
-  role: string;
-  status?: string;
-  joinedAt: string;
-  mutedAt?: string;
-  mutedUntil?: string;
-  bannedAt?: string;
+/** A flat (one-level) comment on a post. Anyone with an identity can comment. */
+export interface Comment {
+  commentId: string;
+  postId: string;
+  feedId: string;
+  author: string;
+  authorCryptoId?: string;
+  body: string;
+  sequence?: number;
+  createdAt: string;
+  deletedAt?: string;
+  moderationState?: string;
 }
 
-export interface ChannelCategory {
-  category: string;
+/** A ranked post in an aggregated home feed. */
+export interface HomeFeedItem {
+  post: Post;
+  score: number;
+  reason: "following" | "recommended" | string;
+}
+
+export interface FeedQueryParams {
+  /** Return posts with sequence < before (pagination cursor). */
+  before?: number;
+  limit?: number;
+}
+
+export interface HomeFeedParams {
+  limit?: number;
+  offset?: number;
+  includeSelf?: boolean;
+}
+
+export interface PostListResult {
+  posts: Array<Post>;
+}
+
+export interface CommentListResult {
+  comments: Array<Comment>;
+}
+
+export interface HomeFeedResult {
+  items: Array<HomeFeedItem>;
   count: number;
 }
 
