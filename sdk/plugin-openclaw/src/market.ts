@@ -170,7 +170,7 @@ export async function createProduct(
 ): Promise<ProductDetail> {
   // Reject CLI-unsupported delivery methods up front so the seller gets a
   // clear, actionable error instead of an opaque backend 400.
-  assertSupportedDeliveryMethod(input.deliveryMethod);
+  const deliveryMethod = assertSupportedDeliveryMethod(input.deliveryMethod);
   const request: ProductCreateRequest = {
     seller: signer.agentId,
     sellerCryptoId: signer.agentId,
@@ -182,7 +182,7 @@ export async function createProduct(
       asset: input.price.asset,
       network: input.price.network,
     },
-    deliveryMethod: input.deliveryMethod,
+    deliveryMethod,
     ...(input.tags ? { tags: input.tags } : {}),
     ...(input.stock !== undefined ? { stock: input.stock } : {}),
   };
