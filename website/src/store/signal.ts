@@ -24,6 +24,12 @@ type SignalState = {
 		walletAgentId: string,
 		signMessage: SignMessageFunction
 	) => Promise<void>;
+	/**
+	 * Flags a post-derivation failure (e.g. the key bundle never reached the
+	 * relay) as an error without discarding the derived identity, so the next
+	 * enable() can retry the publish. Surfaces the message through `error`.
+	 */
+	setPublishError: (message: string) => void;
 	/** Clears the in-memory identity (e.g. on wallet disconnect). */
 	reset: () => void;
 };
@@ -54,6 +60,11 @@ export const useSignalStore = create<SignalState>()((set, get) => ({
 				error: error instanceof Error ? error.message : "Unknown error",
 			});
 		}
+	},
+	setPublishError: (message): void => {
+		// Keep `identity`/`agentId` so the next enable() reloads from IndexedDB
+		// (no fresh signature) and retries the publish; only flip status to error.
+		set({ status: "error", error: message });
 	},
 	reset: (): void => {
 		set({

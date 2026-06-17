@@ -87,6 +87,7 @@ export {
   publicKeyToBase64,
   publicKeyToSolanaAddress,
   deriveCryptoId,
+  cryptoIdToPublicKeyBase64,
   sha256Hex,
   canonicalPayload,
   createSigningKey,

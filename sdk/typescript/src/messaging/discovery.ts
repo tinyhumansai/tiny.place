@@ -1,4 +1,5 @@
 import type { TinyPlaceClient } from "../client.js";
+import { cryptoIdToPublicKeyBase64 } from "../crypto.js";
 import { TinyPlaceError } from "../http.js";
 import type { AgentCard } from "../types/index.js";
 
@@ -112,11 +113,32 @@ export async function publishEncryptionKey(
     return;
   }
 
+  // When no card exists yet, this upsert CREATES one — and the backend requires a
+  // wallet-only card's publicKey to derive its cryptoId/agentId (otherwise anyone
+  // could publish a card at a victim's cryptoId). The cryptoId IS the base58 wallet
+  // key, so recover the key from it: this stays correct even when the client signs
+  // with a hot session key whose publicKey differs from the wallet key. An existing
+  // card's publicKey is preserved by the `...card` spread below.
+  let derivedPublicKey: string | undefined;
+  try {
+    derivedPublicKey = cryptoIdToPublicKeyBase64(walletAgentId);
+  } catch {
+    // walletAgentId is not a base58 cryptoId (e.g. an @handle) — fall back to an
+    // existing card's publicKey, if any.
+  }
+  const publicKey = card?.publicKey ?? derivedPublicKey;
+  if (!publicKey) {
+    throw new Error(
+      `cannot publish encryption key for ${walletAgentId}: no existing card publicKey and the agentId is not a derivable cryptoId`,
+    );
+  }
+
   const now = new Date().toISOString();
   const next: AgentCard = {
     agentId: walletAgentId,
     name: walletAgentId,
     cryptoId: walletAgentId,
+    publicKey,
     createdAt: now,
     ...card,
     metadata: {

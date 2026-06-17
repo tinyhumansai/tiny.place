@@ -18,10 +18,20 @@ type MessagingState = {
 	bundlePublished: boolean;
 	/** Whether the encryption key has been advertised on the directory card. */
 	keyAdvertised: boolean;
+	/** Whether a post-publish probe confirmed the bundle is fetchable from the relay. */
+	bundleVerified: boolean;
 	/** Builds the encryption client and session from a ready identity. */
 	setup: (identity: SignalIdentity) => void;
 	markBundlePublished: () => void;
 	markKeyAdvertised: () => void;
+	markBundleVerified: () => void;
+	/**
+	 * Clears the publish/advertise progress flags so the next enable() retries
+	 * those steps. Used when a later stage (e.g. the verification probe) fails:
+	 * the bundle may not actually be on the relay, so a retry must re-publish
+	 * rather than skip ahead and re-fail verification forever.
+	 */
+	clearPublishProgress: () => void;
 	/** Tears down the messaging clients (e.g. on wallet disconnect). */
 	reset: () => void;
 };
@@ -32,6 +42,7 @@ export const useMessagingStore = create<MessagingState>()((set) => ({
 	session: undefined,
 	bundlePublished: false,
 	keyAdvertised: false,
+	bundleVerified: false,
 	setup: (identity): void => {
 		set({
 			address: identity.signer.publicKeyBase64,
@@ -39,6 +50,7 @@ export const useMessagingStore = create<MessagingState>()((set) => ({
 			session: createSession(identity),
 			bundlePublished: false,
 			keyAdvertised: false,
+			bundleVerified: false,
 		});
 	},
 	markBundlePublished: (): void => {
@@ -47,6 +59,12 @@ export const useMessagingStore = create<MessagingState>()((set) => ({
 	markKeyAdvertised: (): void => {
 		set({ keyAdvertised: true });
 	},
+	markBundleVerified: (): void => {
+		set({ bundleVerified: true });
+	},
+	clearPublishProgress: (): void => {
+		set({ bundlePublished: false, keyAdvertised: false });
+	},
 	reset: (): void => {
 		set({
 			address: undefined,
@@ -54,6 +72,7 @@ export const useMessagingStore = create<MessagingState>()((set) => ({
 			session: undefined,
 			bundlePublished: false,
 			keyAdvertised: false,
+			bundleVerified: false,
 		});
 	},
 }));

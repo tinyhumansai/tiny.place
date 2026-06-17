@@ -9,7 +9,10 @@ import {
 	hasSignalIdentity,
 	type SignalIdentity,
 } from "@src/common/signal-identity";
-import { publishKeyBundle } from "@src/common/signal-messaging";
+import {
+	publishKeyBundle,
+	verifyKeyBundlePublished,
+} from "@src/common/signal-messaging";
 import { useAuthStore } from "@src/store/auth";
 import { useConversationsStore } from "@src/store/conversations";
 import { useGroupConversationsStore } from "@src/store/group-conversations";
@@ -44,7 +47,9 @@ export function useSignalIdentity(): UseSignalIdentityResult {
 	const identity = useSignalStore((state) => state.identity);
 	const error = useSignalStore((state) => state.error);
 	const enableIdentity = useSignalStore((state) => state.enable);
+	const setPublishError = useSignalStore((state) => state.setPublishError);
 	const reset = useSignalStore((state) => state.reset);
+	const bundleVerified = useMessagingStore((state) => state.bundleVerified);
 	const setupMessaging = useMessagingStore((state) => state.setup);
 	const resetMessaging = useMessagingStore((state) => state.reset);
 	const ensureConversationsOwner = useConversationsStore(
@@ -90,26 +95,44 @@ export function useSignalIdentity(): UseSignalIdentityResult {
 			setupMessaging(readyIdentity);
 		}
 
-		// Publish the key bundle and advertise the encryption key. Both are tracked
-		// independently and retried on every enable() until they succeed, so a
-		// transient failure can't leave the user unreachable for DMs.
 		const encryptionClient = useMessagingStore.getState().encryptionClient;
-		if (encryptionClient) {
-			if (!useMessagingStore.getState().bundlePublished) {
-				try {
+		if (!encryptionClient) {
+			return undefined;
+		}
+
+		// Publish the key bundle, advertise the encryption key, then PROBE the relay
+		// to confirm the bundle is actually fetchable. Each step is tracked so a retry
+		// resumes where it failed. A failure here is propagated into the error state
+		// (not swallowed) and we return undefined, so "ready" can never mean
+		// "published but unreachable for DMs". The visible error + the enable button
+		// give the user a retry affordance.
+		if (!useMessagingStore.getState().bundleVerified) {
+			try {
+				if (!useMessagingStore.getState().bundlePublished) {
 					await publishKeyBundle(encryptionClient);
 					useMessagingStore.getState().markBundlePublished();
-				} catch (publishError) {
-					console.warn("Failed to publish key bundle:", publishError);
 				}
-			}
-			if (!useMessagingStore.getState().keyAdvertised) {
-				try {
+				if (!useMessagingStore.getState().keyAdvertised) {
 					await publishEncryptionKey(walletClient, agentId, address);
 					useMessagingStore.getState().markKeyAdvertised();
-				} catch (advertiseError) {
-					console.warn("Failed to advertise encryption key:", advertiseError);
 				}
+				await verifyKeyBundlePublished(encryptionClient, address);
+				useMessagingStore.getState().markBundleVerified();
+			} catch (publishError) {
+				const message =
+					publishError instanceof Error
+						? publishError.message
+						: "Unknown error";
+				// Surface to telemetry and the user instead of silently succeeding.
+				console.error("Failed to publish messaging key bundle:", publishError);
+				// Clear publish/advertise progress so a retry re-publishes: if the
+				// verification probe failed, the bundle may not be on the relay, and
+				// skipping straight to verify again would re-fail forever.
+				useMessagingStore.getState().clearPublishProgress();
+				setPublishError(
+					`Messaging not reachable — key publish failed: ${message}`
+				);
+				return undefined;
 			}
 		}
 
@@ -121,6 +144,7 @@ export function useSignalIdentity(): UseSignalIdentityResult {
 		setupMessaging,
 		ensureConversationsOwner,
 		ensureGroupConversationsOwner,
+		setPublishError,
 		walletClient,
 	]);
 
@@ -156,7 +180,9 @@ export function useSignalIdentity(): UseSignalIdentityResult {
 		status,
 		identity,
 		error,
-		isReady: status === "ready",
+		// "ready" requires a confirmed, fetchable bundle — a derived identity whose
+		// bundle never landed on the relay is unreachable, not ready.
+		isReady: status === "ready" && bundleVerified,
 		canEnable,
 		enable,
 	};
