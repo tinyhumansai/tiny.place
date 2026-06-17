@@ -64,6 +64,27 @@ fn rejects_forged_signature() {
 }
 
 #[test]
+fn forged_iteration_does_not_advance_receiver_state() {
+    let mut sender = GroupSenderKey::create();
+    let mut receiver = GroupSenderKeyReceiver::from_distribution(&sender.distribution()).unwrap();
+
+    // A real message whose iteration metadata is tampered to a far-future value.
+    // The signature only covers the ciphertext, so it still verifies, but the
+    // message key derived at the bogus iteration fails the AEAD MAC.
+    let real = sender.encrypt(b"hello");
+    let forged = SenderKeyMessage {
+        iteration: real.iteration + 500,
+        ciphertext: real.ciphertext.clone(),
+        signature: real.signature.clone(),
+    };
+    assert!(receiver.decrypt(&forged).is_err());
+
+    // The failed decrypt must not have ratcheted the chain: the genuine message
+    // at its real iteration still decrypts.
+    assert_eq!(receiver.decrypt(&real).unwrap(), b"hello");
+}
+
+#[test]
 fn serialize_round_trips() {
     let mut sender = GroupSenderKey::create();
     let _ = sender.encrypt(b"advance");

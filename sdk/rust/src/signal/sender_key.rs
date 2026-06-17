@@ -134,6 +134,7 @@ impl GroupSenderKey {
 
 /// The receiving half of a Sender Key: another member's chain key + signature
 /// public key, tolerant of out-of-order delivery via cached skipped keys.
+#[derive(Clone)]
 pub struct GroupSenderKeyReceiver {
     chain_key: [u8; 32],
     iteration: u32,
@@ -194,8 +195,16 @@ impl GroupSenderKeyReceiver {
             Error::InvalidArgument("Sender key signature verification failed".into())
         })?;
 
-        let message_key = self.message_key_for(message.iteration)?;
-        decrypt(&message_key, &ciphertext, EMPTY_AD)
+        // The iteration is metadata outside the signed body (it isn't covered by
+        // the signature, to stay wire-compatible with the TS sender format), so a
+        // tampered future iteration can pass signature verification yet fail the
+        // AEAD MAC. Ratchet a scratch copy and commit only after decrypt succeeds,
+        // so a forged/corrupt message can't advance or poison the receiver chain.
+        let mut scratch = self.clone();
+        let message_key = scratch.message_key_for(message.iteration)?;
+        let plaintext = decrypt(&message_key, &ciphertext, EMPTY_AD)?;
+        *self = scratch;
+        Ok(plaintext)
     }
 
     /// Message key for `target`, advancing the chain and caching keys for any
