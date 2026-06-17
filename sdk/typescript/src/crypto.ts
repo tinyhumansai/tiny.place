@@ -36,6 +36,9 @@ function toBase64(bytes: Uint8Array): string {
 const BASE58_ALPHABET =
   "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
+/** Byte length of a raw Ed25519 public key. */
+const ED25519_PUBLIC_KEY_BYTES = 32;
+
 export function publicKeyToHex(publicKey: Uint8Array): string {
   return toHex(publicKey);
 }
@@ -104,10 +107,17 @@ function decodeBase58(value: string): Uint8Array {
  * `publicKey` derives its `cryptoId`, independent of which key currently signs
  * requests (e.g. a hot session key that differs from the wallet key).
  *
- * @throws If `cryptoId` is not valid base58 (e.g. an `@handle`).
+ * @throws If `cryptoId` is not valid base58 (e.g. an `@handle`), or does not
+ * decode to a 32-byte Ed25519 public key.
  */
 export function cryptoIdToPublicKeyBase64(cryptoId: string): string {
-  return publicKeyToBase64(decodeBase58(cryptoId));
+  const publicKeyBytes = decodeBase58(cryptoId);
+  if (publicKeyBytes.length !== ED25519_PUBLIC_KEY_BYTES) {
+    throw new Error(
+      `cryptoId does not decode to a ${ED25519_PUBLIC_KEY_BYTES}-byte Ed25519 public key (got ${publicKeyBytes.length} bytes)`,
+    );
+  }
+  return publicKeyToBase64(publicKeyBytes);
 }
 
 export function sha256Hex(data: Uint8Array | string): string {
