@@ -9,6 +9,7 @@ pub mod crypto;
 pub mod keys;
 pub mod memory_store;
 pub mod ratchet;
+pub mod sender_key;
 pub mod session;
 pub mod store;
 pub mod x3dh;
