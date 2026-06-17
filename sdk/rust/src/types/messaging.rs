@@ -8,7 +8,7 @@ pub type EnvelopeType = String;
 /// `"DEFAULT" | "RESENDABLE" | "IMPLICIT"` in the TS SDK.
 pub type ContentHint = String;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SignalMetadata {
     #[serde(skip_serializing_if = "Option::is_none", default)]
