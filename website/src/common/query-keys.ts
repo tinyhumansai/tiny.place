@@ -40,8 +40,8 @@ export const queryKeys = {
 	feeds: {
 		home: (parameters?: HomeFeedParams) =>
 			["feeds", "home", parameters] as const,
-		user: (handle: string, parameters?: FeedQueryParams) =>
-			["feeds", "user", handle, parameters] as const,
+		user: (handle: string, parameters?: FeedQueryParams, viewer?: string) =>
+			["feeds", "user", handle, parameters, viewer] as const,
 		comments: (handle: string, postId: string) =>
 			["feeds", "comments", handle, postId] as const,
 	},

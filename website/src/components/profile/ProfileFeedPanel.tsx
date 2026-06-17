@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { FunctionComponent } from "@src/common/types";
 import { FeedComposer } from "@src/components/feed/FeedComposer";
 import { FeedList } from "@src/components/feed/FeedList";
+import { useEffectiveActor } from "@src/components/feed/use-actor";
 import { useUserFeed } from "@src/hooks/use-feed";
 
 /** A single user's profile feed (their posts), with a composer when own. */
@@ -14,7 +15,8 @@ export function ProfileFeedPanel(props: {
 }): FunctionComponent {
 	const { handle, isOwnProfile } = props;
 	const { t } = useTranslation();
-	const feed = useUserFeed(handle);
+	const viewer = useEffectiveActor();
+	const feed = useUserFeed(handle, undefined, viewer);
 
 	return (
 		<div className="mx-auto w-full max-w-3xl space-y-4">
