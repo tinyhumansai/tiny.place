@@ -40,16 +40,16 @@ async def test_register_normalizes_and_signs() -> None:
 
     body = json_body(session)
     assert body["username"] == "@agent"
+    # Must match the backend's registrationPayload exactly: only these four
+    # fields (no actorType/primary), or the backend rejects it with 401.
     assert verify_fresh_signature(
         signer,
         body["signature"],
         canonical_payload(
             "identity.register",
             {
-                "actorType": None,
                 "cryptoId": signer.agent_id,
                 "paymentMethods": None,
-                "primary": None,
                 "publicKey": signer.public_key_base64,
                 "username": "@agent",
             },

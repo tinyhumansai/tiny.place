@@ -167,13 +167,15 @@ def _normalize_handle(username: str) -> str:
 
 
 def _registration_signature_payload(request: JsonDict) -> str:
+    # Must byte-match the backend's registrationPayload
+    # (backend-tinyplace/internal/identity/auth.go): exactly these four fields,
+    # no actorType/primary. Both sides serialize canonically (sorted keys, null
+    # for absent values), so any extra signed field breaks verification (401).
     return canonical_payload(
         "identity.register",
         {
-            "actorType": request.get("actorType"),
             "cryptoId": request.get("cryptoId"),
             "paymentMethods": request.get("paymentMethods"),
-            "primary": request.get("primary"),
             "publicKey": request.get("publicKey"),
             "username": request.get("username"),
         },

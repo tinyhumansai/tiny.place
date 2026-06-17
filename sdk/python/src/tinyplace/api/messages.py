@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Callable, Optional
 
+from ..crypto import decode_base58
 from ..http import HttpClient, encode
 from ..signal.crypto import ed25519_pub_to_x25519_pub, from_base64
 from ..types import Json, JsonDict
@@ -128,7 +129,7 @@ class MessagesApi:
         """
         has_session = await session.has_session(to_address)
         bundle = None if has_session else _bundle_of(await self._fetch_bundle(to_address))
-        recipient_ed25519 = from_base64(to_address)
+        recipient_ed25519 = decode_agent_address(to_address)
         recipient_x25519 = ed25519_pub_to_x25519_pub(recipient_ed25519)
 
         encrypted = await session.encrypt(
@@ -192,7 +193,7 @@ class MessagesApi:
         for envelope in messages:
             sender = str(envelope.get("from") or "")
             try:
-                sender_x25519 = ed25519_pub_to_x25519_pub(from_base64(sender))
+                sender_x25519 = ed25519_pub_to_x25519_pub(decode_agent_address(sender))
                 plaintext = await session.decrypt(sender, sender_x25519, envelope)
             except Exception as error:  # noqa: BLE001 - one bad message must not abort the batch
                 if on_error is not None:
@@ -240,6 +241,30 @@ _CURSOR_SEP = "|"
 _LOGGER = logging.getLogger(__name__)
 
 _message_counter = 0
+
+
+def decode_agent_address(address: str) -> bytes:
+    """Decode an agent messaging address to its 32-byte Ed25519 public key.
+
+    An agent address is that key encoded as either a **base58 cryptoId** (the
+    canonical, URL-safe form the backend routes/authenticates on) or **base64**.
+    The base64 form contains ``/`` and ``=``, which break signed relay writes
+    whose path/query carry the address, so the cryptoId form is preferred; base64
+    is accepted as a fallback for interop. Base58 is tried first and only
+    accepted when it yields exactly 32 bytes.
+    """
+    try:
+        raw = decode_base58(address)
+        if len(raw) == 32:
+            return raw
+    except Exception:  # noqa: BLE001 - not base58; fall back to base64 below
+        pass
+    raw = from_base64(address)
+    if len(raw) != 32:
+        raise ValueError(
+            f"Agent address must decode to a 32-byte Ed25519 public key, got {len(raw)}"
+        )
+    return raw
 
 
 def _next_message_id() -> str:
