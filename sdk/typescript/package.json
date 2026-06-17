@@ -20,6 +20,10 @@
     "./node": {
       "import": "./dist/node/index.js",
       "types": "./dist/node/index.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/browser/index.js",
+      "types": "./dist/browser/index.d.ts"
     }
   },
   "scripts": {
