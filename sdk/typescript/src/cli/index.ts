@@ -1,5 +1,5 @@
 import { boolFlag, parseArgs } from "./args.js";
-import { HARNESS_CLI_COMMANDS, buildHelp, rawCommands } from "./commands.js";
+import { CLI_GUIDES, HARNESS_CLI_COMMANDS, buildHelp, rawCommands } from "./commands.js";
 import { makeContext } from "./context.js";
 import { formatResult, redactSecrets, resolveFormat } from "./format.js";
 import { runKeygen } from "./keygen.js";
@@ -8,10 +8,11 @@ import { dispatchRaw } from "./raw.js";
 import type { CliContext, ParsedArgs, TinyPlaceCliOptions, TinyPlaceCliResult } from "./types.js";
 import { discoverFlow, fundInfo, initFlow, statusFlow, whoami } from "./workflows.js";
 
-export { HARNESS_CLI_COMMANDS } from "./commands.js";
+export { CLI_GUIDES, HARNESS_CLI_COMMANDS } from "./commands.js";
 export type {
   CliContext,
   TinyPlaceCliCommand,
+  TinyPlaceCliGuide,
   TinyPlaceCliOptions,
   TinyPlaceCliResult,
 } from "./types.js";
@@ -54,7 +55,7 @@ async function dispatchTop(ctx: CliContext, parsed: ParsedArgs): Promise<unknown
     case "raw": {
       const [rawCommand, ...positionals] = parsed.positionals;
       if (!rawCommand) {
-        return { commands: rawCommands() };
+        return { commands: rawCommands(), guides: CLI_GUIDES };
       }
       return dispatchRaw(ctx, { command: rawCommand, positionals, flags });
     }
@@ -78,7 +79,7 @@ async function dispatchTop(ctx: CliContext, parsed: ParsedArgs): Promise<unknown
     case "version":
       return cliVersionInfo(ctx, flags);
     case "commands":
-      return { commands: HARNESS_CLI_COMMANDS };
+      return { commands: HARNESS_CLI_COMMANDS, guides: CLI_GUIDES };
     // Back-compat: a bare granular command behaves like `raw <command>`.
     default:
       return dispatchRaw(ctx, parsed);

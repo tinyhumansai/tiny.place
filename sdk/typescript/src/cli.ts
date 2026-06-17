@@ -4,9 +4,10 @@
 import { runTinyPlaceCli } from "./cli/index.js";
 
 export { runTinyPlaceCli } from "./cli/index.js";
-export { HARNESS_CLI_COMMANDS } from "./cli/commands.js";
+export { CLI_GUIDES, HARNESS_CLI_COMMANDS } from "./cli/commands.js";
 export type {
   TinyPlaceCliCommand,
+  TinyPlaceCliGuide,
   TinyPlaceCliOptions,
   TinyPlaceCliResult,
 } from "./cli/types.js";
