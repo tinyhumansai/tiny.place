@@ -71,6 +71,32 @@ test("resolveRecipientKey resolves a @handle via directory.resolve", async () =>
   assert.equal(await resolveRecipientKey(client, "@openclawtest"), ENC_KEY);
 });
 
+test("resolveRecipientKey normalizes a bare handle (no @) and resolves it", async () => {
+  // Regression: a bare registered handle like "iris" must NOT be treated as a
+  // cryptoId/agentId — it is normalized to "@iris" and resolved.
+  let resolvedName = "";
+  const client = {
+    directory: {
+      resolve: (name: string): Promise<unknown> => {
+        resolvedName = name;
+        return Promise.resolve({
+          identity: { publicKey: "ignored" },
+          agent: {
+            agentId: CRYPTO_ID,
+            publicKey: ENC_KEY,
+            metadata: { encryptionPublicKey: ENC_KEY },
+          },
+        });
+      },
+      getAgent: (): never => {
+        throw new Error("a bare handle must not hit getAgent");
+      },
+    },
+  } as unknown as TinyPlaceClient;
+  assert.equal(await resolveRecipientKey(client, "iris"), ENC_KEY);
+  assert.equal(resolvedName, "@iris");
+});
+
 test("resolveRecipientKey falls back to the card's own publicKey when no encryption key is advertised", async () => {
   const client = {
     directory: {

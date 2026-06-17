@@ -61,6 +61,17 @@ export function isPublicKey(value: string): boolean {
   return /^[A-Za-z0-9+/]{43}=$/.test(value);
 }
 
+/**
+ * Looks like a base58 cryptoId / agentId: 32-44 base58 chars (the Solana address
+ * alphabet, no 0/O/I/l). A registered @handle ("iris") is short and may also use
+ * those characters, so this length-bounded check is what tells a bare cryptoId
+ * apart from a bare handle — the former is looked up directly, the latter is
+ * normalized + resolved.
+ */
+function isCryptoId(value: string): boolean {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value);
+}
+
 /** Picks the messaging address from a card: advertised encryption key, else the card's own key. */
 function cardEncryptionAddress(
   advertised: unknown,
@@ -84,12 +95,15 @@ function cardEncryptionAddress(
 
 /**
  * Resolves a recipient to the base64 encryption public key to address messages +
- * bundles to. Accepts three forms: a raw base64 key (used as-is), an `@handle`
- * (directory.resolve), or a base58 cryptoId/agentId (directory.getAgent). For the
- * latter two it mirrors the web app's `resolveEncryptionAddress`: prefer the
- * card's advertised encryption key, then the card's own public key (single-key
- * agents, like this CLI), then the identity key. This is what lets the CLI
- * message web-app users that run a distinct encryption identity.
+ * bundles to. Accepts three forms:
+ *   - a raw base64 key — used as-is;
+ *   - a base58 cryptoId/agentId — looked up directly via `directory.getAgent`;
+ *   - a handle, with or without a leading `@` (e.g. `iris` or `@iris`) — a bare
+ *     name is normalized to `@iris` and resolved via `directory.resolve`.
+ * For the directory paths it mirrors the web app's `resolveEncryptionAddress`:
+ * prefer the card's advertised encryption key, then the card's own public key
+ * (single-key agents, like this CLI), then the identity key. This is what lets
+ * the CLI message web-app users that run a distinct encryption identity.
  */
 export async function resolveRecipientKey(
   client: TinyPlaceClient,
@@ -97,23 +111,25 @@ export async function resolveRecipientKey(
 ): Promise<string> {
   if (isPublicKey(recipient)) return recipient;
 
-  if (recipient.startsWith("@")) {
-    const resolved = await client.directory.resolve(recipient);
+  // A bare base58 cryptoId/agentId is fetched directly; anything else is a
+  // handle (a bare name like "iris" is normalized to "@iris") and resolved.
+  if (!recipient.startsWith("@") && isCryptoId(recipient)) {
+    const card = await client.directory.getAgent(recipient);
     return cardEncryptionAddress(
-      resolved.agent?.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA],
-      resolved.agent?.publicKey,
-      resolved.identity?.publicKey,
+      card.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA],
+      card.publicKey,
+      undefined,
       recipient,
     );
   }
 
-  // A bare base58 cryptoId / agentId: look up its directory card directly.
-  const card = await client.directory.getAgent(recipient);
+  const handle = recipient.startsWith("@") ? recipient : `@${recipient}`;
+  const resolved = await client.directory.resolve(handle);
   return cardEncryptionAddress(
-    card.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA],
-    card.publicKey,
-    undefined,
-    recipient,
+    resolved.agent?.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA],
+    resolved.agent?.publicKey,
+    resolved.identity?.publicKey,
+    handle,
   );
 }
 
