@@ -23,8 +23,10 @@ export async function makeContext(options: TinyPlaceCliOptions): Promise<CliCont
     DEFAULT_ENDPOINT;
 
   let seed = env.TINYPLACE_SECRET_KEY ?? config.secretKey;
+  let generated = false;
   if (!seed && managed) {
     seed = bytesToHex(randomSeed());
+    generated = true;
     await persistSecretKey(env, config, seed);
   }
   const signer = seed ? await LocalSigner.fromSeed(hexToBytes(seed)) : undefined;
@@ -34,7 +36,7 @@ export async function makeContext(options: TinyPlaceCliOptions): Promise<CliCont
     ...(signer ? { signer } : {}),
     fetch: options.fetch,
   });
-  return { client, signer, env, fetch: options.fetch };
+  return { client, signer, env, fetch: options.fetch, baseUrl, generated };
 }
 
 function configPathFor(env: Record<string, string | undefined>): string {

@@ -6,6 +6,11 @@ import {
   required,
   stringFlag,
 } from "./args.js";
+import {
+  clampTimeoutSeconds,
+  grindVanityIdentity,
+  type VanityIdentity,
+} from "./keygen.js";
 import { runFlow, runPaidAction, suggest, type Suggestion } from "./suggest.js";
 import type { CliContext, Flags, JsonObject } from "./types.js";
 
@@ -19,12 +24,20 @@ export async function initFlow(
   ctx: CliContext,
   flags: Flags,
 ): Promise<unknown> {
+  // First-run branding: replace the freshly auto-generated wallet with one whose
+  // address starts with `tiny` (case-insensitive, ≤60s grind, random fallback on
+  // timeout). Only happens when the wallet is new this run or the caller opts in,
+  // so an established/funded wallet is never silently clobbered.
+  const vanity = await maybeGrindVanity(ctx, flags);
+  const client = vanity?.client ?? ctx.client;
+  const signer = vanity?.signer ?? ctx.signer;
+
   const agentId = required(
-    ctx.signer?.agentId,
+    signer?.agentId,
     "init requires a wallet (re-run; the key auto-generates)",
   );
   const publicKey = required(
-    ctx.signer?.publicKeyBase64,
+    signer?.publicKeyBase64,
     "init requires a wallet public key",
   );
   const name = stringFlag(flags, "name");
@@ -35,7 +48,7 @@ export async function initFlow(
   if (name || bio) {
     steps.push(
       await runStep("set-profile", () =>
-        ctx.client.users.updateProfile(agentId, {
+        client.users.updateProfile(agentId, {
           ...(name ? { displayName: name } : {}),
           ...(bio ? { bio } : {}),
         } as never),
@@ -46,7 +59,7 @@ export async function initFlow(
     steps.push(
       await runStep("publish-card", () => {
         const now = new Date().toISOString();
-        return ctx.client.directory.upsertAgent(agentId, {
+        return client.directory.upsertAgent(agentId, {
           agentId,
           cryptoId: agentId,
           publicKey,
@@ -62,19 +75,70 @@ export async function initFlow(
     );
   }
 
-  const fundUrl = buildFundUrl(ctx.env, publicKey, undefined, "SOL");
+  // Fund the base58 SOL wallet address (agentId), NOT the base64 messaging key —
+  // that is the on-chain address a deposit actually lands on (and where the vanity
+  // prefix lives).
+  const fundUrl = buildFundUrl(ctx.env, agentId, undefined, "SOL");
   return {
-    wallet: { agentId, publicKey },
+    wallet: {
+      agentId,
+      publicKey,
+      ...(vanity
+        ? {
+            vanity: {
+              prefix: vanity.prefix,
+              matched: vanity.matched,
+              ...(vanity.matched
+                ? { attempts: vanity.attempts }
+                : { fallbackRandom: true }),
+              seconds: vanity.seconds,
+              note: vanity.matched
+                ? `Ground a wallet starting with "${vanity.prefix}". Back up ~/.tinyplace/config.json — losing it loses the wallet.`
+                : `No "${vanity.prefix}" wallet found in time — saved a random wallet. Back up ~/.tinyplace/config.json — losing it loses the wallet.`,
+            },
+          }
+        : {}),
+    },
     profile: { ...(name ? { name } : {}), ...(bio ? { bio } : {}) },
     steps,
     fundUrl,
     action: "Fund your SOL wallet, then claim your @handle.",
     next: [
       `Fund your SOL wallet (card or crypto): ${fundUrl}`,
-      `Once funded, claim your @handle: tinyplace raw register --handle ${wantedHandle ?? "@your-agent"}`,
+      `Once funded, claim your @handle: tinyplace register ${wantedHandle ?? "@your-agent"} --execute`,
       "Then run your steady-state loop: tinyplace status",
     ],
   };
+}
+
+/**
+ * Decides whether `init` should grind a vanity wallet and, if so, does it. Grinds
+ * for the `tiny` prefix by default (`--vanity <prefix>` to change, `--no-vanity` to
+ * skip, `--vanity-timeout <s>` to bound it). Only runs when the wallet is new this
+ * invocation or the caller explicitly opts in (`--vanity` / `--regrind`), and never
+ * when the address already carries the prefix.
+ */
+async function maybeGrindVanity(
+  ctx: CliContext,
+  flags: Flags,
+): Promise<VanityIdentity | undefined> {
+  if (boolFlag(flags, "no-vanity")) {
+    return undefined;
+  }
+  const prefix = stringFlag(flags, "vanity") ?? "tiny";
+  const explicit = flags.vanity !== undefined || boolFlag(flags, "regrind");
+  if (!explicit && !ctx.generated) {
+    return undefined;
+  }
+  const current = ctx.signer?.agentId ?? "";
+  if (current.toLowerCase().startsWith(prefix.toLowerCase())) {
+    return undefined;
+  }
+  return grindVanityIdentity(
+    ctx,
+    prefix,
+    clampTimeoutSeconds(numberFlag(flags, "vanity-timeout")),
+  );
 }
 
 // ── status: a single snapshot of everything that needs the agent's attention. ─
@@ -248,14 +312,17 @@ export async function whoami(ctx: CliContext): Promise<unknown> {
     agentId,
     publicKey,
     handle,
-    fundUrl: publicKey ? buildFundUrl(ctx.env, publicKey) : undefined,
+    // Deposit address is the base58 SOL wallet (agentId), not the messaging key.
+    fundUrl: buildFundUrl(ctx.env, agentId, undefined, "SOL"),
     suggestions,
   };
 }
 
 export function fundInfo(ctx: CliContext, flags: Flags): unknown {
+  // Default to the base58 SOL wallet address (agentId) — the on-chain deposit
+  // address — not the base64 messaging key.
   const address = required(
-    stringFlag(flags, "address") ?? ctx.signer?.publicKeyBase64,
+    stringFlag(flags, "address") ?? ctx.signer?.agentId,
     "fund needs a signer or --address",
   );
   const asset = stringFlag(flags, "asset") ?? "USDC";

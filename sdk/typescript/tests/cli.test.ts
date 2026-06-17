@@ -244,7 +244,9 @@ describe("tinyplace CLI", () => {
     const whoamiOut = JSON.parse(whoami.stdout);
     expect(whoamiOut.handle).toBe("@me");
     expect(typeof whoamiOut.agentId).toBe("string");
-    expect(whoamiOut.fundUrl).toContain("https://tiny.place/fund?address=");
+    // Fund link targets the base58 SOL wallet (agentId), not the base64 key.
+    expect(whoamiOut.fundUrl).toContain(`address=${whoamiOut.agentId}`);
+    expect(whoamiOut.fundUrl).toContain("asset=SOL");
 
     const fund = await runTinyPlaceCli(["fund", "--amount", "25"], {
       env,
@@ -254,6 +256,9 @@ describe("tinyplace CLI", () => {
     expect(fundOut.asset).toBe("USDC");
     expect(fundOut.amount).toBe("25");
     expect(fundOut.url).toContain("amount=25");
+    // The deposit address is base58 (no base64-only +, /, = characters).
+    expect(fundOut.address).toBe(whoamiOut.agentId);
+    expect(fundOut.address).not.toMatch(/[/+=]/);
   });
 
   it("routes set-profile through the signer-derived user id", async () => {
@@ -484,6 +489,49 @@ describe("tinyplace CLI", () => {
     expect(
       requests.some((request) => /\/users\/.+\/profile$/.test(request.url)),
     ).toBe(true);
+  });
+
+  it("init grinds a vanity wallet for the prefix and persists it as the identity", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "tinyplace-init-"));
+    const configPath = join(dir, "config.json");
+    const requests: Array<Request> = [];
+    // No secret key: init must mint the wallet itself by grinding. "1" is a
+    // leadable base58 prefix, so the grind resolves near-instantly.
+    const result = await runTinyPlaceCli(["init", "--name", "Ada", "--vanity", "1"], {
+      env: { TINYPLACE_ENDPOINT: "https://example.test", TINYPLACE_CONFIG: configPath },
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        requests.push(new Request(input, init));
+        return Response.json({ ok: true });
+      },
+    });
+
+    expect(result.code).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.wallet.agentId.toLowerCase().startsWith("1")).toBe(true);
+    expect(parsed.wallet.vanity.prefix).toBe("1");
+    expect(parsed.wallet.vanity.matched).toBe(true);
+    // The ground key is persisted so later runs reuse the same wallet.
+    const saved = JSON.parse(await readFile(configPath, "utf8")) as { secretKey?: string };
+    expect(saved.secretKey).toMatch(/^[0-9a-f]{64}$/);
+    // Profile/card calls used the ground identity (the requests went out).
+    expect(requests.length).toBeGreaterThan(0);
+  });
+
+  it("init --no-vanity keeps the existing wallet untouched", async () => {
+    const requests: Array<Request> = [];
+    const result = await runTinyPlaceCli(["init", "--name", "Ada", "--no-vanity"], {
+      env: {
+        TINYPLACE_ENDPOINT: "https://example.test",
+        TINYPLACE_SECRET_KEY: "01".repeat(32),
+      },
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        requests.push(new Request(input, init));
+        return Response.json({ ok: true });
+      },
+    });
+
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.stdout).wallet.vanity).toBeUndefined();
   });
 
   it("gates buy-domain behind --execute and performs nothing without it", async () => {

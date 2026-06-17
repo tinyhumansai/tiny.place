@@ -2,8 +2,10 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { ed25519 } from "@noble/curves/ed25519.js";
+import { TinyPlaceClient } from "../client.js";
 import { publicKeyToSolanaAddress } from "../crypto.js";
-import { bytesToHex, numberFlag, requiredFlag } from "./args.js";
+import { LocalSigner } from "../local-signer.js";
+import { bytesToHex, hexToBytes, numberFlag, requiredFlag } from "./args.js";
 import type { CliContext, Flags } from "./types.js";
 
 // A tiny.place wallet address is the base58 Solana address (== signer.agentId).
@@ -82,10 +84,58 @@ export function generateVanityWallet(
   return { seedHex: bytesToHex(seed), address: addressForSeed(seed), attempts: 0, matched: false };
 }
 
+/** Clamps a requested grind budget to the supported [1, 60]s window. */
+export function clampTimeoutSeconds(requested: number | undefined): number {
+  return Math.min(MAX_TIMEOUT_SECONDS, Math.max(1, requested ?? MAX_TIMEOUT_SECONDS));
+}
+
+export interface VanityIdentity {
+  signer: LocalSigner;
+  client: TinyPlaceClient;
+  address: string;
+  prefix: string;
+  matched: boolean;
+  attempts: number;
+  seconds: number;
+}
+
+/**
+ * Grinds a vanity wallet (case-insensitive prefix, ≤60s, random fallback on
+ * timeout), persists it as the identity key, and returns a signer + client rebuilt
+ * around it. Shared by `keygen` and the `init` workflow so both grind identically.
+ */
+export async function grindVanityIdentity(
+  ctx: CliContext,
+  prefix: string,
+  timeoutSeconds: number,
+): Promise<VanityIdentity> {
+  validateVanityPrefix(prefix);
+  const timeoutMs = clampTimeoutSeconds(timeoutSeconds) * 1000;
+  const startedAt = Date.now();
+  const wallet = generateVanityWallet(prefix, { timeoutMs, now: () => Date.now() });
+  const seconds = Math.round((Date.now() - startedAt) / 100) / 10;
+  await persistSecretKey(ctx.env, wallet.seedHex);
+  const signer = await LocalSigner.fromSeed(hexToBytes(wallet.seedHex));
+  const client = new TinyPlaceClient({
+    baseUrl: ctx.baseUrl,
+    signer,
+    fetch: ctx.fetch,
+  });
+  return {
+    signer,
+    client,
+    address: wallet.address,
+    prefix,
+    matched: wallet.matched,
+    attempts: wallet.attempts,
+    seconds,
+  };
+}
+
 export async function runKeygen(ctx: CliContext, flags: Flags): Promise<unknown> {
   const prefix = requiredFlag(flags, "vanity");
   validateVanityPrefix(prefix);
-  const timeoutSeconds = Math.min(MAX_TIMEOUT_SECONDS, Math.max(1, numberFlag(flags, "timeout") ?? MAX_TIMEOUT_SECONDS));
+  const timeoutSeconds = clampTimeoutSeconds(numberFlag(flags, "timeout"));
   const timeoutMs = timeoutSeconds * 1000;
 
   const startedAt = Date.now();

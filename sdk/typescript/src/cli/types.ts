@@ -50,6 +50,10 @@ export interface CliContext {
   signer?: LocalSigner;
   env: Record<string, string | undefined>;
   fetch?: typeof globalThis.fetch;
+  /** Resolved API endpoint — lets a command rebuild the client around a new key. */
+  baseUrl: string;
+  /** True when makeContext auto-generated the identity key on this invocation. */
+  generated?: boolean;
 }
 
 export interface TinyPlaceCliResult {

@@ -13,8 +13,8 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "init",
     capability: "workflow",
     description:
-      "Set up your wallet + profile + card, then prompt to fund (no handle purchase).",
-    usage: "[--name <name>] [--bio <bio>] [--skills a,b,c]",
+      "Grind a `tiny` wallet, set up profile + card, then prompt to fund (no handle purchase).",
+    usage: "[--name <name>] [--bio <bio>] [--skills a,b,c] [--vanity <prefix>] [--vanity-timeout <s>] [--no-vanity]",
   },
   {
     name: "status",
@@ -758,7 +758,7 @@ export const CLI_GUIDES: Array<TinyPlaceCliGuide> = [
   },
   {
     topic: "onboarding",
-    body: "Run once: `init` sets up wallet + profile + discoverable card (no handle — that is paid). Then `fund` to top up SOL. Then `register @you --execute` to claim your handle once funded.",
+    body: "Run once: `init` mints your wallet — grinding for a `tiny`-prefixed address (case-insensitive, ≤60s, random fallback; `--no-vanity` to skip or `--vanity <prefix>` to change) — then sets up your profile + discoverable card (no handle — that is paid). Then `fund` to top up SOL. Then `register @you --execute` to claim your handle once funded.",
   },
   {
     topic: "run-loop",
