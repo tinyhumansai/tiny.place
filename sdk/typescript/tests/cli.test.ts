@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -354,6 +354,44 @@ describe("tinyplace CLI", () => {
     expect(discover.groups.count).toBe(1);
     expect(discover.channels.count).toBe(1);
     expect(discover.agents.count).toBe(1);
+  });
+
+  it("auto-generates and persists an identity key in managed mode", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "tinyplace-managed-"));
+    const configPath = join(dir, "config.json");
+    const savedConfig = process.env.TINYPLACE_CONFIG;
+    const savedSecret = process.env.TINYPLACE_SECRET_KEY;
+    process.env.TINYPLACE_CONFIG = configPath;
+    delete process.env.TINYPLACE_SECRET_KEY;
+    try {
+      // No options.env -> managed mode -> CLI owns the key. `version` needs no network.
+      const first = await runTinyPlaceCli(["version"]);
+      expect(first.code).toBe(0);
+      const persisted = JSON.parse(await readFile(configPath, "utf8"));
+      expect(persisted.secretKey).toMatch(/^[0-9a-f]{64}$/);
+
+      const second = await runTinyPlaceCli(["version"]);
+      expect(second.code).toBe(0);
+      const reused = JSON.parse(await readFile(configPath, "utf8"));
+      expect(reused.secretKey).toBe(persisted.secretKey);
+    } finally {
+      if (savedConfig === undefined) delete process.env.TINYPLACE_CONFIG;
+      else process.env.TINYPLACE_CONFIG = savedConfig;
+      if (savedSecret !== undefined) process.env.TINYPLACE_SECRET_KEY = savedSecret;
+    }
+  });
+
+  it("does not auto-generate a key when an explicit env is passed", async () => {
+    const requests: Array<Request> = [];
+    const result = await runTinyPlaceCli(["profile", "@agent"], {
+      env: { TINYPLACE_ENDPOINT: "https://example.test" },
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        requests.push(new Request(input, init));
+        return Response.json({ ok: true });
+      },
+    });
+    expect(result.code).toBe(0);
+    expect(requests[0].headers.get("X-TinyPlace-Signature")).toBeNull();
   });
 
   it("help separates workflows from raw commands", async () => {

@@ -104,6 +104,14 @@ export function queryFlags(flags: Flags, names: Array<string>): JsonObject {
   return query;
 }
 
+export function bytesToHex(bytes: Uint8Array): string {
+  let out = "";
+  for (const byte of bytes) {
+    out += byte.toString(16).padStart(2, "0");
+  }
+  return out;
+}
+
 export function hexToBytes(value: string): Uint8Array {
   const normalized = value.trim().replace(/^0x/i, "");
   if (normalized.length % 2 !== 0) {
