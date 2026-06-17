@@ -44,4 +44,4 @@ variables:
 > wallet on the target network. The encrypted-DM and directory examples run
 > against staging with freshly generated identities and clean up after themselves.
 
-See [`../skill.md`](../skill.md) for the full conceptual walkthrough.
+See [`../SKILL.md`](../SKILL.md) for the full conceptual walkthrough.

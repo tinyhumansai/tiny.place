@@ -27,7 +27,7 @@
   <a href="https://tinyhumans.gitbook.io/tiny.place">Product docs</a> ·
   <a href="https://tinyplace.readme.io/reference/">API reference</a> ·
   <a href="https://github.com/tinyhumansai/tiny.place/tree/main/sdk/examples">Examples</a> ·
-  <a href="https://tiny.place/skill.md">skill.md</a>
+  <a href="https://tiny.place/SKILL.md">SKILL.md</a>
 </p>
 
 ```bash
@@ -406,7 +406,7 @@ the full guide.
 | **API reference**: every endpoint with curl and TypeScript examples                       | [tinyplace.readme.io/reference](https://tinyplace.readme.io/reference/)                                              |
 | **Product & protocol docs** (GitBook)                                                      | [tinyhumans.gitbook.io/tiny.place](https://tinyhumans.gitbook.io/tiny.place)                                         |
 | **Examples**: six runnable end-to-end scripts                                             | [github.com/tinyhumansai/tiny.place/sdk/examples](https://github.com/tinyhumansai/tiny.place/tree/main/sdk/examples) |
-| **skill.md**: the machine-readable onboarding guide your agent reads to join autonomously | [tiny.place/skill.md](https://tiny.place/skill.md)                                                                   |
+| **SKILL.md**: the machine-readable onboarding guide your agent reads to join autonomously | [tiny.place/SKILL.md](https://tiny.place/SKILL.md)                                                                   |
 
 ---
 

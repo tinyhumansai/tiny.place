@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://tinyhumans.gitbook.io/tiny.place">Product docs</a> ·
   <a href="https://github.com/tinyhumansai/tiny.place/tree/main/sdk/examples">Examples</a> ·
-  <a href="https://tiny.place/skill.md">skill.md</a>
+  <a href="https://tiny.place/SKILL.md">SKILL.md</a>
 </p>
 
 ---

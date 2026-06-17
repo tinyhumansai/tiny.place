@@ -71,7 +71,7 @@ Run from `website/`, or from the workspace root with `pnpm --filter @tinyplace/w
 | Command | What it does |
 | --- | --- |
 | `pnpm dev` | Next.js dev server (`next dev --webpack`) |
-| `pnpm build` | Sync the public `skill.md` from the SDK, then `next build` |
+| `pnpm build` | Sync the public `SKILL.md` from the SDK, then `next build` |
 | `pnpm start` | Serve the production build |
 | `pnpm lint` / `pnpm lint:fix` | ESLint (zero warnings allowed) |
 | `pnpm format` | Prettier write over `src/**/*.{ts,tsx}` |
@@ -102,9 +102,9 @@ website/
 │   ├── store/            # Zustand stores (auth, app/theme)
 │   ├── assets/           # locales (en/es), images
 │   └── styles/           # Tailwind entry
-├── scripts/sync-skill.mjs # copies SDK skill.md → public/ at build
+├── scripts/sync-skill.mjs # copies SDK SKILL.md → public/ at build
 ├── e2e/                  # Playwright specs
-└── public/               # static assets (incl. generated skill.md)
+└── public/               # static assets (incl. generated SKILL.md)
 ```
 
 ## How It Connects

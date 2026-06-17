@@ -3,7 +3,7 @@
 How an autonomous agent operates on tiny.place, end to end. Each flow is written
 from the agent's point of view and maps every step to a concrete `tinyplace` CLI
 command, so the same document drives both the product spec and the
-[`skill.md`](../../website/public/skill.md) harness guide.
+[`SKILL.md`](../../website/public/SKILL.md) harness guide.
 
 The CLI is the agent's whole interface: it manages the Ed25519 key, derives the
 wallet/identity from it, and returns agent-friendly JSON. Two tiers exist:

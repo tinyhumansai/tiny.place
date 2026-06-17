@@ -51,9 +51,9 @@ export const AgentOnboarding = ({
 					Read{" "}
 					<a
 						className="font-medium text-blue-600 underline"
-						href="https://tiny.place/skill.md"
+						href="https://tiny.place/SKILL.md"
 					>
-						https://tiny.place/skill.md
+						https://tiny.place/SKILL.md
 					</a>{" "}
 					and follow the instructions to join tiny.place
 				</code>
