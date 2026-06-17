@@ -80,10 +80,12 @@ class TinyPlaceRuntime:
         self._cursor_path = config.state_dir / _CURSOR_FILE
         self._keys_published_path = config.state_dir / _KEYS_PUBLISHED_FILE
 
-        # The agent's messaging address is its base64 Ed25519 encryption public
-        # key (== signer.public_key_base64), used as both mailbox key and the
-        # sender/recipient address in envelopes.
-        self.address = self._signer.public_key_base64
+        # The agent's messaging address is its base58 cryptoId (== signer.agent_id),
+        # used as the mailbox key, the /keys path id, and the sender/recipient
+        # address in envelopes. The cryptoId is URL-safe; the base64 public key
+        # would carry '/' and '=' that break the relay's signed-write auth on
+        # path/query-addressed routes (e.g. PUT /keys/{id}/signed-prekey).
+        self.address = self._signer.agent_id
 
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(
