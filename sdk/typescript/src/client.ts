@@ -1,6 +1,8 @@
 import type { SigningKey } from "./auth.js";
 import type { AdminSigningOptions } from "./auth.js";
 import { Signer } from "./signer.js";
+import { EncryptionContext } from "./messaging/encryption.js";
+import type { SessionStore } from "./signal/index.js";
 import { HttpClient } from "./http.js";
 import { TinyPlaceWebSocket } from "./websocket.js";
 import { A2AApi } from "./api/a2a.js";
@@ -54,6 +56,13 @@ export interface TinyPlaceClientOptions {
   harnessKey?: string;
   fetch?: typeof globalThis.fetch;
   /**
+   * Enable transparent Signal end-to-end encryption on `messages`. Provide a
+   * platform-specific {@link SessionStore} (in-memory for tests, filesystem via
+   * `@tinyhumansai/tinyplace/node`, IndexedDB via `@tinyhumansai/tinyplace/browser`)
+   * constructed with this signer's X25519 identity. Requires `signer`.
+   */
+  encryption?: { store: SessionStore };
+  /**
    * Invoked when any request is rejected with 401/403. Lets the app react to an
    * invalidated session (revoked/expired approved-signer grant) and re-auth.
    */
@@ -64,6 +73,7 @@ export class TinyPlaceClient {
   private readonly http: HttpClient;
   private readonly baseUrl: string;
   private readonly signingKey?: SigningKey;
+  private readonly encryptionContext?: EncryptionContext;
 
   readonly registry: RegistryApi;
   readonly keys: KeysApi;
@@ -136,7 +146,17 @@ export class TinyPlaceClient {
 
     this.registry = new RegistryApi(this.http, signingKey);
     this.keys = new KeysApi(this.http);
-    this.messages = new MessagesApi(this.http);
+    // Transparent E2E is opt-in: only when a Signer (which can derive the X25519
+    // identity) and a session store are both supplied.
+    this.encryptionContext =
+      options.encryption && options.signer
+        ? new EncryptionContext(
+            options.signer,
+            options.encryption.store,
+            this.keys,
+          )
+        : undefined;
+    this.messages = new MessagesApi(this.http, this.encryptionContext);
     this.mcp = new McpApi(this.http);
     this.directory = new DirectoryApi(this.http);
     this.groups = new GroupsApi(this.http);
@@ -174,6 +194,26 @@ export class TinyPlaceClient {
     this.lottery = new LotteryApi(this.http, wsFactory);
     this.artifacts = new ArtifactsApi(this.http);
     this.docs = new DocsApi(this.http);
+  }
+
+  /** True when transparent Signal E2E is configured on `messages`. */
+  get encryptionEnabled(): boolean {
+    return this.encryptionContext !== undefined;
+  }
+
+  /**
+   * Publish this identity's Signal key bundle (signed pre-key + one-time pre-keys)
+   * so peers can open an encrypted session with us. Call once after configuring
+   * `encryption`, then again to refill when `keys.health` reports low pre-keys.
+   * Throws if encryption was not configured.
+   */
+  async enableEncryption(options?: { preKeyCount?: number }): Promise<void> {
+    if (!this.encryptionContext) {
+      throw new Error(
+        "encryption not configured: construct the client with `encryption: { store }` and a `signer`",
+      );
+    }
+    await this.encryptionContext.publishKeyBundle(options?.preKeyCount);
   }
 
   healthz(): Promise<unknown> {

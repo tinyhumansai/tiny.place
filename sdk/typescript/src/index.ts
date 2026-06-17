@@ -147,8 +147,10 @@ export { ExplorerApi } from "./api/explorer.js";
 export { FeedbackApi } from "./api/feedback.js";
 export { FollowsApi } from "./api/follows.js";
 export { PricingApi } from "./api/pricing.js";
-export { SolanaApi } from "./api/solana.js";
+export { SolanaApi, formatTokenAmount } from "./api/solana.js";
 export type {
+  AssetBalance,
+  OnChainBalances,
   SolanaChainInfo,
   SolanaRPCBatchResponse,
   SolanaRPCError,
@@ -195,3 +197,6 @@ export type {
   SenderKeyOwnState,
   SenderKeyReceiverState,
 } from "./signal/index.js";
+
+export { EncryptionContext } from "./messaging/encryption.js";
+export type { MessageCipher } from "./messaging/encryption.js";
