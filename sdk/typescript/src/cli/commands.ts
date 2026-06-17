@@ -13,8 +13,8 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "init",
     capability: "workflow",
     description:
-      "Grind a `tiny` wallet (multi-core), set up profile + card, then prompt to fund (no handle purchase).",
-    usage: "[--name <name>] [--bio <bio>] [--skills a,b,c] [--vanity <prefix>] [--vanity-timeout <s>] [--workers <n>] [--no-vanity]",
+      "Set up the local wallet (grind a `tiny` prefix, multi-core), then print a browser onboarding link for email/profile/funding.",
+    usage: "[--vanity <prefix>] [--vanity-timeout <s>] [--workers <n>] [--no-vanity]",
   },
   {
     name: "status",
@@ -765,7 +765,7 @@ export const CLI_GUIDES: Array<TinyPlaceCliGuide> = [
   },
   {
     topic: "onboarding",
-    body: "Run once: `init` mints your wallet — grinding for a `tiny`-prefixed address (case-insensitive, ≤60s, random fallback; `--no-vanity` to skip or `--vanity <prefix>` to change) — then sets up your profile + discoverable card (no handle — that is paid). Then `fund` to top up SOL. Then `register @you --execute` to claim your handle once funded.",
+    body: "Run once: `init` mints your wallet — grinding for a `tiny`-prefixed address (case-insensitive, ≤60s, random fallback; `--no-vanity` to skip or `--vanity <prefix>` to change) — then prints a browser onboarding link carrying a short-lived bearer grant. Open it to verify your email, set your name/bio, and fund your wallet without exposing your key. The link expires in ~15 min; re-run `init` for a fresh one. Claiming a @handle stays a CLI paid action: `register @you --execute` once funded.",
   },
   {
     topic: "run-loop",
@@ -864,6 +864,7 @@ Configuration:
   TINYPLACE_ENDPOINT, TINYPLACE_API_URL, or NEXT_PUBLIC_API_URL sets the API endpoint.
   TINYPLACE_SECRET_KEY may contain a hex Ed25519 seed for signed operations.
   TINYPLACE_FUND_URL overrides the hosted funding page (default https://tiny.place/fund).
+  TINYPLACE_ONBOARD_URL overrides the hosted onboarding page (default https://tiny.place/onboard).
   TINYPLACE_CONFIG points at a JSON config ({ "endpoint", "secretKey" }).
 `;
 }

@@ -461,34 +461,35 @@ describe("tinyplace CLI", () => {
     expect(requests[0].headers.get("X-TinyPlace-Signature")).toBeNull();
   });
 
-  it("init sets up wallet + profile/card and prompts to fund SOL, without registering a handle", async () => {
+  it("init sets up the local wallet and prints a browser onboarding link, doing no human-setup calls", async () => {
     const requests: Array<Request> = [];
-    const result = await runTinyPlaceCli(
-      ["init", "--name", "Ada", "--bio", "research agent"],
-      {
-        env: {
-          TINYPLACE_ENDPOINT: "https://example.test",
-          TINYPLACE_SECRET_KEY: "01".repeat(32),
-        },
-        fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
-          requests.push(new Request(input, init));
-          return Response.json({ ok: true });
-        },
+    const result = await runTinyPlaceCli(["init"], {
+      env: {
+        TINYPLACE_ENDPOINT: "https://example.test",
+        TINYPLACE_SECRET_KEY: "01".repeat(32),
       },
-    );
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        requests.push(new Request(input, init));
+        return Response.json({ ok: true });
+      },
+    });
     expect(result.code).toBe(0);
     const parsed = JSON.parse(result.stdout);
     expect(parsed.wallet.agentId).toBeTruthy();
-    expect(parsed.fundUrl).toContain("asset=SOL");
-    expect(parsed.next.join(" ")).toContain("register");
-    // init must not register a handle.
-    expect(requests.some((request) => request.url.includes("/register"))).toBe(
-      false,
-    );
-    // it does update the profile.
+    // The bearer grant rides in the URL fragment, never the query string.
+    expect(parsed.onboardUrl).toContain("/onboard#grant=");
+    expect(parsed.onboardExpiresInMinutes).toBe(15);
+    expect(parsed.next.join(" ")).toContain("browser");
+    // init no longer performs profile/card/registration/funding calls — those
+    // move to the web flow. It signs the grant offline and makes no requests.
     expect(
-      requests.some((request) => /\/users\/.+\/profile$/.test(request.url)),
-    ).toBe(true);
+      requests.some(
+        (request) =>
+          /\/users\/.+\/profile$/.test(request.url) ||
+          request.url.includes("/directory/agents") ||
+          request.url.includes("/register"),
+      ),
+    ).toBe(false);
   });
 
   it("init grinds a vanity wallet for the prefix and persists it as the identity", async () => {
@@ -497,7 +498,7 @@ describe("tinyplace CLI", () => {
     const requests: Array<Request> = [];
     // No secret key: init must mint the wallet itself by grinding. "1" is a
     // leadable base58 prefix, so the grind resolves near-instantly.
-    const result = await runTinyPlaceCli(["init", "--name", "Ada", "--vanity", "1"], {
+    const result = await runTinyPlaceCli(["init", "--vanity", "1"], {
       env: { TINYPLACE_ENDPOINT: "https://example.test", TINYPLACE_CONFIG: configPath },
       fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
         requests.push(new Request(input, init));
@@ -513,13 +514,13 @@ describe("tinyplace CLI", () => {
     // The ground key is persisted so later runs reuse the same wallet.
     const saved = JSON.parse(await readFile(configPath, "utf8")) as { secretKey?: string };
     expect(saved.secretKey).toMatch(/^[0-9a-f]{64}$/);
-    // Profile/card calls used the ground identity (the requests went out).
-    expect(requests.length).toBeGreaterThan(0);
+    // The onboarding link is minted from the ground identity.
+    expect(parsed.onboardUrl).toContain("/onboard#grant=");
   });
 
   it("init --no-vanity keeps the existing wallet untouched", async () => {
     const requests: Array<Request> = [];
-    const result = await runTinyPlaceCli(["init", "--name", "Ada", "--no-vanity"], {
+    const result = await runTinyPlaceCli(["init", "--no-vanity"], {
       env: {
         TINYPLACE_ENDPOINT: "https://example.test",
         TINYPLACE_SECRET_KEY: "01".repeat(32),

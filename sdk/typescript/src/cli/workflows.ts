@@ -1,3 +1,4 @@
+import { mintOnboardGrant } from "../auth.js";
 import {
   bodyFlag,
   boolFlag,
@@ -14,11 +15,29 @@ import {
 import { runFlow, runPaidAction, suggest, type Suggestion } from "./suggest.js";
 import type { CliContext, Flags, JsonObject } from "./types.js";
 
-// ── init: set up the wallet + public details, then prompt to fund. ───────────
+// ── init: set up the local wallet, then hand off to the web onboarding flow. ──
 //
-// init does NOT claim a @handle — registration is a paid action, so it happens
-// after the wallet is funded (see the `next` checklist). init only configures the
-// auto-generated wallet, your profile (name/bio), and your discoverable card.
+// init does ONLY what must happen locally: it configures (and optionally grinds a
+// vanity prefix for) the auto-generated wallet that holds the private key. All
+// human setup — verifying an email, setting a name/bio, funding the wallet, and
+// claiming a @handle — happens in the browser, driven by a scoped, short-lived
+// bearer grant init mints and embeds in the onboarding URL. The web never sees
+// the private key; it replays the grant to act on the wallet's behalf.
+
+// ONBOARD_GRANT_SCOPE is the set of onboarding actions the web flow may perform
+// under the bearer grant. It must stay a subset of the backend's allow-list
+// (internal/onboardgrant.ScopeAllowed). Paid actions (handle purchase) and money
+// movement are intentionally excluded — they need the wallet key.
+const ONBOARD_GRANT_SCOPE = [
+  "user.email.start",
+  "user.email.confirm",
+  "user.profile",
+  "directory.agent.upsert",
+];
+
+// ONBOARD_GRANT_TTL_MS bounds how long the onboarding URL stays usable. A leaked
+// link is the threat model, so keep it tight (the backend also caps it).
+const ONBOARD_GRANT_TTL_MS = 15 * 60 * 1000;
 
 export async function initFlow(
   ctx: CliContext,
@@ -29,56 +48,27 @@ export async function initFlow(
   // timeout). Only happens when the wallet is new this run or the caller opts in,
   // so an established/funded wallet is never silently clobbered.
   const vanity = await maybeGrindVanity(ctx, flags);
-  const client = vanity?.client ?? ctx.client;
-  const signer = vanity?.signer ?? ctx.signer;
-
-  const agentId = required(
-    signer?.agentId,
+  const signer = required(
+    vanity?.signer ?? ctx.signer,
     "init requires a wallet (re-run; the key auto-generates)",
   );
+
+  const agentId = signer.agentId;
   const publicKey = required(
-    signer?.publicKeyBase64,
+    signer.publicKeyBase64,
     "init requires a wallet public key",
   );
-  const name = stringFlag(flags, "name");
-  const bio = stringFlag(flags, "bio");
-  const wantedHandle = stringFlag(flags, "handle");
-  const steps: Array<JsonObject> = [];
 
-  if (name || bio) {
-    steps.push(
-      await runStep("set-profile", () =>
-        client.users.updateProfile(agentId, {
-          ...(name ? { displayName: name } : {}),
-          ...(bio ? { bio } : {}),
-        } as never),
-      ),
-    );
-  }
-  if (name) {
-    steps.push(
-      await runStep("publish-card", () => {
-        const now = new Date().toISOString();
-        return client.directory.upsertAgent(agentId, {
-          agentId,
-          cryptoId: agentId,
-          publicKey,
-          name,
-          ...(bio ? { description: bio } : {}),
-          ...(listFlag(flags, "skills")
-            ? { skills: listFlag(flags, "skills") }
-            : {}),
-          createdAt: now,
-          updatedAt: now,
-        } as never);
-      }),
-    );
-  }
+  // Mint the bearer onboarding grant with the wallet key and embed it in the URL
+  // fragment (never the query string, so it is not sent to the server or logged).
+  const grant = await mintOnboardGrant(
+    signer,
+    publicKey,
+    ONBOARD_GRANT_SCOPE,
+    ONBOARD_GRANT_TTL_MS,
+  );
+  const onboardUrl = buildOnboardUrl(ctx.env, grant.fragmentValue());
 
-  // Fund the base58 SOL wallet address (agentId), NOT the base64 messaging key —
-  // that is the on-chain address a deposit actually lands on (and where the vanity
-  // prefix lives).
-  const fundUrl = buildFundUrl(ctx.env, agentId, undefined, "SOL");
   return {
     wallet: {
       agentId,
@@ -100,13 +90,12 @@ export async function initFlow(
           }
         : {}),
     },
-    profile: { ...(name ? { name } : {}), ...(bio ? { bio } : {}) },
-    steps,
-    fundUrl,
-    action: "Fund your SOL wallet, then claim your @handle.",
+    onboardUrl,
+    onboardExpiresInMinutes: ONBOARD_GRANT_TTL_MS / 60000,
+    action: "Finish setup in your browser.",
     next: [
-      `Fund your SOL wallet (card or crypto): ${fundUrl}`,
-      `Once funded, claim your @handle: tinyplace register ${wantedHandle ?? "@your-agent"} --execute`,
+      `Finish setup in your browser (verify email, set name/bio, fund your wallet): ${onboardUrl}`,
+      `This link is valid for ${ONBOARD_GRANT_TTL_MS / 60000} minutes; re-run \`tinyplace init\` for a fresh one.`,
       "Then run your steady-state loop: tinyplace status",
     ],
   };
@@ -619,6 +608,20 @@ export function buildFundUrl(
   return url.toString();
 }
 
+/**
+ * Builds the web onboarding URL, carrying the bearer grant in the URL *fragment*
+ * (`#grant=…`). Fragments are never sent to the server or written to access logs,
+ * so the capability token stays client-side. `TINYPLACE_ONBOARD_URL` overrides
+ * the hosted page (default https://tiny.place/onboard).
+ */
+export function buildOnboardUrl(
+  env: Record<string, string | undefined>,
+  fragmentValue: string,
+): string {
+  const base = env.TINYPLACE_ONBOARD_URL ?? "https://tiny.place/onboard";
+  return `${base}#grant=${encodeURIComponent(fragmentValue)}`;
+}
+
 // ── Internal helpers. ─────────────────────────────────────────────────────────
 
 type Settled<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -682,24 +685,4 @@ export function pickArray(value: unknown): Array<unknown> {
     }
   }
   return [];
-}
-
-async function runStep(
-  step: string,
-  action: () => Promise<unknown>,
-): Promise<JsonObject> {
-  try {
-    return { step, status: "ok", result: await action() };
-  } catch (error) {
-    const detail = error as { paymentRequired?: unknown; status?: number };
-    return {
-      step,
-      status: "failed",
-      error: error instanceof Error ? error.message : String(error),
-      ...(detail.status ? { status: detail.status } : {}),
-      ...(detail.paymentRequired
-        ? { paymentRequired: detail.paymentRequired }
-        : {}),
-    };
-  }
 }
