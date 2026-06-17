@@ -12,6 +12,10 @@ export const MOONPAY_API_KEY =
 // widget therefore settle to/from the user's SOL wallet in USDC.
 export const MOONPAY_USDC_SOLANA_CURRENCY_CODE = "usdc_sol";
 
+// MoonPay's currency code for native SOL. Buys/sells settle to/from the user's
+// SOL wallet in SOL itself.
+export const MOONPAY_SOL_CURRENCY_CODE = "sol";
+
 // Fiat the widget quotes against by default.
 export const MOONPAY_BASE_CURRENCY_CODE = "usd";
 
@@ -23,11 +27,14 @@ const MOONPAY_BUY_HOST = MOONPAY_API_KEY.startsWith("pk_test")
 type MoonPayBuyOptions = {
 	walletAddress?: string;
 	baseCurrencyAmount?: string;
+	// MoonPay currency code of the asset to buy; defaults to USDC on Solana.
+	currencyCode?: string;
 };
 
 /**
- * Builds a MoonPay hosted buy-widget URL for funding a SOL wallet with USDC via
- * a fiat card payment. Returned as a plain link suitable for a redirect button.
+ * Builds a MoonPay hosted buy-widget URL for funding a SOL wallet with the
+ * chosen asset (USDC on Solana by default, or native SOL) via a fiat card
+ * payment. Returned as a plain link suitable for a redirect button.
  *
  * Note: this is an unsigned URL. It works as long as the MoonPay account does
  * not enforce URL signing; if signing is enabled, the `walletAddress` must be
@@ -37,10 +44,11 @@ type MoonPayBuyOptions = {
 export const buildMoonPayBuyUrl = ({
 	walletAddress,
 	baseCurrencyAmount,
+	currencyCode = MOONPAY_USDC_SOLANA_CURRENCY_CODE,
 }: MoonPayBuyOptions): string => {
 	const parameters = new URLSearchParams({
 		apiKey: MOONPAY_API_KEY,
-		defaultCurrencyCode: MOONPAY_USDC_SOLANA_CURRENCY_CODE,
+		defaultCurrencyCode: currencyCode,
 		baseCurrencyCode: MOONPAY_BASE_CURRENCY_CODE,
 	});
 	if (walletAddress !== undefined && walletAddress !== "") {
