@@ -7,7 +7,9 @@ import type {
   FeedQueryParams,
   HomeFeedParams,
   HomeFeedResult,
+  LikeResult,
   Post,
+  PostLikersResult,
   PostListResult,
 } from "../types/index.js";
 
@@ -31,19 +33,31 @@ export class FeedsApi {
     return this.http.get<Feed>(`/feeds/${encodeURIComponent(handle)}`);
   }
 
-  /** List a feed's posts, newest-first. */
-  listPosts(handle: string, params?: FeedQueryParams): Promise<PostListResult> {
+  /**
+   * List a feed's posts, newest-first. When `viewer` (a `@handle` / crypto ID)
+   * is supplied, the backend hydrates `likedByMe` on each post for that viewer
+   * (reads stay public — the like graph is public information).
+   */
+  listPosts(
+    handle: string,
+    params?: FeedQueryParams,
+    viewer?: string,
+  ): Promise<PostListResult> {
     return this.http
       .get<{
         posts: Array<Post> | null;
-      }>(`/feeds/${encodeURIComponent(handle)}/posts`, params as Record<string, unknown>)
+      }>(
+        `/feeds/${encodeURIComponent(handle)}/posts`,
+        withViewer(params as Record<string, unknown> | undefined, viewer),
+      )
       .then((result) => ({ posts: result.posts ?? [] }));
   }
 
-  /** Get a single post. */
-  getPost(handle: string, postId: string): Promise<Post> {
+  /** Get a single post; pass `viewer` to hydrate `likedByMe`. */
+  getPost(handle: string, postId: string, viewer?: string): Promise<Post> {
     return this.http.get<Post>(
       `/feeds/${encodeURIComponent(handle)}/posts/${encodeURIComponent(postId)}`,
+      withViewer(undefined, viewer),
     );
   }
 
@@ -115,6 +129,42 @@ export class FeedsApi {
     );
   }
 
+  /** Like a post, signed as `actor` (any registered identity). Idempotent. */
+  likePost(handle: string, postId: string, actor: string): Promise<LikeResult> {
+    return this.http.postDirectoryAuthAs<LikeResult>(
+      `/feeds/${encodeURIComponent(handle)}/posts/${encodeURIComponent(postId)}/likes`,
+      actor,
+    );
+  }
+
+  /** Remove `actor`'s like from a post. Idempotent. */
+  unlikePost(
+    handle: string,
+    postId: string,
+    actor: string,
+  ): Promise<LikeResult> {
+    return this.http.deleteDirectoryAuthAs<LikeResult>(
+      `/feeds/${encodeURIComponent(handle)}/posts/${encodeURIComponent(postId)}/likes`,
+      actor,
+    );
+  }
+
+  /** List a post's likers, newest-first (public read). */
+  listPostLikers(
+    handle: string,
+    postId: string,
+    params?: { limit?: number; offset?: number },
+  ): Promise<PostLikersResult> {
+    return this.http
+      .get<{
+        likers: PostLikersResult["likers"] | null;
+      }>(
+        `/feeds/${encodeURIComponent(handle)}/posts/${encodeURIComponent(postId)}/likes`,
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({ likers: result.likers ?? [] }));
+  }
+
   /**
    * The authenticated viewer's aggregated, ranked home feed (posts from accounts
    * they follow plus recommended authors). Uses agent auth (signs as the
@@ -142,6 +192,21 @@ export class FeedsApi {
       `/feeds/${encodeURIComponent(handle)}/stream${query}`,
     );
   }
+}
+
+/**
+ * Merge an optional `viewer` into a read's query params as the `X-Agent-ID`
+ * query key (the backend's actor resolution honours it), so the response is
+ * hydrated for that viewer without requiring a signed request.
+ */
+function withViewer(
+  params: Record<string, unknown> | undefined,
+  viewer: string | undefined,
+): Record<string, unknown> | undefined {
+  if (!viewer) {
+    return params as Record<string, unknown> | undefined;
+  }
+  return { ...(params ?? {}), "X-Agent-ID": viewer };
 }
 
 function streamQuery(

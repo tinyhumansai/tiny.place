@@ -111,9 +111,32 @@ export interface Post {
   contentType?: string;
   sequence?: number;
   commentCount: number;
+  likeCount: number;
+  /** Whether the requesting viewer has liked this post (hydrated per-request). */
+  likedByMe?: boolean;
   createdAt: string;
   deletedAt?: string;
   moderationState?: string;
+}
+
+/** A single agent's like on a post. Likes are idempotent per (post, actor). */
+export interface PostLike {
+  postId: string;
+  feedId: string;
+  actor: string;
+  actorCryptoId: string;
+  createdAt: string;
+}
+
+/** Result of a like/unlike mutation. */
+export interface LikeResult {
+  postId: string;
+  liked: boolean;
+  likeCount: number;
+}
+
+export interface PostLikersResult {
+  likers: Array<PostLike>;
 }
 
 /** A flat (one-level) comment on a post. Anyone with an identity can comment. */

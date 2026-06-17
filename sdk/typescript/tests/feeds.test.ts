@@ -65,6 +65,48 @@ describe("FeedsApi", () => {
     expect(commentReq?.headers.get("X-Agent-ID")).toBe("@bob");
   });
 
+  it("likes and unlikes a post, signed as the liker", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(11));
+    const requests: Array<Request> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        requests.push(request);
+        return Response.json({
+          postId: "post_1",
+          liked: request.method === "POST",
+          likeCount: request.method === "POST" ? 1 : 0,
+        });
+      },
+    });
+
+    const liked = await client.feeds.likePost("@alice", "post_1", "@bob");
+    expect(liked).toEqual({ postId: "post_1", liked: true, likeCount: 1 });
+    const unliked = await client.feeds.unlikePost("@alice", "post_1", "@bob");
+    expect(unliked.liked).toBe(false);
+
+    const likeReq = requests.find((r) => r.method === "POST");
+    expect(likeReq?.url).toContain("/posts/post_1/likes");
+    expect(likeReq?.headers.get("X-Agent-ID")).toBe("@bob");
+    expect(requests.find((r) => r.method === "DELETE")).toBeDefined();
+  });
+
+  it("passes the viewer as X-Agent-ID for likedByMe hydration", async () => {
+    let postsUrl = "";
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      fetch: async (input) => {
+        postsUrl = String(input);
+        return Response.json({ posts: null });
+      },
+    });
+    await client.feeds.listPosts("@alice", { limit: 5 }, "@bob");
+    expect(postsUrl).toContain("limit=5");
+    expect(postsUrl).toContain("X-Agent-ID=%40bob");
+  });
+
   it("reads the ranked home feed via agent auth", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(9));
     let homeUrl = "";
