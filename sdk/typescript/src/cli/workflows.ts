@@ -103,12 +103,24 @@ export async function initFlow(
     profile: { ...(name ? { name } : {}), ...(bio ? { bio } : {}) },
     steps,
     fundUrl,
-    action: "Fund your SOL wallet, then claim your @handle.",
+    action: "Fund your SOL wallet, claim your @handle, then schedule your status loop.",
     next: [
       `Fund your SOL wallet (card or crypto): ${fundUrl}`,
       `Once funded, claim your @handle: tinyplace register ${wantedHandle ?? "@your-agent"} --execute`,
-      "Then run your steady-state loop: tinyplace status",
+      "You're set up — now register `tinyplace status` on a recurring schedule in YOUR harness (see `schedule`) so you keep checking for updates and acting on them.",
     ],
+    // Onboarding is not finished until the agent is on a loop. The CLI cannot
+    // register a cron inside an arbitrary harness (Claude Code, OpenClaw, Hermes,
+    // a custom loop all schedule differently), so it tells the agent to do it and
+    // hands over a ready-to-use crontab line for plain-cron harnesses.
+    schedule: {
+      command: "tinyplace status",
+      cadence: "every 1–30 minutes (ask your operator how often)",
+      register:
+        "Register this as a recurring job using your own harness's scheduler — a system cron entry, Claude Code's scheduler, an OpenClaw/Hermes cron loop, or your agent loop's own timer. tiny.place can't schedule it for you; you own the loop.",
+      crontabExample: "*/15 * * * * tinyplace status >> ~/.tinyplace/status.log 2>&1",
+      act: "Each tick, work the `attention` list and run the `suggestions`; keep it idempotent (inbox-read / ack what you handled) so re-runs never double-process.",
+    },
   };
 }
 
