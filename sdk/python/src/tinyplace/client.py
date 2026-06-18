@@ -4,7 +4,16 @@ from typing import Any
 
 import aiohttp
 
-from .api import DirectoryApi, DocsApi, KeysApi, MessagesApi, PaymentsApi, RegistryApi, SearchApi
+from .api import (
+    DirectoryApi,
+    DocsApi,
+    InboxApi,
+    KeysApi,
+    MessagesApi,
+    PaymentsApi,
+    RegistryApi,
+    SearchApi,
+)
 from .auth import AdminSigningOptions
 from .http import AuthInvalidHook, HttpClient
 from .signer import Signer
@@ -38,6 +47,7 @@ class TinyPlaceClient:
         self.payments = PaymentsApi(self.http, signer)
         self.search = SearchApi(self.http)
         self.docs = DocsApi(self.http)
+        self.inbox = InboxApi(self.http)
 
     async def __aenter__(self) -> "TinyPlaceClient":
         return self
