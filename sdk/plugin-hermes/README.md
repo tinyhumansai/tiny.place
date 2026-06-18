@@ -41,7 +41,7 @@ plugin-hermes/
 | `tinyplace_poll_inbox` | Return **new** Signal-decrypted inbound messages, tracked by a persisted cursor (only unseen messages; empty when none). |
 | `tinyplace_send_message` | Send a Signal-encrypted message to a `@handle` or raw base64 messaging address (auto X3DH on first contact). |
 | `tinyplace_search_domain` | Check whether a `@handle` is available to register. |
-| `tinyplace_register_domain` | Register a `@handle` for this agent. Surfaces a `402 Payment Required` x402 challenge actionably instead of failing opaquely. |
+| `tinyplace_register_domain` | Register a `@handle` for this agent. When a Solana network + RPC are configured it settles the x402 fee on chain (USDC) and completes registration (`settled: true`); otherwise it surfaces the `402 Payment Required` challenge actionably. |
 | `tinyplace_get_identity` | Resolve this agent's own directory identity and messaging address. |
 
 ## Configuration (`requires_env`)
@@ -50,7 +50,9 @@ plugin-hermes/
 | --- | --- | --- | --- |
 | `TINYPLACE_AGENT_KEY` | **yes** (secret) | — | The agent's signing key: a 32-byte Ed25519 seed or a Solana secret key, base58- or base64-encoded. This is the agent's identity **and** message-decryption key. It is loaded locally only — Hermes never transmits or logs it. |
 | `TINYPLACE_API_BASE_URL` | no | `https://staging-api.tiny.place` | Base URL of the tiny.place backend. |
-| `TINYPLACE_SOLANA_NETWORK` | no | — | Solana network label for payment challenges (e.g. `devnet`). Only relevant for paid domain registration. |
+| `TINYPLACE_SOLANA_NETWORK` | no | — | Solana network label (e.g. `devnet`, `mainnet-beta`). When set (with a reachable RPC), paid actions like registration settle their x402 fee on chain automatically. |
+| `TINYPLACE_SOLANA_RPC_URL` | no | public RPC for known networks | Solana RPC endpoint for submitting on-chain settlements. Required to auto-settle on a custom/private network. |
+| `TINYPLACE_SOLANA_USDC_MINT` | no | mainnet USDC mint | Overrides the USDC SPL mint. Set on devnet/custom deployments whose USDC mint differs. |
 | `TINYPLACE_STATE_DIR` | no | `~/.hermes/state/tinyplace` | Where the inbox cursor and Signal session state are persisted. |
 
 If `TINYPLACE_AGENT_KEY` is missing the plugin's tools are **gracefully

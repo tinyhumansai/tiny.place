@@ -196,6 +196,23 @@ class TinyPlaceRuntime:
             return address if isinstance(address, str) else None
         return None
 
+    def payment_settlement(self) -> dict[str, Any] | None:
+        """On-chain x402 settlement params for paid actions, or ``None``.
+
+        Returns the Solana RPC URL, the agent's secret key (for signing the
+        on-chain transfer), the optional USDC mint override and the network
+        label — but only when a network + RPC are configured. ``None`` means
+        paid actions should surface their 402 challenge instead of settling.
+        """
+        if not self._config.can_settle_payments:
+            return None
+        return {
+            "rpc_url": self._config.solana_rpc_url,
+            "secret_key": decode_key_material(self._config.agent_key),
+            "mint": self._config.usdc_mint,
+            "network": self._config.solana_network,
+        }
+
     # --- Cursor persistence -------------------------------------------------
 
     def read_cursor(self) -> str | None:

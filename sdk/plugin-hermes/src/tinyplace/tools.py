@@ -211,11 +211,31 @@ def register_domain(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     if isinstance(actor_type, str) and actor_type:
         fields["actorType"] = actor_type
 
+    # When a Solana network + RPC are configured, settle the x402 registration
+    # fee on chain automatically and complete the registration; otherwise leave
+    # the 402 challenge to be surfaced to the model (via _tinyplace_error).
+    settlement = runtime.payment_settlement()
+
     async def _run() -> Any:
         client = await runtime.get_client()
+        if settlement is not None:
+            return await client.register_domain_with_solana_payment(
+                domain,
+                rpc_url=settlement["rpc_url"],
+                secret_key=settlement["secret_key"],
+                mint=settlement["mint"],
+                network=settlement["network"],
+                **fields,
+            )
         return await client.register_domain(domain, **fields)
 
-    return _ok({"domain": domain, "record": runtime.run(_run())})
+    return _ok(
+        {
+            "domain": domain,
+            "settled": settlement is not None,
+            "record": runtime.run(_run()),
+        }
+    )
 
 
 @_guard

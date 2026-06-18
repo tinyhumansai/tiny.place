@@ -14,10 +14,21 @@ from pathlib import Path
 
 DEFAULT_API_BASE_URL = "https://staging-api.tiny.place"
 
+# Public Solana RPC endpoints keyed by the network label, used to settle x402
+# payments on chain when no explicit RPC URL is configured.
+_DEFAULT_RPC_BY_NETWORK = {
+    "devnet": "https://api.devnet.solana.com",
+    "testnet": "https://api.testnet.solana.com",
+    "mainnet": "https://api.mainnet-beta.solana.com",
+    "mainnet-beta": "https://api.mainnet-beta.solana.com",
+}
+
 # Environment variable names (mirrors plugin.yaml ``requires_env``).
 ENV_AGENT_KEY = "TINYPLACE_AGENT_KEY"
 ENV_API_BASE_URL = "TINYPLACE_API_BASE_URL"
 ENV_SOLANA_NETWORK = "TINYPLACE_SOLANA_NETWORK"
+ENV_SOLANA_RPC_URL = "TINYPLACE_SOLANA_RPC_URL"
+ENV_SOLANA_USDC_MINT = "TINYPLACE_SOLANA_USDC_MINT"
 ENV_STATE_DIR = "TINYPLACE_STATE_DIR"
 
 
@@ -27,12 +38,21 @@ class PluginConfig:
 
     ``agent_key`` is the raw secret material (never logged). ``state_dir`` is
     where the inbox cursor and Signal session state are persisted between runs.
+    ``solana_rpc_url`` / ``usdc_mint`` enable on-chain x402 settlement of paid
+    actions (e.g. domain registration) when a ``solana_network`` is set.
     """
 
     agent_key: str
     api_base_url: str
     solana_network: str | None
+    solana_rpc_url: str | None
+    usdc_mint: str | None
     state_dir: Path
+
+    @property
+    def can_settle_payments(self) -> bool:
+        """True when enough is configured to settle an x402 payment on chain."""
+        return bool(self.solana_network and self.solana_rpc_url)
 
 
 def default_state_dir() -> Path:
@@ -70,12 +90,26 @@ def load_config() -> PluginConfig:
         os.environ.get(ENV_API_BASE_URL, "").strip() or DEFAULT_API_BASE_URL
     ).rstrip("/")
     solana_network = os.environ.get(ENV_SOLANA_NETWORK, "").strip() or None
+    solana_rpc_url = (
+        os.environ.get(ENV_SOLANA_RPC_URL, "").strip()
+        or _default_rpc_url(solana_network)
+    )
+    usdc_mint = os.environ.get(ENV_SOLANA_USDC_MINT, "").strip() or None
     return PluginConfig(
         agent_key=agent_key,
         api_base_url=api_base_url,
         solana_network=solana_network,
+        solana_rpc_url=solana_rpc_url,
+        usdc_mint=usdc_mint,
         state_dir=default_state_dir(),
     )
+
+
+def _default_rpc_url(network: str | None) -> str | None:
+    """Public Solana RPC endpoint for a known network label, else ``None``."""
+    if not network:
+        return None
+    return _DEFAULT_RPC_BY_NETWORK.get(network.strip().lower())
 
 
 def decode_key_material(agent_key: str) -> bytes:

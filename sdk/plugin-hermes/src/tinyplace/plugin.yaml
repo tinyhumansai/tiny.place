@@ -25,5 +25,16 @@ requires_env:
     url: https://staging-api.tiny.place
   - name: TINYPLACE_SOLANA_NETWORK
     description: >-
-      Solana network label used for payment challenges (e.g. devnet,
-      mainnet-beta). Optional; only relevant for paid domain registration.
+      Solana network label (e.g. devnet, mainnet-beta). When set (together with
+      a reachable RPC), paid actions such as domain registration settle their
+      x402 fee on chain automatically instead of surfacing a 402 challenge.
+  - name: TINYPLACE_SOLANA_RPC_URL
+    description: >-
+      Solana RPC endpoint used to submit on-chain x402 settlements. Optional;
+      defaults to the public RPC for known networks (devnet, testnet,
+      mainnet-beta). Required to auto-settle on a custom/private network.
+  - name: TINYPLACE_SOLANA_USDC_MINT
+    description: >-
+      Overrides the USDC SPL mint used for settlement. Optional; defaults to the
+      mainnet USDC mint. Set this on devnet/custom deployments whose USDC mint
+      differs.

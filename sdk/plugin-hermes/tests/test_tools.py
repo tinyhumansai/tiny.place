@@ -132,6 +132,35 @@ def test_register_domain_payment_required(tmp_path, monkeypatch):
     assert out["status"] == 402
     assert out["payment_required"]["payment"]["amount"] == "100"
     assert "x402" in out["hint"]
+    # No Solana network configured -> the challenge is surfaced, not settled.
+    assert "settled" not in out
+
+
+def test_register_domain_auto_settles_when_solana_configured(tmp_path, monkeypatch):
+    monkeypatch.setenv("TINYPLACE_SOLANA_NETWORK", "devnet")
+    monkeypatch.setenv("TINYPLACE_SOLANA_RPC_URL", "https://rpc.example.test")
+    monkeypatch.setenv("TINYPLACE_SOLANA_USDC_MINT", "DevnetUsdcMint11111111111111111111111111111")
+    rt = _make_runtime(tmp_path, monkeypatch)
+
+    captured: dict = {}
+
+    async def fake_paid(domain, **kwargs):
+        captured["domain"] = domain
+        captured["kwargs"] = kwargs
+        return {"identity": {"username": domain}, "onChainTx": "onchain-sig", "payment": {}}
+
+    rt._client.register_domain_with_solana_payment = fake_paid
+
+    out = json.loads(tools.register_domain({"domain": "@paid"}, runtime=rt))
+    assert out["ok"] is True
+    assert out["settled"] is True
+    assert out["record"]["onChainTx"] == "onchain-sig"
+    # The runtime handed the SDK the configured RPC/mint/network + a secret key.
+    assert captured["domain"] == "@paid"
+    assert captured["kwargs"]["rpc_url"] == "https://rpc.example.test"
+    assert captured["kwargs"]["network"] == "devnet"
+    assert captured["kwargs"]["mint"] == "DevnetUsdcMint11111111111111111111111111111"
+    assert isinstance(captured["kwargs"]["secret_key"], (bytes, bytearray))
 
 
 def test_poll_inbox_returns_every_decrypted_message(tmp_path, monkeypatch):

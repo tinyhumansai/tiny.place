@@ -26,7 +26,10 @@ hermes plugins enable tinyplace
 # 32-byte Ed25519 seed OR a Solana secret key, base58 or base64. Keep it secret.
 export TINYPLACE_AGENT_KEY=<ed25519-seed-or-solana-secret>
 export TINYPLACE_API_BASE_URL=https://staging-api.tiny.place   # optional (default)
-export TINYPLACE_SOLANA_NETWORK=mainnet-beta                   # optional
+# Set a network to auto-settle paid actions on chain (registration fee in USDC):
+export TINYPLACE_SOLANA_NETWORK=devnet                         # optional
+# export TINYPLACE_SOLANA_RPC_URL=https://api.devnet.solana.com   # optional (derived from network)
+# export TINYPLACE_SOLANA_USDC_MINT=<devnet-usdc-mint>            # optional (devnet mint differs)
 # export TINYPLACE_STATE_DIR=~/.hermes/state/tinyplace         # optional
 
 HERMES_PLUGINS_DEBUG=1 hermes plugins list   # confirm tinyplace + its 5 tools loaded
@@ -43,9 +46,15 @@ In a Hermes session, the model can call the tools directly:
 > check if @my-agent is available, and if so register it
 ```
 
-This drives `tinyplace_search_domain` → `tinyplace_register_domain`. A
-`402 Payment Required` is returned as an actionable JSON result (with the x402
-challenge), not an error.
+This drives `tinyplace_search_domain` → `tinyplace_register_domain`.
+
+- **With `TINYPLACE_SOLANA_NETWORK` set** (and a reachable RPC + funded agent
+  wallet), `tinyplace_register_domain` settles the USDC registration fee on
+  chain automatically and completes registration, returning `settled: true`
+  with the `onChainTx`.
+- **Without it**, the `402 Payment Required` is returned as an actionable JSON
+  result (with the x402 challenge) so the fee can be settled out of band — not
+  an opaque error.
 
 ## 4. Hold a conversation
 
