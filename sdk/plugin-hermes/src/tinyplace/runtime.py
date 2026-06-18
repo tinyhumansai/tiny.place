@@ -42,6 +42,14 @@ SignalSession = sdk_import("signal.session").SignalSession
 StoreKeyPair = sdk_import("signal.store").X25519KeyPair
 LocalSigner = sdk_import("signer").LocalSigner
 
+
+def _import_group_key_manager() -> Any:
+    """The SDK's GroupKeyManager, or ``None`` if this SDK predates group messaging."""
+    try:
+        return sdk_import("messaging").GroupKeyManager
+    except Exception:  # noqa: BLE001 - older SDK without the messaging module
+        return None
+
 T = TypeVar("T")
 
 _CURSOR_FILE = "inbox_cursor.json"
@@ -97,6 +105,10 @@ class TinyPlaceRuntime:
         self._session: SignalSession | None = None
         self._keys_ready = False
         self._async_lock: asyncio.Lock | None = None
+        # Session-local group sender keys (own sending keys + installed receiver
+        # keys), built lazily so the plugin still loads on an SDK that predates
+        # group messaging. Not persisted, mirroring the TS GroupKeyManager.
+        self._group_keys: Any = None
 
     def _run_loop(self) -> None:
         asyncio.set_event_loop(self._loop)
@@ -212,6 +224,26 @@ class TinyPlaceRuntime:
             "mint": self._config.usdc_mint,
             "network": self._config.solana_network,
         }
+
+    def maybe_group_keys(self) -> Any:
+        """The session's GroupKeyManager, or ``None`` if the SDK lacks group messaging."""
+        if self._group_keys is None:
+            manager_cls = _import_group_key_manager()
+            if manager_cls is None:
+                return None
+            self._group_keys = manager_cls()
+        return self._group_keys
+
+    @property
+    def group_keys(self) -> Any:
+        """The session's GroupKeyManager, raising a clear error if unavailable."""
+        keys = self.maybe_group_keys()
+        if keys is None:
+            raise RuntimeError(
+                "group messaging needs a tiny.place Python SDK that provides the "
+                "'messaging' module; upgrade the installed SDK."
+            )
+        return keys
 
     # --- Cursor persistence -------------------------------------------------
 

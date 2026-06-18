@@ -22,6 +22,20 @@ from .runtime import TinyPlaceRuntime, get_runtime
 TinyPlaceError = sdk_import("http").TinyPlaceError
 _decode_agent_address = sdk_import("api.messages").decode_agent_address
 
+
+def _group_messaging() -> Any:
+    """The SDK's ``messaging`` module, or ``None`` if this SDK predates it.
+
+    Resolved lazily (not at import) so the plugin still loads — and its other
+    tools keep working — on an SDK that doesn't ship group messaging yet.
+    """
+    try:
+        messaging = sdk_import("messaging")
+        _ = messaging.send_group_message  # ensure it's the group-messaging build
+        return messaging
+    except Exception:  # noqa: BLE001
+        return None
+
 # Agent-card metadata key the directory advertises the messaging key under
 # (mirrors website/src/common/encryption-discovery.ts).
 _ENCRYPTION_PUBLIC_KEY_METADATA = "encryptionPublicKey"
@@ -111,7 +125,9 @@ def _guard(fn: Callable[[dict[str, Any], dict[str, Any]], str]) -> Callable[...,
 def poll_inbox(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     runtime: TinyPlaceRuntime = ctx["runtime"]
 
-    async def _run() -> list[dict[str, Any]]:
+    messaging = _group_messaging()
+
+    async def _run() -> list[tuple[Any, str, bool]]:
         await runtime.ensure_messaging_keys()
         client = await runtime.get_client()
         session = await runtime.get_session()
@@ -122,40 +138,61 @@ def poll_inbox(args: dict[str, Any], ctx: dict[str, Any]) -> str:
         # plaintext synchronously, so this is the durable hand-off point. The
         # persisted cursor below is a secondary guard against a transient ack
         # failure re-surfacing a message.
-        messages = await client.messages.poll_inbox_decrypted(
+        decrypted = await client.messages.poll_inbox_decrypted(
             session, runtime.address, acknowledge=True
         )
-        return messages
+        # Group sender-key handoffs ride this 1:1 channel. Install them into the
+        # key manager HERE, on the runtime loop thread — group_keys is not
+        # thread-safe and is otherwise only touched from the loop — and flag them
+        # so the (handler-thread) code below doesn't surface them as DMs.
+        group_keys = runtime.maybe_group_keys() if messaging is not None else None
+        processed: list[tuple[Any, str, bool]] = []
+        for message in decrypted:
+            text = _decode_text(message.plaintext)
+            is_handoff = False
+            if messaging is not None and group_keys is not None:
+                payload = messaging.parse_group_key_distribution(text)
+                if payload is not None:
+                    group_keys.install_receiver(payload)
+                    is_handoff = True
+            processed.append((message, text, is_handoff))
+        return processed
 
-    decrypted = runtime.run(_run())
+    processed = runtime.run(_run())
 
     cursor = runtime.read_cursor()
-    new_messages = []
     max_key: tuple[str, str] | None = _parse_cursor(cursor)
-    for message in decrypted:
+    newest_seen = max_key
+    new_messages: list[tuple[Any, str]] = []
+    for message, text, is_handoff in processed:
         key = (message.timestamp, message.id)
         if max_key is not None and key <= max_key:
             continue
-        new_messages.append(message)
+        # Advance the cursor over EVERY consumed message (incl. group-key
+        # handoffs) so it reflects the whole mailbox the relay just dropped.
+        if newest_seen is None or key > newest_seen:
+            newest_seen = key
+        if is_handoff:
+            continue
+        new_messages.append((message, text))
 
-    # Return every decrypted message: poll_inbox_decrypted has already
-    # acknowledged the whole mailbox and the Double Ratchet consumes each
-    # message exactly once, so dropping any here (e.g. via a `limit` slice)
-    # would lose it permanently — it can neither be re-fetched nor re-decrypted.
-    new_messages.sort(key=lambda m: (m.timestamp, m.id))
+    # Return every decrypted DM: poll_inbox_decrypted has already acknowledged
+    # the whole mailbox and the Double Ratchet consumes each message exactly
+    # once, so dropping any here (e.g. via a `limit` slice) would lose it
+    # permanently — it can neither be re-fetched nor re-decrypted.
+    new_messages.sort(key=lambda mt: (mt[0].timestamp, mt[0].id))
 
-    if new_messages:
-        last = new_messages[-1]
-        runtime.write_cursor(f"{last.timestamp}|{last.id}")
+    if newest_seen is not None and newest_seen != max_key:
+        runtime.write_cursor(f"{newest_seen[0]}|{newest_seen[1]}")
 
     rendered = [
         {
-            "id": m.id,
-            "from": m.sender,
-            "text": _decode_text(m.plaintext),
-            "timestamp": m.timestamp,
+            "id": message.id,
+            "from": message.sender,
+            "text": text,
+            "timestamp": message.timestamp,
         }
-        for m in new_messages
+        for message, text in new_messages
     ]
     return _ok({"messages": rendered, "count": len(rendered)})
 
@@ -366,7 +403,142 @@ def mark_notifications_read(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     return _ok({"scope": "item" if has_item_id else "all", "result": result})
 
 
+@_guard
+def list_groups(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    params: dict[str, Any] = {}
+    query = args.get("query")
+    if isinstance(query, str) and query.strip():
+        params["q"] = query.strip()
+    limit = _coerce_limit(args.get("limit"))
+    if limit is not None:
+        params["limit"] = limit
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await _require_groups(client).list(params or None)
+
+    return _ok(runtime.run(_run()))
+
+
+@_guard
+def join_group(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    group_id = str(args.get("group_id") or "").strip()
+    if not group_id:
+        return _error("'group_id' is required")
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        # Join as this agent (the SDK signs the request as runtime.address).
+        return await _require_groups(client).join(group_id, runtime.address)
+
+    return _ok({"group_id": group_id, "result": runtime.run(_run())})
+
+
+@_guard
+def send_group_message(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    group_id = str(args.get("group_id") or "").strip()
+    message = args.get("message")
+    if not group_id:
+        return _error("'group_id' is required")
+    if not isinstance(message, str) or message == "":
+        return _error("'message' is required and must be a non-empty string")
+    messaging = _group_messaging()
+    if messaging is None:
+        return _error(_GROUP_SDK_HINT)
+
+    async def _run() -> dict[str, Any]:
+        client = await runtime.get_client()
+        session = await runtime.get_session()
+        groups = _require_groups(client)
+        group = await groups.get(group_id)
+        epoch = int(group.get("membershipEpoch", 0)) if isinstance(group, dict) else 0
+        members = _group_member_ids(await groups.members(group_id))
+        sent = await messaging.send_group_message(
+            client,
+            session,
+            runtime.group_keys,
+            group_id=group_id,
+            epoch=epoch,
+            sender=runtime.address,
+            members=members,
+            text=message,
+            enc_address=runtime.address,
+        )
+        return {
+            "id": sent.id,
+            "group_id": sent.group_id,
+            "epoch": epoch,
+            "recipients": len(members),
+            "text": sent.text,
+        }
+
+    return _ok(runtime.run(_run()))
+
+
+@_guard
+def poll_group_inbox(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    messaging = _group_messaging()
+    if messaging is None:
+        return _error(_GROUP_SDK_HINT)
+
+    async def _run() -> list[Any]:
+        client = await runtime.get_client()
+        # Decrypts group messages whose sender key has already arrived (via a
+        # tinyplace_poll_inbox call that installed the handoff). Undecryptable
+        # envelopes are left on the relay for a later poll.
+        return await messaging.fetch_group_inbox(client, runtime.address, runtime.group_keys)
+
+    decrypted = runtime.run(_run())
+    rendered = [
+        {
+            "id": m.id,
+            "group_id": m.group_id,
+            "from": m.sender,
+            "text": m.text,
+            "timestamp": m.at,
+        }
+        for m in decrypted
+    ]
+    return _ok({"messages": rendered, "count": len(rendered)})
+
+
 # --- helpers ----------------------------------------------------------------
+
+
+_GROUP_SDK_HINT = (
+    "group messaging needs a tiny.place Python SDK that provides the 'messaging' "
+    "module and groups namespace; upgrade the installed SDK."
+)
+
+
+def _require_groups(client: Any) -> Any:
+    """Return the SDK's groups namespace, or a clear error if it's missing."""
+    groups = getattr(client, "groups", None)
+    if groups is None:
+        raise RuntimeError(_GROUP_SDK_HINT)
+    return groups
+
+
+def _group_member_ids(members_resp: Any) -> list[str]:
+    """Active member agent ids (cryptoIds) from a groups.members() response.
+
+    Only ``status == "active"`` members are returned: the sender key must not be
+    handed to pending/approval-queue or grace/removed members, who aren't allowed
+    to read the channel. Mirrors the website's ``member.status === "active"``.
+    """
+    members = members_resp.get("members") if isinstance(members_resp, dict) else None
+    ids: list[str] = []
+    for member in members or []:
+        if not isinstance(member, dict) or member.get("status") != "active":
+            continue
+        identifier = member.get("agentId") or member.get("cryptoId")
+        if isinstance(identifier, str) and identifier:
+            ids.append(identifier)
+    return ids
 
 
 def _require_inbox(client: Any) -> Any:

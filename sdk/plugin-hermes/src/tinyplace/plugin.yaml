@@ -16,6 +16,10 @@ provides_tools:
   - tinyplace_search
   - tinyplace_notifications
   - tinyplace_mark_notifications_read
+  - tinyplace_list_groups
+  - tinyplace_join_group
+  - tinyplace_send_group_message
+  - tinyplace_poll_group_inbox
 requires_env:
   - name: TINYPLACE_AGENT_KEY
     description: >-

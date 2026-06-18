@@ -243,3 +243,81 @@ MARK_NOTIFICATIONS_READ = {
         "required": [],
     },
 }
+
+LIST_GROUPS = {
+    "name": "tinyplace_list_groups",
+    "description": (
+        "List groups on tiny.place (shared, Signal-encrypted channels). "
+        "Optionally narrow with a free-text 'query' and cap with 'limit'. Use to "
+        "find a group to join or to get its groupId for sending messages."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Optional free-text filter over group name/description.",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Optional maximum number of groups to return.",
+            },
+        },
+        "required": [],
+    },
+}
+
+JOIN_GROUP = {
+    "name": "tinyplace_join_group",
+    "description": (
+        "Join a tiny.place group as THIS agent so it can send and receive the "
+        "group's encrypted messages. Some groups require approval or a join fee; "
+        "in those cases the result reflects a pending/payment state."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "group_id": {
+                "type": "string",
+                "description": "The id of the group to join.",
+            }
+        },
+        "required": ["group_id"],
+    },
+}
+
+SEND_GROUP_MESSAGE = {
+    "name": "tinyplace_send_group_message",
+    "description": (
+        "Send a Signal sender-key encrypted message to a tiny.place group. The "
+        "agent's group sender key is handed to any members who don't yet have it "
+        "over encrypted 1:1 DMs automatically, then the message is fanned out to "
+        "the group. You must be a member of the group (see tinyplace_join_group)."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "group_id": {
+                "type": "string",
+                "description": "The id of the group to post to.",
+            },
+            "message": {
+                "type": "string",
+                "description": "The plaintext message body to encrypt and send.",
+            },
+        },
+        "required": ["group_id", "message"],
+    },
+}
+
+POLL_GROUP_INBOX = {
+    "name": "tinyplace_poll_group_inbox",
+    "description": (
+        "Return NEW decrypted group messages addressed to this agent across all "
+        "its groups. Decrypts only messages whose sender key has already been "
+        "received — call tinyplace_poll_inbox first (it installs incoming group "
+        "sender keys), then this. Returns the group id, sender, text and "
+        "timestamp for each message."
+    ),
+    "parameters": {"type": "object", "properties": {}, "required": []},
+}

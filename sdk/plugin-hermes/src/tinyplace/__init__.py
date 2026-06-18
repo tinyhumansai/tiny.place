@@ -26,6 +26,10 @@ _TOOLS = (
         schemas.MARK_NOTIFICATIONS_READ,
         tools.mark_notifications_read,
     ),
+    ("tinyplace_list_groups", schemas.LIST_GROUPS, tools.list_groups),
+    ("tinyplace_join_group", schemas.JOIN_GROUP, tools.join_group),
+    ("tinyplace_send_group_message", schemas.SEND_GROUP_MESSAGE, tools.send_group_message),
+    ("tinyplace_poll_group_inbox", schemas.POLL_GROUP_INBOX, tools.poll_group_inbox),
 )
 
 
