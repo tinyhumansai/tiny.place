@@ -59,6 +59,14 @@ export function HomeFeed(): FunctionComponent {
 		}
 	}
 
+	// Render newest-first by post time. The backend returns items in ranked
+	// order, but the feed is expected to read chronologically, so sort by
+	// createdAt descending (numeric compare on the parsed timestamp).
+	posts.sort(
+		(first: Post, second: Post): number =>
+			new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
+	);
+
 	const isLoading = graphqlFeedEnabled ? gqlHome.isLoading : restHome.isLoading;
 	const isError = graphqlFeedEnabled ? gqlHome.isError : restHome.isError;
 
