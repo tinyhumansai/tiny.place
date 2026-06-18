@@ -45,6 +45,7 @@ vi.mock("@src/common/api-client", () => ({
 }));
 
 vi.mock("@src/hooks/use-registry", () => ({
+	MIN_HANDLE_LENGTH: 2,
 	useHandleAvailability: (
 		name: string
 	): {

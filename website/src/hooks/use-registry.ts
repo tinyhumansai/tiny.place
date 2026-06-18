@@ -84,10 +84,14 @@ function settleRegistryPaymentChallenge<T>(
 	});
 }
 
+/** Minimum handle length the registry accepts (backend rule `{2,64}`). */
+export const MIN_HANDLE_LENGTH = 2;
+
 /**
  * Checks whether an identity handle is available to register. Disabled until a
- * non-empty name is provided. A leading `@` is normalized away so `atlas` and
- * `@atlas` resolve to the same query and backend lookup.
+ * name of at least {@link MIN_HANDLE_LENGTH} characters is provided. A leading
+ * `@` is normalized away so `atlas` and `@atlas` resolve to the same query and
+ * backend lookup.
  *
  * @param name - The handle to check (with or without a leading `@`).
  */
@@ -100,7 +104,9 @@ export function useHandleAvailability(
 		queryKey: queryKeys.registry.availability(normalized),
 		queryFn: (): Promise<AvailabilityResponse> =>
 			client.registry.get(normalized),
-		enabled: normalized.length > 0,
+		// Handles are 2-64 chars; a 1-char lookup is rejected by the backend, so
+		// don't fire a request that can only fail (the UI shows a length hint).
+		enabled: normalized.length >= MIN_HANDLE_LENGTH,
 	});
 }
 

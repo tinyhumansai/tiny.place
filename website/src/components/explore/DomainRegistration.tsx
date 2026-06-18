@@ -20,7 +20,10 @@ import { createClient } from "@src/common/api-client";
 import { queryKeys } from "@src/common/query-keys";
 import { assertValidX402Challenge } from "@src/common/x402-challenge";
 import { signX402ChallengePaymentMap } from "@src/common/auth-payment";
-import { useHandleAvailability } from "@src/hooks/use-registry";
+import {
+	MIN_HANDLE_LENGTH,
+	useHandleAvailability,
+} from "@src/hooks/use-registry";
 import { useOwnedIdentities } from "@src/hooks/use-marketplace";
 import { useAuthStore } from "@src/store/auth";
 
@@ -365,9 +368,23 @@ export const DomainRegistration = ({
 					</button>
 				</div>
 
-				{availabilityQuery.isLoading && searchInput.length > 0 && (
-					<p className={`mt-2 text-xs ${secondaryClass}`}>Checking...</p>
+				{searchInput.length > 0 && searchInput.length < MIN_HANDLE_LENGTH && (
+					<p className={`mt-2 text-xs ${secondaryClass}`}>
+						Handles must be at least {MIN_HANDLE_LENGTH} characters.
+					</p>
 				)}
+
+				{availabilityQuery.isLoading &&
+					searchInput.length >= MIN_HANDLE_LENGTH && (
+						<p className={`mt-2 text-xs ${secondaryClass}`}>Checking...</p>
+					)}
+
+				{availabilityQuery.isError &&
+					searchInput.length >= MIN_HANDLE_LENGTH && (
+						<p className="mt-2 text-xs font-medium text-red-500">
+							Couldn&apos;t check availability. Please try again.
+						</p>
+					)}
 
 				{availabilityQuery.data && (
 					<div className="mt-3">
