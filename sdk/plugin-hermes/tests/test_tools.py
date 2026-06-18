@@ -163,6 +163,20 @@ def test_register_domain_auto_settles_when_solana_configured(tmp_path, monkeypat
     assert isinstance(captured["kwargs"]["secret_key"], (bytes, bytearray))
 
 
+def test_register_domain_auto_settle_without_sdk_support_errors_clearly(tmp_path, monkeypatch):
+    monkeypatch.setenv("TINYPLACE_SOLANA_NETWORK", "devnet")
+    monkeypatch.setenv("TINYPLACE_SOLANA_RPC_URL", "https://rpc.example.test")
+    rt = _make_runtime(tmp_path, monkeypatch)
+    # The fake client has no register_domain_with_solana_payment (an SDK that
+    # predates on-chain settlement) -> actionable error, not a raw AttributeError.
+    assert not hasattr(rt._client, "register_domain_with_solana_payment")
+
+    out = json.loads(tools.register_domain({"domain": "@paid"}, runtime=rt))
+    assert out["ok"] is False
+    assert "AttributeError" not in out["error"]
+    assert "register_domain_with_solana_payment" in out["error"]
+
+
 def test_poll_inbox_returns_every_decrypted_message(tmp_path, monkeypatch):
     rt = _make_runtime(tmp_path, monkeypatch)
     rt._client.messages._decrypted = [

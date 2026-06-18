@@ -219,6 +219,16 @@ def register_domain(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     async def _run() -> Any:
         client = await runtime.get_client()
         if settlement is not None:
+            if not hasattr(client, "register_domain_with_solana_payment"):
+                # Auto-settlement was requested but the installed SDK predates
+                # the on-chain settlement helper. Fail with an actionable message
+                # rather than a cryptic AttributeError.
+                raise RuntimeError(
+                    "on-chain settlement needs a tiny.place Python SDK that "
+                    "provides register_domain_with_solana_payment; upgrade the "
+                    "SDK, or unset TINYPLACE_SOLANA_NETWORK to surface the 402 "
+                    "challenge for out-of-band settlement instead."
+                )
             return await client.register_domain_with_solana_payment(
                 domain,
                 rpc_url=settlement["rpc_url"],
