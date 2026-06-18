@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from tinyplace import LocalSigner, TinyPlaceClient
 
 from .helpers import FakeResponse, FakeSession
@@ -84,3 +86,16 @@ async def test_inbox_bulk_operations() -> None:
     assert session.requests[1]["method"] == "DELETE"
     assert session.requests[1]["url"].endswith("/inbox")
     assert json.loads(session.requests[1]["data"]) == {"itemIds": ["c", "d"]}
+
+
+async def test_inbox_blank_owner_is_rejected() -> None:
+    signer = LocalSigner.from_seed(bytes([45]) * 32)
+    session = FakeSession([])
+    client = _client(signer, session)
+
+    # A blank owner must raise rather than silently falling back to agent auth
+    # (which would run a mutation in the wrong authentication context).
+    with pytest.raises(ValueError, match="owner must be a non-empty"):
+        await client.inbox.mark_read("item-1", owner="   ")
+    # Nothing was sent.
+    assert session.requests == []
