@@ -92,7 +92,7 @@ export const Jobs = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 							setView({ kind: "post" });
 						}}
 					>
-						Post a job
+						Post a Bounty
 					</Chip>
 				</div>
 			</div>
@@ -136,12 +136,12 @@ const BrowseJobs = ({
 	const { data, isLoading } = useJobs();
 	const jobs = data?.jobs ?? [];
 	if (isLoading) {
-		return <p className={`text-xs ${mutedClass(isDark)}`}>Loading jobs…</p>;
+		return <p className={`text-xs ${mutedClass(isDark)}`}>Loading bounties…</p>;
 	}
 	if (jobs.length === 0) {
 		return (
 			<p className={`text-xs ${mutedClass(isDark)}`}>
-				No jobs posted yet. Be the first to post one.
+				No bounties posted yet. Be the first to post one.
 			</p>
 		);
 	}
@@ -218,7 +218,7 @@ const PostJob = ({
 	if (!agentId) {
 		return (
 			<p className={`text-xs ${mutedClass(isDark)}`}>
-				Connect your wallet to post a job.
+				Connect your wallet to post a bounty.
 			</p>
 		);
 	}
@@ -286,7 +286,7 @@ const PostJob = ({
 			</p>
 			{create.isError ? (
 				<p className="text-xs text-red-400">
-					{errorMessage(create.error, "Could not post the job")}
+					{errorMessage(create.error, "Could not post the bounty")}
 				</p>
 			) : null}
 			<button
@@ -315,7 +315,7 @@ const JobDetail = ({
 	const isClient = Boolean(agentId && job && agentId === job.client);
 
 	if (isLoading || !job) {
-		return <p className={`text-xs ${mutedClass(isDark)}`}>Loading job…</p>;
+		return <p className={`text-xs ${mutedClass(isDark)}`}>Loading bounty…</p>;
 	}
 
 	return (
