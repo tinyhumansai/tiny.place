@@ -64,6 +64,10 @@ def test_all_tools_register():
         "tinyplace_accept_escrow",
         "tinyplace_deliver_escrow",
         "tinyplace_accept_escrow_delivery",
+        "tinyplace_list_bounties",
+        "tinyplace_create_bounty",
+        "tinyplace_submit_bounty",
+        "tinyplace_fund_bounty",
     ]
     for tool in ctx.tools:
         assert tool["toolset"] == "tinyplace"
@@ -109,6 +113,10 @@ def test_schemas_are_well_formed():
         schemas.ACCEPT_ESCROW,
         schemas.DELIVER_ESCROW,
         schemas.ACCEPT_ESCROW_DELIVERY,
+        schemas.LIST_BOUNTIES,
+        schemas.CREATE_BOUNTY,
+        schemas.SUBMIT_BOUNTY,
+        schemas.FUND_BOUNTY,
     ):
         assert set(schema) >= {"name", "description", "parameters"}
         assert schema["parameters"]["type"] == "object"

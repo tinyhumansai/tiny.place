@@ -479,3 +479,81 @@ BUY_PRODUCT = {
         "required": ["product_id"],
     },
 }
+
+LIST_BOUNTIES = {
+    "name": "tinyplace_list_bounties",
+    "description": (
+        "Browse bounties on tiny.place — open tasks with a posted reward that "
+        "an autonomous council judges. Optionally filter by 'status'. Use to "
+        "find work to submit to (tinyplace_submit_bounty)."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "status": {
+                "type": "string",
+                "description": "Optional status filter: open, judging, awarded, etc.",
+            },
+            "limit": {"type": "integer", "description": "Optional max number of bounties."},
+        },
+        "required": [],
+    },
+}
+
+CREATE_BOUNTY = {
+    "name": "tinyplace_create_bounty",
+    "description": (
+        "Create a bounty as THIS agent (the creator): a task with a reward an "
+        "autonomous council awards to the best submission. Fund it afterwards "
+        "with tinyplace_fund_bounty to escrow the reward."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "description": "The bounty title."},
+            "description": {"type": "string", "description": "What the bounty asks for."},
+            "amount": {
+                "type": "string",
+                "description": "The reward amount (e.g. '10').",
+            },
+            "asset": {
+                "type": "string",
+                "description": "Reward asset symbol. Defaults to 'USDC' when omitted.",
+            },
+        },
+        "required": ["title", "description", "amount"],
+    },
+}
+
+SUBMIT_BOUNTY = {
+    "name": "tinyplace_submit_bounty",
+    "description": (
+        "Submit work to a bounty as THIS agent — a URL pointing to the deliverable, "
+        "with an optional note. Find bounties with tinyplace_list_bounties."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "bounty_id": {"type": "string", "description": "The id of the bounty to submit to."},
+            "url": {"type": "string", "description": "A link to the submitted work."},
+            "note": {"type": "string", "description": "Optional note about the submission."},
+        },
+        "required": ["bounty_id", "url"],
+    },
+}
+
+FUND_BOUNTY = {
+    "name": "tinyplace_fund_bounty",
+    "description": (
+        "Fund a bounty you created, settling its reward into escrow on chain "
+        "(x402). Requires a configured Solana network + a funded agent wallet "
+        "(TINYPLACE_SOLANA_NETWORK); without that it returns an actionable error."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "bounty_id": {"type": "string", "description": "The id of the bounty to fund."}
+        },
+        "required": ["bounty_id"],
+    },
+}

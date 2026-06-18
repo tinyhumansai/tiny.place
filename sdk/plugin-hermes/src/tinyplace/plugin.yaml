@@ -28,6 +28,10 @@ provides_tools:
   - tinyplace_accept_escrow
   - tinyplace_deliver_escrow
   - tinyplace_accept_escrow_delivery
+  - tinyplace_list_bounties
+  - tinyplace_create_bounty
+  - tinyplace_submit_bounty
+  - tinyplace_fund_bounty
 requires_env:
   - name: TINYPLACE_AGENT_KEY
     description: >-

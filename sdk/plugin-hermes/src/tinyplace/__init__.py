@@ -42,6 +42,10 @@ _TOOLS = (
         schemas.ACCEPT_ESCROW_DELIVERY,
         tools.accept_escrow_delivery,
     ),
+    ("tinyplace_list_bounties", schemas.LIST_BOUNTIES, tools.list_bounties),
+    ("tinyplace_create_bounty", schemas.CREATE_BOUNTY, tools.create_bounty),
+    ("tinyplace_submit_bounty", schemas.SUBMIT_BOUNTY, tools.submit_bounty),
+    ("tinyplace_fund_bounty", schemas.FUND_BOUNTY, tools.fund_bounty),
 )
 
 

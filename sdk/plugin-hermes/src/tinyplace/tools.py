@@ -687,6 +687,111 @@ def accept_escrow_delivery(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     return _ok({"escrow_id": escrow_id, "escrow": runtime.run(_run())})
 
 
+@_guard
+def list_bounties(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    # The bounty list API supports creator/status/limit/offset — no text search.
+    params: dict[str, Any] = {}
+    status = args.get("status")
+    if isinstance(status, str) and status.strip():
+        params["status"] = status.strip()
+    limit = _coerce_limit(args.get("limit"))
+    if limit is not None:
+        params["limit"] = limit
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await _require(client, "bounties").list(params or None)
+
+    return _ok(runtime.run(_run()))
+
+
+@_guard
+def create_bounty(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    title = str(args.get("title") or "").strip()
+    description = args.get("description")
+    amount = args.get("amount")
+    if not title:
+        return _error("'title' is required")
+    if not isinstance(description, str) or not description.strip():
+        return _error("'description' is required")
+    if not isinstance(amount, str) or not amount.strip():
+        return _error("'amount' is required (the reward amount, e.g. '10')")
+    asset = args.get("asset")
+    asset = asset.strip() if isinstance(asset, str) and asset.strip() else "USDC"
+    request: dict[str, Any] = {
+        "creator": runtime.address,
+        "title": title,
+        "description": description.strip(),
+        "amount": amount.strip(),
+        "asset": asset,
+    }
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await _require(client, "bounties").create(request)
+
+    return _ok({"bounty": runtime.run(_run())})
+
+
+@_guard
+def submit_bounty(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    bounty_id = str(args.get("bounty_id") or "").strip()
+    url = args.get("url")
+    if not bounty_id:
+        return _error("'bounty_id' is required")
+    if not isinstance(url, str) or not url.strip():
+        return _error("'url' is required (a link to the submitted work)")
+    request: dict[str, Any] = {"submitter": runtime.address, "url": url.strip()}
+    note = args.get("note")
+    if isinstance(note, str) and note.strip():
+        request["note"] = note.strip()
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await _require(client, "bounties").submit(bounty_id, request)
+
+    return _ok({"bounty_id": bounty_id, "submission": runtime.run(_run())})
+
+
+@_guard
+def fund_bounty(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    bounty_id = str(args.get("bounty_id") or "").strip()
+    if not bounty_id:
+        return _error("'bounty_id' is required")
+    settlement = runtime.payment_settlement()
+    if settlement is None:
+        return _error(
+            "funding a bounty settles the reward into escrow on chain — set "
+            "TINYPLACE_SOLANA_NETWORK (and fund the agent wallet) to enable it."
+        )
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        bounties = _require(client, "bounties")
+        if not hasattr(bounties, "fund_with_solana_payment"):
+            raise RuntimeError(
+                "on-chain bounty funding needs a tiny.place Python SDK that "
+                "provides bounties.fund_with_solana_payment; upgrade the SDK."
+            )
+        return await bounties.fund_with_solana_payment(
+            bounty_id,
+            runtime.address,
+            rpc_url=settlement["rpc_url"],
+            secret_key=settlement["secret_key"],
+            mint=settlement["mint"],
+        )
+
+    result = runtime.run(_run())
+    payment = result.get("payment") if isinstance(result, dict) else None
+    on_chain_tx = payment.get("signature") if isinstance(payment, dict) else None
+    bounty = result.get("bounty") if isinstance(result, dict) else result
+    return _ok({"bounty_id": bounty_id, "bounty": bounty, "onChainTx": on_chain_tx})
+
+
 # --- helpers ----------------------------------------------------------------
 
 
