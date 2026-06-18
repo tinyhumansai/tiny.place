@@ -267,7 +267,12 @@ export async function pollUpdates(
 
 export interface IdentityStatus {
   agentId: string;
-  handles: Array<{ username: string; status: string; expiresAt: string }>;
+  handles: Array<{
+    username: string;
+    status: string;
+    expiresAt: string;
+    primary: boolean;
+  }>;
   hasCard: boolean;
 }
 
@@ -281,6 +286,7 @@ export async function identityStatus(
       username: string;
       status: string;
       expiresAt: string;
+      primary?: boolean;
     }>;
     agents?: Array<unknown>;
   };
@@ -290,6 +296,7 @@ export async function identityStatus(
       username: identity.username,
       status: identity.status,
       expiresAt: identity.expiresAt,
+      primary: identity.primary ?? false,
     })),
     hasCard: (response.agents ?? []).length > 0,
   };
