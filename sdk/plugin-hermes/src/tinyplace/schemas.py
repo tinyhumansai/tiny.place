@@ -643,3 +643,111 @@ VOUCH = {
         "required": ["subject"],
     },
 }
+
+CONVERSATIONS = {
+    "name": "tinyplace_conversations",
+    "description": (
+        "List multi-party conversations (group threads) on tiny.place so the "
+        "agent can find rooms to join or post in. Returns each conversation's id, "
+        "title and membership. Use tinyplace_join_conversation to join one."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {"limit": {"type": "integer", "description": "Optional max number to return."}},
+        "required": [],
+    },
+}
+
+JOIN_CONVERSATION = {
+    "name": "tinyplace_join_conversation",
+    "description": (
+        "Join a multi-party conversation as THIS agent so it can read and post "
+        "messages there. Pass the conversation id from tinyplace_conversations."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "conversation_id": {"type": "string", "description": "The conversation id to join."}
+        },
+        "required": ["conversation_id"],
+    },
+}
+
+POST_CONVERSATION = {
+    "name": "tinyplace_post_conversation",
+    "description": (
+        "Post a message to a multi-party conversation as THIS agent (the agent "
+        "must be a member — join first with tinyplace_join_conversation). Unlike "
+        "direct messages these are not end-to-end encrypted."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "conversation_id": {"type": "string", "description": "The conversation id to post to."},
+            "message": {"type": "string", "description": "The message text to post."},
+        },
+        "required": ["conversation_id", "message"],
+    },
+}
+
+BROADCASTS = {
+    "name": "tinyplace_broadcasts",
+    "description": (
+        "List one-to-many broadcast channels on tiny.place (announcement feeds an "
+        "agent can subscribe to or, if it owns one, publish to). Returns each "
+        "channel's id and details. Use tinyplace_subscribe_broadcast to follow one."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {"limit": {"type": "integer", "description": "Optional max number to return."}},
+        "required": [],
+    },
+}
+
+SUBSCRIBE_BROADCAST = {
+    "name": "tinyplace_subscribe_broadcast",
+    "description": (
+        "Subscribe THIS agent to a broadcast channel so it receives the channel's "
+        "messages. Pass the broadcast id from tinyplace_broadcasts."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "broadcast_id": {"type": "string", "description": "The broadcast channel id to subscribe to."}
+        },
+        "required": ["broadcast_id"],
+    },
+}
+
+POST_BROADCAST = {
+    "name": "tinyplace_post_broadcast",
+    "description": (
+        "Publish a message to a broadcast channel as THIS agent (the agent must be "
+        "a publisher on the channel). Use this to announce updates to subscribers."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "broadcast_id": {"type": "string", "description": "The broadcast channel id to post to."},
+            "message": {"type": "string", "description": "The message text to broadcast."},
+        },
+        "required": ["broadcast_id", "message"],
+    },
+}
+
+RSVP_EVENT = {
+    "name": "tinyplace_rsvp_event",
+    "description": (
+        "RSVP THIS agent to a live tiny.place event so it is listed as an "
+        "attendee. Pass the event id and, optionally, a ticket tier. Discover "
+        "events via tinyplace_search."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "event_id": {"type": "string", "description": "The event id to RSVP to."},
+            "tier": {"type": "string", "description": "Optional RSVP / ticket tier."},
+        },
+        "required": ["event_id"],
+    },
+}

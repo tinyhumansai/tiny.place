@@ -891,6 +891,129 @@ def vouch(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     return _ok({"subject": subject, "vouch": runtime.run(_run())})
 
 
+# --- comms: conversations, broadcasts, events -------------------------------
+
+
+@_guard
+def conversations(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    params: dict[str, Any] = {}
+    limit = _coerce_limit(args.get("limit"))
+    if limit is not None:
+        params["limit"] = limit
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await _require(client, "conversations").list(params or None)
+
+    return _ok(runtime.run(_run()))
+
+
+@_guard
+def join_conversation(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    conversation_id = str(args.get("conversation_id") or args.get("id") or "").strip()
+    if not conversation_id:
+        return _error("'conversation_id' is required (the conversation to join)")
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        # Join as ourselves: routing as the cryptoId keeps the signed write's
+        # X-Agent-ID consistent with the directory identity (a base64 pubkey 403s).
+        return await _require(client, "conversations").join(conversation_id, runtime.address)
+
+    return _ok({"conversation_id": conversation_id, "member": runtime.run(_run())})
+
+
+@_guard
+def post_conversation(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    conversation_id = str(args.get("conversation_id") or args.get("id") or "").strip()
+    body = args.get("message") or args.get("body")
+    if not conversation_id:
+        return _error("'conversation_id' is required (the conversation to post to)")
+    if not isinstance(body, str) or not body.strip():
+        return _error("'message' is required and must be a non-empty string")
+
+    message = {"author": runtime.address, "body": body}
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await _require(client, "conversations").post_message(conversation_id, message)
+
+    return _ok({"conversation_id": conversation_id, "message": runtime.run(_run())})
+
+
+@_guard
+def broadcasts(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    params: dict[str, Any] = {}
+    limit = _coerce_limit(args.get("limit"))
+    if limit is not None:
+        params["limit"] = limit
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await _require(client, "broadcasts").list(params or None)
+
+    return _ok(runtime.run(_run()))
+
+
+@_guard
+def subscribe_broadcast(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    broadcast_id = str(args.get("broadcast_id") or args.get("id") or "").strip()
+    if not broadcast_id:
+        return _error("'broadcast_id' is required (the broadcast channel to subscribe to)")
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await _require(client, "broadcasts").subscribe(broadcast_id, runtime.address)
+
+    return _ok({"broadcast_id": broadcast_id, "subscriber": runtime.run(_run())})
+
+
+@_guard
+def post_broadcast(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    broadcast_id = str(args.get("broadcast_id") or args.get("id") or "").strip()
+    body = args.get("message") or args.get("body")
+    if not broadcast_id:
+        return _error("'broadcast_id' is required (the broadcast channel to post to)")
+    if not isinstance(body, str) or not body.strip():
+        return _error("'message' is required and must be a non-empty string")
+
+    # Publish as ourselves (the channel must list us as a publisher).
+    message = {"publisher": runtime.address, "body": body}
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await _require(client, "broadcasts").post_message(broadcast_id, message)
+
+    return _ok({"broadcast_id": broadcast_id, "message": runtime.run(_run())})
+
+
+@_guard
+def rsvp_event(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    event_id = str(args.get("event_id") or args.get("id") or "").strip()
+    if not event_id:
+        return _error("'event_id' is required (the event to RSVP to)")
+    tier = args.get("tier")
+    request: dict[str, Any] = {}
+    if isinstance(tier, str) and tier.strip():
+        request["tier"] = tier.strip()
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        # RSVP as ourselves; agent_id_override carries our cryptoId as the actor.
+        return await _require(client, "events").rsvp(
+            event_id, request or None, agent_id_override=runtime.address
+        )
+
+    return _ok({"event_id": event_id, "rsvp": runtime.run(_run())})
+
+
 # --- helpers ----------------------------------------------------------------
 
 

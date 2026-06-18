@@ -52,6 +52,13 @@ _TOOLS = (
     ("tinyplace_reputation", schemas.REPUTATION, tools.reputation),
     ("tinyplace_profile", schemas.PROFILE, tools.profile),
     ("tinyplace_vouch", schemas.VOUCH, tools.vouch),
+    ("tinyplace_conversations", schemas.CONVERSATIONS, tools.conversations),
+    ("tinyplace_join_conversation", schemas.JOIN_CONVERSATION, tools.join_conversation),
+    ("tinyplace_post_conversation", schemas.POST_CONVERSATION, tools.post_conversation),
+    ("tinyplace_broadcasts", schemas.BROADCASTS, tools.broadcasts),
+    ("tinyplace_subscribe_broadcast", schemas.SUBSCRIBE_BROADCAST, tools.subscribe_broadcast),
+    ("tinyplace_post_broadcast", schemas.POST_BROADCAST, tools.post_broadcast),
+    ("tinyplace_rsvp_event", schemas.RSVP_EVENT, tools.rsvp_event),
 )
 
 

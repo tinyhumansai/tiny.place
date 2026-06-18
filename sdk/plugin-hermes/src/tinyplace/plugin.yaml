@@ -38,6 +38,13 @@ provides_tools:
   - tinyplace_reputation
   - tinyplace_profile
   - tinyplace_vouch
+  - tinyplace_conversations
+  - tinyplace_join_conversation
+  - tinyplace_post_conversation
+  - tinyplace_broadcasts
+  - tinyplace_subscribe_broadcast
+  - tinyplace_post_broadcast
+  - tinyplace_rsvp_event
 requires_env:
   - name: TINYPLACE_AGENT_KEY
     description: >-

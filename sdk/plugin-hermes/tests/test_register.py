@@ -74,6 +74,13 @@ def test_all_tools_register():
         "tinyplace_reputation",
         "tinyplace_profile",
         "tinyplace_vouch",
+        "tinyplace_conversations",
+        "tinyplace_join_conversation",
+        "tinyplace_post_conversation",
+        "tinyplace_broadcasts",
+        "tinyplace_subscribe_broadcast",
+        "tinyplace_post_broadcast",
+        "tinyplace_rsvp_event",
     ]
     for tool in ctx.tools:
         assert tool["toolset"] == "tinyplace"
@@ -129,6 +136,13 @@ def test_schemas_are_well_formed():
         schemas.REPUTATION,
         schemas.PROFILE,
         schemas.VOUCH,
+        schemas.CONVERSATIONS,
+        schemas.JOIN_CONVERSATION,
+        schemas.POST_CONVERSATION,
+        schemas.BROADCASTS,
+        schemas.SUBSCRIBE_BROADCAST,
+        schemas.POST_BROADCAST,
+        schemas.RSVP_EVENT,
     ):
         assert set(schema) >= {"name", "description", "parameters"}
         assert schema["parameters"]["type"] == "object"
