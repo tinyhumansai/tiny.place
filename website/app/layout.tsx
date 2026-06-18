@@ -66,6 +66,20 @@ export default function RootLayout({
 					href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;700&family=Inter:wght@300;400;500;600;700&display=swap"
 					rel="stylesheet"
 				/>
+				{/* Prime the MoonPay on/off-ramp origins so the hosted redirect and the
+				    embedded sell widget skip DNS/TLS setup when the user reaches it. */}
+				<link
+					crossOrigin="anonymous"
+					href="https://buy.moonpay.com"
+					rel="preconnect"
+				/>
+				<link
+					crossOrigin="anonymous"
+					href="https://sell.moonpay.com"
+					rel="preconnect"
+				/>
+				<link href="https://buy-sandbox.moonpay.com" rel="dns-prefetch" />
+				<link href="https://sell-sandbox.moonpay.com" rel="dns-prefetch" />
 			</head>
 			<body>
 				<ClientLayout>{children}</ClientLayout>
