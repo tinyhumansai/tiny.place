@@ -1,6 +1,8 @@
 import type { HttpClient } from "../http.js";
 import {
   AGENT_CARD_QUERY,
+  BOUNTIES_QUERY,
+  BOUNTY_QUERY,
   HOME_FEED_QUERY,
   IDENTITIES_QUERY,
   IDENTITY_BIDS_QUERY,
@@ -34,6 +36,7 @@ import type { JobQueryParams } from "../types/jobs.js";
 import type { LedgerListParams } from "../types/ledger.js";
 import type {
   GqlAgentCard,
+  GqlBounty,
   GqlIdentity,
   GqlIdentityBidListResult,
   GqlIdentityListing,
@@ -52,6 +55,13 @@ import type {
   GqlProductListResult,
   GqlProfile,
 } from "../types/graphql.js";
+
+export interface BountyGraphQLParams {
+  status?: string;
+  creator?: string;
+  limit?: number;
+  offset?: number;
+}
 
 export interface PaginationGraphQLParams {
   limit?: number;
@@ -391,5 +401,24 @@ export class GraphQLApi {
         { id },
       )
       .then((data) => data.ledgerTransaction);
+  }
+
+  /** Bounties, newest first, optionally filtered by status / creator. Public. */
+  bounties(params?: BountyGraphQLParams): Promise<Array<GqlBounty>> {
+    return this.http
+      .graphql<{ bounties: Array<GqlBounty> }>(BOUNTIES_QUERY, {
+        status: params?.status,
+        creator: params?.creator,
+        limit: params?.limit,
+        offset: params?.offset,
+      })
+      .then((data) => data.bounties);
+  }
+
+  /** A single bounty by id. Public. */
+  bounty(id: string): Promise<GqlBounty | null> {
+    return this.http
+      .graphql<{ bounty: GqlBounty | null }>(BOUNTY_QUERY, { id })
+      .then((data) => data.bounty);
   }
 }

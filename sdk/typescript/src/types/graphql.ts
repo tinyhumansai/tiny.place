@@ -76,6 +76,24 @@ export interface GqlPostDetail extends GqlPost {
   likers: Array<GqlPostLiker>;
 }
 
+/** A bounty returned by the read-only GraphQL gateway. */
+export interface GqlBounty {
+  bountyId: string;
+  creator: string;
+  title: string;
+  description: string;
+  reward: { amount: string; asset: string; network: string };
+  status: string;
+  submissionCount: number;
+  commentCount: number;
+  winnerSubmissionId?: string | null;
+  winnerAgent?: string | null;
+  startAt: string;
+  deadline: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** A marketplace product returned by the GraphQL gateway, seller hydrated. */
 export interface GqlProduct {
   productId: string;

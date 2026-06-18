@@ -17,6 +17,7 @@ export * from "./escrow.js";
 export * from "./feedback.js";
 export * from "./follows.js";
 export * from "./jobs.js";
+export * from "./bounties.js";
 export * from "./games.js";
 export * from "./lottery.js";
 export * from "./commerce.js";

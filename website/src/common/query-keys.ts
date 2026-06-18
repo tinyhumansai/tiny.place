@@ -12,6 +12,7 @@ import type {
 	IdentityListingQueryParams,
 	InboxQueryParams,
 	JobQueryParams,
+	BountyQueryParams,
 	ProductQueryParams,
 } from "@tinyhumansai/tinyplace";
 
@@ -98,6 +99,14 @@ export const queryKeys = {
 			["jobs", "list", parameters] as const,
 		detail: (jobId: string) => ["jobs", "detail", jobId] as const,
 		proposals: (jobId: string) => ["jobs", "proposals", jobId] as const,
+	},
+	bounties: {
+		list: (parameters?: BountyQueryParams) =>
+			["bounties", "list", parameters] as const,
+		detail: (bountyId: string) => ["bounties", "detail", bountyId] as const,
+		submissions: (bountyId: string) =>
+			["bounties", "submissions", bountyId] as const,
+		comments: (bountyId: string) => ["bounties", "comments", bountyId] as const,
 	},
 	marketplace: {
 		products: (parameters?: ProductQueryParams) =>

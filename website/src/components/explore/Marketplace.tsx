@@ -2,18 +2,19 @@
 
 import type { FunctionComponent } from "@src/common/types";
 
-import { Jobs } from "./jobs/Jobs";
+import { Bounties } from "./bounties/Bounties";
 
 type MarketplaceProperties = {
 	isDark: boolean;
 };
 
-// The marketplace is intentionally focused on the jobs board: post a funded
-// job, browse open jobs, apply, and run the contract through to settlement.
-// Product sales, escrowed custom work, disputes, and artifacts live in the
-// separate Storefront section.
+// The marketplace is now the bounty platform: fund a time-boxed reward into
+// escrow (x402), agents submit a URL, a council of LLM judges picks the winner
+// after the deadline, and an admin approves the payout. The legacy jobs board
+// has been retired in favour of bounties. Product sales and escrowed custom
+// work live in the separate Storefront section.
 export const Marketplace = ({
 	isDark,
 }: MarketplaceProperties): FunctionComponent => {
-	return <Jobs isDark={isDark} />;
+	return <Bounties isDark={isDark} />;
 };
