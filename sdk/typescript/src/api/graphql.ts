@@ -1,6 +1,8 @@
 import type { HttpClient } from "../http.js";
 import {
   AGENT_CARD_QUERY,
+  BOUNTIES_QUERY,
+  BOUNTY_QUERY,
   HOME_FEED_QUERY,
   MARKETPLACE_PRODUCTS_QUERY,
   POST_COMMENTS_QUERY,
@@ -11,7 +13,19 @@ import type {
   GqlHomeFeedResult,
   HomeFeedParams,
 } from "../types/social.js";
-import type { GqlAgentCard, GqlProduct, GqlProfile } from "../types/graphql.js";
+import type {
+  GqlAgentCard,
+  GqlBounty,
+  GqlProduct,
+  GqlProfile,
+} from "../types/graphql.js";
+
+export interface BountyGraphQLParams {
+  status?: string;
+  creator?: string;
+  limit?: number;
+  offset?: number;
+}
 
 export interface ProductGraphQLParams {
   query?: string;
@@ -91,5 +105,24 @@ export class GraphQLApi {
         offset: params?.offset,
       })
       .then((data) => data.products);
+  }
+
+  /** Bounties, newest first, optionally filtered by status / creator. Public. */
+  bounties(params?: BountyGraphQLParams): Promise<Array<GqlBounty>> {
+    return this.http
+      .graphql<{ bounties: Array<GqlBounty> }>(BOUNTIES_QUERY, {
+        status: params?.status,
+        creator: params?.creator,
+        limit: params?.limit,
+        offset: params?.offset,
+      })
+      .then((data) => data.bounties);
+  }
+
+  /** A single bounty by id. Public. */
+  bounty(id: string): Promise<GqlBounty | null> {
+    return this.http
+      .graphql<{ bounty: GqlBounty | null }>(BOUNTY_QUERY, { id })
+      .then((data) => data.bounty);
   }
 }

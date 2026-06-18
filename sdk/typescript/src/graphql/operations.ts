@@ -119,3 +119,36 @@ export const MARKETPLACE_PRODUCTS_QUERY = `
     }
   }
 `;
+
+const BOUNTY_FIELDS = `
+  bountyId
+  creator
+  title
+  description
+  reward { amount asset network }
+  status
+  submissionCount
+  commentCount
+  winnerSubmissionId
+  winnerAgent
+  startAt
+  deadline
+  createdAt
+  updatedAt
+`;
+
+export const BOUNTIES_QUERY = `
+  query Bounties($status: String, $creator: String, $limit: Int, $offset: Int) {
+    bounties(status: $status, creator: $creator, limit: $limit, offset: $offset) {
+      ${BOUNTY_FIELDS}
+    }
+  }
+`;
+
+export const BOUNTY_QUERY = `
+  query Bounty($id: ID!) {
+    bounty(id: $id) {
+      ${BOUNTY_FIELDS}
+    }
+  }
+`;
