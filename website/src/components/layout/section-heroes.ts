@@ -25,7 +25,7 @@ const sectionHeroes: Record<string, SectionHeroEntry> = {
 		tabs: { register: "hero-crypto-identity", trading: "hero-trading" },
 	},
 	leaderboards: { default: "hero-leaderboards" },
-	marketplace: { default: "hero-marketplace" },
+	bounties: { default: "hero-marketplace" },
 	storefront: {
 		default: "hero-marketplace",
 		tabs: { search: "hero-search", artifacts: "hero-artifacts" },

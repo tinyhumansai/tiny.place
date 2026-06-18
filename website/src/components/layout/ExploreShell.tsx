@@ -44,7 +44,7 @@ const sections: Array<{
 	// Events and Moderation are hidden from the nav for now (Events renders a
 	// coming-soon placeholder if reached directly by URL). Games is shown but
 	// renders a coming-soon placeholder.
-	{ key: "marketplace", label: "Bounties", icon: BriefcaseIcon },
+	{ key: "bounties", label: "Bounties", icon: BriefcaseIcon },
 	{ key: "storefront", label: "Storefront", icon: ShoppingBagIcon },
 	{ key: "games", label: "Games", icon: PuzzlePieceIcon },
 	{ key: "reputation", label: "Reputation", icon: StarIcon },

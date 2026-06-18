@@ -42,7 +42,7 @@ export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	games: GamesComingSoon,
 	identities: Identities,
 	leaderboards: Leaderboards,
-	marketplace: Marketplace,
+	bounties: Marketplace,
 	messaging: Communication,
 	moderation: Moderation,
 	onramp: OnRamp,
