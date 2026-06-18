@@ -88,14 +88,11 @@ export const ActivityMarquee = ({
 	const itemColor = isDark ? "text-neutral-400" : "text-neutral-500";
 	const dotColor = isDark ? "text-neutral-700" : "text-neutral-300";
 
-	// The parent supplies the flex-1 fill (see ExploreShell), so this just spans
-	// the available width. Shows a placeholder until activity streams in.
+	// The parent supplies the flex-1 fill (see ExploreShell). Render nothing
+	// until activity streams in, so the header doesn't show a blank placeholder
+	// strip on every tab when the ticker is empty.
 	if (items.length === 0) {
-		return (
-			<div className="w-full overflow-hidden">
-				<span className={`text-xs ${dotColor}`}>Live activity…</span>
-			</div>
-		);
+		return null;
 	}
 
 	const track = [...items, ...items];
