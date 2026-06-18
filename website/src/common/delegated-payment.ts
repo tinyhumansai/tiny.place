@@ -23,8 +23,8 @@ export function publicUsdcMint(): string {
 }
 
 /** The x402 payment-map metadata key carrying the base64 payer-signed transfer
- * transaction. The backend routes any payment bearing it to the facilitator
- * (PayAI), which co-signs as fee payer and broadcasts. */
+ * transaction. The backend routes any payment bearing it to the configured
+ * facilitator (CDP or PayAI), which co-signs as fee payer and broadcasts. */
 export const X402_DELEGATED_TX_METADATA_KEY = "delegatedTx";
 
 /**
@@ -42,15 +42,13 @@ const ASSOCIATED_TOKEN_PROGRAM_ID =
 	"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 
 const TOKEN_TRANSFER_CHECKED_INSTRUCTION = 12;
-const TOKEN_APPROVE_CHECKED_INSTRUCTION = 13;
-const ATA_CREATE_IDEMPOTENT_INSTRUCTION = 1;
 const USDC_DECIMALS = 6;
 
 /**
  * Resolves an x402 asset symbol to its SPL mint + decimals for the Solana
  * settlement path. Returns undefined for assets that cannot settle as an SPL
- * TransferChecked — notably native SOL, which the PayAI facilitator does not
- * support. CASH resolves only when its mint is configured.
+ * TransferChecked — notably native SOL, which the facilitators (CDP/PayAI) do
+ * not support. CASH resolves only when its mint is configured.
  */
 export function resolveSplAsset(
 	asset?: string
@@ -130,15 +128,16 @@ function transferCheckedInstruction(options: {
 	});
 }
 
-// The ComputeBudget program and its instruction discriminators. PayAI's "exact"
-// Solana scheme requires SetComputeUnitLimit (<=40000) then SetComputeUnitPrice
-// (<=5 microlamports/CU) as the first two instructions before the
-// TransferChecked.
+// The ComputeBudget program and its instruction discriminators. The x402
+// "exact" Solana scheme requires SetComputeUnitLimit then SetComputeUnitPrice as
+// the first two instructions before the TransferChecked. Both CDP and PayAI cap
+// the unit price at <=5_000_000 microlamports/CU; CDP additionally tolerates the
+// wallet (Lighthouse) + memo instructions Phantom/Solflare append.
 const COMPUTE_BUDGET_PROGRAM_ID = "ComputeBudget111111111111111111111111111111";
 const COMPUTE_BUDGET_SET_UNIT_LIMIT_INSTRUCTION = 2;
 const COMPUTE_BUDGET_SET_UNIT_PRICE_INSTRUCTION = 3;
-const PAYAI_COMPUTE_UNIT_LIMIT = 40_000;
-const PAYAI_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS = "1";
+const FACILITATOR_COMPUTE_UNIT_LIMIT = 40_000;
+const FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS = "1";
 
 /** Encodes a value (base units) as a little-endian u32. */
 function encodeU32LittleEndian(value: number): Uint8Array {
@@ -177,207 +176,17 @@ function setComputeUnitPriceInstruction(
 	});
 }
 
-/** Idempotent create of the payee's ATA, funded by the facilitator. */
-function createIdempotentAtaInstruction(options: {
-	funder: PublicKey;
-	associatedAccount: PublicKey;
-	owner: PublicKey;
-	mint: PublicKey;
-}): TransactionInstruction {
-	return new TransactionInstruction({
-		programId: new PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID),
-		keys: [
-			{ pubkey: options.funder, isSigner: true, isWritable: true },
-			{ pubkey: options.associatedAccount, isSigner: false, isWritable: true },
-			{ pubkey: options.owner, isSigner: false, isWritable: false },
-			{ pubkey: options.mint, isSigner: false, isWritable: false },
-			{
-				pubkey: new PublicKey("11111111111111111111111111111111"),
-				isSigner: false,
-				isWritable: false,
-			},
-			{
-				pubkey: new PublicKey(SOLANA_TOKEN_PROGRAM_ID),
-				isSigner: false,
-				isWritable: false,
-			},
-		],
-		data: Buffer.from([ATA_CREATE_IDEMPOTENT_INSTRUCTION]),
-	});
-}
-
 /**
- * SPL Token ApproveChecked: the payer (owner) delegates `delegate` to spend up
- * to `amount` of `mint` from their token account. Signed by the wallet (Phantom)
- * once at login. Account order: source (owner ATA), mint, delegate, owner.
+ * Builds a standard x402 "exact" Solana payment: the PAYER signs the transfer
+ * directly (authority = payer = the connected wallet), and the configured
+ * facilitator (CDP or PayAI) is the fee payer that co-signs/broadcasts at settle
+ * time. Instructions are exactly [SetComputeUnitLimit, SetComputeUnitPrice,
+ * TransferChecked] — no ApproveChecked, no create-ATA (the scheme forbids them;
+ * the payee ATA must already exist). The wallet partially signs via
+ * `signTransaction` (which Phantom supports, unlike signMessage); the fee-payer
+ * slot is left empty for the facilitator. Returns the base64 wire transaction.
  */
-export function approveCheckedInstruction(options: {
-	ownerTokenAccount: PublicKey;
-	mint: PublicKey;
-	delegate: PublicKey;
-	owner: PublicKey;
-	amount: string;
-	decimals?: number;
-}): TransactionInstruction {
-	const data = new Uint8Array(10);
-	data[0] = TOKEN_APPROVE_CHECKED_INSTRUCTION;
-	data.set(encodeU64LittleEndian(options.amount), 1);
-	data[9] = options.decimals ?? USDC_DECIMALS;
-	return new TransactionInstruction({
-		programId: new PublicKey(SOLANA_TOKEN_PROGRAM_ID),
-		keys: [
-			{ pubkey: options.ownerTokenAccount, isSigner: false, isWritable: true },
-			{ pubkey: options.mint, isSigner: false, isWritable: false },
-			{ pubkey: options.delegate, isSigner: false, isWritable: false },
-			{ pubkey: options.owner, isSigner: true, isWritable: false },
-		],
-		data: Buffer.from(data),
-	});
-}
-
-/**
- * Builds the one-time delegation approval transaction for the wallet (Phantom)
- * to sign: it grants the browser session key delegate authority over the
- * payer's USDC up to `amount`. The payer is the fee payer for this login tx.
- */
-export async function buildApproveTransaction(options: {
-	rpcUrl: string;
-	payer: string;
-	delegate: string;
-	amount: string;
-	mint?: string;
-	decimals?: number;
-}): Promise<Transaction> {
-	const mint = options.mint ?? SOLANA_USDC_MINT;
-	const owner = new PublicKey(options.payer);
-	const connection = createSolanaConnection(options.rpcUrl);
-	const { blockhash } = await connection.getLatestBlockhash("confirmed");
-	const transaction = new Transaction();
-	transaction.feePayer = owner;
-	transaction.recentBlockhash = blockhash;
-	transaction.add(
-		approveCheckedInstruction({
-			ownerTokenAccount: associatedTokenAddress(options.payer, mint),
-			mint: new PublicKey(mint),
-			delegate: new PublicKey(options.delegate),
-			owner,
-			amount: options.amount,
-			decimals: options.decimals,
-		})
-	);
-	return transaction;
-}
-
-/**
- * Builds and session-signs a delegated USDC transfer (payer ATA → payee ATA,
- * authority = session delegate, fee payer = facilitator) and returns the base64
- * wire transaction with the fee-payer slot left empty for the facilitator. The
- * backend validates it, inserts the fee-payer signature, and submits it.
- */
-export async function buildDelegatedTransferTx(options: {
-	rpcUrl: string;
-	facilitator: string;
-	payer: string;
-	payee: string;
-	amount: string;
-	sessionPublicKeyBase64: string;
-	signSession: (message: Uint8Array) => Promise<Uint8Array>;
-	mint?: string;
-	decimals?: number;
-	createPayeeAccount?: boolean;
-	/**
-	 * When present, prepends a gasless SPL ApproveChecked (owner = payer) that
-	 * grants the session key delegate authority over `allowance` of the mint, and
-	 * has the owner sign the transaction via `signOwner`. The facilitator still
-	 * fee-pays, so the buyer spends no gas to fold the one-time grant into this
-	 * first payment. Omit once the delegate is already approved.
-	 */
-	approve?: {
-		allowance: string;
-		signOwner: (message: Uint8Array) => Promise<Uint8Array>;
-	};
-}): Promise<string> {
-	const mint = options.mint ?? publicUsdcMint();
-	const decimals = options.decimals ?? USDC_DECIMALS;
-	const facilitator = new PublicKey(options.facilitator);
-	const mintKey = new PublicKey(mint);
-	const owner = new PublicKey(options.payer);
-	const payerAccount = associatedTokenAddress(options.payer, mint);
-	const payeeAccount = associatedTokenAddress(options.payee, mint);
-	const sessionKey = new PublicKey(
-		Buffer.from(options.sessionPublicKeyBase64, "base64")
-	);
-
-	const connection = createSolanaConnection(options.rpcUrl);
-	const { blockhash } = await connection.getLatestBlockhash("confirmed");
-
-	const transaction = new Transaction();
-	transaction.feePayer = facilitator;
-	transaction.recentBlockhash = blockhash;
-	if (options.approve) {
-		transaction.add(
-			approveCheckedInstruction({
-				ownerTokenAccount: payerAccount,
-				mint: mintKey,
-				delegate: sessionKey,
-				owner,
-				amount: options.approve.allowance,
-				decimals,
-			})
-		);
-	}
-	if (options.createPayeeAccount ?? true) {
-		transaction.add(
-			createIdempotentAtaInstruction({
-				funder: facilitator,
-				associatedAccount: payeeAccount,
-				owner: new PublicKey(options.payee),
-				mint: mintKey,
-			})
-		);
-	}
-	transaction.add(
-		transferCheckedInstruction({
-			source: payerAccount,
-			mint: mintKey,
-			destination: payeeAccount,
-			authority: sessionKey,
-			amount: options.amount,
-			decimals,
-		})
-	);
-
-	// Session-signs the transfer authority; when folding in the grant, the owner
-	// (payer) also signs the prepended approve. Both sign the same serialized
-	// message; the facilitator (fee-payer) slot is left empty for the backend.
-	const message = transaction.serializeMessage();
-	const sessionSignature = await options.signSession(new Uint8Array(message));
-	transaction.addSignature(sessionKey, Buffer.from(sessionSignature));
-	if (options.approve) {
-		const ownerSignature = await options.approve.signOwner(
-			new Uint8Array(message)
-		);
-		transaction.addSignature(owner, Buffer.from(ownerSignature));
-	}
-
-	const wire = transaction.serialize({
-		requireAllSignatures: false,
-		verifySignatures: false,
-	});
-	return wire.toString("base64");
-}
-
-/**
- * Builds a standard PayAI x402 "exact" Solana payment: the PAYER signs the
- * transfer directly (authority = payer = the connected wallet), PayAI is the fee
- * payer and co-signs/broadcasts at settle time. Instructions are exactly
- * [SetComputeUnitLimit(≤40k), SetComputeUnitPrice(≤5), TransferChecked] — no
- * ApproveChecked, no create-ATA (PayAI's scheme forbids them; the payee ATA must
- * already exist). The wallet partially signs via `signTransaction` (which
- * Phantom supports, unlike signMessage); the fee-payer slot is left empty for
- * PayAI. Returns the base64 wire transaction.
- */
-export async function buildPayAiPayerSignedTransferTx(options: {
+export async function buildPayerSignedTransferTx(options: {
 	rpcUrl: string;
 	feePayer: string;
 	payer: string;
@@ -399,9 +208,11 @@ export async function buildPayAiPayerSignedTransferTx(options: {
 	const transaction = new Transaction();
 	transaction.feePayer = feePayer;
 	transaction.recentBlockhash = blockhash;
-	transaction.add(setComputeUnitLimitInstruction(PAYAI_COMPUTE_UNIT_LIMIT));
 	transaction.add(
-		setComputeUnitPriceInstruction(PAYAI_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS)
+		setComputeUnitLimitInstruction(FACILITATOR_COMPUTE_UNIT_LIMIT)
+	);
+	transaction.add(
+		setComputeUnitPriceInstruction(FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS)
 	);
 	transaction.add(
 		transferCheckedInstruction({
@@ -422,41 +233,6 @@ export async function buildPayAiPayerSignedTransferTx(options: {
 		verifySignatures: false,
 	});
 	return wire.toString("base64");
-}
-
-/**
- * Reads how much of `mint` the owner has currently delegated to `delegate` (the
- * session key), in base units. Returns 0 when the owner's token account does not
- * exist or its delegate is a different key — i.e. the caller must (re)approve
- * before a delegated transfer can move funds.
- */
-export async function readDelegateAllowance(options: {
-	rpcUrl: string;
-	owner: string;
-	delegate: string;
-	mint?: string;
-}): Promise<bigint> {
-	const mint = options.mint ?? publicUsdcMint();
-	const connection = createSolanaConnection(options.rpcUrl);
-	const ata = associatedTokenAddress(options.owner, mint);
-	const parsed = await connection.getParsedAccountInfo(ata);
-	const data = parsed.value?.data;
-	if (!data || !("parsed" in data)) {
-		return 0n;
-	}
-	const info = (data.parsed as { info?: Record<string, unknown> }).info ?? {};
-	if (info["delegate"] !== options.delegate) {
-		return 0n;
-	}
-	const delegated = info["delegatedAmount"] as { amount?: string } | undefined;
-	if (!delegated?.amount) {
-		return 0n;
-	}
-	try {
-		return BigInt(delegated.amount);
-	} catch {
-		return 0n;
-	}
 }
 
 /** Derives the escrow per-payer nonce tracker PDA. */

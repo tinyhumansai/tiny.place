@@ -11,7 +11,7 @@ import {
 
 import { createClient } from "@src/common/api-client";
 import {
-	buildPayAiPayerSignedTransferTx,
+	buildPayerSignedTransferTx,
 	resolveSplAsset,
 	X402_DELEGATED_TX_METADATA_KEY,
 } from "@src/common/delegated-payment";
@@ -142,7 +142,7 @@ export async function signX402ChallengePaymentMap(
 		signer instanceof SessionWalletSigner &&
 		signer.walletSignTransaction
 	) {
-		const delegatedTx = await buildPayAiPayerSignedTransferTx({
+		const delegatedTx = await buildPayerSignedTransferTx({
 			rpcUrl: primarySolanaRpcUrl(),
 			feePayer,
 			payer,
