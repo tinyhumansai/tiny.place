@@ -7,9 +7,12 @@ import aiohttp
 from .api import (
     DirectoryApi,
     DocsApi,
+    EscrowApi,
     GroupsApi,
     InboxApi,
+    JobsApi,
     KeysApi,
+    MarketplaceApi,
     MessagesApi,
     PaymentsApi,
     RegistryApi,
@@ -50,6 +53,11 @@ class TinyPlaceClient:
         self.docs = DocsApi(self.http)
         self.inbox = InboxApi(self.http)
         self.groups = GroupsApi(self.http)
+        self.jobs = JobsApi(self.http)
+        self.escrow = EscrowApi(self.http)
+        self.marketplace = MarketplaceApi(
+            self.http, signer, signer.public_key_base64 if signer else None
+        )
 
     async def __aenter__(self) -> "TinyPlaceClient":
         return self
