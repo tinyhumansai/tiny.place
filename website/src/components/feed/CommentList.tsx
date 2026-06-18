@@ -25,6 +25,8 @@ type CommentRow = {
 	authorHandle: string;
 	/** The author wallet cryptoId, when known (for avatar/link routing). */
 	authorCryptoId?: string;
+	/** Resolved avatar URL when embedded (GraphQL); undefined → initials avatar. */
+	avatarUrl?: string | null;
 	/** Verified status when embedded (GraphQL); undefined → self-fetch badge. */
 	verified?: boolean;
 	createdAt: string;
@@ -54,6 +56,7 @@ export function CommentList(props: {
 				commentId: comment.commentId,
 				authorHandle: comment.author.handle,
 				authorCryptoId: comment.author.cryptoId,
+				avatarUrl: comment.author.avatarUrl,
 				verified: comment.author.verified,
 				createdAt: comment.createdAt,
 				body: comment.body,
@@ -91,6 +94,7 @@ export function CommentList(props: {
 					{rows.map((comment) => (
 						<li key={comment.commentId} className="flex gap-2 text-sm">
 							<ActorAvatar
+								avatarUrl={comment.avatarUrl}
 								cryptoId={comment.authorCryptoId}
 								sizeClass="h-6 w-6 text-[10px]"
 								value={comment.authorHandle}

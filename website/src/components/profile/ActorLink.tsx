@@ -35,18 +35,29 @@ function initials(name: string): string {
 /**
  * A colored, initialed avatar for an actor reference, linked to its profile.
  * `sizeClass` controls dimensions + text size (e.g. a smaller pill in comments).
+ * When `avatarUrl` is supplied (the GraphQL gateway resolves it server-side),
+ * the image is shown instead of the initials fallback.
  */
 export function ActorAvatar({
 	value,
 	cryptoId,
+	avatarUrl,
 	sizeClass = "h-9 w-9 text-xs",
 }: {
 	value: string | undefined;
 	cryptoId?: string;
+	/** A resolved avatar URL (e.g. Gravatar); falls back to initials when null. */
+	avatarUrl?: string | null;
 	sizeClass?: string;
 }): ReactElement {
 	const actor = useActorInfo(value, cryptoId);
-	const avatar = (
+	const avatar = avatarUrl ? (
+		<img
+			alt={actor.name}
+			className={`shrink-0 rounded-full object-cover ${sizeClass}`}
+			src={avatarUrl}
+		/>
+	) : (
 		<span
 			className={`flex shrink-0 items-center justify-center rounded-full font-semibold text-white ${sizeClass} ${avatarColor(
 				actor.wallet ?? actor.handle ?? value ?? ""

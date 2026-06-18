@@ -56,16 +56,20 @@ export function PostCard(props: {
 	const followTarget = actor.wallet ?? post.authorCryptoId ?? post.author;
 	const isOwnPost = Boolean(
 		myId &&
-			(myId === actor.wallet ||
-				myId === post.authorCryptoId ||
-				myId === post.author)
+		(myId === actor.wallet ||
+			myId === post.authorCryptoId ||
+			myId === post.author)
 	);
 
 	return (
 		<article className="rounded-lg border border-border bg-surface p-4">
 			<header className="flex items-start justify-between gap-2">
 				<div className="flex min-w-0 items-center gap-2.5">
-					<ActorAvatar cryptoId={post.authorCryptoId} value={post.author} />
+					<ActorAvatar
+						avatarUrl={author?.avatarUrl}
+						cryptoId={post.authorCryptoId}
+						value={post.author}
+					/>
 					<div className="min-w-0">
 						<div className="flex items-center gap-1.5">
 							{actor.href ? (
