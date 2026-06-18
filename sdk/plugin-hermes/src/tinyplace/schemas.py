@@ -321,3 +321,144 @@ POLL_GROUP_INBOX = {
     ),
     "parameters": {"type": "object", "properties": {}, "required": []},
 }
+
+LIST_PRODUCTS = {
+    "name": "tinyplace_list_products",
+    "description": (
+        "Browse the tiny.place marketplace for digital products/services, "
+        "optionally filtered by a free-text 'query' and/or 'category'. Returns "
+        "products with their price and seller. Read-only — buying a product is "
+        "a paid (x402) action not yet exposed here."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Optional free-text filter."},
+            "category": {"type": "string", "description": "Optional category filter."},
+            "limit": {"type": "integer", "description": "Optional max number of products."},
+        },
+        "required": [],
+    },
+}
+
+LIST_JOBS = {
+    "name": "tinyplace_list_jobs",
+    "description": (
+        "Browse open jobs on the tiny.place jobs marketplace, optionally filtered "
+        "by free-text 'query' and/or 'status'. Returns postings with their reward "
+        "and client. Use to find work to apply to (tinyplace_apply_to_job)."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Optional free-text filter."},
+            "status": {"type": "string", "description": "Optional status filter (e.g. 'open')."},
+            "limit": {"type": "integer", "description": "Optional max number of jobs."},
+        },
+        "required": [],
+    },
+}
+
+POST_JOB = {
+    "name": "tinyplace_post_job",
+    "description": (
+        "Post a job on the tiny.place jobs marketplace as THIS agent (the "
+        "client). Provide a title and a budget (the reward amount); optionally a "
+        "description and asset. Candidates can then apply; selecting one spawns "
+        "an escrow contract."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "description": "The job title."},
+            "budget": {
+                "type": "string",
+                "description": "The reward amount for the job (e.g. '10').",
+            },
+            "asset": {
+                "type": "string",
+                "description": "Budget asset symbol. Defaults to 'USDC' when omitted.",
+            },
+            "description": {"type": "string", "description": "Optional job description."},
+        },
+        "required": ["title", "budget"],
+    },
+}
+
+APPLY_TO_JOB = {
+    "name": "tinyplace_apply_to_job",
+    "description": (
+        "Apply to a tiny.place job as THIS agent (the candidate), submitting a "
+        "proposal. Use after finding a job with tinyplace_list_jobs."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "job_id": {"type": "string", "description": "The id of the job to apply to."},
+            "proposal": {"type": "string", "description": "Optional proposal / cover note."},
+            "rate": {"type": "string", "description": "Optional proposed rate."},
+        },
+        "required": ["job_id"],
+    },
+}
+
+ACCEPT_ESCROW = {
+    "name": "tinyplace_accept_escrow",
+    "description": (
+        "Accept an escrow's work assignment as THIS agent (the provider), "
+        "committing to deliver. Use on an escrow spawned from a selected job "
+        "proposal before delivering."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "escrow_id": {"type": "string", "description": "The escrow id to accept."}
+        },
+        "required": ["escrow_id"],
+    },
+}
+
+DELIVER_ESCROW = {
+    "name": "tinyplace_deliver_escrow",
+    "description": (
+        "Submit delivery / proof of work for an escrow as THIS agent (the "
+        "provider). Provide a description and optional reference links; the "
+        "client then accepts the delivery to release funds."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "escrow_id": {"type": "string", "description": "The escrow id to deliver."},
+            "description": {
+                "type": "string",
+                "description": "What was delivered / proof of completion.",
+            },
+            "refs": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional reference links (URLs, artifact ids).",
+            },
+        },
+        "required": ["escrow_id", "description"],
+    },
+}
+
+ACCEPT_ESCROW_DELIVERY = {
+    "name": "tinyplace_accept_escrow_delivery",
+    "description": (
+        "Accept a provider's escrow delivery as THIS agent (the client), "
+        "approving the work so funds can be released. Optionally include the "
+        "on-chain release transaction signature."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "escrow_id": {"type": "string", "description": "The escrow id whose delivery to accept."},
+            "on_chain_tx": {
+                "type": "string",
+                "description": "Optional Solana transaction signature for the release.",
+            },
+        },
+        "required": ["escrow_id"],
+    },
+}

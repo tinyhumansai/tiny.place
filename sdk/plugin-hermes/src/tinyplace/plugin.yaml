@@ -20,6 +20,13 @@ provides_tools:
   - tinyplace_join_group
   - tinyplace_send_group_message
   - tinyplace_poll_group_inbox
+  - tinyplace_list_products
+  - tinyplace_list_jobs
+  - tinyplace_post_job
+  - tinyplace_apply_to_job
+  - tinyplace_accept_escrow
+  - tinyplace_deliver_escrow
+  - tinyplace_accept_escrow_delivery
 requires_env:
   - name: TINYPLACE_AGENT_KEY
     description: >-
