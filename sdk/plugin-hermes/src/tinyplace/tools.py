@@ -742,11 +742,41 @@ def create_bounty(args: dict[str, Any], ctx: dict[str, Any]) -> str:
             return _error("'duration_days' must be an integer between 1 and 31")
         request["durationDays"] = duration_days
 
+    # When a Solana network + RPC are configured AND the backend has bounty
+    # funding enabled, POST /bounties is a combined create+fund x402 flow: settle
+    # the reward into escrow on chain so the bounty is created already open.
+    # Otherwise create an unfunded draft (fund later with tinyplace_fund_bounty).
+    settlement = runtime.payment_settlement()
+
     async def _run() -> Any:
         client = await runtime.get_client()
-        return await _require(client, "bounties").create(request)
+        bounties = _require(client, "bounties")
+        if settlement is None:
+            return {"bounty": await bounties.create(request), "settled": False}
+        if not hasattr(bounties, "create_with_solana_payment"):
+            raise RuntimeError(
+                "on-chain bounty create+fund needs a tiny.place Python SDK that "
+                "provides bounties.create_with_solana_payment; upgrade the SDK."
+            )
+        try:
+            result = await bounties.create_with_solana_payment(
+                request,
+                rpc_url=settlement["rpc_url"],
+                secret_key=settlement["secret_key"],
+                mint=settlement["mint"],
+                network=settlement["network"],
+            )
+        except TinyPlaceError as exc:
+            # Funding not configured on this backend → create an unfunded draft.
+            if exc.status == 503:
+                return {"bounty": await bounties.create(request), "settled": False}
+            raise
+        return {"bounty": result.get("bounty"), "settled": True, "payment": result.get("payment")}
 
-    return _ok({"bounty": runtime.run(_run())})
+    outcome = runtime.run(_run())
+    payment = outcome.get("payment") if isinstance(outcome, dict) else None
+    on_chain_tx = payment.get("signature") if isinstance(payment, dict) else None
+    return _ok({"bounty": outcome.get("bounty"), "settled": outcome.get("settled"), "onChainTx": on_chain_tx})
 
 
 @_guard

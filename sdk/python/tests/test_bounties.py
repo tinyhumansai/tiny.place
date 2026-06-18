@@ -35,6 +35,73 @@ async def test_bounties_create_and_submit_sign_as_actor() -> None:
     assert session.requests[1]["headers"]["X-Agent-ID"] == "SubmitterId"
 
 
+async def test_bounties_create_with_solana_payment_settles_then_creates(monkeypatch) -> None:
+    signer = LocalSigner.from_seed(bytes([96]) * 32)
+    challenge = {
+        "amount": "5",
+        "to": "EscrowWallet111",
+        "network": SOLANA_MAINNET_NETWORK,
+        "asset": "USDC",
+        "nonce": "n1",
+    }
+    session = FakeSession(
+        [
+            FakeResponse(402, {"error": "payment required to create and fund this bounty", "payment": challenge}),  # probe
+            FakeResponse(200, {"bountyId": "b1", "status": "open"}),  # re-create (funded)
+        ]
+    )
+    client = _client(signer, session)
+    captured: dict = {}
+
+    async def fake_exec(**kwargs):
+        captured.update(kwargs)
+        return {"signature": "sig", "payment": {"signature": "s"}}
+
+    monkeypatch.setattr("tinyplace.api.bounties.execute_solana_x402_payment", fake_exec)
+
+    result = await client.bounties.create_with_solana_payment(
+        {"creator": "CreatorId", "title": "X", "amount": "5", "asset": "USDC"},
+        rpc_url="https://rpc.example",
+        secret_key=bytes([96]) * 32,
+    )
+    # Paid the reward into the escrow wallet, from the creator.
+    assert captured["payment"]["amount"] == "5"
+    assert captured["payment"]["to"] == "EscrowWallet111" and captured["payment"]["from"] == "CreatorId"
+    assert captured["payment"]["metadata"]["kind"] == "bounty-fund"
+    # Both POSTs hit the combined create endpoint; the re-create carried the payment.
+    assert session.requests[0]["url"].endswith("/bounties")
+    create_body = json.loads(session.requests[1]["data"])
+    assert create_body["payment"]["signature"] == "s"
+    assert result["bounty"]["status"] == "open" and result["payment"]["signature"] == "sig"
+
+
+async def test_bounties_create_with_solana_payment_retries_through_confirmation_lag(monkeypatch) -> None:
+    signer = LocalSigner.from_seed(bytes([97]) * 32)
+    challenge = {"amount": "5", "to": "Escrow1", "network": SOLANA_MAINNET_NETWORK, "asset": "USDC"}
+    session = FakeSession(
+        [
+            FakeResponse(402, {"payment": challenge}),  # probe
+            FakeResponse(402, {"error": "transaction not found"}),  # re-create: not confirmed yet
+            FakeResponse(200, {"bountyId": "b1", "status": "open"}),  # re-create: confirmed
+        ]
+    )
+    client = _client(signer, session)
+
+    async def fake_exec(**kwargs):
+        return {"signature": "sig", "payment": {"signature": "s"}}
+
+    monkeypatch.setattr("tinyplace.api.bounties.execute_solana_x402_payment", fake_exec)
+
+    result = await client.bounties.create_with_solana_payment(
+        {"creator": "CreatorId", "title": "X", "amount": "5"},
+        rpc_url="https://rpc.example",
+        secret_key=bytes([97]) * 32,
+        interval_ms=0,  # no real sleep
+    )
+    assert len(session.requests) == 3  # probe + 2 create attempts
+    assert result["bounty"]["status"] == "open"
+
+
 async def test_bounties_fund_with_solana_payment_settles_then_funds(monkeypatch) -> None:
     signer = LocalSigner.from_seed(bytes([93]) * 32)
     challenge = {
