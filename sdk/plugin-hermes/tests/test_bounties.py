@@ -18,6 +18,9 @@ class _FakeBounties:
         self.list_params: object = "<unset>"
         self.created: list[dict] = []
         self.create_solana_calls: list[tuple[dict, dict]] = []
+        # The payment the combined create+fund returns; None models a backend
+        # with funding disabled (the SDK creates an unfunded draft).
+        self.create_solana_payment: dict | None = {"signature": "sig"}
         self.submitted: list[tuple[str, dict]] = []
         self.fund_calls: list[tuple] = []
 
@@ -31,7 +34,8 @@ class _FakeBounties:
 
     async def create_with_solana_payment(self, request, **kwargs):
         self.create_solana_calls.append((request, kwargs))
-        return {"bounty": {"bountyId": "b1", "status": "open", **request}, "payment": {"signature": "sig"}}
+        status = "open" if self.create_solana_payment else "draft"
+        return {"bounty": {"bountyId": "b1", "status": status, **request}, "payment": self.create_solana_payment}
 
     async def submit(self, bounty_id, request):
         self.submitted.append((bounty_id, request))
@@ -130,6 +134,22 @@ def test_create_bounty_settles_when_configured(tmp_path, monkeypatch):
     request, kwargs = rt._client.bounties.create_solana_calls[0]
     assert request["creator"] == rt.address and request["durationDays"] == 7
     assert kwargs["rpc_url"] == "https://rpc.example.test"
+
+
+def test_create_bounty_unsettled_when_backend_funding_disabled(tmp_path, monkeypatch):
+    # Settlement configured, but the backend has funding disabled: the SDK returns
+    # the unfunded draft with payment=None, so the tool reports settled=False (not
+    # an error, and no on-chain tx).
+    monkeypatch.setenv("TINYPLACE_SOLANA_NETWORK", "devnet")
+    monkeypatch.setenv("TINYPLACE_SOLANA_RPC_URL", "https://rpc.example.test")
+    rt = _make_runtime(tmp_path, monkeypatch)
+    rt._client.bounties.create_solana_payment = None  # funding disabled → draft, no payment
+
+    out = json.loads(
+        tools.create_bounty({"title": "X", "description": "do it", "amount": "5"}, runtime=rt)
+    )
+    assert out["ok"] is True and out["settled"] is False and out["onChainTx"] is None
+    assert out["bounty"]["bountyId"] == "b1"
 
 
 def test_submit_bounty_addresses_as_self(tmp_path, monkeypatch):

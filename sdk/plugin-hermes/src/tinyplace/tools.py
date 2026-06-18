@@ -752,31 +752,30 @@ def create_bounty(args: dict[str, Any], ctx: dict[str, Any]) -> str:
         client = await runtime.get_client()
         bounties = _require(client, "bounties")
         if settlement is None:
-            return {"bounty": await bounties.create(request), "settled": False}
+            return {"bounty": await bounties.create(request), "payment": None}
         if not hasattr(bounties, "create_with_solana_payment"):
             raise RuntimeError(
                 "on-chain bounty create+fund needs a tiny.place Python SDK that "
                 "provides bounties.create_with_solana_payment; upgrade the SDK."
             )
-        try:
-            result = await bounties.create_with_solana_payment(
-                request,
-                rpc_url=settlement["rpc_url"],
-                secret_key=settlement["secret_key"],
-                mint=settlement["mint"],
-                network=settlement["network"],
-            )
-        except TinyPlaceError as exc:
-            # Funding not configured on this backend → create an unfunded draft.
-            if exc.status == 503:
-                return {"bounty": await bounties.create(request), "settled": False}
-            raise
-        return {"bounty": result.get("bounty"), "settled": True, "payment": result.get("payment")}
+        # create_with_solana_payment settles on chain when the backend has funding
+        # enabled, and otherwise returns the unfunded draft with payment=None. It
+        # does NOT swallow a post-settlement error, so a paid bounty is never left
+        # in an unknown state behind a silent fallback.
+        return await bounties.create_with_solana_payment(
+            request,
+            rpc_url=settlement["rpc_url"],
+            secret_key=settlement["secret_key"],
+            mint=settlement["mint"],
+            network=settlement["network"],
+        )
 
     outcome = runtime.run(_run())
     payment = outcome.get("payment") if isinstance(outcome, dict) else None
     on_chain_tx = payment.get("signature") if isinstance(payment, dict) else None
-    return _ok({"bounty": outcome.get("bounty"), "settled": outcome.get("settled"), "onChainTx": on_chain_tx})
+    # Settled iff an on-chain payment was made (funding enabled); a draft created
+    # against a funding-disabled backend comes back with payment=None.
+    return _ok({"bounty": outcome.get("bounty"), "settled": payment is not None, "onChainTx": on_chain_tx})
 
 
 @_guard

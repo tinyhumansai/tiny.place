@@ -102,6 +102,34 @@ async def test_bounties_create_with_solana_payment_retries_through_confirmation_
     assert result["bounty"]["status"] == "open"
 
 
+async def test_bounties_create_with_solana_payment_returns_draft_when_funding_disabled() -> None:
+    # Funding disabled: the paymentless probe creates an unfunded draft (200, no
+    # 402). It must be returned with payment=None, not discarded as an error, and
+    # no second create issued.
+    signer = LocalSigner.from_seed(bytes([98]) * 32)
+    session = FakeSession([FakeResponse(200, {"bountyId": "b1", "status": "draft"})])
+    result = await _client(signer, session).bounties.create_with_solana_payment(
+        {"creator": "CreatorId", "title": "X", "amount": "5"},
+        rpc_url="https://rpc.example",
+        secret_key=bytes([98]) * 32,
+    )
+    assert result["payment"] is None
+    assert result["bounty"]["bountyId"] == "b1" and result["bounty"]["status"] == "draft"
+    assert len(session.requests) == 1  # only the probe; no on-chain call, no re-create
+
+
+async def test_bounties_create_with_solana_payment_requires_creator() -> None:
+    import pytest
+
+    signer = LocalSigner.from_seed(bytes([99]) * 32)
+    session = FakeSession([])
+    with pytest.raises(ValueError, match="creator"):
+        await _client(signer, session).bounties.create_with_solana_payment(
+            {"title": "X", "amount": "5"}, rpc_url="https://rpc.example", secret_key=bytes([99]) * 32
+        )
+    assert session.requests == []  # rejected before any request
+
+
 async def test_bounties_fund_with_solana_payment_settles_then_funds(monkeypatch) -> None:
     signer = LocalSigner.from_seed(bytes([93]) * 32)
     challenge = {

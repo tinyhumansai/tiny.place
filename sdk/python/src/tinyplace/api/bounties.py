@@ -65,11 +65,20 @@ class BountiesApi:
         the escrow wallet on chain, then re-create with the signed payment
         attached — the bounty is returned already open for submissions. Mirrors
         ``fund_with_solana_payment`` / ``registry.register_with_solana_payment``.
+
+        When the backend has funding **disabled**, the paymentless probe creates
+        an unfunded draft outright; that draft is returned with ``payment: None``
+        rather than discarded as an error.
         """
         if self._signer is None:
             raise ValueError("create_with_solana_payment requires a signer")
         creator = str(request.get("creator") or "")
-        challenge = await self._create_challenge(request)
+        if not creator:
+            raise ValueError("create_with_solana_payment requires 'creator' in request")
+        draft, challenge = await self._probe_create(request)
+        if challenge is None:
+            # Funding disabled: the probe already created an unfunded draft.
+            return {"bounty": draft, "payment": None}
         amount = challenge.get("amount")
         recipient = challenge.get("to")
         if not amount or not recipient:
@@ -100,14 +109,22 @@ class BountiesApi:
         )
         return {"bounty": bounty, "payment": execution}
 
-    async def _create_challenge(self, request: JsonDict) -> dict[str, Any]:
+    async def _probe_create(self, request: JsonDict) -> tuple[Json | None, dict[str, Any] | None]:
+        """Probe ``POST /bounties`` once to discover the funding mode.
+
+        Returns ``(None, challenge)`` when funding is enabled (the paymentless
+        create is rejected with a 402 funding challenge, no bounty made), or
+        ``(draft, None)`` when funding is disabled (the create succeeds and an
+        unfunded draft is returned). The draft is surfaced rather than discarded
+        so a funding-disabled backend doesn't look like an error.
+        """
         try:
-            await self.create(request)
+            draft = await self.create(request)
         except TinyPlaceError as exc:
             if exc.status == 402 and exc.payment_required is not None:
-                return exc.payment_required.payment
+                return None, exc.payment_required.payment
             raise
-        raise ValueError("bounty create did not return a payment challenge")
+        return draft, None
 
     async def _create_retrying(self, request: JsonDict, attempts: int, interval_ms: int) -> Json:
         # The payment is already on chain; retry create (same signed payment map)
