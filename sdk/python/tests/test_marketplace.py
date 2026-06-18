@@ -88,7 +88,7 @@ async def test_marketplace_buy_product_routes_as_buyer() -> None:
     assert req["headers"]["X-Agent-ID"] == "BuyerId"
 
 
-async def test_marketplace_delete_product_signs_in_query() -> None:
+async def test_marketplace_delete_product_uses_public_signed_query() -> None:
     signer = LocalSigner.from_seed(bytes([84]) * 32)
     session = FakeSession([FakeResponse(204, None)])
     await _client(signer, session).marketplace.delete_product("prod1")
@@ -96,3 +96,18 @@ async def test_marketplace_delete_product_signs_in_query() -> None:
     assert req["method"] == "DELETE"
     assert req["url"].startswith("https://api.example.test/marketplace/products/prod1?signature=")
     assert "signerPublicKey=" in req["url"]
+    # Product delete is the public route (no Authorization header).
+    assert "Authorization" not in req["headers"]
+
+
+async def test_marketplace_identity_and_offer_deletes_stay_signed() -> None:
+    signer = LocalSigner.from_seed(bytes([85]) * 32)
+    session = FakeSession([FakeResponse(204, None), FakeResponse(204, None)])
+    client = _client(signer, session)
+    await client.marketplace.delete_identity_listing("listing1")
+    await client.marketplace.cancel_offer("offer1")
+    for req in session.requests:
+        assert req["method"] == "DELETE"
+        assert "?signature=" in req["url"]
+        # Identity/offer cancellations keep signed (Authorization) auth.
+        assert req["headers"]["Authorization"].startswith("tiny.place ")

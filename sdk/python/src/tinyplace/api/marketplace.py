@@ -60,6 +60,7 @@ class MarketplaceApi:
         await self._signed_delete(
             f"/marketplace/products/{encode(product_id)}",
             _product_delete_payload(product_id),
+            public=True,
         )
 
     async def buy_product(self, product_id: str, request: JsonDict) -> Json:
@@ -110,9 +111,12 @@ class MarketplaceApi:
         return await self._post_owner("/marketplace/identities", listing.get("seller"), listing)
 
     async def delete_identity_listing(self, listing_id: str) -> None:
+        # Identity/offer cancellations stay signed (Authorization header), unlike
+        # the public product delete.
         await self._signed_delete(
             f"/marketplace/identities/{encode(listing_id)}",
             _identity_listing_cancel_payload(listing_id),
+            public=False,
         )
 
     async def buy_identity_listing(self, listing_id: str, request: JsonDict) -> Json:
@@ -170,7 +174,9 @@ class MarketplaceApi:
 
     async def cancel_offer(self, offer_id: str) -> None:
         await self._signed_delete(
-            f"/marketplace/offers/{encode(offer_id)}", _identity_offer_cancel_payload(offer_id)
+            f"/marketplace/offers/{encode(offer_id)}",
+            _identity_offer_cancel_payload(offer_id),
+            public=False,
         )
 
     async def accept_offer(self, offer_id: str, request: JsonDict) -> Json:
@@ -223,7 +229,7 @@ class MarketplaceApi:
             request.setdefault("signerPublicKey", self._public_key)
         return request
 
-    async def _signed_delete(self, path: str, payload: str) -> None:
+    async def _signed_delete(self, path: str, payload: str, *, public: bool) -> None:
         if self._signer is None:
             await self._http.delete_directory_auth(path)
             return
@@ -231,7 +237,13 @@ class MarketplaceApi:
         query = f"?signature={encode(signature)}"
         if self._public_key:
             query += f"&signerPublicKey={encode(self._public_key)}"
-        await self._http.delete_public(f"{path}{query}")
+        full = f"{path}{query}"
+        # Product deletes go through the public route; identity/offer
+        # cancellations keep signed (Authorization) auth (matches the TS SDK).
+        if public:
+            await self._http.delete_public(full)
+        else:
+            await self._http.delete(full)
 
     async def _post_owner(self, path: str, owner: Any, body: JsonDict) -> Json:
         if owner:

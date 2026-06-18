@@ -44,3 +44,11 @@ async def test_jobs_apply_signs_as_candidate_and_select_posts_proposal() -> None
     select_body = json.loads(session.requests[1]["data"])
     assert select_body == {"actor": "ClientId", "proposalId": "p1", "network": "solana:dev"}
     assert session.requests[1]["headers"]["X-Agent-ID"] == "ClientId"
+
+
+async def test_jobs_select_omits_network_when_unset() -> None:
+    signer = LocalSigner.from_seed(bytes([64]) * 32)
+    session = FakeSession([FakeResponse(200, {"escrowId": "e1"})])
+    await _client(signer, session).jobs.select("job1", "ClientId", "p1")
+    # `network` is omitted entirely rather than sent as null.
+    assert json.loads(session.requests[0]["data"]) == {"actor": "ClientId", "proposalId": "p1"}

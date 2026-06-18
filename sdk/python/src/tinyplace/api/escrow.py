@@ -162,8 +162,14 @@ class EscrowApi:
     async def _post_actor(
         self, path: str, actor: Any, body: JsonDict | None = None
     ) -> Json:
-        if actor:
+        # `actor is None` means "act as the configured signer" (signed-self). An
+        # explicit empty string is rejected rather than silently switching the
+        # auth principal to the signer.
+        if actor is not None:
+            actor_id = str(actor)
+            if actor_id == "":
+                raise ValueError("actor must be a non-empty string when provided")
             return await self._http.post_directory_auth_as(
-                path, str(actor), {**(body or {}), "actor": actor}
+                path, actor_id, {**(body or {}), "actor": actor_id}
             )
         return await self._http.post(path, body)

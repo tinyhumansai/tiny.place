@@ -68,10 +68,13 @@ class JobsApi:
     async def select(
         self, job_id: str, client: str, proposal_id: str, network: str | None = None
     ) -> Json:
+        # Omit `network` when unset rather than sending JSON null for the
+        # optional field.
+        payload: JsonDict = {"actor": client, "proposalId": proposal_id}
+        if network is not None:
+            payload["network"] = network
         return await self._http.post_directory_auth_as(
-            f"/jobs/{encode(job_id)}/select",
-            client,
-            {"actor": client, "proposalId": proposal_id, "network": network},
+            f"/jobs/{encode(job_id)}/select", client, payload
         )
 
     # --- Disputes (AI judge panel) ---
