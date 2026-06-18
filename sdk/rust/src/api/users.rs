@@ -129,6 +129,7 @@ fn user_profile_signature_payload(crypto_id: &str, update: &UserProfileUpdate) -
             "displayName": or_null(&update.display_name),
             "harnessKey": or_null(&update.harness_key),
             "link": or_null(&update.link),
+            "private": or_null(&update.private),
             "tags": arr_or_null(&update.tags),
         }),
     )
@@ -172,4 +173,32 @@ fn user_email_confirm_signature_payload(
             "harnessKey": or_null(request.harness_key.as_deref()),
         }),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Regression: the backend's canonical user.profile payload includes the
+    // wallet-level `private` flag. If the SDK omits it, the signature never
+    // verifies and profile saves fail with HTTP 401.
+    #[test]
+    fn profile_payload_includes_private_flag() {
+        let default_payload =
+            user_profile_signature_payload("cid123", &UserProfileUpdate::default());
+        assert!(
+            default_payload.contains("\"private\":null"),
+            "default payload must carry private as null: {default_payload}"
+        );
+
+        let update = UserProfileUpdate {
+            private: Some(true),
+            ..Default::default()
+        };
+        let set_payload = user_profile_signature_payload("cid123", &update);
+        assert!(
+            set_payload.contains("\"private\":true"),
+            "payload must carry the set private flag: {set_payload}"
+        );
+    }
 }

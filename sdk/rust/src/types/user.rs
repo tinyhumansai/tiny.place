@@ -57,6 +57,9 @@ pub struct UserProfileUpdate {
     pub link: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tags: Option<Vec<String>>,
+    /// Wallet-level privacy flag; omit to leave the current value unchanged.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub private: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
 }

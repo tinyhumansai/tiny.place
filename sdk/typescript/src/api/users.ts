@@ -114,6 +114,7 @@ function userProfileSignaturePayload(
     displayName: update.displayName ?? null,
     harnessKey: update.harnessKey ?? null,
     link: update.link ?? null,
+    private: update.private ?? null,
     tags: update.tags ?? null,
   });
 }

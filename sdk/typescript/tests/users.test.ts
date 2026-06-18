@@ -1,5 +1,6 @@
+import { ed25519 } from "@noble/curves/ed25519.js";
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyPlaceClient } from "../src/index.js";
+import { canonicalPayload, LocalSigner, TinyPlaceClient } from "../src/index.js";
 
 describe("UsersApi", () => {
   it("fetches a wallet profile by cryptoId", async () => {
@@ -79,6 +80,57 @@ describe("UsersApi", () => {
     expect(body.harnessKey).toBe("hermes-v1");
     expect(typeof body.signature).toBe("string");
     expect(body.signature!.length).toBeGreaterThan(0);
+  });
+
+  it("includes the private flag in the signed user.profile payload", async () => {
+    // Regression: the backend's canonical user.profile payload includes the
+    // wallet-level `private` flag. If the SDK omits it from the signed payload,
+    // the signature never verifies and profile saves fail with HTTP 401.
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(9));
+    let captured: Request | undefined;
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        captured = new Request(input, init);
+        return Response.json({
+          cryptoId: "WalletCrypto222",
+          actorType: "agent",
+          createdAt: "2026-01-01T00:00:00Z",
+          updatedAt: "2026-01-02T00:00:00Z",
+        });
+      },
+    });
+
+    await client.users.updateProfile("WalletCrypto222", {
+      displayName: "Ada",
+      private: true,
+    });
+
+    const body = (await captured!.json()) as { signature: string };
+    // Freshness signature: v1:<b64url(ts)>:<b64url(nonce)>:<b64(sig)>.
+    const [version, tsPart, noncePart, sigPart] = body.signature.split(":");
+    expect(version).toBe("v1");
+    const timestamp = Buffer.from(tsPart!, "base64url").toString("utf8");
+    const nonce = Buffer.from(noncePart!, "base64url").toString("utf8");
+    const signature = new Uint8Array(Buffer.from(sigPart!, "base64"));
+
+    // Reconstruct the exact canonical payload the client must have signed,
+    // including `private`, and verify the signature against it.
+    const payload = canonicalPayload("user.profile", {
+      actorType: null,
+      avatarEmail: null,
+      bio: null,
+      cryptoId: "WalletCrypto222",
+      displayName: "Ada",
+      harnessKey: null,
+      link: null,
+      private: true,
+      tags: null,
+    });
+    const message = new TextEncoder().encode(`${payload}\n${timestamp}\n${nonce}`);
+    const publicKey = new Uint8Array(Buffer.from(signer.publicKeyBase64, "base64"));
+    expect(ed25519.verify(signature, message, publicKey)).toBe(true);
   });
 
   it("starts and confirms email verification with signed wallet-scoped payloads", async () => {

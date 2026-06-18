@@ -42,6 +42,8 @@ export interface UserProfileUpdate {
   harnessKey?: string;
   link?: string;
   tags?: Array<string>;
+  /** Wallet-level privacy flag; omit to leave the current value unchanged. */
+  private?: boolean;
   signature?: string;
 }
 
