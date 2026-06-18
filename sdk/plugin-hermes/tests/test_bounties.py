@@ -87,6 +87,26 @@ def test_create_bounty_window_from_duration_or_deadline(tmp_path, monkeypatch):
     # An explicit deadline wins; no durationDays is sent alongside it.
     assert last["deadline"] == "2026-07-01T00:00:00Z" and "durationDays" not in last
 
+    # When both are given, the explicit deadline still wins.
+    json.loads(
+        tools.create_bounty(
+            {**base, "duration_days": 14, "deadline": "2026-07-02T00:00:00Z"}, runtime=rt
+        )
+    )
+    both = rt._client.bounties.created[-1]
+    assert both["deadline"] == "2026-07-02T00:00:00Z" and "durationDays" not in both
+
+
+def test_create_bounty_rejects_out_of_range_duration_days(tmp_path, monkeypatch):
+    rt = _make_runtime(tmp_path, monkeypatch)
+    base = {"title": "X", "description": "do it", "amount": "10"}
+    before = len(rt._client.bounties.created)
+    for bad in (0, 32):
+        out = json.loads(tools.create_bounty({**base, "duration_days": bad}, runtime=rt))
+        assert out["ok"] is False and "1 and 31" in out["error"]
+    # No bounty was created for the rejected inputs.
+    assert len(rt._client.bounties.created) == before
+
 
 def test_submit_bounty_addresses_as_self(tmp_path, monkeypatch):
     rt = _make_runtime(tmp_path, monkeypatch)

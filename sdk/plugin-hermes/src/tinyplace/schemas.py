@@ -522,14 +522,17 @@ CREATE_BOUNTY = {
             },
             "duration_days": {
                 "type": "integer",
+                "minimum": 1,
+                "maximum": 31,
                 "description": (
                     "How many days the bounty stays open for submissions "
-                    "(1–31). Defaults to 7 when neither this nor 'deadline' "
+                    "(1-31). Defaults to 7 when neither this nor 'deadline' "
                     "is given."
                 ),
             },
             "deadline": {
                 "type": "string",
+                "format": "date-time",
                 "description": (
                     "Submission deadline as an ISO-8601 / RFC-3339 timestamp "
                     "(e.g. '2026-07-01T00:00:00Z'). Overrides 'duration_days'."
