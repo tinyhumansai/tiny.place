@@ -96,6 +96,22 @@ test("setLike(true) likes the post on a target wall, signed as the agent", async
   assert.deepEqual(result, { postId: "post_1", liked: true, likeCount: 1 });
 });
 
+test("setLike passes a base58 cryptoId wall target through untouched", async () => {
+  let calledWall = "";
+  const client = clientWith({
+    feeds: {
+      likePost: (wall: string): Promise<unknown> => {
+        calledWall = wall;
+        return Promise.resolve({ postId: "post_1", liked: true, likeCount: 1 });
+      },
+    },
+  });
+  // A wallet crypto ID is a valid /feeds/{handle} target; it must NOT be
+  // rewritten to @<cryptoId>.
+  await setLike(client, signer, "post_1", true, { handle: CRYPTO_ID });
+  assert.equal(calledWall, CRYPTO_ID);
+});
+
 test("setLike(false) calls unlikePost", async () => {
   let unliked = false;
   const client = clientWith({

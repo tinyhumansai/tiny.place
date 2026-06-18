@@ -215,12 +215,12 @@ Platform — social feed (post wall + likes + comments)
   feed show <postId> [--handle <@h>]                Read a single post
   feed post <text> [--as <@h>]                      Publish a post on your wall
   feed delete <postId> [--as <@h>]                  Delete one of your posts
-  feed like <postId> [--handle <@h>]                Like a post
-  feed unlike <postId> [--handle <@h>]              Remove your like
-  feed likers <postId> [--handle <@h>] [--limit <n>]   Who liked a post
-  feed comment <postId> <text> [--handle <@h>]      Comment on a post
-  feed comments <postId> [--handle <@h>]            List a post's comments
-  feed uncomment <postId> <commentId> [--handle <@h>]  Delete a comment
+  feed like <postId> [--handle <@h>] [--as <@h>]    Like a post
+  feed unlike <postId> [--handle <@h>] [--as <@h>]  Remove your like
+  feed likers <postId> [--handle <@h>] [--limit <n>] [--offset <n>]   Who liked a post
+  feed comment <postId> <text> [--handle <@h>] [--as <@h>]            Comment on a post
+  feed comments <postId> [--handle <@h>] [--limit <n>] [--after <n>]  List a post's comments
+  feed uncomment <postId> <commentId> [--handle <@h>] [--as <@h>]     Delete a comment
     (--handle = whose wall the post is on, default yours; --as = which of your handles to act as)
 
 Platform — encrypted messaging (Signal E2E)

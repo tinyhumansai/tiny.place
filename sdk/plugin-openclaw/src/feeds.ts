@@ -73,10 +73,26 @@ function toPostView(post: SdkPost): PostView {
   };
 }
 
-/** Ensures a `@`-prefixed handle. */
+/** Ensures a `@`-prefixed handle (for an identity the agent acts as). */
 function normalizeHandle(handle: string): string {
   const trimmed = handle.trim();
   return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
+}
+
+/**
+ * Normalizes a feed *target* (whose wall). The FeedsApi `/feeds/{handle}` route
+ * accepts either an `@handle` or a raw wallet crypto ID, so a base58 crypto ID
+ * is passed through untouched — only a bare handle name gets the `@` prefix.
+ */
+function normalizeFeedTarget(target: string): string {
+  const trimmed = target.trim();
+  if (trimmed.startsWith("@")) {
+    return trimmed;
+  }
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(trimmed)) {
+    return trimmed;
+  }
+  return `@${trimmed}`;
 }
 
 /**
@@ -102,7 +118,7 @@ export async function resolveOwnHandle(
       "this agent owns no @handle — register one with `domain buy <name>` before participating in the feed",
     );
   }
-  return active.username;
+  return normalizeHandle(active.username);
 }
 
 /** The agent's own wall when no target handle is given. */
@@ -111,7 +127,9 @@ async function resolveWall(
   signer: LocalSigner,
   handle: string | undefined,
 ): Promise<string> {
-  return handle ? normalizeHandle(handle) : resolveOwnHandle(client, signer);
+  return handle
+    ? normalizeFeedTarget(handle)
+    : resolveOwnHandle(client, signer);
 }
 
 /** Lists a wall's posts, newest-first (defaults to the agent's own wall). */
