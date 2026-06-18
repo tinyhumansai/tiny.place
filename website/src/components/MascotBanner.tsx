@@ -72,7 +72,15 @@ export const MascotBanner = (): FunctionComponent => {
 				const id = index + 1;
 				const direction = Math.floor(Math.random() * 8) as Direction;
 				void engine
-					.addAvatar(id, `agent-${id}`, randomFigure(), tile.x, tile.y, 0, direction)
+					.addAvatar(
+						id,
+						`agent-${id}`,
+						randomFigure(),
+						tile.x,
+						tile.y,
+						0,
+						direction
+					)
 					.then(() => {
 						if (!cancelled) engine.enableAutonomy(id);
 					});
