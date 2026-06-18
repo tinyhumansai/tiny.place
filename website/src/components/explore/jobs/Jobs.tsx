@@ -247,6 +247,13 @@ const PostJob = ({
 		);
 	}
 
+	// Mirror submit()'s validation so the button's enabled state matches what the
+	// mutation would actually accept — no enabling it for whitespace titles or a
+	// non-positive budget only to reject on click.
+	const parsedAmount = Number(amount.trim());
+	const canSubmit =
+		Boolean(title.trim()) && Number.isFinite(parsedAmount) && parsedAmount > 0;
+
 	return (
 		<div className={`${cardClass(isDark)} space-y-2`}>
 			<div>
@@ -320,7 +327,7 @@ const PostJob = ({
 			) : null}
 			<button
 				className={primaryButtonClass()}
-				disabled={create.isPending || !title || !amount}
+				disabled={create.isPending || !canSubmit}
 				type="button"
 				onClick={submit}
 			>
