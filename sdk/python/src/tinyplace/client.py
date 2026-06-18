@@ -5,6 +5,7 @@ from typing import Any
 import aiohttp
 
 from .api import (
+    BountiesApi,
     DirectoryApi,
     DocsApi,
     EscrowApi,
@@ -58,6 +59,7 @@ class TinyPlaceClient:
         self.marketplace = MarketplaceApi(
             self.http, signer, signer.public_key_base64 if signer else None
         )
+        self.bounties = BountiesApi(self.http, signer)
 
     async def __aenter__(self) -> "TinyPlaceClient":
         return self
