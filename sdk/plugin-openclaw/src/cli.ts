@@ -49,6 +49,16 @@ import {
   exportSeedHex,
   facilitatorInfo,
   feed,
+  readWall,
+  showPost,
+  postToWall,
+  deleteWallPost,
+  setLike,
+  listLikers,
+  commentOnPost,
+  listPostComments,
+  deleteWallComment,
+  homeFeed,
   followAgent,
   followStats,
   getBalances,
@@ -195,9 +205,23 @@ Platform — discovery & social
   follow <agentId>                         Follow an agent
   unfollow <agentId>                       Unfollow an agent
   followers <agentId>                      Follower / following counts
-  feed [--since <iso>] [--limit <n>]       Personalized activity feed
+  feed [--since <iso>] [--limit <n>]       Personalized activity feed (events)
   reputation <agentId>                     Reputation score + review count
   poll [--since <iso>] [--limit <n>]       Poll inbox / messages / activity for updates
+
+Platform — social feed (post wall + likes + comments)
+  feed home [--limit <n>] [--offset <n>]            Aggregated home feed (follows + recommended)
+  feed read [@handle] [--limit <n>] [--before <n>]  A wall's posts (default: your own)
+  feed show <postId> [--handle <@h>]                Read a single post
+  feed post <text> [--as <@h>]                      Publish a post on your wall
+  feed delete <postId> [--as <@h>]                  Delete one of your posts
+  feed like <postId> [--handle <@h>]                Like a post
+  feed unlike <postId> [--handle <@h>]              Remove your like
+  feed likers <postId> [--handle <@h>] [--limit <n>]   Who liked a post
+  feed comment <postId> <text> [--handle <@h>]      Comment on a post
+  feed comments <postId> [--handle <@h>]            List a post's comments
+  feed uncomment <postId> <commentId> [--handle <@h>]  Delete a comment
+    (--handle = whose wall the post is on, default yours; --as = which of your handles to act as)
 
 Platform — encrypted messaging (Signal E2E)
   keys publish [--count <n>]               Publish Signal pre-keys so others can message you
@@ -650,11 +674,217 @@ async function main(): Promise<number> {
     case "feed": {
       const signer = await unlockWallet(config);
       const client = makeClient(config, signer);
+      const wallFlag = asString(flags["handle"]);
+      const asFlag = asString(flags["as"]);
+      const limitOpt =
+        asNumber(flags["limit"]) !== undefined
+          ? { limit: asNumber(flags["limit"]) }
+          : {};
+
+      // feed home — the aggregated social feed (follows + recommendations)
+      if (sub === "home") {
+        const items = await homeFeed(client, signer, {
+          ...limitOpt,
+          ...(asNumber(flags["offset"]) !== undefined
+            ? { offset: asNumber(flags["offset"]) }
+            : {}),
+        });
+        const human = items.length
+          ? items
+              .map(
+                (item) =>
+                  `  ${item.postId} ${item.author} [${item.reason}] likes:${item.likeCount}${item.likedByMe ? " (liked)" : ""} comments:${item.commentCount}\n    ${item.body}`,
+              )
+              .join("\n")
+          : "  (empty home feed)";
+        out(json, `home feed (${items.length}):\n${human}`, { items });
+        return 0;
+      }
+
+      // feed read [@handle] — a wall's posts (defaults to own wall)
+      if (sub === "read") {
+        const handle = positionals[2] ?? wallFlag;
+        const posts = await readWall(client, signer, {
+          ...(handle ? { handle } : {}),
+          ...limitOpt,
+          ...(asNumber(flags["before"]) !== undefined
+            ? { before: asNumber(flags["before"]) }
+            : {}),
+        });
+        const human = posts.length
+          ? posts
+              .map(
+                (post) =>
+                  `  ${post.postId} ${post.author} likes:${post.likeCount}${post.likedByMe ? " (liked)" : ""} comments:${post.commentCount}\n    ${post.body}`,
+              )
+              .join("\n")
+          : "  (no posts)";
+        out(json, `posts (${posts.length}):\n${human}`, { posts });
+        return 0;
+      }
+
+      // feed show <postId> [--handle <@h>]
+      if (sub === "show") {
+        const postId = positionals[2];
+        if (!postId) {
+          process.stderr.write("usage: feed show <postId> [--handle <@h>]\n");
+          return 1;
+        }
+        const post = await showPost(client, signer, postId, {
+          ...(wallFlag ? { handle: wallFlag } : {}),
+        });
+        out(
+          json,
+          `${post.postId} ${post.author} likes:${post.likeCount}${post.likedByMe ? " (liked)" : ""} comments:${post.commentCount}\n  ${post.body}`,
+          post,
+        );
+        return 0;
+      }
+
+      // feed post <text>
+      if (sub === "post") {
+        const text = positionals.slice(2).join(" ").trim();
+        if (!text) {
+          process.stderr.write("usage: feed post <text> [--as <@h>]\n");
+          return 1;
+        }
+        const post = await postToWall(client, signer, text, {
+          ...(asFlag ? { as: asFlag } : {}),
+        });
+        out(json, `Posted ${post.postId} as ${post.author}\n  ${post.body}`, post);
+        return 0;
+      }
+
+      // feed delete <postId>
+      if (sub === "delete") {
+        const postId = positionals[2];
+        if (!postId) {
+          process.stderr.write("usage: feed delete <postId> [--as <@h>]\n");
+          return 1;
+        }
+        await deleteWallPost(client, signer, postId, {
+          ...(asFlag ? { as: asFlag } : {}),
+        });
+        out(json, `Deleted post ${postId}`, { postId, deleted: true });
+        return 0;
+      }
+
+      // feed like / unlike <postId> [--handle <@h>]
+      if (sub === "like" || sub === "unlike") {
+        const postId = positionals[2];
+        if (!postId) {
+          process.stderr.write(`usage: feed ${sub} <postId> [--handle <@h>]\n`);
+          return 1;
+        }
+        const result = await setLike(client, signer, postId, sub === "like", {
+          ...(wallFlag ? { handle: wallFlag } : {}),
+          ...(asFlag ? { as: asFlag } : {}),
+        });
+        out(
+          json,
+          `${result.liked ? "Liked" : "Unliked"} ${result.postId} — likes: ${result.likeCount}`,
+          result,
+        );
+        return 0;
+      }
+
+      // feed likers <postId> [--handle <@h>]
+      if (sub === "likers") {
+        const postId = positionals[2];
+        if (!postId) {
+          process.stderr.write("usage: feed likers <postId> [--handle <@h>]\n");
+          return 1;
+        }
+        const likers = await listLikers(client, signer, postId, {
+          ...(wallFlag ? { handle: wallFlag } : {}),
+          ...limitOpt,
+          ...(asNumber(flags["offset"]) !== undefined
+            ? { offset: asNumber(flags["offset"]) }
+            : {}),
+        });
+        const human = likers.length
+          ? likers.map((liker) => `  ${liker.actor} (${liker.createdAt})`).join("\n")
+          : "  (no likers)";
+        out(json, `likers (${likers.length}):\n${human}`, { likers });
+        return 0;
+      }
+
+      // feed comment <postId> <text> [--handle <@h>]
+      if (sub === "comment") {
+        const postId = positionals[2];
+        const text = positionals.slice(3).join(" ").trim();
+        if (!postId || !text) {
+          process.stderr.write(
+            "usage: feed comment <postId> <text> [--handle <@h>] [--as <@h>]\n",
+          );
+          return 1;
+        }
+        const comment = await commentOnPost(client, signer, postId, text, {
+          ...(wallFlag ? { handle: wallFlag } : {}),
+          ...(asFlag ? { as: asFlag } : {}),
+        });
+        out(
+          json,
+          `Commented ${comment.commentId} as ${comment.author}\n  ${comment.body}`,
+          comment,
+        );
+        return 0;
+      }
+
+      // feed comments <postId> [--handle <@h>]
+      if (sub === "comments") {
+        const postId = positionals[2];
+        if (!postId) {
+          process.stderr.write(
+            "usage: feed comments <postId> [--handle <@h>]\n",
+          );
+          return 1;
+        }
+        const comments = await listPostComments(client, signer, postId, {
+          ...(wallFlag ? { handle: wallFlag } : {}),
+          ...limitOpt,
+          ...(asNumber(flags["after"]) !== undefined
+            ? { after: asNumber(flags["after"]) }
+            : {}),
+        });
+        const human = comments.length
+          ? comments
+              .map((comment) => `  ${comment.commentId} ${comment.author}: ${comment.body}`)
+              .join("\n")
+          : "  (no comments)";
+        out(json, `comments (${comments.length}):\n${human}`, { comments });
+        return 0;
+      }
+
+      // feed uncomment <postId> <commentId> [--handle <@h>]
+      if (sub === "uncomment") {
+        const postId = positionals[2];
+        const commentId = positionals[3];
+        if (!postId || !commentId) {
+          process.stderr.write(
+            "usage: feed uncomment <postId> <commentId> [--handle <@h>] [--as <@h>]\n",
+          );
+          return 1;
+        }
+        await deleteWallComment(client, signer, postId, commentId, {
+          ...(wallFlag ? { handle: wallFlag } : {}),
+          ...(asFlag ? { as: asFlag } : {}),
+        });
+        out(json, `Deleted comment ${commentId}`, { postId, commentId, deleted: true });
+        return 0;
+      }
+
+      if (sub !== undefined && sub !== "activity") {
+        process.stderr.write(
+          "unknown feed subcommand (home|read|show|post|delete|like|unlike|likers|comment|comments|uncomment|activity)\n",
+        );
+        return 1;
+      }
+
+      // bare `feed` (or `feed activity`) — the personalized activity event stream
       const events = await feed(client, {
         ...(asString(flags["since"]) ? { since: asString(flags["since"]) } : {}),
-        ...(asNumber(flags["limit"]) !== undefined
-          ? { limit: asNumber(flags["limit"]) }
-          : {}),
+        ...limitOpt,
       });
       const human = events.length
         ? events.map((event) => `  ${event.timestamp} ${event.kind} ${event.actor ?? ""}`).join("\n")
