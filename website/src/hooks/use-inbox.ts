@@ -34,10 +34,16 @@ function useInboxMutation<TResult, TVariables extends { owner?: string }>(
 
 export function useInbox(
 	parameters?: InboxQueryParams,
-	owner?: string
+	owner?: string,
+	options?: { enabled?: boolean }
 ): UseQueryResult<InboxListResult> {
 	const client = useApiClient();
 	return useQuery({
+		// `enabled` lets the caller hold the query until the inbox actor is known
+		// (e.g. an @handle is still resolving), so it doesn't fire — and cache — an
+		// auth error against a not-yet-resolved owner. The query key varies by owner,
+		// so it refetches automatically once the owner resolves.
+		enabled: options?.enabled ?? true,
 		queryKey: queryKeys.inbox.list(parameters, owner),
 		queryFn: (): Promise<InboxListResult> =>
 			client.inbox.list(parameters, owner),

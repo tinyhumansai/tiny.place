@@ -68,8 +68,18 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 	const agentId = useAuthStore((state) => state.agentId);
 	const ownedIdentities = useOwnedIdentities(agentId);
 	const inboxIdentity = firstActiveIdentity(ownedIdentities.data?.identities);
-	const owner = inboxIdentity?.username ?? agentId;
-	const { data, isLoading, isError, error } = useInbox({ limit: 50 }, owner);
+	// Only a real resolved @handle is a valid directory-as actor. Falling back to
+	// the raw cryptoId here set `X-Agent-ID` to a non-handle and the backend
+	// rejected the directory-as request (401/403/404). With no handle yet, leave
+	// `owner` undefined so the SDK signs as the agent directly (getAgentAuth).
+	const owner = inboxIdentity?.username;
+	// Hold the inbox query until the owned-identities lookup settles. Firing while
+	// the @handle is still resolving would request with `owner` undefined and cache
+	// that result before the handle (and the owner-based path) is known; the query
+	// key varies by owner, so it refetches once the handle resolves.
+	const { data, isLoading, isError, error } = useInbox({ limit: 50 }, owner, {
+		enabled: !ownedIdentities.isLoading,
+	});
 	const markRead = useMarkInboxRead();
 	const archiveItem = useArchiveInboxItem();
 	const deleteItem = useDeleteInboxItem();
@@ -80,11 +90,16 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 		deleteItem.error ??
 		markAllRead.error;
 
+	// 401/403/404 from the inbox endpoint all mean the same actionable thing here:
+	// the request couldn't authenticate as a real inbox owner (e.g. the wallet has
+	// no resolved @handle yet), not a generic outage. Surface the "connect/own a
+	// handle" state for all three rather than the generic failure banner.
+	const authErrorStatuses = new Set<number>([401, 403, 404]);
 	const isAuthError =
 		isError &&
 		error !== null &&
 		"status" in error &&
-		(error as { status: number }).status === 401;
+		authErrorStatuses.has((error as { status: number }).status);
 
 	if (isAuthError) {
 		return (
@@ -161,7 +176,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 					)}
 					<button
 						className="rounded-md bg-blue-500/10 px-2 py-1 text-[10px] font-medium text-blue-500 disabled:opacity-50"
-						disabled={!owner || markAllRead.isPending}
+						disabled={markAllRead.isPending}
 						type="button"
 						onClick={(): void => {
 							markAllRead.mutate({ owner });
@@ -234,7 +249,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 								{item.status === "unread" ? (
 									<button
 										className="rounded-md bg-blue-500/10 px-2 py-1 text-[10px] font-medium text-blue-500 disabled:opacity-50"
-										disabled={!owner || markRead.isPending}
+										disabled={markRead.isPending}
 										type="button"
 										onClick={(): void => {
 											markRead.mutate({ itemId: item.itemId, owner });
@@ -245,7 +260,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 								) : null}
 								{item.status !== "archived" ? (
 									<button
-										disabled={!owner || archiveItem.isPending}
+										disabled={archiveItem.isPending}
 										type="button"
 										className={`rounded-md px-2 py-1 text-[10px] font-medium disabled:opacity-50 ${
 											isDark
@@ -261,7 +276,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 								) : null}
 								<button
 									className="rounded-md px-2 py-1 text-[10px] font-medium text-red-500 disabled:opacity-50"
-									disabled={!owner || deleteItem.isPending}
+									disabled={deleteItem.isPending}
 									type="button"
 									onClick={(): void => {
 										deleteItem.mutate({ itemId: item.itemId, owner });
