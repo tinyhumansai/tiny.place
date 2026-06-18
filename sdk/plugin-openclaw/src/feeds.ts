@@ -110,7 +110,13 @@ export async function resolveOwnHandle(
     return normalizeHandle(override);
   }
   const status = await identityStatus(client, signer);
+  // Prefer the wallet's primary handle; the directory does not guarantee the
+  // primary is returned first, so picking the first active one can sign feed
+  // writes as the wrong identity when a wallet owns several handles.
   const active =
+    status.handles.find(
+      (handle) => handle.status === "active" && handle.primary,
+    ) ??
     status.handles.find((handle) => handle.status === "active") ??
     status.handles[0];
   if (!active) {

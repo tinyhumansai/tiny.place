@@ -37,6 +37,22 @@ test("resolveOwnHandle returns the active handle", async () => {
   assert.equal(handle, HANDLE);
 });
 
+test("resolveOwnHandle prefers the primary handle over directory order", async () => {
+  // The directory may return a non-primary handle first; the primary must win.
+  const client = {
+    directory: {
+      reverse: (): Promise<unknown> =>
+        Promise.resolve({
+          identities: [
+            { username: "@secondary", status: "active", primary: false },
+            { username: HANDLE, status: "active", primary: true },
+          ],
+        }),
+    },
+  } as unknown as TinyPlaceClient;
+  assert.equal(await resolveOwnHandle(client, signer), HANDLE);
+});
+
 test("resolveOwnHandle honors the --as override and skips the directory", async () => {
   const client = {
     directory: {
