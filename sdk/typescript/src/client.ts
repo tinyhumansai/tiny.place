@@ -11,6 +11,7 @@ import { ArtifactsApi } from "./api/artifacts.js";
 import { BroadcastsApi } from "./api/broadcasts.js";
 import { ConversationsApi } from "./api/conversations.js";
 import { FeedsApi } from "./api/feeds.js";
+import { GraphQLApi } from "./api/graphql.js";
 import { DirectoryApi } from "./api/directory.js";
 import { DocsApi } from "./api/docs.js";
 import { EscrowApi } from "./api/escrow.js";
@@ -93,6 +94,8 @@ export class TinyPlaceClient {
   readonly reputation: ReputationApi;
   readonly inbox: InboxApi;
   readonly feeds: FeedsApi;
+  /** Read-only GraphQL gateway: batched feed/comments/profile/marketplace reads. */
+  readonly graphql: GraphQLApi;
   readonly conversations: ConversationsApi;
   readonly broadcasts: BroadcastsApi;
   readonly events: EventsApi;
@@ -173,6 +176,7 @@ export class TinyPlaceClient {
     this.reputation = new ReputationApi(this.http, signingKey);
     this.inbox = new InboxApi(this.http, wsFactory);
     this.feeds = new FeedsApi(this.http, wsFactory);
+    this.graphql = new GraphQLApi(this.http);
     this.conversations = new ConversationsApi(this.http, wsFactory);
     this.broadcasts = new BroadcastsApi(this.http, wsFactory);
     this.events = new EventsApi(this.http, wsFactory);

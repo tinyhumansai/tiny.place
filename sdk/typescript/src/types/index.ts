@@ -5,6 +5,7 @@ export * from "./activity.js";
 export * from "./messaging.js";
 export * from "./directory.js";
 export * from "./payments.js";
+export * from "./graphql.js";
 export * from "./reputation.js";
 export * from "./social.js";
 export * from "./groups.js";
