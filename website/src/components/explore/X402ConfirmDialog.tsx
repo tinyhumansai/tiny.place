@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 
+import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 
 import {
@@ -61,7 +62,7 @@ function X402Dialog({
 						<div className="flex items-center justify-between px-3 py-2">
 							<dt className={`text-xs ${mutedClass}`}>Amount</dt>
 							<dd className="text-xs font-semibold">
-								{request.amount} {request.asset ?? "USDC"}
+								{formatTokenAmount(request.amount, request.asset)}
 							</dd>
 						</div>
 					)}

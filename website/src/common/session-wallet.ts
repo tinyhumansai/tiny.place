@@ -11,9 +11,18 @@ import {
 	type X25519KeyPair,
 } from "@tinyhumansai/tinyplace";
 
+import type { Transaction } from "@solana/web3.js";
+
 import { WalletSigner } from "@src/common/wallet-signer";
 
 type SignMessageFunction = (message: Uint8Array) => Promise<Uint8Array>;
+
+/** The wallet adapter's transaction signer (Phantom can sign transactions, but
+ * NOT via signMessage). Attached after the session is established so the
+ * delegated-payment path can run the one-time on-chain spend approval. */
+export type WalletSignTransaction = (
+	transaction: Transaction
+) => Promise<Transaction>;
 
 /** Builds a client; pass the session signer to make authenticated calls. */
 type ClientFactory = (signer?: Signer) => TinyPlaceClient;
@@ -66,6 +75,15 @@ export class SessionWalletSigner extends Signer {
 	 * session key via {@link sign}.
 	 */
 	public readonly walletSigner: WalletSigner;
+
+	/**
+	 * The wallet adapter's transaction signer, attached after construction (the
+	 * grantor WalletSigner only does signMessage, which wallets refuse for
+	 * transactions). Used to sign the one-time on-chain delegate-spend approval
+	 * required by the PayAI settlement path. Undefined until the wallet provider
+	 * attaches it.
+	 */
+	public walletSignTransaction?: WalletSignTransaction;
 
 	private readonly session: BrowserSessionSigner;
 	private readonly grant: SessionGrant;

@@ -11,12 +11,11 @@ import {
 
 import { createClient } from "@src/common/api-client";
 import {
-	buildDelegatedTxForPaymentMap,
-	enableDelegatedSpending,
-	payViaSessionDelegate,
+	buildPayerSignedTransferTx,
+	resolveSplAsset,
 	X402_DELEGATED_TX_METADATA_KEY,
-	type SessionPaymentOptions,
-} from "@src/common/session-payments";
+} from "@src/common/delegated-payment";
+import { primarySolanaRpcUrl } from "@src/common/solana-rpc";
 import { SessionWalletSigner } from "@src/common/session-wallet";
 import { WalletSigner } from "@src/common/wallet-signer";
 import {
@@ -49,9 +48,7 @@ export type X402PaymentSigningOptions = {
 
 const DEFAULT_PAYMENT_EXPIRY_MS = 5 * 60 * 1000;
 
-export { enableDelegatedSpending, payViaSessionDelegate };
 export { SessionWalletSigner, WalletSigner };
-export type { SessionPaymentOptions };
 
 export function currentAuthSession(): AuthSession | undefined {
 	const { agentId, identitySigner, signer } = useAuthStore.getState();
@@ -126,22 +123,36 @@ export async function signX402ChallengePaymentMap(
 	});
 	const payment = x402AuthorizationToPaymentMap(signedPayment);
 
-	// Delegate the spend so the PAYER's own funds move (the facilitator only
-	// fee-pays), instead of the backend custodially fronting them. Carried as
-	// metadata.delegatedTx; the backend routes any payment bearing it to the
-	// delegated settler. Only session wallets can do this; other signers and
-	// non-delegatable payments keep the existing path.
-	if (signer instanceof SessionWalletSigner) {
-		const delegatedTx = await buildDelegatedTxForPaymentMap(signer, {
+	// Standard PayAI x402: the PAYER (connected wallet) signs the transfer
+	// transaction directly; PayAI is the fee payer and co-signs/broadcasts at
+	// settle time. Build it from the challenge — the fee payer is advertised in
+	// metadata.feePayer — and carry it as metadata.delegatedTx. The backend routes
+	// any payment bearing it to the facilitator and accepts the signed tx as the
+	// payment proof. Requires a session wallet whose connected wallet can sign
+	// transactions; SPL assets only (PayAI cannot settle native SOL).
+	const feePayer = payment["metadata.feePayer"];
+	const asset = resolveSplAsset(payment["asset"]);
+	const payee = payment["to"] ?? "";
+	const payer = payment["from"] ?? "";
+	if (
+		feePayer &&
+		asset &&
+		payee &&
+		payer &&
+		signer instanceof SessionWalletSigner &&
+		signer.walletSignTransaction
+	) {
+		const delegatedTx = await buildPayerSignedTransferTx({
+			rpcUrl: primarySolanaRpcUrl(),
+			feePayer,
+			payer,
+			payee,
 			amount: payment["amount"] ?? "",
-			asset: payment["asset"],
-			from: payment["from"] ?? "",
-			network: payment["network"],
-			to: payment["to"] ?? "",
+			mint: asset.mint,
+			decimals: asset.decimals,
+			signTransaction: signer.walletSignTransaction,
 		});
-		if (delegatedTx) {
-			payment[`metadata.${X402_DELEGATED_TX_METADATA_KEY}`] = delegatedTx;
-		}
+		payment[`metadata.${X402_DELEGATED_TX_METADATA_KEY}`] = delegatedTx;
 	}
 	return payment;
 }

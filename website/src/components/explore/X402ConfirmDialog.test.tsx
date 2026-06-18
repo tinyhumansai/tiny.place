@@ -56,7 +56,8 @@ describe("X402ConfirmProvider", () => {
 		const dialog = screen.getByRole("dialog");
 		expect(dialog).toHaveTextContent("Buy identity");
 		expect(dialog).toHaveTextContent("@seller");
-		expect(dialog).toHaveTextContent("120000 USDC");
+		// 120000 base units of a 6-decimal token renders as 0.12 USDC.
+		expect(dialog).toHaveTextContent("0.12 USDC");
 		expect(dialog).toHaveTextContent("treasury-wallet");
 		expect(dialog).toHaveTextContent("The server returned an x402 challenge.");
 

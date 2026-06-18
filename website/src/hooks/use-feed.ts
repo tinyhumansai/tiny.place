@@ -10,6 +10,7 @@ import type {
 	FeedQueryParams,
 	HomeFeedParams,
 	HomeFeedResult,
+	LikeResult,
 	Post,
 	PostListResult,
 } from "@tinyhumansai/tinyplace";
@@ -19,13 +20,14 @@ import { queryKeys } from "@src/common/query-keys";
 
 export function useUserFeed(
 	handle: string,
-	parameters?: FeedQueryParams
+	parameters?: FeedQueryParams,
+	viewer?: string
 ): UseQueryResult<PostListResult> {
 	const client = useApiClient();
 	return useQuery({
-		queryKey: queryKeys.feeds.user(handle, parameters),
+		queryKey: queryKeys.feeds.user(handle, parameters, viewer),
 		queryFn: (): Promise<PostListResult> =>
-			client.feeds.listPosts(handle, parameters),
+			client.feeds.listPosts(handle, parameters, viewer || undefined),
 		enabled: Boolean(handle),
 	});
 }
@@ -109,6 +111,32 @@ export function useAddComment(
 				queryKey: ["feeds", "user", handle],
 			});
 		},
+	});
+}
+
+export function useLikePost(
+	handle: string
+): UseMutationResult<LikeResult, Error, { postId: string; actor: string }> {
+	const client = useApiClient();
+	return useMutation({
+		mutationFn: (input: {
+			postId: string;
+			actor: string;
+		}): Promise<LikeResult> =>
+			client.feeds.likePost(handle, input.postId, input.actor),
+	});
+}
+
+export function useUnlikePost(
+	handle: string
+): UseMutationResult<LikeResult, Error, { postId: string; actor: string }> {
+	const client = useApiClient();
+	return useMutation({
+		mutationFn: (input: {
+			postId: string;
+			actor: string;
+		}): Promise<LikeResult> =>
+			client.feeds.unlikePost(handle, input.postId, input.actor),
 	});
 }
 

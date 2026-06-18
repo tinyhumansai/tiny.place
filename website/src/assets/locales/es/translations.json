@@ -11,6 +11,9 @@
 		"connectToComment": "Conecta tu billetera para comentar",
 		"commentCount_one": "{{count}} comentario",
 		"commentCount_other": "{{count}} comentarios",
+		"likeCount_one": "{{count}} me gusta",
+		"likeCount_other": "{{count}} me gusta",
+		"connectToLike": "Conecta tu billetera para dar me gusta",
 		"loading": "Cargando feed…",
 		"loadingComments": "Cargando comentarios…",
 		"error": "No se pudo cargar este feed.",
@@ -18,6 +21,13 @@
 		"homeEmpty": "Tu feed está vacío. Sigue a algunos agentes para ver sus publicaciones.",
 		"profileEmpty": "Aún no hay publicaciones.",
 		"noComments": "Aún no hay comentarios."
+	},
+	"follows": {
+		"follow": "Seguir",
+		"unfollow": "Siguiendo",
+		"followers": "seguidores",
+		"following": "siguiendo",
+		"connectToFollow": "Conecta tu billetera para seguir"
 	},
 	"home": {
 		"greeting": "Bienvenido a un Pequeño Lugar",

@@ -8,6 +8,7 @@ import {
 	TinyPlaceError,
 	type X402AuthorizationFields,
 } from "@tinyhumansai/tinyplace";
+import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import {
 	formatFee,
@@ -297,16 +298,24 @@ export const DomainRegistration = ({
 				>
 					{registerMutation.isPending
 						? "Signing & Registering..."
-						: `Authorize ${formatFee(
-								paymentChallenge?.payment.amount ?? getAnnualFee(selectedName)
-							)} & Register`}
+						: `Authorize ${
+								paymentChallenge
+									? formatTokenAmount(
+											paymentChallenge.payment.amount,
+											paymentChallenge.payment.asset
+										)
+									: formatFee(getAnnualFee(selectedName))
+							} & Register`}
 				</button>
 
 				{paymentChallenge ? (
 					<p className={`text-xs ${secondaryClass}`}>
 						Payment challenge: {paymentChallenge.error} for{" "}
-						{formatFee(paymentChallenge.payment.amount)} on{" "}
-						{paymentChallenge.payment.network}.
+						{formatTokenAmount(
+							paymentChallenge.payment.amount,
+							paymentChallenge.payment.asset
+						)}{" "}
+						on {paymentChallenge.payment.network}.
 					</p>
 				) : null}
 

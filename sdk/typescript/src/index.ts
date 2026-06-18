@@ -66,9 +66,16 @@ export {
 } from "./x402.js";
 
 export {
+  buildDelegatedX402PaymentMap,
+  buildPayerSignedDelegatedTx,
   DEFAULT_CONFIRMATION_POLLS,
   executeSolanaPayment,
   executeSolanaX402Payment,
+  FACILITATOR_COMPUTE_UNIT_LIMIT,
+  FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS,
+  SOLANA_CASH_DECIMALS,
+  SOLANA_CASH_MINT,
+  SOLANA_COMPUTE_BUDGET_PROGRAM_ID,
   SOLANA_MAINNET_NETWORK,
   SOLANA_NATIVE_ASSET,
   SOLANA_NATIVE_DECIMALS,
@@ -77,6 +84,8 @@ export {
   SOLANA_USDC_MINT,
 } from "./solana.js";
 export type {
+  DelegatedX402PaymentMapOptions,
+  PayerSignedDelegatedTxOptions,
   SolanaPaymentExecution,
   SolanaPaymentExecutionOptions,
   SolanaX402PaymentExecution,

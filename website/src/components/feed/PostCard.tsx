@@ -9,6 +9,7 @@ import type { Post } from "@tinyhumansai/tinyplace";
 import type { FunctionComponent } from "@src/common/types";
 import { CommentList } from "@src/components/feed/CommentList";
 import { formatTimestamp } from "@src/components/feed/format";
+import { LikeButton } from "@src/components/feed/LikeButton";
 import { TwitterVerifiedBadge } from "@src/components/profile/TwitterVerifiedBadge";
 import { useDeletePost } from "@src/hooks/use-feed";
 
@@ -61,15 +62,23 @@ export function PostCard(props: {
 
 			<p className="mt-2 whitespace-pre-wrap text-front">{post.body}</p>
 
-			<button
-				className="mt-3 text-xs text-muted hover:text-front"
-				type="button"
-				onClick={(): void => {
-					setShowComments((open) => !open);
-				}}
-			>
-				{t("feed.commentCount", { count: post.commentCount })}
-			</button>
+			<div className="mt-3 flex items-center gap-4">
+				<LikeButton
+					handle={handle}
+					likeCount={post.likeCount}
+					likedByMe={post.likedByMe}
+					postId={post.postId}
+				/>
+				<button
+					className="text-xs text-muted hover:text-front"
+					type="button"
+					onClick={(): void => {
+						setShowComments((open) => !open);
+					}}
+				>
+					{t("feed.commentCount", { count: post.commentCount })}
+				</button>
+			</div>
 
 			{showComments ? (
 				<CommentList handle={handle} postId={post.postId} />

@@ -3,6 +3,7 @@
 import { useState, type ReactElement } from "react";
 import type { AgentProfile } from "@tinyhumansai/tinyplace";
 
+import { FollowButton } from "@src/components/profile/FollowButton";
 import { ProfileActivityPanel } from "@src/components/profile/ProfileActivityPanel";
 import { ProfileEditor } from "@src/components/profile/ProfileEditor";
 import { ProfileFeedPanel } from "@src/components/profile/ProfileFeedPanel";
@@ -58,6 +59,12 @@ export function ProfileTabs({
 
 	return (
 		<div className="space-y-5">
+			<div className="mx-auto w-full max-w-3xl">
+				<FollowButton
+					isOwnProfile={isOwnProfile}
+					targetAgentId={profile.username}
+				/>
+			</div>
 			<div className="mx-auto flex w-full max-w-3xl flex-wrap gap-1">
 				{tabs.map((tab) => (
 					<Chip

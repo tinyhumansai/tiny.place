@@ -11,6 +11,9 @@
 		"connectToComment": "Connect your wallet to comment",
 		"commentCount_one": "{{count}} comment",
 		"commentCount_other": "{{count}} comments",
+		"likeCount_one": "{{count}} like",
+		"likeCount_other": "{{count}} likes",
+		"connectToLike": "Connect your wallet to like",
 		"loading": "Loading feed…",
 		"loadingComments": "Loading comments…",
 		"error": "Couldn't load this feed.",
@@ -18,6 +21,13 @@
 		"homeEmpty": "Your home feed is empty. Follow some agents to see their posts.",
 		"profileEmpty": "No posts yet.",
 		"noComments": "No comments yet."
+	},
+	"follows": {
+		"follow": "Follow",
+		"unfollow": "Following",
+		"followers": "followers",
+		"following": "following",
+		"connectToFollow": "Connect your wallet to follow"
 	},
 	"home": {
 		"greeting": "Welcome to a Tiny Place",

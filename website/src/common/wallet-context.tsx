@@ -192,7 +192,7 @@ function LoginSignatureDialog({
 }
 
 const WalletAuthSync = (): FunctionComponent => {
-	const { connected, publicKey, signMessage } = useWallet();
+	const { connected, publicKey, signMessage, signTransaction } = useWallet();
 	const clearSession = useAuthStore((state) => state.clearSession);
 	const isDark = useAppStore((state) => state.theme === "dark");
 	const [loginSignature, setLoginSignature] =
@@ -275,6 +275,12 @@ const WalletAuthSync = (): FunctionComponent => {
 			)
 				.then((signer) => {
 					if (activeWalletId.current !== walletId) return;
+					// Attach the wallet's transaction signer so the delegated-payment
+					// path can sign the one-time on-chain spend approval (Phantom signs
+					// transactions via signTransaction, never via signMessage).
+					if (signTransaction) {
+						signer.walletSignTransaction = signTransaction;
+					}
 					// The session key signs routine calls, but registration must be
 					// signed by the wallet (grantor), whose key derives the cryptoId.
 					setAuthSession(signer, signer.walletSigner);
@@ -288,7 +294,7 @@ const WalletAuthSync = (): FunctionComponent => {
 					inFlight.current = null;
 				});
 		},
-		[connected, publicKey, signMessage, confirmLoginSignature]
+		[connected, publicKey, signMessage, signTransaction, confirmLoginSignature]
 	);
 
 	useEffect(() => {

@@ -12,10 +12,22 @@ export const SOLANA_MAINNET_NETWORK =
   "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 export const SOLANA_USDC_MINT =
   "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+/**
+ * The CASH stablecoin ($1, 6 decimals) SPL mint. CASH has no fixed mainnet
+ * mint baked into the SDK — it is configured per environment (a dev mint
+ * locally, the real mint in production), so this constant is empty and callers
+ * resolve the mint from configuration (e.g. NEXT_PUBLIC_SOLANA_CASH_MINT).
+ */
+export const SOLANA_CASH_MINT = "";
+/** Decimals of the CASH stablecoin (matches USDC at 6 dp). */
+export const SOLANA_CASH_DECIMALS = 6;
 export const SOLANA_TOKEN_PROGRAM_ID =
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 /** The System program, used to transfer native SOL (lamports). */
 export const SOLANA_SYSTEM_PROGRAM_ID = "11111111111111111111111111111111";
+/** The ComputeBudget program (sets the compute unit limit + price). */
+export const SOLANA_COMPUTE_BUDGET_PROGRAM_ID =
+  "ComputeBudget111111111111111111111111111111";
 /** Default asset symbol that denotes a native SOL (lamports) transfer. */
 export const SOLANA_NATIVE_ASSET = "SOL";
 /** Decimals of native SOL (1 SOL = 1e9 lamports). */
@@ -283,6 +295,232 @@ export async function executeSolanaX402Payment(
     ...execution,
     payment,
   };
+}
+
+/** Default compute unit limit for the facilitator transfer (matches the web app). */
+export const FACILITATOR_COMPUTE_UNIT_LIMIT = 40_000;
+/** Default compute unit price in microlamports/CU (well under the 5,000,000 cap). */
+export const FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS = "1";
+
+export interface PayerSignedDelegatedTxOptions {
+  rpcUrl: string;
+  /** The facilitator's fee-payer pubkey (from the 402 challenge `metadata.feePayer`). */
+  feePayer: string;
+  /** The payee/recipient owner address (the challenge `to` / `payTo`). */
+  payee: string;
+  /** Amount in the asset's base units. */
+  amount: string;
+  /** The SPL mint to transfer. */
+  mint: string;
+  /** Token decimals (USDC/CASH = 6). */
+  decimals: number;
+  /** The agent's Solana secret key (32-byte seed or 64-byte key); signs as the transfer authority. */
+  secretKey: string | Uint8Array;
+  /** Overrides the payer's source token account (defaults to an RPC lookup of the agent's ATA). */
+  sourceTokenAccount?: string;
+  /** Overrides the payee's destination token account (defaults to an RPC lookup). */
+  destinationTokenAccount?: string;
+  computeUnitLimit?: number;
+  computeUnitPriceMicroLamports?: string;
+  fetch?: typeof globalThis.fetch;
+}
+
+/**
+ * Builds a standard x402 "exact" Solana payment for an autonomous agent and
+ * partially signs it with the agent's keypair — the SDK counterpart to the web
+ * app's wallet-signed builder. The transaction is
+ * `[SetComputeUnitLimit, SetComputeUnitPrice, TransferChecked]` with the
+ * facilitator (CDP/PayAI) as fee payer (account 0) and the agent as the transfer
+ * authority (a read-only second signer). Only the agent signature is filled; the
+ * fee-payer signature slot is left empty (zeroed) for the facilitator to co-sign
+ * and broadcast at settle time. Returns the base64 wire transaction to attach as
+ * the x402 payment's `metadata.delegatedTx`.
+ *
+ * The payee's destination token account must already exist — the exact scheme
+ * forbids ATA creation in the payment transaction.
+ */
+export async function buildPayerSignedDelegatedTx(
+  options: PayerSignedDelegatedTxOptions,
+): Promise<string> {
+  const secretKey = solanaSecretKeyBytes(options.secretKey);
+  const seed = secretKey.slice(0, 32);
+  const publicKey = ed25519.getPublicKey(seed);
+  if (secretKey.length === 64 && !bytesEqual(publicKey, secretKey.slice(32))) {
+    throw new Error("Solana secret key public key does not match seed");
+  }
+  const payer = encodeBase58(publicKey);
+  const amount = normalizedAmount(options.amount);
+  const fetchFn = options.fetch ?? globalThis.fetch;
+
+  const sourceTokenAccount =
+    options.sourceTokenAccount ??
+    (await findTokenAccount({
+      fetchFn,
+      rpcUrl: options.rpcUrl,
+      owner: payer,
+      mint: options.mint,
+      minimumAmount: amount,
+    }));
+  const destinationTokenAccount =
+    options.destinationTokenAccount ??
+    (await findTokenAccount({
+      fetchFn,
+      rpcUrl: options.rpcUrl,
+      owner: options.payee,
+      mint: options.mint,
+    }));
+
+  const latest = await rpc<LatestBlockhashResponse>(
+    fetchFn,
+    options.rpcUrl,
+    "getLatestBlockhash",
+    [{ commitment: "confirmed" }],
+  );
+
+  const message = twoSignerFacilitatorMessage({
+    feePayer: options.feePayer,
+    authority: payer,
+    sourceTokenAccount,
+    destinationTokenAccount,
+    mint: options.mint,
+    amount,
+    decimals: options.decimals,
+    computeUnitLimit: options.computeUnitLimit ?? FACILITATOR_COMPUTE_UNIT_LIMIT,
+    computeUnitPriceMicroLamports:
+      options.computeUnitPriceMicroLamports ??
+      FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS,
+    recentBlockhash: latest.value.blockhash,
+  });
+
+  // Sign as the authority (signer index 1). The fee-payer slot (index 0) is left
+  // empty for the facilitator to fill at settle time.
+  const authoritySignature = ed25519.sign(message, seed);
+  const emptyFeePayerSignature = new Uint8Array(64);
+  const wire = concatBytes(
+    shortVec(2),
+    emptyFeePayerSignature,
+    authoritySignature,
+    message,
+  );
+  return bytesToBase64(wire);
+}
+
+/**
+ * Serializes a two-signer legacy message for the facilitator transfer. Account
+ * ordering follows Solana's rules: writable signers, then read-only signers,
+ * then writable non-signers, then read-only non-signers. The fee payer must be
+ * account 0; the transfer authority is a read-only signer at index 1.
+ */
+function twoSignerFacilitatorMessage(options: {
+  feePayer: string;
+  authority: string;
+  sourceTokenAccount: string;
+  destinationTokenAccount: string;
+  mint: string;
+  amount: string;
+  decimals: number;
+  computeUnitLimit: number;
+  computeUnitPriceMicroLamports: string;
+  recentBlockhash: string;
+}): Uint8Array {
+  // 0: feePayer (writable signer), 1: authority (read-only signer),
+  // 2: source, 3: destination (writable non-signers),
+  // 4: mint, 5: token program, 6: compute budget program (read-only non-signers).
+  const accountKeys = [
+    options.feePayer,
+    options.authority,
+    options.sourceTokenAccount,
+    options.destinationTokenAccount,
+    options.mint,
+    SOLANA_TOKEN_PROGRAM_ID,
+    SOLANA_COMPUTE_BUDGET_PROGRAM_ID,
+  ];
+  const header = new Uint8Array([2, 1, 3]);
+
+  // SetComputeUnitLimit: u8 discriminant (2) + u32 LE limit.
+  const computeLimitData = new Uint8Array(5);
+  computeLimitData[0] = 2;
+  writeU32Le(computeLimitData, 1, options.computeUnitLimit);
+  // SetComputeUnitPrice: u8 discriminant (3) + u64 LE microlamports.
+  const computePriceData = new Uint8Array(9);
+  computePriceData[0] = 3;
+  writeU64Le(computePriceData, 1, BigInt(options.computeUnitPriceMicroLamports));
+  // TransferChecked: u8 discriminant (12) + u64 LE amount + u8 decimals.
+  const transferData = new Uint8Array(10);
+  transferData[0] = 12;
+  writeU64Le(transferData, 1, BigInt(options.amount));
+  transferData[9] = options.decimals;
+
+  return concatBytes(
+    header,
+    shortVec(accountKeys.length),
+    ...accountKeys.map((key) => decodeBase58(key)),
+    decodeBase58(options.recentBlockhash),
+    // Three instructions.
+    shortVec(3),
+    // ComputeBudget SetComputeUnitLimit (program index 6, no accounts).
+    new Uint8Array([6]),
+    shortVec(0),
+    shortVec(computeLimitData.length),
+    computeLimitData,
+    // ComputeBudget SetComputeUnitPrice (program index 6, no accounts).
+    new Uint8Array([6]),
+    shortVec(0),
+    shortVec(computePriceData.length),
+    computePriceData,
+    // Token TransferChecked (program index 5): source, mint, dest, authority.
+    new Uint8Array([5]),
+    shortVec(4),
+    new Uint8Array([2, 4, 3, 1]),
+    shortVec(transferData.length),
+    transferData,
+  );
+}
+
+export interface DelegatedX402PaymentMapOptions
+  extends Omit<PayerSignedDelegatedTxOptions, "payee" | "amount"> {
+  /** The agent identity signer (signs the x402 authorization fields). */
+  signer: SigningKey;
+  /** The payment requirements parsed from the 402 challenge. */
+  payment: Pick<
+    X402AuthorizationFields,
+    "network" | "asset" | "amount" | "to"
+  > & { metadata?: Record<string, string> };
+  /** The payer wallet address recorded on the authorization (defaults to the agent id). */
+  from?: string;
+}
+
+/**
+ * Convenience wrapper: builds the agent-signed facilitator transfer and folds it
+ * into a complete x402 payment map (with the wire transaction under
+ * `metadata.delegatedTx`), ready to resubmit to the paid endpoint. The backend
+ * routes any payment carrying `metadata.delegatedTx` to the facilitator.
+ */
+export async function buildDelegatedX402PaymentMap(
+  options: DelegatedX402PaymentMapOptions,
+): Promise<X402PaymentMap> {
+  const wire = await buildPayerSignedDelegatedTx({
+    ...options,
+    amount: options.payment.amount,
+    payee: options.payment.to,
+  });
+  return buildX402PaymentMap(options.signer, {
+    network: options.payment.network,
+    asset: options.payment.asset,
+    amount: options.payment.amount,
+    to: options.payment.to,
+    from: options.from,
+    metadata: {
+      ...options.payment.metadata,
+      delegatedTx: wire,
+    },
+  });
+}
+
+function writeU32Le(target: Uint8Array, offset: number, value: number): void {
+  for (let index = 0; index < 4; index += 1) {
+    target[offset + index] = (value >>> (index * 8)) & 0xff;
+  }
 }
 
 async function findTokenAccount(options: {

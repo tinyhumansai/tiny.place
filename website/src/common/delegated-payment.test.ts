@@ -16,54 +16,59 @@ vi.mock("./solana-rpc", () => ({
 	primarySolanaRpcUrl: (): string => "http://localhost:8899",
 }));
 
-import { buildDelegatedTransferTx } from "./delegated-payment";
+import { buildPayerSignedTransferTx } from "./delegated-payment";
 
 const address = (): string => Keypair.generate().publicKey.toBase58();
-const zeroSignature = (): Promise<Uint8Array> =>
-	Promise.resolve(new Uint8Array(64));
-const SESSION_KEY_BASE64 = Buffer.from(
-	Keypair.generate().publicKey.toBytes()
-).toString("base64");
-
-const TOKEN_APPROVE_CHECKED = 13;
 // Explicit mint keeps the test independent of NEXT_PUBLIC_SOLANA_USDC_MINT.
 const MINT = address();
 
-describe("buildDelegatedTransferTx", () => {
-	it("builds an ATA-create + transfer with no approve by default", async () => {
-		const wire = await buildDelegatedTransferTx({
-			rpcUrl: "x",
-			facilitator: address(),
-			payer: address(),
-			payee: address(),
-			amount: "5000000",
-			sessionPublicKeyBase64: SESSION_KEY_BASE64,
-			signSession: zeroSignature,
-			mint: MINT,
-		});
-		const tx = Transaction.from(Buffer.from(wire, "base64"));
-		expect(tx.instructions).toHaveLength(2);
-	});
+const COMPUTE_BUDGET_PROGRAM_ID = "ComputeBudget111111111111111111111111111111";
+const COMPUTE_SET_UNIT_LIMIT = 2;
+const COMPUTE_SET_UNIT_PRICE = 3;
+const TOKEN_TRANSFER_CHECKED = 12;
 
-	it("folds in a leading gasless owner-signed ApproveChecked when requested", async () => {
-		const wire = await buildDelegatedTransferTx({
+describe("buildPayerSignedTransferTx", () => {
+	it("emits [computeLimit, computePrice, transferChecked] with the facilitator as fee payer and the payer as authority", async () => {
+		const feePayer = address();
+		const payer = address();
+		const payee = address();
+
+		const wire = await buildPayerSignedTransferTx({
 			rpcUrl: "x",
-			facilitator: address(),
-			payer: address(),
-			payee: address(),
-			amount: "5000000",
-			sessionPublicKeyBase64: SESSION_KEY_BASE64,
-			signSession: zeroSignature,
+			feePayer,
+			payer,
+			payee,
+			amount: "1000000",
 			mint: MINT,
-			approve: { allowance: "100000000", signOwner: zeroSignature },
+			decimals: 6,
+			// Standard x402 partial-sign: return the tx untouched (the payer's
+			// signature is applied by the wallet; here we assert structure only).
+			signTransaction: (transaction: Transaction): Promise<Transaction> =>
+				Promise.resolve(transaction),
 		});
+
 		const tx = Transaction.from(Buffer.from(wire, "base64"));
+
+		// Exactly the three exact-scheme instructions, in order.
 		expect(tx.instructions).toHaveLength(3);
-		const approve = tx.instructions[0];
-		expect(approve).toBeDefined();
-		expect(approve?.programId.toBase58()).toBe(SOLANA_TOKEN_PROGRAM_ID);
-		expect(approve?.data[0]).toBe(TOKEN_APPROVE_CHECKED);
-		// Owner (payer) is the third required signer for the gasless approve.
-		expect(tx.signatures).toHaveLength(3);
+		expect(tx.instructions[0]?.programId.toBase58()).toBe(
+			COMPUTE_BUDGET_PROGRAM_ID
+		);
+		expect(tx.instructions[0]?.data[0]).toBe(COMPUTE_SET_UNIT_LIMIT);
+		expect(tx.instructions[1]?.programId.toBase58()).toBe(
+			COMPUTE_BUDGET_PROGRAM_ID
+		);
+		expect(tx.instructions[1]?.data[0]).toBe(COMPUTE_SET_UNIT_PRICE);
+
+		const transfer = tx.instructions[2];
+		expect(transfer?.programId.toBase58()).toBe(SOLANA_TOKEN_PROGRAM_ID);
+		expect(transfer?.data[0]).toBe(TOKEN_TRANSFER_CHECKED);
+
+		// Fee payer is the facilitator (account 0); the transfer authority (last
+		// key) is the payer, who signs directly — no session delegate.
+		expect(tx.feePayer?.toBase58()).toBe(feePayer);
+		const authority = transfer?.keys[(transfer?.keys.length ?? 0) - 1];
+		expect(authority?.pubkey.toBase58()).toBe(payer);
+		expect(authority?.isSigner).toBe(true);
 	});
 });
