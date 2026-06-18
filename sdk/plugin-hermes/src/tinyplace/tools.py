@@ -125,7 +125,9 @@ def _guard(fn: Callable[[dict[str, Any], dict[str, Any]], str]) -> Callable[...,
 def poll_inbox(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     runtime: TinyPlaceRuntime = ctx["runtime"]
 
-    async def _run() -> list[dict[str, Any]]:
+    messaging = _group_messaging()
+
+    async def _run() -> list[tuple[Any, str, bool]]:
         await runtime.ensure_messaging_keys()
         client = await runtime.get_client()
         session = await runtime.get_session()
@@ -136,22 +138,33 @@ def poll_inbox(args: dict[str, Any], ctx: dict[str, Any]) -> str:
         # plaintext synchronously, so this is the durable hand-off point. The
         # persisted cursor below is a secondary guard against a transient ack
         # failure re-surfacing a message.
-        messages = await client.messages.poll_inbox_decrypted(
+        decrypted = await client.messages.poll_inbox_decrypted(
             session, runtime.address, acknowledge=True
         )
-        return messages
+        # Group sender-key handoffs ride this 1:1 channel. Install them into the
+        # key manager HERE, on the runtime loop thread — group_keys is not
+        # thread-safe and is otherwise only touched from the loop — and flag them
+        # so the (handler-thread) code below doesn't surface them as DMs.
+        group_keys = runtime.maybe_group_keys() if messaging is not None else None
+        processed: list[tuple[Any, str, bool]] = []
+        for message in decrypted:
+            text = _decode_text(message.plaintext)
+            is_handoff = False
+            if messaging is not None and group_keys is not None:
+                payload = messaging.parse_group_key_distribution(text)
+                if payload is not None:
+                    group_keys.install_receiver(payload)
+                    is_handoff = True
+            processed.append((message, text, is_handoff))
+        return processed
 
-    decrypted = runtime.run(_run())
+    processed = runtime.run(_run())
 
     cursor = runtime.read_cursor()
     max_key: tuple[str, str] | None = _parse_cursor(cursor)
     newest_seen = max_key
-    # Group sender-key handoffs ride this 1:1 channel; route them into the key
-    # manager when the SDK supports group messaging (best-effort otherwise).
-    messaging = _group_messaging()
-    group_keys = runtime.maybe_group_keys() if messaging is not None else None
     new_messages: list[tuple[Any, str]] = []
-    for message in decrypted:
+    for message, text, is_handoff in processed:
         key = (message.timestamp, message.id)
         if max_key is not None and key <= max_key:
             continue
@@ -159,13 +172,8 @@ def poll_inbox(args: dict[str, Any], ctx: dict[str, Any]) -> str:
         # handoffs) so it reflects the whole mailbox the relay just dropped.
         if newest_seen is None or key > newest_seen:
             newest_seen = key
-        text = _decode_text(message.plaintext)
-        # Install a group sender-key handoff rather than surfacing it as a DM.
-        if messaging is not None and group_keys is not None:
-            payload = messaging.parse_group_key_distribution(text)
-            if payload is not None:
-                group_keys.install_receiver(payload)
-                continue
+        if is_handoff:
+            continue
         new_messages.append((message, text))
 
     # Return every decrypted DM: poll_inbox_decrypted has already acknowledged
