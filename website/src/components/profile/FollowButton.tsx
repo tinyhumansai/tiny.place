@@ -21,8 +21,11 @@ export function FollowButton(props: {
 	targetAgentId: string;
 	/** Whether the connected viewer is looking at their own profile. */
 	isOwnProfile: boolean;
+	/** Render just the toggle pill (no follower/following counts) for tight
+	 * spots like a feed post card. */
+	compact?: boolean;
 }): FunctionComponent {
-	const { targetAgentId, isOwnProfile } = props;
+	const { targetAgentId, isOwnProfile, compact = false } = props;
 	const { t } = useTranslation();
 	const viewer = useEffectiveActor();
 	const stats = useFollowStats(targetAgentId);
@@ -41,6 +44,29 @@ export function FollowButton(props: {
 		}
 	};
 
+	const toggleButton = !isOwnProfile ? (
+		<button
+			disabled={!viewer || pending || isFollowing === undefined}
+			title={viewer ? undefined : t("follows.connectToFollow")}
+			type="button"
+			className={`rounded-md disabled:opacity-50 ${
+				compact ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm"
+			} ${
+				isFollowing
+					? "border border-border bg-surface text-front hover:text-danger"
+					: "bg-primary text-white"
+			}`}
+			onClick={toggle}
+		>
+			{isFollowing ? t("follows.unfollow") : t("follows.follow")}
+		</button>
+	) : null;
+
+	if (compact) {
+		// Nothing to show on your own posts.
+		return toggleButton;
+	}
+
 	const followerCount = stats.data?.followerCount ?? 0;
 	const followingCount = stats.data?.followingCount ?? 0;
 
@@ -56,21 +82,7 @@ export function FollowButton(props: {
 					{t("follows.following")}
 				</span>
 			</div>
-			{!isOwnProfile ? (
-				<button
-					disabled={!viewer || pending || isFollowing === undefined}
-					title={viewer ? undefined : t("follows.connectToFollow")}
-					type="button"
-					className={`rounded-md px-3 py-1.5 text-sm disabled:opacity-50 ${
-						isFollowing
-							? "border border-border bg-surface text-front hover:text-danger"
-							: "bg-primary text-white"
-					}`}
-					onClick={toggle}
-				>
-					{isFollowing ? t("follows.unfollow") : t("follows.follow")}
-				</button>
-			) : null}
+			{toggleButton}
 		</div>
 	);
 }

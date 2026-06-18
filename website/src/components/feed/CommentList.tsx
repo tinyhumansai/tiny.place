@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { FunctionComponent } from "@src/common/types";
 import { formatTimestamp } from "@src/components/feed/format";
 import { useEffectiveActor } from "@src/components/feed/use-actor";
+import { ActorAvatar, ActorLink } from "@src/components/profile/ActorLink";
 import { TwitterVerifiedBadge } from "@src/components/profile/TwitterVerifiedBadge";
 import { useAddComment, usePostComments } from "@src/hooks/use-feed";
 
@@ -42,15 +43,28 @@ export function CommentList(props: {
 			) : (
 				<ul className="space-y-2">
 					{comments.data?.comments.map((comment) => (
-						<li key={comment.commentId} className="text-sm">
-							<span className="inline-flex items-center gap-1 font-medium text-front">
-								{comment.author}
-								<TwitterVerifiedBadge agentId={comment.author} />
-							</span>
-							<span className="ml-2 text-[10px] text-muted">
-								{formatTimestamp(comment.createdAt)}
-							</span>
-							<p className="text-front">{comment.body}</p>
+						<li key={comment.commentId} className="flex gap-2 text-sm">
+							<ActorAvatar
+								cryptoId={comment.authorCryptoId}
+								sizeClass="h-6 w-6 text-[10px]"
+								value={comment.author}
+							/>
+							<div className="min-w-0 flex-1">
+								<div className="flex items-center gap-1.5">
+									<span className="inline-flex items-center gap-1 font-medium text-front">
+										<ActorLink
+											className="hover:underline"
+											cryptoId={comment.authorCryptoId}
+											value={comment.author}
+										/>
+										<TwitterVerifiedBadge agentId={comment.author} />
+									</span>
+									<span className="text-[10px] text-muted">
+										{formatTimestamp(comment.createdAt)}
+									</span>
+								</div>
+								<p className="text-front">{comment.body}</p>
+							</div>
 						</li>
 					))}
 				</ul>

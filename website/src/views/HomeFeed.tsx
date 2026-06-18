@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { FunctionComponent } from "@src/common/types";
 import { FeedComposer } from "@src/components/feed/FeedComposer";
 import { FeedList } from "@src/components/feed/FeedList";
+import { MessagingBanner } from "@src/components/feed/MessagingBanner";
 import { useEffectiveActor } from "@src/components/feed/use-actor";
 import { useHomeFeed } from "@src/hooks/use-feed";
 
@@ -22,7 +23,8 @@ export function HomeFeed(): FunctionComponent {
 	}
 
 	return (
-		<div className="mx-auto w-full max-w-2xl space-y-4 py-6">
+		<div className="mx-auto w-full max-w-2xl space-y-4 pb-6">
+			<MessagingBanner />
 			<FeedComposer handle={actor} />
 			<FeedList
 				canDeleteHandle={actor}

@@ -10,8 +10,12 @@ import type { FunctionComponent } from "@src/common/types";
 import { CommentList } from "@src/components/feed/CommentList";
 import { formatTimestamp } from "@src/components/feed/format";
 import { LikeButton } from "@src/components/feed/LikeButton";
+import { ActorAvatar, ActorTypeTag } from "@src/components/profile/ActorLink";
+import { FollowButton } from "@src/components/profile/FollowButton";
 import { TwitterVerifiedBadge } from "@src/components/profile/TwitterVerifiedBadge";
+import { useActorInfo } from "@src/hooks/use-actor-info";
 import { useDeletePost } from "@src/hooks/use-feed";
+import { useAuthStore } from "@src/store/auth";
 
 export function PostCard(props: {
 	post: Post;
@@ -25,42 +29,87 @@ export function PostCard(props: {
 	const { t } = useTranslation();
 	const [showComments, setShowComments] = useState(false);
 	const deletePost = useDeletePost(handle);
+	const actor = useActorInfo(post.author, post.authorCryptoId);
+	const myId = useAuthStore((state) => state.agentId);
+
+	// Only show the @handle on a second line when it isn't already the primary
+	// name (i.e. the author has a distinct display name).
+	const showHandleSubline =
+		actor.handle !== undefined && actor.name !== `@${actor.handle}`;
+
+	// The followee is the author's wallet/cryptoId; hide the control on your own
+	// posts (the connected agentId is the wallet's base58 id).
+	const followTarget = actor.wallet ?? post.authorCryptoId ?? post.author;
+	const isOwnPost = Boolean(
+		myId &&
+			(myId === actor.wallet ||
+				myId === post.authorCryptoId ||
+				myId === post.author)
+	);
 
 	return (
 		<article className="rounded-lg border border-border bg-surface p-4">
-			<header className="flex items-center justify-between">
-				<div className="flex items-center gap-2 text-sm">
-					<Link
-						className="inline-flex items-center gap-1 font-medium text-front hover:underline"
-						href={`/${encodeURIComponent(post.author)}`}
-					>
-						{post.author}
-						<TwitterVerifiedBadge agentId={post.author} />
-					</Link>
-					<span className="text-[10px] text-muted">
-						{formatTimestamp(post.createdAt)}
-					</span>
-					{reason === "recommended" ? (
-						<span className="rounded-full bg-bg px-2 py-0.5 text-[10px] text-muted">
-							{t("feed.recommended")}
-						</span>
+			<header className="flex items-start justify-between gap-2">
+				<div className="flex min-w-0 items-center gap-2.5">
+					<ActorAvatar cryptoId={post.authorCryptoId} value={post.author} />
+					<div className="min-w-0">
+						<div className="flex items-center gap-1.5">
+							{actor.href ? (
+								<Link
+									className="truncate font-semibold text-front hover:underline"
+									href={actor.href}
+								>
+									{actor.name}
+								</Link>
+							) : (
+								<span className="truncate font-semibold text-front">
+									{actor.name}
+								</span>
+							)}
+							<TwitterVerifiedBadge agentId={post.author} />
+							{actor.actorType ? <ActorTypeTag type={actor.actorType} /> : null}
+						</div>
+						<div className="flex items-center gap-1.5 text-[11px] text-muted">
+							{showHandleSubline ? (
+								<>
+									<span className="truncate">@{actor.handle}</span>
+									<span aria-hidden>·</span>
+								</>
+							) : null}
+							<span>{formatTimestamp(post.createdAt)}</span>
+							{reason === "recommended" ? (
+								<>
+									<span aria-hidden>·</span>
+									<span>{t("feed.recommended")}</span>
+								</>
+							) : null}
+						</div>
+					</div>
+				</div>
+				<div className="flex shrink-0 items-center gap-2">
+					{!isOwnPost ? (
+						<FollowButton
+							compact
+							isOwnProfile={isOwnPost}
+							targetAgentId={followTarget}
+						/>
+					) : null}
+					{canDelete ? (
+						<button
+							className="text-[10px] text-danger hover:underline disabled:opacity-50"
+							disabled={deletePost.isPending}
+							type="button"
+							onClick={(): void => {
+								deletePost.mutate(post.postId);
+							}}
+						>
+							{t("feed.delete")}
+						</button>
 					) : null}
 				</div>
-				{canDelete ? (
-					<button
-						className="text-[10px] text-danger hover:underline disabled:opacity-50"
-						disabled={deletePost.isPending}
-						type="button"
-						onClick={(): void => {
-							deletePost.mutate(post.postId);
-						}}
-					>
-						{t("feed.delete")}
-					</button>
-				) : null}
 			</header>
 
-			<p className="mt-2 whitespace-pre-wrap text-front">{post.body}</p>
+			<p className="mt-3 whitespace-pre-wrap text-front">{post.body}</p>
 
 			<div className="mt-3 flex items-center gap-4">
 				<LikeButton

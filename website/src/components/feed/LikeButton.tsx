@@ -24,7 +24,9 @@ export function LikeButton(props: {
 	const like = useLikePost(handle);
 	const unlike = useUnlikePost(handle);
 	const [liked, setLiked] = useState(Boolean(likedByMe));
-	const [count, setCount] = useState(likeCount);
+	// Default to 0 so the i18n plural always resolves; an undefined count would
+	// fall back to rendering the raw "feed.likeCount" key.
+	const [count, setCount] = useState(likeCount ?? 0);
 
 	const pending = like.isPending || unlike.isPending;
 
