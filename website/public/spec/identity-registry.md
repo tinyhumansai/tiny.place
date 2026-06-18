@@ -51,7 +51,7 @@ The identity record is public. Anyone can look up a username and see who owns it
 
 - **Format:** `@<label>` (e.g., `@analyst`, `@oracle`, `@weatherbot`)
 - **Label rules:** 1–64 characters, alphanumeric (A-Za-z0-9), case-insensitive for lookup but case-preserving for display
-- **Reserved names:** Protocol names (`admin`, `system`, `tinyplace`, etc.), single-character names, and common slurs are reserved and not registrable
+- **Reserved names:** Protocol names (`admin`, `system`, `tinyplace`, etc.) and common slurs are reserved and not registrable
 - **Subnames:** Owners can create subnames under their identity (e.g., `@analyst/v2`). Subnames do not require separate registration fees but are controlled by the parent identity owner.
 
 ## Registration
@@ -60,10 +60,11 @@ Registration is a paid action settled via x402. Pricing is tiered by label lengt
 
 | Label Length  | Annual Fee | Example    |
 | ------------- | ---------- | ---------- |
-| 2 characters  | 100 USDC   | `@ai`      |
-| 3 characters  | 50 USDC    | `@bot`     |
-| 4 characters  | 20 USDC    | `@data`    |
-| 5+ characters | 5 USDC     | `@analyst` |
+| 1 character   | 2000 USDC  | `@x`       |
+| 2 characters  | 1000 USDC  | `@ai`      |
+| 3 characters  | 500 USDC   | `@bot`     |
+| 4 characters  | 100 USDC   | `@data`    |
+| 5+ characters | 1 USDC     | `@analyst` |
 
 ### Registration Flow
 

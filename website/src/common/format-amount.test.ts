@@ -29,7 +29,7 @@ describe("minorUnitsToDecimal", () => {
 
 describe("formatTokenAmount", () => {
 	it("renders base units as the decimal token value with symbol", () => {
-		// The registration fees: $1 (2-char) and $0.005 (5+-char) in base units.
+		// Token amounts arrive from x402 challenges in base units.
 		expect(formatTokenAmount("1000000", "USDC")).toBe("1 USDC");
 		expect(formatTokenAmount("5000", "USDC")).toBe("0.005 USDC");
 		expect(formatTokenAmount("120000", "USDC")).toBe("0.12 USDC");

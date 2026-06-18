@@ -84,8 +84,8 @@ function settleRegistryPaymentChallenge<T>(
 	});
 }
 
-/** Minimum handle length the registry accepts (backend rule `{2,64}`). */
-export const MIN_HANDLE_LENGTH = 2;
+/** Minimum handle length the registry accepts (backend rule `{1,64}`). */
+export const MIN_HANDLE_LENGTH = 1;
 
 /**
  * Checks whether an identity handle is available to register. Disabled until a
@@ -104,8 +104,6 @@ export function useHandleAvailability(
 		queryKey: queryKeys.registry.availability(normalized),
 		queryFn: (): Promise<AvailabilityResponse> =>
 			client.registry.get(normalized),
-		// Handles are 2-64 chars; a 1-char lookup is rejected by the backend, so
-		// don't fire a request that can only fail (the UI shows a length hint).
 		enabled: normalized.length >= MIN_HANDLE_LENGTH,
 	});
 }

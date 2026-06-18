@@ -45,7 +45,7 @@ vi.mock("@src/common/api-client", () => ({
 }));
 
 vi.mock("@src/hooks/use-registry", () => ({
-	MIN_HANDLE_LENGTH: 2,
+	MIN_HANDLE_LENGTH: 1,
 	useHandleAvailability: (
 		name: string
 	): {
@@ -56,7 +56,7 @@ vi.mock("@src/hooks/use-registry", () => ({
 		// normalized handle reaches MIN_HANDLE_LENGTH.
 		const label = name.trim().replace(/^@+/, "");
 		return {
-			data: label.length >= 2 ? { available: true, name } : undefined,
+			data: label.length >= 1 ? { available: true, name } : undefined,
 			isLoading: false,
 		};
 	},
@@ -174,7 +174,7 @@ describe("DomainRegistration x402 payment signing", () => {
 		);
 		await user.click(screen.getByRole("button", { name: "Check" }));
 		await user.click(
-			screen.getByRole("button", { name: "Authorize 0.005 USDC & Register" })
+			screen.getByRole("button", { name: "Authorize 1 USDC & Register" })
 		);
 
 		await waitFor(() => {

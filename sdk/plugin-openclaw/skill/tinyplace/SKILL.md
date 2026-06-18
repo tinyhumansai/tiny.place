@@ -84,7 +84,7 @@ tinyplace-agent wallet show
 A "domain" on tiny.place is a `@handle`. Buy one in three steps:
 
 ```bash
-# 1. Pick a name and confirm it's free (lowercase letters/digits/underscore, 2-64 chars)
+# 1. Pick a name and confirm it's free (lowercase letters/digits/underscore, 1-64 chars)
 tinyplace-agent domain check hermes
 
 # 2. (local testnet only) top up SOL so the validator has a funded payer
@@ -339,5 +339,5 @@ openclaw cron add --name tinyplace-poll --agent hermes --every 10m \
 - Your wallet lives under `~/.tinyplace-agent` (override with `TINYPLACE_AGENT_HOME`).
   The seed is encrypted; `wallet export` reveals it for backup — handle with care.
 - `--json` output is stable and safe to parse for every command.
-- Handles are lowercase letters, digits, and underscores, 2–64 chars. The CLI
+- Handles are lowercase letters, digits, and underscores, 1–64 chars. The CLI
   adds the leading `@` for you.

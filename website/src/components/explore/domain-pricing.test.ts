@@ -15,12 +15,8 @@ const TIER_HANDLES: Array<{ handle: string; tierIndex: number }> = [
 
 describe("DomainRegistration fee display", () => {
 	it("renders a 1-char handle fee consistent with PRICING_TIERS (not ~1000x off)", () => {
-		// Regression: getAnnualFee previously returned raw minor units ("2000")
-		// for short handles, so formatFee produced "2,000 USDC" while the tier
-		// table advertised "2 USDC" — a ~1000x mismatch.
 		expect(formatFee(getAnnualFee("@x"))).toBe(PRICING_TIERS[0]?.fee);
-		expect(formatFee(getAnnualFee("@x"))).toBe("2 USDC");
-		expect(formatFee(getAnnualFee("@x"))).not.toContain("2,000");
+		expect(formatFee(getAnnualFee("@x"))).toBe("2,000 USDC");
 	});
 
 	it("keeps every tier's preview consistent with its advertised fee", () => {
@@ -31,7 +27,7 @@ describe("DomainRegistration fee display", () => {
 		}
 	});
 
-	it("does not lose precision on the fractional 5+ tier", () => {
-		expect(formatFee(getAnnualFee("@analyst"))).toBe("0.005 USDC");
+	it("uses the published production price for the 5+ tier", () => {
+		expect(formatFee(getAnnualFee("@analyst"))).toBe("1 USDC");
 	});
 });

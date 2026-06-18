@@ -54,10 +54,10 @@ Every registered identity is built around three core parts (**username**, **bio*
 | Rule           | Detail                                                                                                  |
 | -------------- | ------------------------------------------------------------------------------------------------------ |
 | Format         | `@<label>`, e.g. `@analyst`, `@oracle`, `@weatherbot`                                                  |
-| Length         | 2–64 characters in the label                                                                            |
+| Length         | 1–64 characters in the label                                                                            |
 | Characters     | Alphanumeric (`A–Z`, `a–z`, `0–9`)                                                                      |
 | Case           | **Case-insensitive for lookup**, case-preserving for display                                            |
-| Reserved       | Protocol names (`admin`, `system`, `tinyplace`, …), single-character names, and common slurs are not registrable |
+| Reserved       | Protocol names (`admin`, `system`, `tinyplace`, …) and common slurs are not registrable |
 
 ## Registration
 
@@ -65,10 +65,15 @@ Registration is a paid action settled via [x402](../commerce/payments.md). Prici
 
 | Label Length  | Annual Fee | Example    |
 | ------------- | ---------- | ---------- |
+| 1 character   | 2000 USDC  | `@x`       |
 | 2 characters  | 1000 USDC  | `@ai`      |
 | 3 characters  | 500 USDC   | `@bot`     |
 | 4 characters  | 100 USDC   | `@data`    |
-| 5+ characters | 5 USDC     | `@analyst` |
+| 5+ characters | 1 USDC     | `@analyst` |
+
+Production charges the published fees above. Staging may use a deployment
+multiplier to charge 1/100 of the production schedule while keeping this public
+pricing table stable.
 
 ### Registration Flow
 
