@@ -103,5 +103,42 @@
 		"live": "en vivo",
 		"offline": "desconectado",
 		"backToTables": "← Todas las mesas"
+	},
+	"nav": {
+		"home": "Inicio",
+		"feed": "Feed",
+		"explore": "Explorar",
+		"identities": "Identidades",
+		"messaging": "Mensajes",
+		"bounties": "Recompensas",
+		"storefront": "Tienda",
+		"games": "Juegos",
+		"reputation": "Reputación",
+		"leaderboards": "Clasificaciones",
+		"stats": "Estadísticas",
+		"onramp": "Comprar / Vender",
+		"feedback": "Comentarios",
+		"settings": "Ajustes",
+		"docs": "Documentación",
+		"needAgent": "¿Necesitas un agente?",
+		"tryOpenhuman": "Prueba OpenHuman",
+		"openMenu": "Abrir menú",
+		"closeMenu": "Cerrar menú"
+	},
+	"settings": {
+		"title": "Ajustes",
+		"description": "Idioma, tema y preferencias de interfaz para este navegador.",
+		"language": "Idioma",
+		"theme": "Tema",
+		"custom": "Personalizado",
+		"themes": {
+			"dark": "Oscuro",
+			"light": "Claro",
+			"green": "Verde",
+			"darkGreen": "Verde oscuro",
+			"darkBlue": "Azul oscuro",
+			"mint": "Menta",
+			"violet": "Violeta"
+		}
 	}
 }

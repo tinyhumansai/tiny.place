@@ -103,5 +103,42 @@
 		"live": "live",
 		"offline": "offline",
 		"backToTables": "← All tables"
+	},
+	"nav": {
+		"home": "Home",
+		"feed": "Feed",
+		"explore": "Explore",
+		"identities": "Identities",
+		"messaging": "Messaging",
+		"bounties": "Bounties",
+		"storefront": "Storefront",
+		"games": "Games",
+		"reputation": "Reputation",
+		"leaderboards": "Leaderboards",
+		"stats": "Stats",
+		"onramp": "On-ramp / Off-ramp",
+		"feedback": "Feedback",
+		"settings": "Settings",
+		"docs": "Docs",
+		"needAgent": "Need an Agent?",
+		"tryOpenhuman": "Try OpenHuman",
+		"openMenu": "Open menu",
+		"closeMenu": "Close menu"
+	},
+	"settings": {
+		"title": "Settings",
+		"description": "Language, theme, and interface preferences for this browser.",
+		"language": "Language",
+		"theme": "Theme",
+		"custom": "Custom",
+		"themes": {
+			"dark": "Dark",
+			"light": "Light",
+			"green": "Green",
+			"darkGreen": "Dark Green",
+			"darkBlue": "Dark Blue",
+			"mint": "Mint",
+			"violet": "Violet"
+		}
 	}
 }

@@ -15,6 +15,15 @@ type ThemeOption = {
 	flavor: ThemeFlavor;
 	foreground: string;
 	label: string;
+	// i18n key under settings.themes; label is the English fallback.
+	nameKey:
+		| "dark"
+		| "light"
+		| "green"
+		| "darkGreen"
+		| "darkBlue"
+		| "mint"
+		| "violet";
 	mode: ThemeMode;
 	surface: string;
 };
@@ -32,6 +41,7 @@ const languageOptions: Array<LanguageOption> = [
 const themeOptions: Array<ThemeOption> = [
 	{
 		label: "Dark",
+		nameKey: "dark",
 		mode: "dark",
 		flavor: "default",
 		background: "#050505",
@@ -41,6 +51,7 @@ const themeOptions: Array<ThemeOption> = [
 	},
 	{
 		label: "Light",
+		nameKey: "light",
 		mode: "light",
 		flavor: "default",
 		background: "#ffffff",
@@ -50,6 +61,7 @@ const themeOptions: Array<ThemeOption> = [
 	},
 	{
 		label: "Green",
+		nameKey: "green",
 		mode: "light",
 		flavor: "green",
 		background: "#f7fdf9",
@@ -59,6 +71,7 @@ const themeOptions: Array<ThemeOption> = [
 	},
 	{
 		label: "Dark Green",
+		nameKey: "darkGreen",
 		mode: "dark",
 		flavor: "green",
 		background: "#02130d",
@@ -68,6 +81,7 @@ const themeOptions: Array<ThemeOption> = [
 	},
 	{
 		label: "Dark Blue",
+		nameKey: "darkBlue",
 		mode: "dark",
 		flavor: "dark-blue",
 		background: "#020617",
@@ -77,6 +91,7 @@ const themeOptions: Array<ThemeOption> = [
 	},
 	{
 		label: "Mint",
+		nameKey: "mint",
 		mode: "light",
 		flavor: "mint",
 		background: "#f0fdfa",
@@ -86,6 +101,7 @@ const themeOptions: Array<ThemeOption> = [
 	},
 	{
 		label: "Violet",
+		nameKey: "violet",
 		mode: "dark",
 		flavor: "violet",
 		background: "#10051f",
@@ -104,32 +120,39 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 	const setFlavor = useAppStore((state) => state.setFlavor);
 	const setTheme = useAppStore((state) => state.setTheme);
 	const theme = useAppStore((state) => state.theme);
-	const { i18n } = useTranslation();
+	const { i18n, t } = useTranslation();
 
 	const headingClass = isDark ? "text-white" : "text-black";
 	const panelClass = isDark
 		? "border-neutral-800 bg-neutral-950"
 		: "border-neutral-200 bg-neutral-50";
 	const secondaryClass = isDark ? "text-neutral-400" : "text-neutral-500";
-	const currentTheme =
-		themeOptions.find(
-			(option) => option.mode === theme && option.flavor === flavor
-		)?.label ?? "Custom";
+	const currentThemeOption = themeOptions.find(
+		(option) => option.mode === theme && option.flavor === flavor
+	);
+	const currentTheme = currentThemeOption
+		? t(
+				`settings.themes.${currentThemeOption.nameKey}`,
+				currentThemeOption.label
+			)
+		: t("settings.custom");
 
 	return (
 		<div className="space-y-6">
 			<header>
 				<h1 className={`font-heading text-2xl font-bold ${headingClass}`}>
-					Settings
+					{t("settings.title")}
 				</h1>
 				<p className={`mt-1 text-sm ${secondaryClass}`}>{currentTheme}</p>
 				<p className={`mt-2 max-w-2xl text-sm leading-6 ${secondaryClass}`}>
-					Language, theme, and interface preferences for this browser.
+					{t("settings.description")}
 				</p>
 			</header>
 
 			<section className="space-y-3">
-				<h2 className={`text-sm font-semibold ${headingClass}`}>Language</h2>
+				<h2 className={`text-sm font-semibold ${headingClass}`}>
+					{t("settings.language")}
+				</h2>
 				<div className="flex flex-wrap gap-2">
 					{languageOptions.map((option) => {
 						const selected = i18n.resolvedLanguage === option.code;
@@ -156,7 +179,9 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 			</section>
 
 			<section className="space-y-3">
-				<h2 className={`text-sm font-semibold ${headingClass}`}>Theme</h2>
+				<h2 className={`text-sm font-semibold ${headingClass}`}>
+					{t("settings.theme")}
+				</h2>
 				<div className="grid gap-2 sm:grid-cols-3">
 					{themeOptions.map((option) => {
 						const selected = option.mode === theme && option.flavor === flavor;
@@ -201,7 +226,7 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 								</div>
 								<div className="mt-2 flex items-center justify-between gap-2">
 									<span className={`text-sm font-medium ${headingClass}`}>
-										{option.label}
+										{t(`settings.themes.${option.nameKey}`, option.label)}
 									</span>
 									<span
 										className={`flex h-5 w-5 items-center justify-center rounded-full ${
