@@ -134,23 +134,45 @@ export function createDefaultRoom(): RoomModel {
 	return new RoomModel(10, 10, 1, 1, heightMap);
 }
 
-// A wide, shallow floor strip used by the embedded mascot banner. The room is
-// far longer (along X) than it is deep (along Y) so, once centered in a short
-// canvas, it reads as a horizontal band of floor the mascots wander across.
-// `length`/`depth` are the interior tile counts; a 0-border is added around it.
-export function createBannerRoom(length = 30, depth = 6): RoomModel {
-	const maxX = length + 2;
-	const maxY = depth + 2;
+// A horizontal floor band for the embedded mascot banner. In screen space a
+// tile sits at x:(x-y)*W, y:(x+y)*H, so a normal rectangular room renders as a
+// tall diamond that overflows a short banner. Instead we hold (x+y) — the
+// screen-depth — to a narrow range (`thickness` rows) while (x-y) sweeps wide
+// (`±span`). In grid terms that traces a zig-zag staircase, but on screen it is
+// a short, wide band the mascots wander across, fitting the banner vertically.
+export function createBannerRoom(span = 11, thickness = 4): RoomModel {
+	// sMin >= span keeps both x and y non-negative across the full ±span sweep.
+	const sMin = span;
+	const sMax = sMin + thickness - 1;
+	const cells: Array<{ x: number; y: number }> = [];
+	let maxXSeen = 0;
+	let maxYSeen = 0;
+	for (let s = sMin; s <= sMax; s++) {
+		for (let d = -span; d <= span; d++) {
+			// x = (s + d) / 2 must be a whole number.
+			if (((s + d) & 1) !== 0) continue;
+			const x = (s + d) / 2;
+			const y = (s - d) / 2;
+			if (x < 0 || y < 0) continue;
+			cells.push({ x, y });
+			if (x > maxXSeen) maxXSeen = x;
+			if (y > maxYSeen) maxYSeen = y;
+		}
+	}
+
+	const maxX = maxXSeen + 1;
+	const maxY = maxYSeen + 1;
 	const heightMap: Array<Array<number>> = [];
 	for (let x = 0; x < maxX; x++) {
-		const column = new Array<number>(maxY).fill(0);
-		if (x >= 1 && x <= length) {
-			for (let y = 1; y <= depth; y++) column[y] = 1;
-		}
-		heightMap.push(column);
+		heightMap.push(new Array<number>(maxY).fill(0));
 	}
-	const doorX = Math.floor(maxX / 2);
-	const doorY = Math.floor(maxY / 2);
+	for (const { x, y } of cells) heightMap[x]![y] = 1;
+
+	// Door at (x-y)=0 so the camera centres the band horizontally; pick the
+	// first even depth so x === y lands on a real floor tile.
+	const doorS = sMin % 2 === 0 ? sMin : sMin + 1;
+	const doorX = doorS / 2;
+	const doorY = doorS / 2;
 	return new RoomModel(maxX, maxY, doorX, doorY, heightMap);
 }
 

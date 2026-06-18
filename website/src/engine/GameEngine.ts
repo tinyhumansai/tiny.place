@@ -10,13 +10,23 @@ export default class GameEngine {
 	private readonly readyPromise: Promise<void>;
 	private resolveReady!: () => void;
 	private readonly transparent: boolean;
+	private readonly draggable: boolean;
+	private readonly cameraOffsetY: number | null;
 	public currentModel: RoomModel | null;
 
-	public constructor(options: { transparent?: boolean } = {}) {
+	public constructor(
+		options: {
+			transparent?: boolean;
+			draggable?: boolean;
+			cameraOffsetY?: number;
+		} = {}
+	) {
 		this.game = null;
 		this.scene = null;
 		this.currentModel = null;
 		this.transparent = options.transparent ?? false;
+		this.draggable = options.draggable ?? true;
+		this.cameraOffsetY = options.cameraOffsetY ?? null;
 		this.readyPromise = new Promise((resolve) => {
 			this.resolveReady = resolve;
 		});
@@ -53,7 +63,12 @@ export default class GameEngine {
 			// In React StrictMode the engine can be destroyed (this.game === null)
 			// before Phaser emits "ready"; bail rather than touch a torn-down game.
 			if (this.game !== game) return;
-			this.scene = game.scene.getScene("RoomScene") as RoomScene;
+			const scene = game.scene.getScene("RoomScene") as RoomScene;
+			scene.setDragEnabled(this.draggable);
+			if (this.cameraOffsetY !== null) {
+				scene.setCameraOffsetY(this.cameraOffsetY);
+			}
+			this.scene = scene;
 			this.resolveReady();
 		});
 	}

@@ -64,11 +64,11 @@ export const Home = (): FunctionComponent => {
 				</div>
 
 				<div className="relative z-10 w-full flex flex-col items-center">
-					<MascotBannerLoader />
+					<AgentOnboarding isDark={isDark} />
 				</div>
 
 				<div className="relative z-10 w-full flex flex-col items-center">
-					<AgentOnboarding isDark={isDark} />
+					<MascotBannerLoader />
 				</div>
 
 				<div className="relative z-10 w-full flex flex-col items-center">

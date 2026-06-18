@@ -13,10 +13,15 @@ import type { Direction } from "@src/engine/types";
 // strip feels populated without the autonomy paths fighting over tiles.
 const MASCOT_COUNT = 13;
 
-// Floor strip dimensions (interior tiles). Wide + shallow so it spans the
-// banner horizontally; see createBannerRoom for the geometry.
-const STRIP_LENGTH = 30;
-const STRIP_DEPTH = 6;
+// Floor band geometry (see createBannerRoom). SPAN is the half-width in screen
+// tiles (±11 → ~700px wide); THICKNESS is the screen-depth in rows, kept small
+// so the band stays short enough to fit the 200px banner.
+const BAND_SPAN = 11;
+const BAND_THICKNESS = 4;
+
+// Nudge the camera so the mascots (which extend ~70px above their tile) sit
+// vertically centred in the short banner rather than running off the top.
+const CAMERA_OFFSET_Y = -10;
 
 // Transparent variant of the default theme: the canvas background and the walls
 // are fully transparent so only the floor + mascots show, blending into the page.
@@ -46,8 +51,12 @@ export const MascotBanner = (): FunctionComponent => {
 		const container = containerRef.current;
 		if (!container) return;
 
-		const engine = new GameEngine({ transparent: true });
-		const room = createBannerRoom(STRIP_LENGTH, STRIP_DEPTH);
+		const engine = new GameEngine({
+			transparent: true,
+			draggable: false,
+			cameraOffsetY: CAMERA_OFFSET_Y,
+		});
+		const room = createBannerRoom(BAND_SPAN, BAND_THICKNESS);
 		let cancelled = false;
 
 		engine.mount(container);

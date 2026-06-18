@@ -111,9 +111,13 @@ export default class RoomScene extends Phaser.Scene {
 	private isDragging: boolean;
 	private lastPointerX: number;
 	private lastPointerY: number;
+	private dragEnabled: boolean;
+	private cameraOffsetY: number;
 
 	public constructor() {
 		super({ key: "RoomScene" });
+		this.dragEnabled = true;
+		this.cameraOffsetY = CAMERA_CENTERED_OFFSET_Y;
 		this.tileRenderer = new RoomTileRenderer();
 		this.furnitureRenderer = new FurnitureRenderer();
 		this.furnitureSprites = [];
@@ -153,8 +157,18 @@ export default class RoomScene extends Phaser.Scene {
 		}
 	}
 
+	public setDragEnabled(enabled: boolean): void {
+		this.dragEnabled = enabled;
+		if (!enabled) this.isDragging = false;
+	}
+
+	public setCameraOffsetY(offset: number): void {
+		this.cameraOffsetY = offset;
+	}
+
 	private setupInput(): void {
 		this.input.on("pointerdown", (pointer: Phaser.Input.Pointer): void => {
+			if (!this.dragEnabled) return;
 			this.isDragging = true;
 			this.lastPointerX = pointer.x;
 			this.lastPointerY = pointer.y;
@@ -183,7 +197,7 @@ export default class RoomScene extends Phaser.Scene {
 			this.currentModel.doorY,
 			0
 		);
-		this.cameras.main.centerOn(door.x, door.y + CAMERA_CENTERED_OFFSET_Y);
+		this.cameras.main.centerOn(door.x, door.y + this.cameraOffsetY);
 	}
 
 	public loadRoom(model: RoomModel, theme: RoomTheme = DEFAULT_THEME): void {
