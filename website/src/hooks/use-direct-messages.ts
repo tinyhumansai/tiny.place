@@ -1,13 +1,11 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useApiClient } from "@src/common/api-context";
-import {
-	lookupAgentByEncryptionKey,
-	resolveEncryptionAddress,
-} from "@src/common/encryption-discovery";
+import { lookupAgentByEncryptionKey } from "@src/common/encryption-discovery";
+import { resolveDirectoryPeer } from "@src/common/peer-resolution";
 import {
 	groupKeyManager,
 	parseGroupKeyDistribution,
@@ -45,8 +43,14 @@ type UseDirectMessagesResult = {
 	enable: () => Promise<void>;
 	peers: Array<ConversationPeer>;
 	threads: Record<string, Array<DirectMessageEntry>>;
-	/** Resolves an @handle / agent id / raw encryption key to a peer and adds it. */
-	addPeer: (input: string) => Promise<void>;
+	/**
+	 * Resolves an @handle / agent id / raw encryption key to a peer and adds it.
+	 * Resolves to `true` on success, `false` on failure (with {@link addPeerError}
+	 * set) — never rejects, so fire-and-forget call sites can't leak a rejection.
+	 */
+	addPeer: (input: string) => Promise<boolean>;
+	/** Set when the last {@link addPeer} failed (e.g. an unresolvable handle). */
+	addPeerError: string | undefined;
 	send: (address: string, text: string) => Promise<void>;
 	isSending: boolean;
 	/** Marks every message in a peer's thread as read. */
@@ -80,6 +84,12 @@ export function useDirectMessages(): UseDirectMessagesResult {
 
 	const addressBook = useAddressBookStore((state) => state.entries);
 	const recordIdentity = useAddressBookStore((state) => state.record);
+
+	// Surfaced to the UI when adding a peer fails (e.g. an unresolvable handle),
+	// so the failure isn't swallowed by the fire-and-forget call site.
+	const [addPeerError, setAddPeerError] = useState<string | undefined>(
+		undefined
+	);
 
 	// Resolve each peer's label from the registry (handle / wallet id), falling
 	// back to whatever label the peer was stored with (a truncated key). This is
@@ -172,31 +182,51 @@ export function useDirectMessages(): UseDirectMessagesResult {
 		await enableIdentity();
 	}, [enableIdentity]);
 
-	const addPeer = useCallback(
-		async (input: string): Promise<void> => {
-			const trimmed = input.trim();
-			if (!trimmed) {
-				return;
-			}
-			if (trimmed.startsWith("@") || SOLANA_ADDRESS_PATTERN.test(trimmed)) {
-				const card = await walletClient.directory.getAgent(trimmed);
-				const address = resolveEncryptionAddress(card);
+	// Resolves a @handle / cryptoId via the directory (recording its identity) and
+	// adds it; a raw key is stored directly. Throws when resolution fails.
+	const resolveAndRecordPeer = useCallback(
+		async (recipient: string): Promise<void> => {
+			if (recipient.startsWith("@") || SOLANA_ADDRESS_PATTERN.test(recipient)) {
+				const peer = await resolveDirectoryPeer(walletClient, recipient);
 				// Record the encryption-key → identity mapping so this peer (and any
 				// future inbound messages from them) resolve to a real label.
 				recordIdentity({
-					encryptionKey: address,
-					agentId: card.agentId,
-					username: card.username,
+					encryptionKey: peer.address,
+					agentId: peer.agentId,
+					username: peer.username,
 				});
 				addPeerToStore({
-					address,
-					label: card.username ?? card.agentId,
+					address: peer.address,
+					label: peer.username ?? peer.agentId,
 				});
 				return;
 			}
-			addPeerToStore({ address: trimmed, label: `${trimmed.slice(0, 10)}…` });
+			addPeerToStore({
+				address: recipient,
+				label: `${recipient.slice(0, 10)}…`,
+			});
 		},
 		[walletClient, addPeerToStore, recordIdentity]
+	);
+
+	const addPeer = useCallback(
+		async (input: string): Promise<boolean> => {
+			const trimmed = input.trim();
+			if (!trimmed) {
+				return false;
+			}
+			setAddPeerError(undefined);
+			try {
+				await resolveAndRecordPeer(trimmed);
+				return true;
+			} catch (caught) {
+				setAddPeerError(
+					caught instanceof Error ? caught.message : `Could not add ${trimmed}`
+				);
+				return false;
+			}
+		},
+		[resolveAndRecordPeer]
 	);
 
 	const send = useCallback(
@@ -227,6 +257,7 @@ export function useDirectMessages(): UseDirectMessagesResult {
 		peers: resolvedPeers,
 		threads,
 		addPeer,
+		addPeerError,
 		send,
 		isSending: sendMutation.isPending,
 		markThreadRead,

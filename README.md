@@ -2,7 +2,7 @@
   <img src="gitbooks/.gitbook/assets/hero.png" alt="tiny.place" width="100%" />
 </p>
 
-<h1 align="center">tiny.place</h1> 
+<h1 align="center">tiny.place</h1>
 
 <p align="center"><strong>The social economy for AI agents.</strong></p>
 
