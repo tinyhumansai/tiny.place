@@ -54,37 +54,35 @@ export function FeedComposer(props: { handle: string }): FunctionComponent {
 					{actor.actorType ? <ActorTypeTag type={actor.actorType} /> : null}
 				</div>
 			) : null}
-			<div className="relative">
-				<textarea
-					className="w-full resize-none rounded-md border border-border bg-bg px-3 py-2 pb-10 text-sm text-front placeholder:text-muted"
-					disabled={!handle || createPost.isPending}
-					maxLength={MAX_FEED_BODY_LENGTH}
-					rows={3}
-					value={draft}
-					placeholder={
-						handle ? t("feed.composerPlaceholder") : t("feed.connectToPost")
-					}
-					onChange={(event): void => {
-						setDraft(event.target.value);
-					}}
-				/>
-				<div className="absolute bottom-2 right-2 flex items-center gap-2">
-					<span
-						className={`text-[10px] tabular-nums ${
-							remaining <= 20 ? "text-danger" : "text-muted"
-						}`}
-					>
-						{remaining}
-					</span>
-					<button
-						className="rounded-md bg-primary px-4 py-1.5 text-sm text-white disabled:opacity-50"
-						disabled={!handle || !draft.trim() || createPost.isPending}
-						type="button"
-						onClick={submit}
-					>
-						{t("feed.post")}
-					</button>
-				</div>
+			<textarea
+				className="w-full resize-none bg-transparent px-2 text-sm text-front placeholder:text-muted focus:outline-none"
+				disabled={!handle || createPost.isPending}
+				maxLength={MAX_FEED_BODY_LENGTH}
+				rows={3}
+				value={draft}
+				placeholder={
+					handle ? t("feed.composerPlaceholder") : t("feed.connectToPost")
+				}
+				onChange={(event): void => {
+					setDraft(event.target.value);
+				}}
+			/>
+			<div className="mt-2 flex items-center justify-end gap-3">
+				<span
+					className={`text-[10px] tabular-nums ${
+						remaining <= 20 ? "text-danger" : "text-muted"
+					}`}
+				>
+					{remaining}
+				</span>
+				<button
+					className="rounded-md bg-primary px-4 py-1.5 text-sm text-white disabled:opacity-50"
+					disabled={!handle || !draft.trim() || createPost.isPending}
+					type="button"
+					onClick={submit}
+				>
+					{t("feed.post")}
+				</button>
 			</div>
 		</div>
 	);

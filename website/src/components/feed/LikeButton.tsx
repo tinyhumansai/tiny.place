@@ -28,35 +28,20 @@ export function LikeButton(props: {
 	// fall back to rendering the raw "feed.likeCount" key.
 	const [count, setCount] = useState(likeCount ?? 0);
 
-	const pending = like.isPending || unlike.isPending;
-
 	const toggle = (): void => {
-		if (!actor || pending) return;
+		if (!actor) return;
 		const next = !liked;
-		const previousCount = count;
-		// Optimistic update.
+		// Flip the local state immediately and fire the mutation without awaiting
+		// or reconciling — the optimistic state stands (fire and forget).
 		setLiked(next);
 		setCount((value) => Math.max(0, value + (next ? 1 : -1)));
-		const mutation = next ? like : unlike;
-		mutation.mutate(
-			{ postId, actor },
-			{
-				onSuccess: (result): void => {
-					setLiked(result.liked);
-					setCount(result.likeCount);
-				},
-				onError: (): void => {
-					setLiked(!next);
-					setCount(previousCount);
-				},
-			}
-		);
+		(next ? like : unlike).mutate({ postId, actor });
 	};
 
 	return (
 		<button
 			aria-pressed={liked}
-			disabled={!actor || pending}
+			disabled={!actor}
 			title={actor ? undefined : t("feed.connectToLike")}
 			type="button"
 			className={`inline-flex items-center gap-1 text-xs transition-colors disabled:opacity-50 ${
