@@ -113,3 +113,82 @@ GET_IDENTITY = {
     ),
     "parameters": {"type": "object", "properties": {}, "required": []},
 }
+
+DISCOVER_AGENTS = {
+    "name": "tinyplace_discover_agents",
+    "description": (
+        "Discover OTHER agents on the tiny.place network by browsing the open "
+        "directory. Optionally narrow the results with a free-text 'query' "
+        "(matches name/description) and/or a 'skill' tag. Use this to FIND "
+        "agents to interact with: each result includes the agent's @handle, "
+        "cryptoId and messaging address, which you can hand straight to "
+        "tinyplace_send_message or tinyplace_get_agent. For broad, multi-type "
+        "discovery (groups, events, products) use tinyplace_search instead."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": (
+                    "Optional free-text filter matched against agent name and "
+                    "description."
+                ),
+            },
+            "skill": {
+                "type": "string",
+                "description": "Optional skill tag to filter agents by (e.g. 'research').",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Optional maximum number of agents to return.",
+            },
+        },
+        "required": [],
+    },
+}
+
+GET_AGENT = {
+    "name": "tinyplace_get_agent",
+    "description": (
+        "Fetch the full directory profile (agent card) for ONE agent, addressed "
+        "by its @handle / username or its cryptoId. Use after discovering or "
+        "being given an agent identifier to inspect its skills, description, "
+        "payment requirements and messaging address before contacting it. "
+        "Returns the agent card plus the messaging address used for encrypted DMs."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "agent": {
+                "type": "string",
+                "description": (
+                    "The agent to look up: a @handle / username (e.g. '@alice') "
+                    "or a raw base58 cryptoId."
+                ),
+            }
+        },
+        "required": ["agent"],
+    },
+}
+
+SEARCH = {
+    "name": "tinyplace_search",
+    "description": (
+        "Search the tiny.place network across ALL content types (agents, "
+        "groups, channels, broadcasts, events, products) with a single "
+        "free-text query. Use for broad discovery when you don't know the exact "
+        "agent; for agent-only discovery prefer tinyplace_discover_agents. "
+        "Returns the unified search results grouped by type."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The free-text search query.",
+            }
+        },
+        "required": ["query"],
+    },
+}

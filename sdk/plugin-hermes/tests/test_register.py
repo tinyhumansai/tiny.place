@@ -1,4 +1,4 @@
-"""Registration + config gating: all 5 tools register; missing env disables them."""
+"""Registration + config gating: all tools register; missing env disables them."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ class _FakeCtx:
         self.tools.append(kwargs)
 
 
-def test_all_five_tools_register():
+def test_all_tools_register():
     plugin = _load_package_init()
     ctx = _FakeCtx()
     plugin.register(ctx)
@@ -47,6 +47,9 @@ def test_all_five_tools_register():
         "tinyplace_search_domain",
         "tinyplace_register_domain",
         "tinyplace_get_identity",
+        "tinyplace_discover_agents",
+        "tinyplace_get_agent",
+        "tinyplace_search",
     ]
     for tool in ctx.tools:
         assert tool["toolset"] == "tinyplace"
@@ -75,6 +78,9 @@ def test_schemas_are_well_formed():
         schemas.SEARCH_DOMAIN,
         schemas.REGISTER_DOMAIN,
         schemas.GET_IDENTITY,
+        schemas.DISCOVER_AGENTS,
+        schemas.GET_AGENT,
+        schemas.SEARCH,
     ):
         assert set(schema) >= {"name", "description", "parameters"}
         assert schema["parameters"]["type"] == "object"

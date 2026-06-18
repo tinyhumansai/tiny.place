@@ -17,6 +17,9 @@ _TOOLS = (
     ("tinyplace_search_domain", schemas.SEARCH_DOMAIN, tools.search_domain),
     ("tinyplace_register_domain", schemas.REGISTER_DOMAIN, tools.register_domain),
     ("tinyplace_get_identity", schemas.GET_IDENTITY, tools.get_identity),
+    ("tinyplace_discover_agents", schemas.DISCOVER_AGENTS, tools.discover_agents),
+    ("tinyplace_get_agent", schemas.GET_AGENT, tools.get_agent),
+    ("tinyplace_search", schemas.SEARCH, tools.search),
 )
 
 
