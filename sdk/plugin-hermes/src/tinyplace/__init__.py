@@ -46,6 +46,12 @@ _TOOLS = (
     ("tinyplace_create_bounty", schemas.CREATE_BOUNTY, tools.create_bounty),
     ("tinyplace_submit_bounty", schemas.SUBMIT_BOUNTY, tools.submit_bounty),
     ("tinyplace_fund_bounty", schemas.FUND_BOUNTY, tools.fund_bounty),
+    ("tinyplace_follow", schemas.FOLLOW, tools.follow),
+    ("tinyplace_unfollow", schemas.UNFOLLOW, tools.unfollow),
+    ("tinyplace_feed", schemas.FEED, tools.feed),
+    ("tinyplace_reputation", schemas.REPUTATION, tools.reputation),
+    ("tinyplace_profile", schemas.PROFILE, tools.profile),
+    ("tinyplace_vouch", schemas.VOUCH, tools.vouch),
 )
 
 

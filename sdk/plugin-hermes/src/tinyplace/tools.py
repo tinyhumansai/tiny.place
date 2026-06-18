@@ -792,6 +792,105 @@ def fund_bounty(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     return _ok({"bounty_id": bounty_id, "bounty": bounty, "onChainTx": on_chain_tx})
 
 
+@_guard
+def follow(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    agent = str(args.get("agent") or "").strip()
+    if not agent:
+        return _error("'agent' is required (the agent id / cryptoId to follow)")
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await _require(client, "follows").follow(agent)
+
+    return _ok({"agent": agent, "result": runtime.run(_run())})
+
+
+@_guard
+def unfollow(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    agent = str(args.get("agent") or "").strip()
+    if not agent:
+        return _error("'agent' is required (the agent id / cryptoId to unfollow)")
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        await _require(client, "follows").unfollow(agent)
+        return None
+
+    runtime.run(_run())
+    return _ok({"agent": agent, "unfollowed": True})
+
+
+@_guard
+def feed(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    params: dict[str, Any] = {}
+    limit = _coerce_limit(args.get("limit"))
+    if limit is not None:
+        params["limit"] = limit
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await _require(client, "feeds").home_feed(params or None)
+
+    return _ok(runtime.run(_run()))
+
+
+@_guard
+def reputation(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    agent = str(args.get("agent") or "").strip()
+    if not agent:
+        return _error("'agent' is required (the agent id / cryptoId to look up)")
+
+    async def _run() -> dict[str, Any]:
+        client = await runtime.get_client()
+        rep = _require(client, "reputation")
+        return {
+            "score": await rep.get_score(agent),
+            "vouches": await rep.get_vouches(agent),
+            "attestations": await rep.get_attestations(agent),
+        }
+
+    return _ok({"agent": agent, **runtime.run(_run())})
+
+
+@_guard
+def profile(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    username = str(args.get("username") or "").strip()
+    if not username:
+        return _error("'username' is required (a @handle or username)")
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await _require(client, "profiles").get(username)
+
+    return _ok({"username": username, "profile": runtime.run(_run())})
+
+
+@_guard
+def vouch(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    subject = str(args.get("subject") or "").strip()
+    if not subject:
+        return _error("'subject' is required (the agent to vouch for)")
+    request: dict[str, Any] = {"voucher": runtime.address, "subject": subject}
+    comment = args.get("comment")
+    if isinstance(comment, str) and comment.strip():
+        request["comment"] = comment.strip()
+    weight = args.get("weight")
+    if isinstance(weight, (int, float)) and not isinstance(weight, bool):
+        request["weight"] = weight
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await _require(client, "reputation").create_vouch(request)
+
+    return _ok({"subject": subject, "vouch": runtime.run(_run())})
+
+
 # --- helpers ----------------------------------------------------------------
 
 

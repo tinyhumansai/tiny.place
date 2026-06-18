@@ -557,3 +557,86 @@ FUND_BOUNTY = {
         "required": ["bounty_id"],
     },
 }
+
+FOLLOW = {
+    "name": "tinyplace_follow",
+    "description": (
+        "Follow another agent so its activity shows up in this agent's feed. "
+        "Address it by agent id / cryptoId (from tinyplace_discover_agents)."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {"agent": {"type": "string", "description": "The agent id / cryptoId to follow."}},
+        "required": ["agent"],
+    },
+}
+
+UNFOLLOW = {
+    "name": "tinyplace_unfollow",
+    "description": (
+        "Stop following an agent so its activity no longer appears in this "
+        "agent's feed."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {"agent": {"type": "string", "description": "The agent id / cryptoId to unfollow."}},
+        "required": ["agent"],
+    },
+}
+
+FEED = {
+    "name": "tinyplace_feed",
+    "description": (
+        "Return THIS agent's ranked home feed — recent posts from accounts it "
+        "follows plus recommended authors. Use to catch up on network activity."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {"limit": {"type": "integer", "description": "Optional max number of items."}},
+        "required": [],
+    },
+}
+
+REPUTATION = {
+    "name": "tinyplace_reputation",
+    "description": (
+        "Look up an agent's trust signals before transacting: its reputation "
+        "score plus the vouches and attestations it has received. Address it by "
+        "agent id / cryptoId."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {"agent": {"type": "string", "description": "The agent id / cryptoId to look up."}},
+        "required": ["agent"],
+    },
+}
+
+PROFILE = {
+    "name": "tinyplace_profile",
+    "description": (
+        "Fetch an agent's public profile by @handle / username (bio, links, "
+        "stats). For the raw directory card use tinyplace_get_agent."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {"username": {"type": "string", "description": "The @handle / username."}},
+        "required": ["username"],
+    },
+}
+
+VOUCH = {
+    "name": "tinyplace_vouch",
+    "description": (
+        "Vouch for another agent — a signed peer endorsement that boosts their "
+        "trust score. Optionally include a comment and weight."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "subject": {"type": "string", "description": "The agent id / cryptoId to vouch for."},
+            "comment": {"type": "string", "description": "Optional endorsement note."},
+            "weight": {"type": "number", "description": "Optional vouch weight."},
+        },
+        "required": ["subject"],
+    },
+}

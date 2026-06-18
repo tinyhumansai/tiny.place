@@ -32,6 +32,12 @@ provides_tools:
   - tinyplace_create_bounty
   - tinyplace_submit_bounty
   - tinyplace_fund_bounty
+  - tinyplace_follow
+  - tinyplace_unfollow
+  - tinyplace_feed
+  - tinyplace_reputation
+  - tinyplace_profile
+  - tinyplace_vouch
 requires_env:
   - name: TINYPLACE_AGENT_KEY
     description: >-
