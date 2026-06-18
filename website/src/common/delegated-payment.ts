@@ -10,16 +10,27 @@ import {
 	SOLANA_USDC_MINT,
 } from "@tinyhumansai/tinyplace";
 
-import { createSolanaConnection } from "@src/common/solana-rpc";
+import { createSolanaConnection, solanaCluster } from "@src/common/solana-rpc";
+
+// Circle's devnet USDC mint. The SDK's SOLANA_USDC_MINT is the mainnet mint, so
+// a devnet stack with no explicit override must use this instead — a transfer
+// built against the mainnet mint reverts on devnet (the mint account and the
+// derived ATAs don't exist on the wrong cluster).
+const DEVNET_USDC_MINT = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 
 /**
- * The USDC mint to settle in. Defaults to the SDK's mainnet mint but is
- * overridable via NEXT_PUBLIC_SOLANA_USDC_MINT so devnet/test stacks (which use
- * a different mint) derive the correct token accounts. Mirrors the override used
- * by use-wallet-balances.ts.
+ * The USDC mint to settle in. An explicit NEXT_PUBLIC_SOLANA_USDC_MINT always
+ * wins (devnet/test stacks set it to the mint their backend advertises via GET
+ * /payments/supported). With no override it follows the active cluster so a
+ * devnet build never silently settles against the mainnet mint and reverts.
+ * Mirrors the override used by use-wallet-balances.ts.
  */
 export function publicUsdcMint(): string {
-	return process.env["NEXT_PUBLIC_SOLANA_USDC_MINT"] ?? SOLANA_USDC_MINT;
+	const override = process.env["NEXT_PUBLIC_SOLANA_USDC_MINT"]?.trim();
+	if (override) {
+		return override;
+	}
+	return solanaCluster() === "devnet" ? DEVNET_USDC_MINT : SOLANA_USDC_MINT;
 }
 
 /** The x402 payment-map metadata key carrying the base64 payer-signed transfer

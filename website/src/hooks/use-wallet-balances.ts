@@ -2,10 +2,10 @@ import { PublicKey } from "@solana/web3.js";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import {
 	SOLANA_TOKEN_PROGRAM_ID,
-	SOLANA_USDC_MINT,
 	type SupportedAsset,
 } from "@tinyhumansai/tinyplace";
 
+import { publicUsdcMint } from "@src/common/delegated-payment";
 import { queryKeys } from "@src/common/query-keys";
 import {
 	useTinyplaceConnection,
@@ -26,8 +26,7 @@ type WalletBalance = {
 type TokenAsset = Pick<SupportedAsset, "address" | "decimals" | "symbol">;
 
 const USDC_DECIMALS = 6;
-const PUBLIC_USDC_MINT =
-	process.env["NEXT_PUBLIC_SOLANA_USDC_MINT"] ?? SOLANA_USDC_MINT;
+const PUBLIC_USDC_MINT = publicUsdcMint();
 
 function shortMint(mint: string): string {
 	return `${mint.slice(0, 4)}...${mint.slice(-4)}`;

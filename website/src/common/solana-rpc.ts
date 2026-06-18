@@ -79,6 +79,11 @@ export function primarySolanaRpcUrl(): string {
 	return SOLANA_RPC_URL || clusterApiUrl(SOLANA_NETWORK);
 }
 
+/** The active Solana cluster (`devnet` | `mainnet-beta` | `testnet`). */
+export function solanaCluster(): Cluster {
+	return SOLANA_NETWORK;
+}
+
 export function solanaRpcEndpoints(): Array<string> {
 	const primary = primarySolanaRpcUrl();
 	const fallback = solanaRpcProxyUrl();
