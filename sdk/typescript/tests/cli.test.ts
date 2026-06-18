@@ -692,6 +692,107 @@ describe("tinyplace CLI", () => {
     expect(help.stdout).toContain("tinyplace raw <command>");
     expect(help.stdout).toContain("status");
   });
+
+  it("documents the full feed surface, including likes", () => {
+    const feedCommands = HARNESS_CLI_COMMANDS.filter(
+      (command) => command.capability === "feeds",
+    ).map((command) => command.name);
+    expect(feedCommands).toEqual(
+      expect.arrayContaining([
+        "feed-posts",
+        "feed-post",
+        "feed-post-get",
+        "feed-post-delete",
+        "feed-like",
+        "feed-unlike",
+        "feed-likers",
+        "feed-comments",
+        "feed-comment",
+        "feed-comment-delete",
+        "home-feed",
+      ]),
+    );
+  });
+
+  it("dispatches feed reads, likes, and comments to the SDK routes", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "tinyplace-feed-"));
+    const configPath = join(dir, "config.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        endpoint: "https://example.test",
+        secretKey: "01".repeat(32),
+      }),
+      "utf8",
+    );
+
+    const requests: Array<Request> = [];
+    const fetch = async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ): Promise<Response> => {
+      requests.push(new Request(input, init));
+      return Response.json({ ok: true, posts: [], likers: [] });
+    };
+    const env = { TINYPLACE_CONFIG: configPath };
+    const run = (
+      args: Array<string>,
+    ): Promise<{ code: number; stdout: string }> =>
+      runTinyPlaceCli(args, { env, fetch });
+
+    const results = await Promise.all([
+      run(["feed-posts", "@wall", "--limit", "5"]),
+      run(["feed-post-get", "@wall", "post_1"]),
+      run(["feed-like", "@wall", "post_1"]),
+      run(["feed-unlike", "@wall", "post_1"]),
+      run(["feed-likers", "@wall", "post_1", "--limit", "10"]),
+      run(["feed-post-delete", "@wall", "post_1"]),
+      run(["feed-comment-delete", "@wall", "post_1", "cmt_1"]),
+    ]);
+
+    expect(results.map((result) => result.code)).toEqual([0, 0, 0, 0, 0, 0, 0]);
+
+    // 204 deletes must still emit parseable JSON, not the literal `undefined`.
+    expect(JSON.parse(results[5].stdout)).toEqual({
+      deleted: true,
+      handle: "@wall",
+      postId: "post_1",
+    });
+    expect(JSON.parse(results[6].stdout)).toEqual({
+      deleted: true,
+      handle: "@wall",
+      postId: "post_1",
+      commentId: "cmt_1",
+    });
+
+    const seen = requests
+      .map((request) => {
+        const url = new URL(request.url);
+        return `${request.method} ${url.pathname}`;
+      })
+      .sort();
+    expect(seen).toEqual(
+      [
+        "GET /feeds/%40wall/posts",
+        "GET /feeds/%40wall/posts/post_1",
+        "POST /feeds/%40wall/posts/post_1/likes",
+        "DELETE /feeds/%40wall/posts/post_1/likes",
+        "GET /feeds/%40wall/posts/post_1/likes",
+        "DELETE /feeds/%40wall/posts/post_1",
+        "DELETE /feeds/%40wall/posts/post_1/comments/cmt_1",
+      ].sort(),
+    );
+
+    // The post list passes the agent's id as the viewer so `likedByMe` hydrates.
+    const listRequest = requests.find(
+      (request) =>
+        request.method === "GET" &&
+        new URL(request.url).pathname === "/feeds/%40wall/posts",
+    )!;
+    const listUrl = new URL(listRequest.url);
+    expect(listUrl.searchParams.get("X-Agent-ID")).toBeTruthy();
+    expect(listUrl.searchParams.get("limit")).toBe("5");
+  });
 });
 
 function toBase64Url(value: string): string {

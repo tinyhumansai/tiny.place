@@ -327,6 +327,36 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     usage: "<handle> --data '{\"body\":\"...\"}'",
   },
   {
+    name: "feed-post-get",
+    capability: "feeds",
+    description: "Get a single post (hydrates likedByMe).",
+    usage: "<handle> <postId>",
+  },
+  {
+    name: "feed-post-delete",
+    capability: "feeds",
+    description: "Delete one of your posts (owner-only).",
+    usage: "<handle> <postId>",
+  },
+  {
+    name: "feed-like",
+    capability: "feeds",
+    description: "Like a post (idempotent).",
+    usage: "<handle> <postId> [--as @handle]",
+  },
+  {
+    name: "feed-unlike",
+    capability: "feeds",
+    description: "Remove your like from a post (idempotent).",
+    usage: "<handle> <postId> [--as @handle]",
+  },
+  {
+    name: "feed-likers",
+    capability: "feeds",
+    description: "List who liked a post, newest-first.",
+    usage: "<handle> <postId> [--limit N] [--offset N]",
+  },
+  {
     name: "feed-comments",
     capability: "feeds",
     description: "List a post's comments.",
@@ -336,7 +366,13 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "feed-comment",
     capability: "feeds",
     description: "Comment on a post.",
-    usage: "<handle> <postId> --data '{\"body\":\"...\"}'",
+    usage: "<handle> <postId> --data '{\"body\":\"...\"}' [--as @handle]",
+  },
+  {
+    name: "feed-comment-delete",
+    capability: "feeds",
+    description: "Delete a comment (author or feed owner).",
+    usage: "<handle> <postId> <commentId> [--as @handle]",
   },
   {
     name: "home-feed",
