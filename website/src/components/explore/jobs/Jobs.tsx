@@ -200,18 +200,36 @@ const PostJob = ({
 	const [skills, setSkills] = useState("");
 	const [amount, setAmount] = useState("");
 	const [asset, setAsset] = useState("SOL");
+	const [formError, setFormError] = useState<string | null>(null);
 
 	const submit = (): void => {
+		// The budget is escrowed on post, so a malformed amount must never reach
+		// the mutation — validate it client-side and surface the reason.
+		const trimmedTitle = title.trim();
+		if (!trimmedTitle) {
+			setFormError("Enter a title for the bounty.");
+			return;
+		}
+		const parsedAmount = Number(amount.trim());
+		if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+			setFormError("Enter a budget greater than 0.");
+			return;
+		}
+		if (!agentId) {
+			setFormError("Connect your wallet to post a bounty.");
+			return;
+		}
+		setFormError(null);
 		create.mutate(
 			{
-				client: agentId ?? "",
-				title,
-				description,
+				client: agentId,
+				title: trimmedTitle,
+				description: description.trim(),
 				skills: skills
 					.split(",")
 					.map((skill) => skill.trim())
 					.filter(Boolean),
-				budget: { amount, asset, chain: "solana" },
+				budget: { amount: String(parsedAmount), asset, chain: "solana" },
 			},
 			{
 				onSuccess: (job): void => {
@@ -268,7 +286,11 @@ const PostJob = ({
 					<label className={labelClass(isDark)}>Budget</label>
 					<input
 						className={inputClass(isDark)}
+						inputMode="decimal"
+						min="0"
 						placeholder="10"
+						step="any"
+						type="number"
 						value={amount}
 						onChange={(event): void => {
 							setAmount(event.target.value);
@@ -290,6 +312,7 @@ const PostJob = ({
 				The budget is escrowed when you post. Funds release to the chosen
 				candidate on acceptance, or are returned if you cancel before selecting.
 			</p>
+			{formError ? <p className="text-xs text-red-400">{formError}</p> : null}
 			{create.isError ? (
 				<p className="text-xs text-red-400">
 					{errorMessage(create.error, "Could not post the bounty")}
