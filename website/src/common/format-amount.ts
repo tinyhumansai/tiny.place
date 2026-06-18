@@ -22,7 +22,10 @@ export function tokenDecimals(asset?: string): number {
  * Converts a base-unit (minor-unit) integer string to its decimal token value
  * as a string, e.g. ("1000000", 6) => "1". Returns "0" for non-finite input.
  */
-export function minorUnitsToDecimal(baseUnits: string, decimals: number): string {
+export function minorUnitsToDecimal(
+	baseUnits: string,
+	decimals: number
+): string {
 	const n = Number(baseUnits);
 	if (!Number.isFinite(n)) {
 		return "0";

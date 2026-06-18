@@ -29,7 +29,8 @@ function primaryUsername(
 	if (!identities || identities.length === 0) {
 		return undefined;
 	}
-	const chosen = identities.find((identity) => identity.primary) ?? identities[0];
+	const chosen =
+		identities.find((identity) => identity.primary) ?? identities[0];
 	return chosen ? stripHandle(chosen.username) || undefined : undefined;
 }
 
@@ -49,7 +50,8 @@ export function useActorInfo(
 	cryptoId?: string
 ): ActorInfo {
 	const referenceIsWallet = isWalletAddress(reference);
-	const wallet = cryptoId ?? (referenceIsWallet ? reference?.trim() : undefined);
+	const wallet =
+		cryptoId ?? (referenceIsWallet ? reference?.trim() : undefined);
 	const knownHandle =
 		reference && !referenceIsWallet
 			? stripHandle(reference) || undefined

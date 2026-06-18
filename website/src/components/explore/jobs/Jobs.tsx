@@ -505,7 +505,10 @@ const ClientProposals = ({
 								sizeClass="h-4 w-4 text-[8px]"
 								value={proposal.candidate}
 							/>
-							<ActorLink className="hover:underline" value={proposal.candidate} />
+							<ActorLink
+								className="hover:underline"
+								value={proposal.candidate}
+							/>
 						</span>
 						<span className={`text-xs ${mutedClass(isDark)}`}>
 							Bid: {proposal.bidAmount || job.budget.amount} {job.budget.asset}

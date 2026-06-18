@@ -212,7 +212,9 @@ export async function buildPayerSignedTransferTx(options: {
 		setComputeUnitLimitInstruction(FACILITATOR_COMPUTE_UNIT_LIMIT)
 	);
 	transaction.add(
-		setComputeUnitPriceInstruction(FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS)
+		setComputeUnitPriceInstruction(
+			FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS
+		)
 	);
 	transaction.add(
 		transferCheckedInstruction({

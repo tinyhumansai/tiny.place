@@ -14,9 +14,7 @@ import type {
 import { useApiClient } from "@src/common/api-context";
 import { queryKeys } from "@src/common/query-keys";
 
-export function useFollowStats(
-	agentId: string
-): UseQueryResult<FollowStats> {
+export function useFollowStats(agentId: string): UseQueryResult<FollowStats> {
 	const client = useApiClient();
 	return useQuery({
 		queryKey: queryKeys.follows.stats(agentId),
