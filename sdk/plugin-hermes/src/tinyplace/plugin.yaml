@@ -11,6 +11,9 @@ provides_tools:
   - tinyplace_search_domain
   - tinyplace_register_domain
   - tinyplace_get_identity
+  - tinyplace_discover_agents
+  - tinyplace_get_agent
+  - tinyplace_search
 requires_env:
   - name: TINYPLACE_AGENT_KEY
     description: >-

@@ -230,6 +230,66 @@ def get_identity(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     return _ok({"identity": identity, "address": runtime.address})
 
 
+@_guard
+def discover_agents(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    params: dict[str, Any] = {}
+    query = args.get("query")
+    if isinstance(query, str) and query.strip():
+        params["q"] = query.strip()
+    skill = args.get("skill")
+    if isinstance(skill, str) and skill.strip():
+        params["skill"] = skill.strip()
+    limit = _coerce_limit(args.get("limit"))
+    if limit is not None:
+        params["limit"] = limit
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await client.directory.list_agents(params or None)
+
+    response = runtime.run(_run())
+    agents = response.get("agents") if isinstance(response, dict) else None
+    summaries = [_agent_summary(a) for a in (agents or []) if isinstance(a, dict)]
+    return _ok({"agents": summaries, "count": len(summaries)})
+
+
+@_guard
+def get_agent(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    agent = str(args.get("agent") or "").strip()
+    if not agent:
+        return _error("'agent' is required (a @handle, username or cryptoId)")
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        # A raw cryptoId addresses the agent card directly; a @handle or bare
+        # username goes through resolve_user, which normalizes the handle (adds
+        # the leading '@' the directory's /directory/resolve/{name} route
+        # expects) and returns the identity record together with the agent card.
+        if _is_messaging_address(agent):
+            return await client.directory.get_agent(agent)
+        return await client.resolve_user(agent)
+
+    result = runtime.run(_run())
+    card = _agent_card(result)
+    return _ok({"agent": result, "messaging_address": _messaging_address(card)})
+
+
+@_guard
+def search(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    query = str(args.get("query") or "").strip()
+    if not query:
+        return _error("'query' is required (the free-text search query)")
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        return await client.search.unified(query)
+
+    return _ok({"results": runtime.run(_run())})
+
+
 # --- helpers ----------------------------------------------------------------
 
 
@@ -246,15 +306,9 @@ async def _resolve_address(runtime: TinyPlaceRuntime, to: str) -> str:
 
     client = await runtime.get_client()
     resolved = await client.resolve_user(to)
-    card = _agent_card(resolved)
-    metadata = card.get("metadata") if isinstance(card, dict) else None
-    if isinstance(metadata, dict):
-        advertised = metadata.get(_ENCRYPTION_PUBLIC_KEY_METADATA)
-        if isinstance(advertised, str) and advertised:
-            return advertised
-    public_key = card.get("publicKey") if isinstance(card, dict) else None
-    if isinstance(public_key, str) and public_key:
-        return public_key
+    address = _messaging_address(_agent_card(resolved))
+    if address:
+        return address
     raise ValueError(
         f"Could not resolve a messaging address for '{to}' — the agent has no "
         "advertised encryption key."
@@ -270,6 +324,52 @@ def _agent_card(resolved: Any) -> dict[str, Any]:
         if isinstance(candidate, dict):
             return candidate
     return resolved
+
+
+def _messaging_address(card: dict[str, Any]) -> str | None:
+    """The base64 messaging key an agent advertises, or ``None``.
+
+    Prefers the agent card's ``encryptionPublicKey`` metadata, falling back to
+    its ``publicKey`` (single-key agents). Mirrors
+    website/src/common/encryption-discovery.ts.
+    """
+    metadata = card.get("metadata") if isinstance(card, dict) else None
+    if isinstance(metadata, dict):
+        advertised = metadata.get(_ENCRYPTION_PUBLIC_KEY_METADATA)
+        if isinstance(advertised, str) and advertised:
+            return advertised
+    public_key = card.get("publicKey") if isinstance(card, dict) else None
+    return public_key if isinstance(public_key, str) and public_key else None
+
+
+def _agent_summary(card: dict[str, Any]) -> dict[str, Any]:
+    """A compact, model-friendly view of an agent card.
+
+    Carries the messaging address so a discovered agent can be handed straight
+    to ``tinyplace_send_message``.
+    """
+    return {
+        "agentId": card.get("agentId"),
+        "cryptoId": card.get("cryptoId"),
+        "username": card.get("username"),
+        "name": card.get("name"),
+        "description": card.get("description") or card.get("bio"),
+        "skills": card.get("skills"),
+        "tags": card.get("tags"),
+        "messaging_address": _messaging_address(card),
+    }
+
+
+def _coerce_limit(value: Any) -> int | None:
+    """Coerce a user-supplied limit to a positive int, else ``None``."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value > 0 else None
+    if isinstance(value, str) and value.strip().isdigit():
+        parsed = int(value.strip())
+        return parsed if parsed > 0 else None
+    return None
 
 
 def _is_messaging_address(value: str) -> bool:

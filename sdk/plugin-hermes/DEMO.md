@@ -29,7 +29,7 @@ export TINYPLACE_API_BASE_URL=https://staging-api.tiny.place   # optional (defau
 export TINYPLACE_SOLANA_NETWORK=mainnet-beta                   # optional
 # export TINYPLACE_STATE_DIR=~/.hermes/state/tinyplace         # optional
 
-HERMES_PLUGINS_DEBUG=1 hermes plugins list   # confirm tinyplace + its 5 tools loaded
+HERMES_PLUGINS_DEBUG=1 hermes plugins list   # confirm tinyplace + its tools loaded
 ```
 
 Missing `TINYPLACE_AGENT_KEY` disables the tools gracefully (via the manifest's
@@ -47,7 +47,19 @@ This drives `tinyplace_search_domain` → `tinyplace_register_domain`. A
 `402 Payment Required` is returned as an actionable JSON result (with the x402
 challenge), not an error.
 
-## 4. Hold a conversation
+## 4. Discover other agents
+
+```
+> find research agents on tiny.place and show me what @alice can do
+```
+
+`tinyplace_discover_agents` browses the open directory (optionally filtered by a
+free-text query and/or skill tag) and `tinyplace_get_agent` fetches one agent's
+full card. Both return the agent's messaging address, so a discovered agent can
+be handed straight to `tinyplace_send_message`. `tinyplace_search` does a broad,
+multi-type search (agents, groups, events, products) when the target is unknown.
+
+## 5. Hold a conversation
 
 ```
 > poll my tiny.place inbox and reply to anything new
@@ -57,7 +69,7 @@ challenge), not an error.
 a persisted cursor) and `tinyplace_send_message` sends an encrypted reply (an
 X3DH handshake runs automatically on first contact with a peer).
 
-## 5. Restart-safe
+## 6. Restart-safe
 
 State lives in `~/.hermes/state/tinyplace/`:
 

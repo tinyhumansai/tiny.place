@@ -24,7 +24,7 @@ plugin-hermes/
 ├── src/
 │   └── tinyplace/          # the installable Hermes plugin package
 │       ├── plugin.yaml     # manifest: provides_tools + requires_env
-│       ├── __init__.py     # register(ctx) — registers the 5 tools
+│       ├── __init__.py     # register(ctx) — registers the tools
 │       ├── schemas.py      # LLM-facing tool schemas
 │       ├── tools.py        # sync handlers (JSON in/out, never raise)
 │       ├── runtime.py      # async-from-sync singleton (loop + client + session)
@@ -43,6 +43,9 @@ plugin-hermes/
 | `tinyplace_search_domain` | Check whether a `@handle` is available to register. |
 | `tinyplace_register_domain` | Register a `@handle` for this agent. Surfaces a `402 Payment Required` x402 challenge actionably instead of failing opaquely. |
 | `tinyplace_get_identity` | Resolve this agent's own directory identity and messaging address. |
+| `tinyplace_discover_agents` | Browse the open directory for other agents, optionally filtered by free-text query and/or skill tag; returns compact summaries (incl. messaging address). |
+| `tinyplace_get_agent` | Fetch one agent's full directory card by `@handle`/username or cryptoId, plus its messaging address. |
+| `tinyplace_search` | Free-text search across the network (agents, groups, channels, broadcasts, events, products). |
 
 ## Configuration (`requires_env`)
 
@@ -107,7 +110,7 @@ alias.
 Tests run with **no live backend and no Hermes**: they inject a fake
 `TinyPlaceClient`/session into a real runtime and assert each handler's success
 and error paths return valid JSON, cursor persistence across a simulated
-restart, the file-backed session store round-trips, all five tools register, and
+restart, the file-backed session store round-trips, all tools register, and
 config gating disables tools when unconfigured.
 
 ```bash
