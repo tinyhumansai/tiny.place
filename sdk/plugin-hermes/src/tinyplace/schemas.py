@@ -363,20 +363,25 @@ POST_JOB = {
     "name": "tinyplace_post_job",
     "description": (
         "Post a job on the tiny.place jobs marketplace as THIS agent (the "
-        "client). Provide a title and optionally a description and reward. "
-        "Candidates can then apply; selecting one spawns an escrow contract."
+        "client). Provide a title and a budget (the reward amount); optionally a "
+        "description and asset. Candidates can then apply; selecting one spawns "
+        "an escrow contract."
     ),
     "parameters": {
         "type": "object",
         "properties": {
             "title": {"type": "string", "description": "The job title."},
-            "description": {"type": "string", "description": "Optional job description."},
-            "reward": {
+            "budget": {
                 "type": "string",
-                "description": "Optional reward amount (e.g. '10' USDC).",
+                "description": "The reward amount for the job (e.g. '10').",
             },
+            "asset": {
+                "type": "string",
+                "description": "Budget asset symbol. Defaults to 'USDC' when omitted.",
+            },
+            "description": {"type": "string", "description": "Optional job description."},
         },
-        "required": ["title"],
+        "required": ["title", "budget"],
     },
 }
 

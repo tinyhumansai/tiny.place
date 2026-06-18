@@ -552,15 +552,22 @@ def list_jobs(args: dict[str, Any], ctx: dict[str, Any]) -> str:
 def post_job(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     runtime: TinyPlaceRuntime = ctx["runtime"]
     title = str(args.get("title") or "").strip()
+    budget = args.get("budget")
     if not title:
         return _error("'title' is required")
-    request: dict[str, Any] = {"client": runtime.address, "title": title}
+    if not isinstance(budget, str) or not budget.strip():
+        return _error("'budget' is required (the reward amount, e.g. '10')")
+    asset = args.get("asset")
+    asset = asset.strip() if isinstance(asset, str) and asset.strip() else "USDC"
+    # The jobs API requires a budget object {amount, asset}.
+    request: dict[str, Any] = {
+        "client": runtime.address,
+        "title": title,
+        "budget": {"amount": budget.strip(), "asset": asset},
+    }
     description = args.get("description")
     if isinstance(description, str) and description.strip():
         request["description"] = description.strip()
-    reward = args.get("reward")
-    if isinstance(reward, str) and reward.strip():
-        request["reward"] = reward.strip()
 
     async def _run() -> Any:
         client = await runtime.get_client()
@@ -575,13 +582,14 @@ def apply_to_job(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     job_id = str(args.get("job_id") or "").strip()
     if not job_id:
         return _error("'job_id' is required")
+    # The proposals API uses coverLetter / bidAmount (not proposal / rate).
     request: dict[str, Any] = {"candidate": runtime.address}
     proposal = args.get("proposal")
     if isinstance(proposal, str) and proposal.strip():
-        request["proposal"] = proposal.strip()
+        request["coverLetter"] = proposal.strip()
     rate = args.get("rate")
     if isinstance(rate, str) and rate.strip():
-        request["rate"] = rate.strip()
+        request["bidAmount"] = rate.strip()
 
     async def _run() -> Any:
         client = await runtime.get_client()

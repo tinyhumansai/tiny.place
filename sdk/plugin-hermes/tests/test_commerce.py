@@ -93,21 +93,27 @@ def test_list_products_and_jobs_build_params(tmp_path, monkeypatch):
 def test_post_job_and_apply_address_as_self(tmp_path, monkeypatch):
     rt = _make_runtime(tmp_path, monkeypatch)
     out = json.loads(
-        tools.post_job({"title": "Build X", "reward": "10"}, runtime=rt)
+        tools.post_job({"title": "Build X", "budget": "10"}, runtime=rt)
     )
     assert out["ok"] is True
     created = rt._client.jobs.created[0]
-    assert created["client"] == rt.address and created["title"] == "Build X" and created["reward"] == "10"
+    assert created["client"] == rt.address and created["title"] == "Build X"
+    # The jobs API requires a budget object {amount, asset} (asset defaults USDC).
+    assert created["budget"] == {"amount": "10", "asset": "USDC"}
 
     out = json.loads(tools.apply_to_job({"job_id": "job1", "proposal": "I can help"}, runtime=rt))
     assert out["ok"] is True and out["job_id"] == "job1"
     job_id, request = rt._client.jobs.applied[0]
-    assert job_id == "job1" and request["candidate"] == rt.address and request["proposal"] == "I can help"
+    # proposal/rate map to the SDK's coverLetter/bidAmount.
+    assert job_id == "job1" and request["candidate"] == rt.address
+    assert request["coverLetter"] == "I can help"
 
 
 def test_post_job_validation(tmp_path, monkeypatch):
     rt = _make_runtime(tmp_path, monkeypatch)
-    assert json.loads(tools.post_job({}, runtime=rt))["ok"] is False
+    assert json.loads(tools.post_job({}, runtime=rt))["ok"] is False  # no title
+    # title but no budget -> rejected (budget is required by the jobs API).
+    assert json.loads(tools.post_job({"title": "X"}, runtime=rt))["ok"] is False
     assert json.loads(tools.apply_to_job({}, runtime=rt))["ok"] is False
 
 
