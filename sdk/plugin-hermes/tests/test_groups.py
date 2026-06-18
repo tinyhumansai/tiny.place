@@ -22,7 +22,14 @@ class _FakeGroups:
     def __init__(self) -> None:
         self.list_params: object = "<unset>"
         self.joined: list[tuple[str, object]] = []
-        self.members_result = {"members": [{"agentId": "a"}, {"agentId": "b"}]}
+        self.members_result = {
+            "members": [
+                {"agentId": "a", "status": "active"},
+                {"agentId": "b", "status": "active"},
+                # Pending/approval-queue member: must NOT receive the sender key.
+                {"agentId": "pending", "status": "pending"},
+            ]
+        }
 
     async def list(self, params=None):
         self.list_params = params
@@ -116,6 +123,7 @@ def test_send_group_message_uses_epoch_and_members(tmp_path, monkeypatch):
     assert out["epoch"] == 2 and out["recipients"] == 2 and out["text"] == "hi"
     # epoch from group metadata, members from groups.members, addressed as self.
     assert captured["group_id"] == "grp1" and captured["epoch"] == 2
+    # Only active members receive the sender key — the pending member is excluded.
     assert captured["members"] == ["a", "b"]
     assert captured["sender"] == rt.address and captured["enc_address"] == rt.address
 

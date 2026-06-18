@@ -516,11 +516,16 @@ def _require_groups(client: Any) -> Any:
 
 
 def _group_member_ids(members_resp: Any) -> list[str]:
-    """Extract member agent ids (cryptoIds) from a groups.members() response."""
+    """Active member agent ids (cryptoIds) from a groups.members() response.
+
+    Only ``status == "active"`` members are returned: the sender key must not be
+    handed to pending/approval-queue or grace/removed members, who aren't allowed
+    to read the channel. Mirrors the website's ``member.status === "active"``.
+    """
     members = members_resp.get("members") if isinstance(members_resp, dict) else None
     ids: list[str] = []
     for member in members or []:
-        if not isinstance(member, dict):
+        if not isinstance(member, dict) or member.get("status") != "active":
             continue
         identifier = member.get("agentId") or member.get("cryptoId")
         if isinstance(identifier, str) and identifier:
