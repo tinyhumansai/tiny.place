@@ -8,6 +8,7 @@ agent with local Signal keys but no server bundle for peers to fetch.
 from __future__ import annotations
 
 import base64
+import json
 
 import pytest
 
@@ -66,6 +67,33 @@ def test_bootstrap_retries_publication_until_it_succeeds(tmp_path, monkeypatch):
     assert keys.rotate_calls == 2  # retried after the first failure
     assert keys.upload_calls == 1  # only ran once publication got past rotate
 
-    # A subsequent run is a no-op now that the marker exists.
+    # A subsequent run is a no-op now that the marker exists for this address.
     rt.run(rt.ensure_messaging_keys())
     assert keys.rotate_calls == 2
+
+
+def test_republishes_when_address_changes(tmp_path, monkeypatch):
+    # A marker left by a previous run under a DIFFERENT address (e.g. the old
+    # base64 form) must not suppress publication under the current address.
+    monkeypatch.setenv(cfg.ENV_AGENT_KEY, _SEED)
+    monkeypatch.setenv(cfg.ENV_STATE_DIR, str(tmp_path))
+    rt = runtime_mod.load_runtime()
+    keys = _FakeKeys()
+    rt._client = _FakeClient(keys)
+    rt._session = object()
+
+    # Simulate a stale marker written under a now-defunct address.
+    rt._keys_published_path.parent.mkdir(parents=True, exist_ok=True)
+    rt._keys_published_path.write_text(
+        json.dumps({"published": True, "address": "OLD_BASE64_ADDRESS"}), "utf-8"
+    )
+
+    rt.run(rt.ensure_messaging_keys())
+
+    # It re-published under the current address and rewrote the marker.
+    assert keys.rotate_calls == 1
+    assert json.loads(rt._keys_published_path.read_text())["address"] == rt.address
+
+    # Now it's a no-op for the current address.
+    rt.run(rt.ensure_messaging_keys())
+    assert keys.rotate_calls == 1

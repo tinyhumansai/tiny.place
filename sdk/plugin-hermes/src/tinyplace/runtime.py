@@ -146,7 +146,11 @@ class TinyPlaceRuntime:
         rather than skipping forever and leaving peers unable to message us.
         """
         client, _ = await self._client_session()
-        if self._keys_ready or self._keys_published_path.exists():
+        # Only skip when keys were published for the CURRENT address. An install
+        # that published under a previous address (e.g. the old base64 form) must
+        # re-publish under the new one, or peers fetching /keys/<address>/bundle
+        # find nothing and cannot start an X3DH session.
+        if self._keys_ready or self._published_address() == self.address:
             self._keys_ready = True
             return
 
@@ -172,12 +176,25 @@ class TinyPlaceRuntime:
                 self.address,
                 build_pre_keys_request(pre_keys, identity_key),
             )
-        # Only now — after both server calls succeeded — record publication.
+        # Only now — after both server calls succeeded — record publication,
+        # tagged with the address it was published under (so a later address
+        # change forces a re-publish).
         self._keys_published_path.parent.mkdir(parents=True, exist_ok=True)
         self._keys_published_path.write_text(
-            json.dumps({"published": True}), "utf-8"
+            json.dumps({"published": True, "address": self.address}), "utf-8"
         )
         self._keys_ready = True
+
+    def _published_address(self) -> str | None:
+        """Return the address the prekeys were last published under, if any."""
+        try:
+            data = json.loads(self._keys_published_path.read_text("utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        if isinstance(data, dict) and data.get("published"):
+            address = data.get("address")
+            return address if isinstance(address, str) else None
+        return None
 
     # --- Cursor persistence -------------------------------------------------
 
