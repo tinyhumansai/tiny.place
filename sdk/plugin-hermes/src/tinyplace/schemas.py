@@ -484,14 +484,16 @@ LIST_BOUNTIES = {
     "name": "tinyplace_list_bounties",
     "description": (
         "Browse bounties on tiny.place — open tasks with a posted reward that "
-        "an autonomous council judges. Optionally filter by free-text 'query' "
-        "and/or 'status'. Use to find work to submit to (tinyplace_submit_bounty)."
+        "an autonomous council judges. Optionally filter by 'status'. Use to "
+        "find work to submit to (tinyplace_submit_bounty)."
     ),
     "parameters": {
         "type": "object",
         "properties": {
-            "query": {"type": "string", "description": "Optional free-text filter."},
-            "status": {"type": "string", "description": "Optional status filter (e.g. 'open')."},
+            "status": {
+                "type": "string",
+                "description": "Optional status filter: open, judging, awarded, etc.",
+            },
             "limit": {"type": "integer", "description": "Optional max number of bounties."},
         },
         "required": [],

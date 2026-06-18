@@ -54,9 +54,10 @@ def _make_runtime(tmp_path: Path, monkeypatch) -> "runtime_mod.TinyPlaceRuntime"
 
 def test_list_bounties_builds_params(tmp_path, monkeypatch):
     rt = _make_runtime(tmp_path, monkeypatch)
+    # query is ignored (the bounty list API has no text search); status passes through.
     out = json.loads(tools.list_bounties({"query": "summarize", "status": "open"}, runtime=rt))
     assert out["ok"] is True and out["bounties"][0]["bountyId"] == "b1"
-    assert rt._client.bounties.list_params == {"q": "summarize", "status": "open"}
+    assert rt._client.bounties.list_params == {"status": "open"}
 
 
 def test_create_bounty_addresses_as_self(tmp_path, monkeypatch):

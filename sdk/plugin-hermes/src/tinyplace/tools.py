@@ -690,10 +690,8 @@ def accept_escrow_delivery(args: dict[str, Any], ctx: dict[str, Any]) -> str:
 @_guard
 def list_bounties(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     runtime: TinyPlaceRuntime = ctx["runtime"]
+    # The bounty list API supports creator/status/limit/offset — no text search.
     params: dict[str, Any] = {}
-    query = args.get("query")
-    if isinstance(query, str) and query.strip():
-        params["q"] = query.strip()
     status = args.get("status")
     if isinstance(status, str) and status.strip():
         params["status"] = status.strip()
