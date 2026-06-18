@@ -9,6 +9,8 @@ from .api import (
     DirectoryApi,
     DocsApi,
     EscrowApi,
+    FeedsApi,
+    FollowsApi,
     GroupsApi,
     InboxApi,
     JobsApi,
@@ -16,7 +18,9 @@ from .api import (
     MarketplaceApi,
     MessagesApi,
     PaymentsApi,
+    ProfilesApi,
     RegistryApi,
+    ReputationApi,
     SearchApi,
 )
 from .auth import AdminSigningOptions
@@ -60,6 +64,10 @@ class TinyPlaceClient:
             self.http, signer, signer.public_key_base64 if signer else None
         )
         self.bounties = BountiesApi(self.http, signer)
+        self.follows = FollowsApi(self.http)
+        self.feeds = FeedsApi(self.http)
+        self.profiles = ProfilesApi(self.http)
+        self.reputation = ReputationApi(self.http, signer)
 
     async def __aenter__(self) -> "TinyPlaceClient":
         return self

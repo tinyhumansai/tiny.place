@@ -110,6 +110,9 @@ class HttpClient:
     async def post_admin(self, path: str, body: Json = None) -> Json:
         return await self._request("POST", path, body=body, auth="admin")
 
+    async def post_agent_auth(self, path: str, body: Json = None) -> Json:
+        return await self._request("POST", path, body=body, auth="agent")
+
     async def post_directory_auth(self, path: str, body: Json = None) -> Json:
         return await self._request("POST", path, body=body, auth="directory")
 
