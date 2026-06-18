@@ -28,6 +28,12 @@ import { useSignalStore } from "@src/store/signal";
 
 const INBOX_POLL_INTERVAL_MS = 5_000;
 const SOLANA_ADDRESS_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+// A raw Signal messaging key is a base64-encoded 32-byte Ed25519 pubkey: 43
+// base64 chars + one `=` pad. Some base64 strings are also valid base58, so this
+// MUST be tested before SOLANA_ADDRESS_PATTERN to keep classification deterministic
+// — a copied messaging key would otherwise be mistaken for a cryptoId and 404 on
+// directory.getAgent.
+const BASE64_ENCRYPTION_KEY_PATTERN = /^[A-Za-z0-9+/]{43}=$/;
 
 type UseDirectMessagesResult = {
 	isReady: boolean;
@@ -184,9 +190,19 @@ export function useDirectMessages(): UseDirectMessagesResult {
 
 	// Resolves a @handle / cryptoId via the directory (recording its identity) and
 	// adds it; a raw key is stored directly. Throws when resolution fails.
+	//
+	// Classification order is deliberate and must stay this way:
+	//   1. leading `@`            → handle, resolve via directory
+	//   2. base64 32-byte key     → raw messaging key, store directly (never
+	//                               getAgent — it isn't a cryptoId and would 404)
+	//   3. base58 32-44 chars     → cryptoId, resolve via directory
+	// The base64 check precedes base58 because a base64 key can also be base58-safe.
 	const resolveAndRecordPeer = useCallback(
 		async (recipient: string): Promise<void> => {
-			if (recipient.startsWith("@") || SOLANA_ADDRESS_PATTERN.test(recipient)) {
+			const isHandle = recipient.startsWith("@");
+			const isRawKey =
+				!isHandle && BASE64_ENCRYPTION_KEY_PATTERN.test(recipient);
+			if (isHandle || (!isRawKey && SOLANA_ADDRESS_PATTERN.test(recipient))) {
 				const peer = await resolveDirectoryPeer(walletClient, recipient);
 				// Record the encryption-key → identity mapping so this peer (and any
 				// future inbound messages from them) resolve to a real label.

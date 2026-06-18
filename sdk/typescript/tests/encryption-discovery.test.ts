@@ -5,7 +5,48 @@ import type { AgentCard } from "../src/index.js";
 import {
   ENCRYPTION_PUBLIC_KEY_METADATA,
   publishEncryptionKey,
+  resolveEncryptionAddress,
 } from "../src/messaging/discovery.js";
+
+function makeCard(overrides: Partial<AgentCard>): AgentCard {
+  return {
+    agentId: "agent-1",
+    name: "Agent One",
+    cryptoId: "agent-1",
+    publicKey: "WALLET_KEY_B64",
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
+    ...overrides,
+  };
+}
+
+describe("resolveEncryptionAddress", () => {
+  it("returns the advertised encryption key", () => {
+    const card = makeCard({
+      metadata: { [ENCRYPTION_PUBLIC_KEY_METADATA]: "ENC_KEY_B64" },
+    });
+    expect(resolveEncryptionAddress(card)).toBe("ENC_KEY_B64");
+  });
+
+  it("throws (never falls back to the wallet publicKey) when no encryption key is advertised", () => {
+    // Regression: falling back to card.publicKey addressed messages to the
+    // identity key, which has no published Signal bundle — the first send then
+    // 404s on keys.getBundle. Resolving must fail loudly instead.
+    const card = makeCard({ metadata: {} });
+    expect(() => resolveEncryptionAddress(card)).toThrowError(
+      /hasn't enabled encrypted messaging/,
+    );
+  });
+
+  it("throws when the advertised key is an empty string", () => {
+    const card = makeCard({
+      metadata: { [ENCRYPTION_PUBLIC_KEY_METADATA]: "" },
+    });
+    expect(() => resolveEncryptionAddress(card)).toThrowError(
+      /hasn't enabled encrypted messaging/,
+    );
+  });
+});
 
 describe("publishEncryptionKey", () => {
   it("seeds the wallet publicKey when creating a card for a fresh wallet", async () => {

@@ -71,22 +71,24 @@ export async function lookupAgentByEncryptionKey(
 
 /**
  * Resolves the messaging/encryption address (base64 Ed25519 pubkey) for an agent
- * card. Prefers the explicitly advertised encryption key; falls back to the card's
- * own `publicKey`, which covers single-key agents (e.g. the CLI) whose messaging
- * address is their identity key.
+ * card: the encryption key the agent advertises under
+ * {@link ENCRYPTION_PUBLIC_KEY_METADATA}.
+ *
+ * This MUST NOT fall back to the card's `publicKey` (the wallet/identity key). An
+ * agent that hasn't published an encryption key also has no Signal key bundle, so
+ * addressing a message to its identity key only fails later — the first
+ * `keys.getBundle` 404s. Throwing here surfaces an actionable error at resolve
+ * time instead of an opaque 404 at send time. Callers that fan out to multiple
+ * peers (e.g. group key handoff) catch this and skip the un-enabled member.
  */
 export function resolveEncryptionAddress(card: AgentCard): string {
   const advertised = card.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA];
-  const address =
-    typeof advertised === "string" && advertised.length > 0
-      ? advertised
-      : card.publicKey;
-  if (!address) {
+  if (typeof advertised !== "string" || advertised.length === 0) {
     throw new Error(
-      `Agent ${card.agentId} has no encryption public key or wallet public key`,
+      `Agent ${card.agentId} hasn't enabled encrypted messaging yet`,
     );
   }
-  return address;
+  return advertised;
 }
 
 /**
