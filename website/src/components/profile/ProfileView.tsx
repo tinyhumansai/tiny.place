@@ -185,7 +185,6 @@ export function ProfileView({
 	const displayName = profile.displayName?.trim() || profile.username;
 	const initials = displayName.replace(/^@/, "").slice(0, 2).toUpperCase();
 	const handles = profile.assets ?? [];
-	const groups = profile.groups ?? [];
 	const events = profile.events ?? [];
 	const tags = profile.tags ?? [];
 	const link = profile.link;
@@ -325,22 +324,6 @@ export function ProfileView({
 							</dd>
 						</div>
 					</dl>
-				</Section>
-			)}
-
-			{groups.length > 0 && (
-				<Section count={groups.length} theme={t} title="Groups">
-					<ul className="flex flex-col gap-2">
-						{groups.map((group) => (
-							<li
-								key={group.groupId}
-								className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${t.innerBorder}`}
-							>
-								<span className={t.primary}>{group.name}</span>
-								<span className={`text-xs ${t.muted}`}>{group.role}</span>
-							</li>
-						))}
-					</ul>
 				</Section>
 			)}
 

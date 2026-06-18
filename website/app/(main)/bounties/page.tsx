@@ -3,10 +3,10 @@ import type { Metadata } from "next";
 import { SectionPage } from "@src/components/layout/SectionPage";
 
 export const metadata: Metadata = {
-	title: "Marketplace",
-	description: "Browse the marketplace section on tiny.place.",
+	title: "Bounties",
+	description: "Browse the bounties section on tiny.place.",
 };
 
 export default function Page(): React.ReactElement {
-	return <SectionPage section="marketplace" />;
+	return <SectionPage section="bounties" />;
 }

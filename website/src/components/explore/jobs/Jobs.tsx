@@ -5,11 +5,13 @@
 // references between them are safe.
 /* eslint-disable no-use-before-define */
 
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { JobPosting, Proposal } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
+import { ActorAvatar, ActorLink } from "@src/components/profile/ActorLink";
 import { Chip } from "@src/components/ui/Chip";
 import {
 	useAdjudicateJobDispute,
@@ -35,10 +37,14 @@ import {
 	strongClass,
 } from "../marketplace/shared";
 
-type View =
-	| { kind: "browse" }
-	| { kind: "post" }
-	| { kind: "detail"; jobId: string };
+const tabs = ["browse", "post"] as const;
+
+type Tab = (typeof tabs)[number];
+
+const tabLabels: Record<Tab, string> = {
+	browse: "Browse",
+	post: "Post a Bounty",
+};
 
 function statusTone(status: string): string {
 	switch (status) {
@@ -70,58 +76,58 @@ function StatusBadge({ status }: { status: string }): FunctionComponent {
 }
 
 export const Jobs = ({ isDark }: { isDark: boolean }): FunctionComponent => {
-	const [view, setView] = useState<View>({ kind: "browse" });
+	// Everything lives in the URL: `/bounties` and `/bounties/post` are the tabs,
+	// and `/bounties/<jobId>` is a specific bounty (any non-tab second segment is
+	// treated as a bounty id), so an open bounty is shareable and survives reload.
+	const pathname = usePathname();
+	const router = useRouter();
+	const segments = pathname.split("/").filter(Boolean);
+	const basePath = `/${segments[0] ?? "bounties"}`;
+	const segment = segments[1];
+	const isTabSegment = segment === "browse" || segment === "post";
+	const detailJobId =
+		segment && !isTabSegment ? decodeURIComponent(segment) : null;
+	const activeTab: Tab = segment === "post" ? "post" : "browse";
+
+	const goTab = (tab: Tab): void => {
+		router.push(tab === "browse" ? basePath : `${basePath}/${tab}`);
+	};
+	const openJob = (jobId: string): void => {
+		router.push(`${basePath}/${encodeURIComponent(jobId)}`);
+	};
 
 	return (
 		<div className="space-y-3">
 			<div className="flex items-center justify-between">
 				<div className="flex gap-1">
-					<Chip
-						active={view.kind === "browse"}
-						isDark={isDark}
-						onClick={(): void => {
-							setView({ kind: "browse" });
-						}}
-					>
-						Browse
-					</Chip>
-					<Chip
-						active={view.kind === "post"}
-						isDark={isDark}
-						onClick={(): void => {
-							setView({ kind: "post" });
-						}}
-					>
-						Post a job
-					</Chip>
+					{tabs.map((tab) => (
+						<Chip
+							key={tab}
+							active={detailJobId === null && activeTab === tab}
+							isDark={isDark}
+							onClick={(): void => {
+								goTab(tab);
+							}}
+						>
+							{tabLabels[tab]}
+						</Chip>
+					))}
 				</div>
 			</div>
 
-			{view.kind === "browse" ? (
-				<BrowseJobs
-					isDark={isDark}
-					onOpen={(jobId): void => {
-						setView({ kind: "detail", jobId });
-					}}
-				/>
-			) : null}
-			{view.kind === "post" ? (
-				<PostJob
-					isDark={isDark}
-					onCreated={(jobId): void => {
-						setView({ kind: "detail", jobId });
-					}}
-				/>
-			) : null}
-			{view.kind === "detail" ? (
+			{detailJobId !== null ? (
 				<JobDetail
 					isDark={isDark}
-					jobId={view.jobId}
+					jobId={detailJobId}
 					onBack={(): void => {
-						setView({ kind: "browse" });
+						router.push(basePath);
 					}}
 				/>
-			) : null}
+			) : activeTab === "post" ? (
+				<PostJob isDark={isDark} onCreated={openJob} />
+			) : (
+				<BrowseJobs isDark={isDark} onOpen={openJob} />
+			)}
 		</div>
 	);
 };
@@ -136,12 +142,12 @@ const BrowseJobs = ({
 	const { data, isLoading } = useJobs();
 	const jobs = data?.jobs ?? [];
 	if (isLoading) {
-		return <p className={`text-xs ${mutedClass(isDark)}`}>Loading jobs…</p>;
+		return <p className={`text-xs ${mutedClass(isDark)}`}>Loading bounties…</p>;
 	}
 	if (jobs.length === 0) {
 		return (
 			<p className={`text-xs ${mutedClass(isDark)}`}>
-				No jobs posted yet. Be the first to post one.
+				No bounties posted yet. Be the first to post one.
 			</p>
 		);
 	}
@@ -218,7 +224,7 @@ const PostJob = ({
 	if (!agentId) {
 		return (
 			<p className={`text-xs ${mutedClass(isDark)}`}>
-				Connect your wallet to post a job.
+				Connect your wallet to post a bounty.
 			</p>
 		);
 	}
@@ -286,7 +292,7 @@ const PostJob = ({
 			</p>
 			{create.isError ? (
 				<p className="text-xs text-red-400">
-					{errorMessage(create.error, "Could not post the job")}
+					{errorMessage(create.error, "Could not post the bounty")}
 				</p>
 			) : null}
 			<button
@@ -315,7 +321,7 @@ const JobDetail = ({
 	const isClient = Boolean(agentId && job && agentId === job.client);
 
 	if (isLoading || !job) {
-		return <p className={`text-xs ${mutedClass(isDark)}`}>Loading job…</p>;
+		return <p className={`text-xs ${mutedClass(isDark)}`}>Loading bounty…</p>;
 	}
 
 	return (
@@ -342,9 +348,23 @@ const JobDetail = ({
 							{job.budget.amount} {job.budget.asset}
 						</span>
 					</span>
-					<span>Client: {job.client}</span>
+					<span className="inline-flex items-center gap-1.5">
+						Client:
+						<ActorAvatar sizeClass="h-4 w-4 text-[8px]" value={job.client} />
+						<ActorLink className="hover:underline" value={job.client} />
+					</span>
 					{job.selectedCandidate ? (
-						<span>Provider: {job.selectedCandidate}</span>
+						<span className="inline-flex items-center gap-1.5">
+							Provider:
+							<ActorAvatar
+								sizeClass="h-4 w-4 text-[8px]"
+								value={job.selectedCandidate}
+							/>
+							<ActorLink
+								className="hover:underline"
+								value={job.selectedCandidate}
+							/>
+						</span>
 					) : null}
 				</div>
 			</div>
@@ -478,8 +498,14 @@ const ClientProposals = ({
 					className={`${cardClass(isDark)} space-y-1`}
 				>
 					<div className="flex items-center justify-between gap-2">
-						<span className={`text-xs font-semibold ${strongClass(isDark)}`}>
-							{proposal.candidate}
+						<span
+							className={`inline-flex items-center gap-1.5 text-xs font-semibold ${strongClass(isDark)}`}
+						>
+							<ActorAvatar
+								sizeClass="h-4 w-4 text-[8px]"
+								value={proposal.candidate}
+							/>
+							<ActorLink className="hover:underline" value={proposal.candidate} />
 						</span>
 						<span className={`text-xs ${mutedClass(isDark)}`}>
 							Bid: {proposal.bidAmount || job.budget.amount} {job.budget.asset}

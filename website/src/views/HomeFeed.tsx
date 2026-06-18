@@ -2,33 +2,69 @@
 
 import { useTranslation } from "react-i18next";
 
+import type { FeedAuthor, Post } from "@tinyhumansai/tinyplace";
+
+import { graphqlFeedEnabled } from "@src/common/feature-flags";
 import type { FunctionComponent } from "@src/common/types";
 import { FeedComposer } from "@src/components/feed/FeedComposer";
 import { FeedList } from "@src/components/feed/FeedList";
+import { MessagingBanner } from "@src/components/feed/MessagingBanner";
 import { useEffectiveActor } from "@src/components/feed/use-actor";
-import { useHomeFeed } from "@src/hooks/use-feed";
+import { useHomeFeed, useHomeFeedGql } from "@src/hooks/use-feed";
 
 /** The authenticated viewer's aggregated, ranked home timeline. */
 export function HomeFeed(): FunctionComponent {
 	const { t } = useTranslation();
 	const actor = useEffectiveActor();
-	const home = useHomeFeed({ includeSelf: true });
 
-	const items = home.data?.items ?? [];
-	const posts = items.map((item) => item.post);
+	// Both hooks are declared (rules of hooks); the inactive one is disabled so
+	// it issues no request. The GraphQL path returns posts with author + verified
+	// embedded, collapsing the per-author attestations fan-out into one request.
+	const restHome = useHomeFeed({ includeSelf: true }, !graphqlFeedEnabled);
+	const gqlHome = useHomeFeedGql({ includeSelf: true }, graphqlFeedEnabled);
+
+	const posts: Array<Post> = [];
 	const reasonByPostId: Record<string, string> = {};
-	for (const item of items) {
-		reasonByPostId[item.post.postId] = item.reason;
+	const authorByPostId: Record<string, FeedAuthor> = {};
+
+	if (graphqlFeedEnabled) {
+		for (const item of gqlHome.data?.items ?? []) {
+			const gqlPost = item.post;
+			posts.push({
+				postId: gqlPost.postId,
+				feedId: gqlPost.feedId,
+				author: gqlPost.author.handle,
+				body: gqlPost.body,
+				contentType: gqlPost.contentType,
+				commentCount: gqlPost.commentCount,
+				likeCount: gqlPost.likeCount,
+				likedByMe: gqlPost.viewerHasLiked,
+				createdAt: gqlPost.createdAt,
+				moderationState: gqlPost.moderationState,
+			});
+			reasonByPostId[gqlPost.postId] = item.reason;
+			authorByPostId[gqlPost.postId] = gqlPost.author;
+		}
+	} else {
+		for (const item of restHome.data?.items ?? []) {
+			posts.push(item.post);
+			reasonByPostId[item.post.postId] = item.reason;
+		}
 	}
 
+	const isLoading = graphqlFeedEnabled ? gqlHome.isLoading : restHome.isLoading;
+	const isError = graphqlFeedEnabled ? gqlHome.isError : restHome.isError;
+
 	return (
-		<div className="mx-auto w-full max-w-2xl space-y-4 py-6">
+		<div className="mx-auto w-full max-w-2xl space-y-4 pb-6">
+			<MessagingBanner />
 			<FeedComposer handle={actor} />
 			<FeedList
+				authorByPostId={authorByPostId}
 				canDeleteHandle={actor}
 				emptyLabel={t("feed.homeEmpty")}
-				isError={home.isError}
-				isLoading={home.isLoading}
+				isError={isError}
+				isLoading={isLoading}
 				posts={posts}
 				reasonByPostId={reasonByPostId}
 			/>

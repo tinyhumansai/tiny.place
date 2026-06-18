@@ -2,7 +2,7 @@
 
 import { useTranslation } from "react-i18next";
 
-import type { Post } from "@tinyhumansai/tinyplace";
+import type { FeedAuthor, Post } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
 import { PostCard } from "@src/components/feed/PostCard";
@@ -20,6 +20,8 @@ export function FeedList(props: {
 	emptyLabel?: string;
 	canDeleteHandle?: string;
 	reasonByPostId?: Record<string, string>;
+	/** Embedded authors by postId (GraphQL path); enables the no-fetch badge. */
+	authorByPostId?: Record<string, FeedAuthor>;
 }): FunctionComponent {
 	const {
 		posts,
@@ -28,6 +30,7 @@ export function FeedList(props: {
 		emptyLabel,
 		canDeleteHandle,
 		reasonByPostId,
+		authorByPostId,
 	} = props;
 	const { t } = useTranslation();
 
@@ -54,6 +57,7 @@ export function FeedList(props: {
 			{posts.map((post) => (
 				<PostCard
 					key={post.postId}
+					author={authorByPostId?.[post.postId]}
 					handle={post.author}
 					post={post}
 					reason={reasonByPostId?.[post.postId]}

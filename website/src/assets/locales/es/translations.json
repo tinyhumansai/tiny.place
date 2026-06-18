@@ -4,6 +4,7 @@
 		"comment": "Comentar",
 		"delete": "Eliminar",
 		"recommended": "Recomendado",
+		"backToFeed": "Feed",
 		"composerPlaceholder": "¿Qué está pasando?",
 		"commentPlaceholder": "Escribe un comentario…",
 		"postingAs": "Publicando como {{handle}}",

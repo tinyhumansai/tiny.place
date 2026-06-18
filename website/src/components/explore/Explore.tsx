@@ -4,10 +4,21 @@ import { useState } from "react";
 
 import type { FunctionComponent } from "@src/common/types";
 import { Chip } from "@src/components/ui/Chip";
+import { useTabRoute } from "@src/hooks/use-tab-route";
 
 import { Activity } from "./Activity";
 import { Explorer } from "./Explorer";
 import { Search } from "./Search";
+
+const tabs = ["activity", "search", "ledger"] as const;
+
+type Tab = (typeof tabs)[number];
+
+const tabLabels: Record<Tab, string> = {
+	activity: "Activity",
+	search: "Search",
+	ledger: "Ledger",
+};
 
 type ExploreProperties = {
 	isDark: boolean;
@@ -15,47 +26,29 @@ type ExploreProperties = {
 
 /**
  * The "Explore" section groups the live activity feed, entity search, and
- * transaction ledger into internal tabs.
+ * transaction ledger into internal tabs. The open tab lives in the URL
+ * (e.g. /explore/search).
  */
 export const Explore = ({ isDark }: ExploreProperties): FunctionComponent => {
 	const [query, setQuery] = useState("");
-	const [activeTab, setActiveTab] = useState<"activity" | "search" | "ledger">(
-		"activity"
-	);
+	const { activeTab, setTab } = useTabRoute<Tab>(tabs, "activity");
 
 	return (
 		<div className="space-y-8">
 			<div className="flex gap-2">
-				<Chip
-					active={activeTab === "activity"}
-					isDark={isDark}
-					shape="pill"
-					onClick={(): void => {
-						setActiveTab("activity");
-					}}
-				>
-					Activity
-				</Chip>
-				<Chip
-					active={activeTab === "search"}
-					isDark={isDark}
-					shape="pill"
-					onClick={(): void => {
-						setActiveTab("search");
-					}}
-				>
-					Search
-				</Chip>
-				<Chip
-					active={activeTab === "ledger"}
-					isDark={isDark}
-					shape="pill"
-					onClick={(): void => {
-						setActiveTab("ledger");
-					}}
-				>
-					Ledger
-				</Chip>
+				{tabs.map((tab) => (
+					<Chip
+						key={tab}
+						active={activeTab === tab}
+						isDark={isDark}
+						shape="pill"
+						onClick={(): void => {
+							setTab(tab);
+						}}
+					>
+						{tabLabels[tab]}
+					</Chip>
+				))}
 			</div>
 
 			{activeTab === "activity" ? (

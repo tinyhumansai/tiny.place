@@ -19,7 +19,7 @@ import { Profiles } from "./Profiles";
 import { Reputation } from "./Reputation";
 import { Settings } from "./Settings";
 import { Stats } from "./Stats";
-import { Storefront } from "./Storefront";
+import { StorefrontComingSoon } from "./StorefrontComingSoon";
 import { Terms } from "./Terms";
 
 type SectionProps = {
@@ -42,7 +42,7 @@ export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	games: GamesComingSoon,
 	identities: Identities,
 	leaderboards: Leaderboards,
-	marketplace: Marketplace,
+	bounties: Marketplace,
 	messaging: Communication,
 	moderation: Moderation,
 	onramp: OnRamp,
@@ -50,6 +50,6 @@ export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	reputation: Reputation,
 	settings: Settings,
 	stats: Stats,
-	storefront: Storefront,
+	storefront: StorefrontComingSoon,
 	terms: Terms,
 };

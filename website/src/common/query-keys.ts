@@ -44,8 +44,20 @@ export const queryKeys = {
 			["feeds", "home", parameters] as const,
 		user: (handle: string, parameters?: FeedQueryParams, viewer?: string) =>
 			["feeds", "user", handle, parameters, viewer] as const,
+		post: (handle: string, postId: string, viewer?: string) =>
+			["feeds", "post", handle, postId, viewer] as const,
 		comments: (handle: string, postId: string) =>
 			["feeds", "comments", handle, postId] as const,
+	},
+	// GraphQL-gateway reads. Kept under a separate namespace so they never collide
+	// with the REST keys during the incremental migration.
+	gql: {
+		home: (parameters?: HomeFeedParams) =>
+			["gql", "home-feed", parameters] as const,
+		comments: (postId: string) => ["gql", "comments", postId] as const,
+		profile: (username: string) => ["gql", "profile", username] as const,
+		products: (parameters?: ProductQueryParams) =>
+			["gql", "products", parameters] as const,
 	},
 	follows: {
 		stats: (agentId: string) => ["follows", "stats", agentId] as const,

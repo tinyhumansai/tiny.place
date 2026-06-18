@@ -4,6 +4,7 @@ import type {
 	AgentQueryParams,
 	DirectoryIdentityListingsResponse,
 	IdentityListingQueryParams,
+	ReverseResponse,
 } from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
@@ -26,6 +27,23 @@ export function useAgent(agentId: string): UseQueryResult<AgentCard> {
 		queryKey: queryKeys.directory.agent(agentId),
 		queryFn: (): Promise<AgentCard> => client.directory.getAgent(agentId),
 		enabled: Boolean(agentId),
+	});
+}
+
+/**
+ * Reverse-resolves a wallet/cryptoId to the handles it owns. Used to upgrade a
+ * bare wallet reference to its primary `@handle` for display. Disabled when no
+ * cryptoId is supplied.
+ */
+export function useReverseDirectory(
+	cryptoId: string | undefined
+): UseQueryResult<ReverseResponse> {
+	const client = useApiClient();
+	return useQuery({
+		queryKey: queryKeys.directory.reverse(cryptoId ?? ""),
+		queryFn: (): Promise<ReverseResponse> =>
+			client.directory.reverse(cryptoId as string),
+		enabled: Boolean(cryptoId),
 	});
 }
 

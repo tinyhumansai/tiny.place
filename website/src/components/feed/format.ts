@@ -1,3 +1,6 @@
+/** Hard cap on the length of a post or comment body, enforced in the UI. */
+export const MAX_FEED_BODY_LENGTH = 280;
+
 /** Relative "time ago" formatting shared across feed components. */
 export function formatTimestamp(timestamp: string): string {
 	const date = new Date(timestamp);

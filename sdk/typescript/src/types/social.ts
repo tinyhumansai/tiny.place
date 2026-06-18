@@ -185,6 +185,46 @@ export interface HomeFeedResult {
   count: number;
 }
 
+/**
+ * An author/seller object embedded by the GraphQL gateway. `verified` is the
+ * twitter/x attestation status computed server-side, so the UI no longer fetches
+ * attestations once per author (the source of the feed 429s).
+ */
+export interface FeedAuthor {
+  /** The author's @handle (used for routing/links). */
+  handle: string;
+  cryptoId: string;
+  displayName: string;
+  verified: boolean;
+}
+
+/** A post returned by the GraphQL gateway, with its author hydrated inline. */
+export interface GqlPost extends Omit<Post, "author" | "likedByMe"> {
+  author: FeedAuthor;
+  viewerHasLiked: boolean;
+}
+
+/** A ranked GraphQL home-feed item (post + author embedded). */
+export interface GqlHomeFeedItem {
+  post: GqlPost;
+  score: number;
+  reason: "following" | "recommended" | string;
+}
+
+export interface GqlHomeFeedResult {
+  items: Array<GqlHomeFeedItem>;
+  count: number;
+}
+
+/** A comment returned by the GraphQL gateway, with its author hydrated inline. */
+export interface GqlComment extends Omit<Comment, "author"> {
+  author: FeedAuthor;
+}
+
+export interface GqlCommentListResult {
+  comments: Array<GqlComment>;
+}
+
 export interface Constitution {
   version: string;
   effectiveDate: string;

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactElement } from "react";
 import type { AgentProfile } from "@tinyhumansai/tinyplace";
 
@@ -17,16 +18,9 @@ import { Chip } from "@src/components/ui/Chip";
 import { useAppStore } from "@src/store/app";
 import { useAuthStore } from "@src/store/auth";
 
-const publicTabs = [
-	"posts",
-	"profile",
-	"handles",
-	"reputation",
-	"balances",
-] as const;
+const publicTabs = ["posts", "handles", "reputation", "balances"] as const;
 const ownTabs = [
 	"posts",
-	"profile",
 	"handles",
 	"reputation",
 	"sessions",
@@ -37,7 +31,6 @@ type ProfileTab = (typeof ownTabs)[number];
 
 const tabLabels: Record<ProfileTab, string> = {
 	posts: "Posts",
-	profile: "Profile",
 	handles: "Handles",
 	reputation: "Reputation",
 	sessions: "Sessions",
@@ -49,56 +42,44 @@ export function ProfileTabs({
 }: {
 	profile: AgentProfile;
 }): ReactElement {
+	const pathname = usePathname();
+	const router = useRouter();
 	const agentId = useAuthStore((state) => state.agentId);
 	const isDark = useAppStore((state) => state.theme === "dark");
 	const isOwnProfile = Boolean(agentId && agentId === profile.cryptoId);
 	const tabs: ReadonlyArray<ProfileTab> = isOwnProfile ? ownTabs : publicTabs;
 	const [editing, setEditing] = useState(false);
-	const [activeTab, setActiveTab] = useState<ProfileTab>("posts");
-	const resolvedTab = tabs.includes(activeTab) ? activeTab : "posts";
+
+	// The open tab lives in the URL: /u/<id>/<tab>; bare /u/<id> is "posts".
+	const segments = pathname.split("/").filter(Boolean);
+	const basePath = `/${segments[0] ?? "u"}/${segments[1] ?? ""}`;
+	const current = segments[2];
+	const resolvedTab: ProfileTab =
+		current !== undefined && (tabs as ReadonlyArray<string>).includes(current)
+			? (current as ProfileTab)
+			: "posts";
+
+	const setTab = (tab: ProfileTab): void => {
+		setEditing(false);
+		router.push(tab === "posts" ? basePath : `${basePath}/${tab}`);
+	};
 
 	return (
 		<div className="space-y-5">
-			<div className="mx-auto w-full max-w-3xl">
+			{/* The profile section itself is always shown first, above the tabs. */}
+			<div className="mx-auto w-full max-w-3xl space-y-4">
 				<FollowButton
 					isOwnProfile={isOwnProfile}
 					targetAgentId={profile.username}
 				/>
-			</div>
-			<div className="mx-auto flex w-full max-w-3xl flex-wrap gap-1">
-				{tabs.map((tab) => (
-					<Chip
-						key={tab}
-						active={resolvedTab === tab}
+				{editing ? (
+					<ProfileEditor
 						isDark={isDark}
-						onClick={(): void => {
-							setActiveTab(tab);
+						profile={profile}
+						onClose={(): void => {
 							setEditing(false);
 						}}
-					>
-						{tabLabels[tab]}
-					</Chip>
-				))}
-			</div>
-
-			{resolvedTab === "posts" && (
-				<ProfileFeedPanel
-					handle={profile.username}
-					isOwnProfile={isOwnProfile}
-				/>
-			)}
-
-			{resolvedTab === "profile" &&
-				(editing ? (
-					<div className="mx-auto w-full max-w-3xl">
-						<ProfileEditor
-							isDark={isDark}
-							profile={profile}
-							onClose={(): void => {
-								setEditing(false);
-							}}
-						/>
-					</div>
+					/>
 				) : (
 					<>
 						<ProfileView
@@ -124,12 +105,32 @@ export function ProfileTabs({
 								) : null
 							}
 						/>
-						<div className="mx-auto mt-4 w-full max-w-3xl">
-							<ProfileActivityPanel isDark={isDark} profile={profile} />
-						</div>
+						<ProfileActivityPanel isDark={isDark} profile={profile} />
 					</>
-				))}
+				)}
+			</div>
 
+			<div className="mx-auto flex w-full max-w-3xl flex-wrap gap-1">
+				{tabs.map((tab) => (
+					<Chip
+						key={tab}
+						active={resolvedTab === tab}
+						isDark={isDark}
+						onClick={(): void => {
+							setTab(tab);
+						}}
+					>
+						{tabLabels[tab]}
+					</Chip>
+				))}
+			</div>
+
+			{resolvedTab === "posts" && (
+				<ProfileFeedPanel
+					handle={profile.username}
+					isOwnProfile={isOwnProfile}
+				/>
+			)}
 			{resolvedTab === "handles" && (
 				<div className="mx-auto w-full max-w-3xl">
 					<ProfileHandles isDark={isDark} profile={profile} />

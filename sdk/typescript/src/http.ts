@@ -266,7 +266,11 @@ export class HttpClient {
     query?: Record<string, unknown>,
     headers?: Record<string, string>,
   ): Promise<T> {
-    return this.request<T>("GET", path, { query, headers, directoryAuth: true });
+    return this.request<T>("GET", path, {
+      query,
+      headers,
+      directoryAuth: true,
+    });
   }
 
   getDirectoryAuthAs<T>(
@@ -283,10 +287,7 @@ export class HttpClient {
     });
   }
 
-  getAgentAuth<T>(
-    path: string,
-    query?: Record<string, unknown>,
-  ): Promise<T> {
+  getAgentAuth<T>(path: string, query?: Record<string, unknown>): Promise<T> {
     return this.request<T>("GET", path, { query, agentAuth: true });
   }
 
@@ -314,6 +315,54 @@ export class HttpClient {
       directoryActor: actor,
       responseType: "raw",
     });
+  }
+
+  /**
+   * Execute a read-only GraphQL query against POST /graphql, reusing the same
+   * auth paths as the REST methods. `auth: "agent"` signs as the connected
+   * wallet's agent (required for viewer-scoped fields like the home feed),
+   * "directory"/"signed" use the other signing modes, and the default sends no
+   * auth (public reads such as comments/profile/marketplace). The backend
+   * answers 200 with `{ data, errors }`; field errors are surfaced as a
+   * TinyPlaceError rather than a silently-null payload.
+   */
+  async graphql<T>(
+    query: string,
+    variables?: Record<string, unknown>,
+    options?: {
+      auth?: "none" | "signed" | "agent" | "directory";
+      operationName?: string;
+    },
+  ): Promise<T> {
+    const body: Record<string, unknown> = { query, variables: variables ?? {} };
+    if (options?.operationName) {
+      body["operationName"] = options.operationName;
+    }
+    const requestOptions: {
+      body: unknown;
+      signed?: boolean;
+      agentAuth?: boolean;
+      directoryAuth?: boolean;
+    } = { body };
+    switch (options?.auth) {
+      case "agent":
+        requestOptions.agentAuth = true;
+        break;
+      case "directory":
+        requestOptions.directoryAuth = true;
+        break;
+      case "signed":
+        requestOptions.signed = true;
+        break;
+      default:
+        break;
+    }
+    const result = await this.request<GraphQLResponse<T>>(
+      "POST",
+      "/graphql",
+      requestOptions,
+    );
+    return unwrapGraphQL<T>(result);
   }
 
   post<T>(path: string, body?: unknown): Promise<T> {
@@ -454,9 +503,7 @@ function paymentRequiredFromHeader(
   if (!encoded) return undefined;
 
   try {
-    return asPaymentRequiredChallenge(
-      JSON.parse(base64UrlDecode(encoded)),
-    );
+    return asPaymentRequiredChallenge(JSON.parse(base64UrlDecode(encoded)));
   } catch {
     return undefined;
   }
@@ -523,6 +570,35 @@ function metadataField(
 }
 
 function base64UrlDecode(value: string): string {
-  const padded = value.padEnd(value.length + ((4 - (value.length % 4)) % 4), "=");
+  const padded = value.padEnd(
+    value.length + ((4 - (value.length % 4)) % 4),
+    "=",
+  );
   return atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
+}
+
+/** A GraphQL error entry as returned in the response `errors` array. */
+export interface GraphQLError {
+  message: string;
+  path?: Array<string | number>;
+  extensions?: Record<string, unknown>;
+}
+
+/** The envelope returned by POST /graphql (HTTP 200 with data and/or errors). */
+export interface GraphQLResponse<T> {
+  data?: T;
+  errors?: Array<GraphQLError>;
+}
+
+/**
+ * Unwrap a GraphQL response: throw a TinyPlaceError when the server reported
+ * field errors (preserving an x402 challenge if one rode along in an error
+ * extension), otherwise return the data payload.
+ */
+function unwrapGraphQL<T>(response: GraphQLResponse<T>): T {
+  if (response.errors && response.errors.length > 0) {
+    const message = response.errors.map((error) => error.message).join("; ");
+    throw new TinyPlaceError(200, response, `GraphQL error: ${message}`);
+  }
+  return response.data as T;
 }

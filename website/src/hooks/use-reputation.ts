@@ -48,14 +48,15 @@ export function useReputationReviews(
 }
 
 export function useAttestations(
-	agentId: string
+	agentId: string,
+	options?: { enabled?: boolean }
 ): UseQueryResult<{ attestations: Array<Attestation> }> {
 	const client = useApiClient();
 	return useQuery({
 		queryKey: queryKeys.reputation.attestations(agentId),
 		queryFn: (): Promise<{ attestations: Array<Attestation> }> =>
 			client.reputation.getAttestations(agentId),
-		enabled: Boolean(agentId),
+		enabled: (options?.enabled ?? true) && Boolean(agentId),
 	});
 }
 

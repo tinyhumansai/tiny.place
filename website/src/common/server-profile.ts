@@ -5,7 +5,13 @@ import type {
 	User,
 } from "@tinyhumansai/tinyplace";
 
+import {
+	emptyUser,
+	userToProfile,
+} from "@src/components/profile/profile-adapter";
+
 import { createClient } from "./api-client";
+import { isWalletAddress } from "./profile-link";
 
 /**
  * The public base URL of the web app, used to build canonical/OpenGraph URLs in
@@ -106,4 +112,29 @@ export function primaryHandleFromIdentities(
 	const primary =
 		identities.find((identity) => identity.primary) ?? identities[0];
 	return primary ? primary.username : null;
+}
+
+/**
+ * Resolves a profile from a single `/u/<id>` segment that may be either a base58
+ * wallet/cryptoId or an @handle (bare). Returns null when nothing resolves.
+ */
+export async function resolveProfileById(
+	id: string
+): Promise<AgentProfile | null> {
+	const decoded = id.trim();
+	if (decoded === "") {
+		return null;
+	}
+	if (isWalletAddress(decoded)) {
+		const [user, identities] = await Promise.all([
+			fetchUserByCryptoId(decoded),
+			fetchIdentitiesByCryptoId(decoded),
+		]);
+		return userToProfile(
+			user ?? emptyUser(decoded),
+			primaryHandleFromIdentities(identities) ?? undefined,
+			identities
+		);
+	}
+	return fetchProfileByHandle(decoded);
 }

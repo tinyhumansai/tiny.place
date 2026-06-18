@@ -133,6 +133,7 @@ export { ActivityApi } from "./api/activity.js";
 export { ReputationApi } from "./api/reputation.js";
 export { InboxApi } from "./api/inbox.js";
 export { FeedsApi } from "./api/feeds.js";
+export { GraphQLApi } from "./api/graphql.js";
 export { ConversationsApi } from "./api/conversations.js";
 export { BroadcastsApi } from "./api/broadcasts.js";
 export { EventsApi } from "./api/events.js";

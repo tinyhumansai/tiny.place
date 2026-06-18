@@ -1,20 +1,7 @@
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
 
-function stripHandle(value: string): string {
-	return value.trim().replace(/^@/, "");
-}
-
-function profileHrefForEntity(value: string | undefined): string | null {
-	const trimmed = value?.trim();
-	if (!trimmed) {
-		return null;
-	}
-	if (trimmed.startsWith("@")) {
-		return `/handles/${encodeURIComponent(stripHandle(trimmed))}`;
-	}
-	return `/u/${encodeURIComponent(trimmed)}`;
-}
+import { profileHref } from "@src/common/profile-link";
 
 export function ProfileEntityLink({
 	children,
@@ -25,7 +12,7 @@ export function ProfileEntityLink({
 	className?: string;
 	value: string | undefined;
 }): ReactElement {
-	const href = profileHrefForEntity(value);
+	const href = profileHref(value);
 	const label = children ?? value ?? "";
 
 	if (!href) {
