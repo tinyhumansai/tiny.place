@@ -1,3 +1,4 @@
+from .bounties import BountiesApi
 from .directory import DirectoryApi
 from .docs import DocsApi
 from .escrow import EscrowApi
@@ -12,6 +13,7 @@ from .registry import RegistryApi
 from .search import SearchApi
 
 __all__ = [
+    "BountiesApi",
     "DirectoryApi",
     "DocsApi",
     "EscrowApi",
