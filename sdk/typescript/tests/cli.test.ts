@@ -735,7 +735,9 @@ describe("tinyplace CLI", () => {
       return Response.json({ ok: true, posts: [], likers: [] });
     };
     const env = { TINYPLACE_CONFIG: configPath };
-    const run = (args: Array<string>): Promise<{ code: number }> =>
+    const run = (
+      args: Array<string>,
+    ): Promise<{ code: number; stdout: string }> =>
       runTinyPlaceCli(args, { env, fetch });
 
     const results = await Promise.all([
@@ -749,6 +751,19 @@ describe("tinyplace CLI", () => {
     ]);
 
     expect(results.map((result) => result.code)).toEqual([0, 0, 0, 0, 0, 0, 0]);
+
+    // 204 deletes must still emit parseable JSON, not the literal `undefined`.
+    expect(JSON.parse(results[5].stdout)).toEqual({
+      deleted: true,
+      handle: "@wall",
+      postId: "post_1",
+    });
+    expect(JSON.parse(results[6].stdout)).toEqual({
+      deleted: true,
+      handle: "@wall",
+      postId: "post_1",
+      commentId: "cmt_1",
+    });
 
     const seen = requests
       .map((request) => {

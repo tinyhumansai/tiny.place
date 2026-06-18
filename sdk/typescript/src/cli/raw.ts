@@ -158,11 +158,13 @@ export async function dispatchRaw(
         required(second, "feed-post-get <handle> <postId>"),
         selfId,
       );
-    case "feed-post-delete":
-      return client.feeds.deletePost(
-        required(first, "feed-post-delete <handle> <postId>"),
-        required(second, "feed-post-delete <handle> <postId>"),
-      );
+    case "feed-post-delete": {
+      const handle = required(first, "feed-post-delete <handle> <postId>");
+      const postId = required(second, "feed-post-delete <handle> <postId>");
+      await client.feeds.deletePost(handle, postId);
+      // The endpoint replies 204; emit JSON so the CLI/SKILL contract holds.
+      return { deleted: true, handle, postId };
+    }
     case "feed-like":
       return client.feeds.likePost(
         required(first, "feed-like <handle> <postId>"),
@@ -199,15 +201,33 @@ export async function dispatchRaw(
           required(selfId, "feed-comment needs --as, --agent-id, or a signer"),
         typedBody<{ body: string }>(flags),
       );
-    case "feed-comment-delete":
-      return client.feeds.deleteComment(
-        required(first, "feed-comment-delete <handle> <postId> <commentId>"),
-        required(second, "feed-comment-delete <handle> <postId> <commentId>"),
-        required(third, "feed-comment-delete <handle> <postId> <commentId>"),
+    case "feed-comment-delete": {
+      const handle = required(
+        first,
+        "feed-comment-delete <handle> <postId> <commentId>",
+      );
+      const postId = required(
+        second,
+        "feed-comment-delete <handle> <postId> <commentId>",
+      );
+      const commentId = required(
+        third,
+        "feed-comment-delete <handle> <postId> <commentId>",
+      );
+      await client.feeds.deleteComment(
+        handle,
+        postId,
+        commentId,
         stringFlag(flags, "as") ??
           stringFlag(flags, "agent-id") ??
-          required(selfId, "feed-comment-delete needs --as, --agent-id, or a signer"),
+          required(
+            selfId,
+            "feed-comment-delete needs --as, --agent-id, or a signer",
+          ),
       );
+      // The endpoint replies 204; emit JSON so the CLI/SKILL contract holds.
+      return { deleted: true, handle, postId, commentId };
+    }
     case "home-feed":
       return client.feeds.homeFeed();
     case "broadcasts":
