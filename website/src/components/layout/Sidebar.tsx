@@ -62,7 +62,7 @@ const externalLinks: Array<ExternalLink> = [
 		label: "Discord",
 	},
 	{
-		href: "https://x.com/intent/follow?screen_name=tinyhumansai",
+		href: "https://x.com/tinyhumansai",
 		icon: XIcon,
 		label: "X",
 	},
