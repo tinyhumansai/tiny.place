@@ -112,6 +112,9 @@ export interface BountyCreateRequest {
   // Either an explicit RFC3339 deadline or a number of days from now.
   deadline?: string;
   durationDays?: number;
+  // Signed x402 payment map echoed back to fund the bounty at creation time.
+  // Omit on the first call to receive the 402 challenge.
+  payment?: Record<string, string>;
 }
 
 export interface BountySubmissionCreateRequest {

@@ -90,21 +90,46 @@ export function useBountyComments(
 	});
 }
 
+// useCreateBounty creates and funds a bounty in one x402 flow: the first call
+// triggers the 402 challenge (the reward into escrow), which we sign and retry
+// so the bounty is created already open for submissions.
 export function useCreateBounty(): UseMutationResult<
 	Bounty,
 	Error,
 	BountyCreateRequest
 > {
 	const client = useApiClient();
+	const signer = useAuthStore((state) => state.signer);
 	const queryClient = useQueryClient();
 	const agentId = useAuthStore((state) => state.agentId);
 	return useMutation({
-		mutationFn: (request: BountyCreateRequest): Promise<Bounty> =>
-			client.bounties.create({
+		mutationFn: async (request: BountyCreateRequest): Promise<Bounty> => {
+			const full: BountyCreateRequest = {
 				...request,
 				creator: request.creator || (agentId ?? ""),
 				creatorCryptoId: request.creatorCryptoId || (agentId ?? ""),
-			}),
+			};
+			try {
+				return await client.bounties.create(full);
+			} catch (error) {
+				const challenge = bountyPaymentChallenge(error);
+				if (!challenge) {
+					throw error;
+				}
+				if (!signer) {
+					throw new Error("Connect your wallet first");
+				}
+				return client.bounties.create({
+					...full,
+					payment: await signX402ChallengePaymentMap({
+						fallbackFrom: full.creator ?? "",
+						noncePrefix: "bounty",
+						payment: challenge.payment,
+						signer,
+					}),
+				});
+			}
+		},
 		onSuccess: (): void => {
 			void queryClient.invalidateQueries({ queryKey: ["bounties", "list"] });
 		},

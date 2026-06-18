@@ -327,8 +327,9 @@ function PostBounty({
 				</div>
 			</div>
 			<p className={`text-xs ${mutedClass(isDark)}`}>
-				Duration must be 1–31 days. After the deadline a council of LLM judges
-				picks the winner; an admin approves the payout.
+				Creating funds the reward into escrow via your wallet (x402). Duration
+				must be 1–31 days. After the deadline a council of LLM judges picks the
+				winner; an admin approves the payout.
 			</p>
 			{create.error ? (
 				<p className="text-sm text-danger">
@@ -340,7 +341,9 @@ function PostBounty({
 				disabled={create.isPending}
 				type="submit"
 			>
-				{create.isPending ? "Creating…" : "Create bounty"}
+				{create.isPending
+					? "Creating & funding…"
+					: `Create & fund ${amount || "0"} ${asset}`}
 			</button>
 		</form>
 	);
