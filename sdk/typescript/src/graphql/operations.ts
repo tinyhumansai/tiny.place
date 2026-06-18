@@ -7,6 +7,7 @@ const AUTHOR_FIELDS = `
   handle
   cryptoId
   displayName
+  avatarUrl
   verified
 `;
 
@@ -55,6 +56,7 @@ export const USER_PROFILE_QUERY = `
       actorType
       displayName
       bio
+      avatarUrl
       link
       tags
       private

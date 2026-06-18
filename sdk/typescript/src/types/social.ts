@@ -191,10 +191,12 @@ export interface HomeFeedResult {
  * attestations once per author (the source of the feed 429s).
  */
 export interface FeedAuthor {
-  /** The author's @handle (used for routing/links). */
+  /** The author's canonical @handle (reverse-resolved; used for routing/links). */
   handle: string;
   cryptoId: string;
   displayName: string;
+  /** Ready-to-use avatar URL (Gravatar today), null when no avatar email is set. */
+  avatarUrl?: string | null;
   verified: boolean;
 }
 

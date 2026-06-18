@@ -25,6 +25,8 @@ export interface GqlProfile {
   actorType: string;
   displayName: string;
   bio: string;
+  /** Ready-to-use avatar URL (Gravatar today), null when no avatar email is set. */
+  avatarUrl?: string | null;
   link?: string;
   tags?: Array<string>;
   private: boolean;
