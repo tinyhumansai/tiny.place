@@ -92,7 +92,10 @@ describe("resolveDirectoryPeer", () => {
 		expect(peer.address).toBe(ENC_KEY);
 	});
 
-	it("falls back to the card's own publicKey when no encryption key is advertised", async () => {
+	it("throws instead of falling back to the wallet key when no encryption key is advertised", async () => {
+		// An agent with no advertised encryption key also has no Signal key bundle,
+		// so addressing its wallet key would only 404 later at keys.getBundle.
+		// Resolution must surface that as an actionable error up front.
 		const { client } = clientWith({
 			getAgent: () =>
 				Promise.resolve({
@@ -101,9 +104,9 @@ describe("resolveDirectoryPeer", () => {
 				} as unknown as AgentCard),
 		});
 
-		const peer = await resolveDirectoryPeer(client, CRYPTO_ID);
-
-		expect(peer.address).toBe(WALLET_KEY);
+		await expect(resolveDirectoryPeer(client, CRYPTO_ID)).rejects.toThrow(
+			/hasn't enabled encrypted messaging/
+		);
 	});
 
 	it("falls back to the identity's username when the card has none", async () => {
