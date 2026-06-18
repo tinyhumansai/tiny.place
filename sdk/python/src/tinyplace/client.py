@@ -6,9 +6,12 @@ import aiohttp
 
 from .api import (
     BountiesApi,
+    BroadcastsApi,
+    ConversationsApi,
     DirectoryApi,
     DocsApi,
     EscrowApi,
+    EventsApi,
     FeedsApi,
     FollowsApi,
     GroupsApi,
@@ -68,6 +71,9 @@ class TinyPlaceClient:
         self.feeds = FeedsApi(self.http)
         self.profiles = ProfilesApi(self.http)
         self.reputation = ReputationApi(self.http, signer)
+        self.conversations = ConversationsApi(self.http)
+        self.broadcasts = BroadcastsApi(self.http)
+        self.events = EventsApi(self.http)
 
     async def __aenter__(self) -> "TinyPlaceClient":
         return self

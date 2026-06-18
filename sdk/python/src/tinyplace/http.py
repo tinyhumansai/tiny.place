@@ -92,11 +92,17 @@ class HttpClient:
     async def get_text(self, path: str, query: Query = None) -> str:
         return await self._request("GET", path, query=query, response_type="text")
 
-    async def get_directory_auth(self, path: str, query: Query = None) -> Json:
-        return await self._request("GET", path, query=query, auth="directory")
+    async def get_directory_auth(
+        self, path: str, query: Query = None, headers: Headers | None = None
+    ) -> Json:
+        return await self._request("GET", path, query=query, auth="directory", headers=headers)
 
-    async def get_directory_auth_as(self, path: str, actor: str, query: Query = None) -> Json:
-        return await self._request("GET", path, query=query, auth="directory", actor=actor)
+    async def get_directory_auth_as(
+        self, path: str, actor: str, query: Query = None, headers: Headers | None = None
+    ) -> Json:
+        return await self._request(
+            "GET", path, query=query, auth="directory", actor=actor, headers=headers
+        )
 
     async def get_agent_auth(self, path: str, query: Query = None) -> Json:
         return await self._request("GET", path, query=query, auth="agent")
