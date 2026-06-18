@@ -21,6 +21,7 @@ use crate::api::escrow::EscrowApi;
 use crate::api::events::EventsApi;
 use crate::api::explorer::ExplorerApi;
 use crate::api::feedback::FeedbackApi;
+use crate::api::feeds::FeedsApi;
 use crate::api::follows::FollowsApi;
 use crate::api::graphql::GraphQLApi;
 use crate::api::groups::GroupsApi;
@@ -91,6 +92,7 @@ pub struct TinyPlaceClient {
     pub users: UsersApi,
     pub explorer: ExplorerApi,
     pub feedback: FeedbackApi,
+    pub feeds: FeedsApi,
     pub follows: FollowsApi,
     pub pricing: PricingApi,
     pub solana: SolanaApi,
@@ -140,6 +142,7 @@ impl TinyPlaceClient {
             users: UsersApi::new(http.clone()),
             explorer: ExplorerApi::new(http.clone()),
             feedback: FeedbackApi::new(http.clone()),
+            feeds: FeedsApi::new(http.clone()),
             follows: FollowsApi::new(http.clone()),
             pricing: PricingApi::new(http.clone()),
             solana: SolanaApi::new(http.clone()),
