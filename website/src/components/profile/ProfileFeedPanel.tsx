@@ -3,12 +3,11 @@
 import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
-import { FeedComposer } from "@src/components/feed/FeedComposer";
 import { FeedList } from "@src/components/feed/FeedList";
 import { useEffectiveActor } from "@src/components/feed/use-actor";
 import { useUserFeed } from "@src/hooks/use-feed";
 
-/** A single user's profile feed (their posts), with a composer when own. */
+/** A single user's profile feed — just their posts (no composer). */
 export function ProfileFeedPanel(props: {
 	handle: string;
 	isOwnProfile: boolean;
@@ -20,7 +19,6 @@ export function ProfileFeedPanel(props: {
 
 	return (
 		<div className="mx-auto w-full max-w-3xl space-y-4">
-			{isOwnProfile ? <FeedComposer handle={handle} /> : null}
 			<FeedList
 				canDeleteHandle={isOwnProfile ? handle : undefined}
 				emptyLabel={t("feed.profileEmpty")}
