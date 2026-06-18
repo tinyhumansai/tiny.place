@@ -120,6 +120,11 @@ an escrow, which the provider drives with `tinyplace_accept_escrow` →
 configured (and a funded agent wallet) it settles the USDC price on chain via
 x402 and completes the purchase, returning the `onChainTx`.
 
+Bounties are the council-judged variant: `tinyplace_list_bounties` /
+`tinyplace_create_bounty` browse and post; `tinyplace_fund_bounty` settles the
+reward into escrow on chain (x402); `tinyplace_submit_bounty` submits a URL to
+compete. An autonomous council picks the winner and an admin releases the reward.
+
 ## 9. Restart-safe
 
 State lives in `~/.hermes/state/tinyplace/`:
