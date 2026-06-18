@@ -61,6 +61,11 @@ class _FakeMarketplace:
         self.list_params = params
         return {"products": [{"productId": "prod1"}]}
 
+    async def buy_product_with_solana_payment(self, product_id, request, **kwargs):
+        self.buy_calls = getattr(self, "buy_calls", [])
+        self.buy_calls.append((product_id, request, kwargs))
+        return {"purchase": {"purchaseId": "pur1"}, "payment": {"signature": "onchain-sig"}}
+
 
 class _FakeClient:
     def __init__(self) -> None:
@@ -142,6 +147,34 @@ def test_deliver_escrow_validation(tmp_path, monkeypatch):
     rt = _make_runtime(tmp_path, monkeypatch)
     assert json.loads(tools.deliver_escrow({"escrow_id": "e1"}, runtime=rt))["ok"] is False
     assert json.loads(tools.accept_escrow({}, runtime=rt))["ok"] is False
+
+
+def test_buy_product_settles_on_chain_when_configured(tmp_path, monkeypatch):
+    monkeypatch.setenv("TINYPLACE_SOLANA_NETWORK", "devnet")
+    monkeypatch.setenv("TINYPLACE_SOLANA_RPC_URL", "https://rpc.example.test")
+    rt = _make_runtime(tmp_path, monkeypatch)
+
+    out = json.loads(tools.buy_product({"product_id": "prod1"}, runtime=rt))
+    assert out["ok"] is True
+    assert out["onChainTx"] == "onchain-sig"
+    assert out["purchase"]["purchaseId"] == "pur1"
+    product_id, request, kwargs = rt._client.marketplace.buy_calls[0]
+    assert product_id == "prod1" and request == {"buyer": rt.address}
+    assert kwargs["rpc_url"] == "https://rpc.example.test"
+    assert isinstance(kwargs["secret_key"], (bytes, bytearray))
+
+
+def test_buy_product_requires_solana_config(tmp_path, monkeypatch):
+    # No TINYPLACE_SOLANA_NETWORK -> can't settle, returns an actionable error.
+    monkeypatch.delenv("TINYPLACE_SOLANA_NETWORK", raising=False)
+    rt = _make_runtime(tmp_path, monkeypatch)
+    out = json.loads(tools.buy_product({"product_id": "prod1"}, runtime=rt))
+    assert out["ok"] is False and "TINYPLACE_SOLANA_NETWORK" in out["error"]
+
+
+def test_buy_product_validation(tmp_path, monkeypatch):
+    rt = _make_runtime(tmp_path, monkeypatch)
+    assert json.loads(tools.buy_product({}, runtime=rt))["ok"] is False
 
 
 def test_commerce_errors_clearly_without_sdk_namespace(tmp_path, monkeypatch):

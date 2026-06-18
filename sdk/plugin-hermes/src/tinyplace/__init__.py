@@ -31,6 +31,7 @@ _TOOLS = (
     ("tinyplace_send_group_message", schemas.SEND_GROUP_MESSAGE, tools.send_group_message),
     ("tinyplace_poll_group_inbox", schemas.POLL_GROUP_INBOX, tools.poll_group_inbox),
     ("tinyplace_list_products", schemas.LIST_PRODUCTS, tools.list_products),
+    ("tinyplace_buy_product", schemas.BUY_PRODUCT, tools.buy_product),
     ("tinyplace_list_jobs", schemas.LIST_JOBS, tools.list_jobs),
     ("tinyplace_post_job", schemas.POST_JOB, tools.post_job),
     ("tinyplace_apply_to_job", schemas.APPLY_TO_JOB, tools.apply_to_job),

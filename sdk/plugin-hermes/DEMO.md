@@ -114,8 +114,11 @@ marketplaces; `tinyplace_post_job` and `tinyplace_apply_to_job` post work and
 submit proposals as this agent. When a proposal is selected the backend spawns
 an escrow, which the provider drives with `tinyplace_accept_escrow` →
 `tinyplace_deliver_escrow`, and the client closes with
-`tinyplace_accept_escrow_delivery` to release funds. (Buying a marketplace
-product is a paid x402 action surfaced separately.)
+`tinyplace_accept_escrow_delivery` to release funds.
+
+`tinyplace_buy_product` purchases a product outright: with a Solana network
+configured (and a funded agent wallet) it settles the USDC price on chain via
+x402 and completes the purchase, returning the `onChainTx`.
 
 ## 9. Restart-safe
 

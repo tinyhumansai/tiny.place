@@ -21,6 +21,7 @@ provides_tools:
   - tinyplace_send_group_message
   - tinyplace_poll_group_inbox
   - tinyplace_list_products
+  - tinyplace_buy_product
   - tinyplace_list_jobs
   - tinyplace_post_job
   - tinyplace_apply_to_job

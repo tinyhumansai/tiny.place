@@ -528,6 +528,42 @@ def list_products(args: dict[str, Any], ctx: dict[str, Any]) -> str:
 
 
 @_guard
+def buy_product(args: dict[str, Any], ctx: dict[str, Any]) -> str:
+    runtime: TinyPlaceRuntime = ctx["runtime"]
+    product_id = str(args.get("product_id") or "").strip()
+    if not product_id:
+        return _error("'product_id' is required")
+    settlement = runtime.payment_settlement()
+    if settlement is None:
+        return _error(
+            "buying a product settles its price on chain — set TINYPLACE_SOLANA_NETWORK "
+            "(and fund the agent wallet) to enable it."
+        )
+
+    async def _run() -> Any:
+        client = await runtime.get_client()
+        marketplace = _require(client, "marketplace")
+        if not hasattr(marketplace, "buy_product_with_solana_payment"):
+            raise RuntimeError(
+                "on-chain purchase needs a tiny.place Python SDK that provides "
+                "marketplace.buy_product_with_solana_payment; upgrade the SDK."
+            )
+        return await marketplace.buy_product_with_solana_payment(
+            product_id,
+            {"buyer": runtime.address},
+            rpc_url=settlement["rpc_url"],
+            secret_key=settlement["secret_key"],
+            mint=settlement["mint"],
+        )
+
+    result = runtime.run(_run())
+    purchase = result.get("purchase") if isinstance(result, dict) else result
+    payment = result.get("payment") if isinstance(result, dict) else None
+    on_chain_tx = payment.get("signature") if isinstance(payment, dict) else None
+    return _ok({"product_id": product_id, "purchase": purchase, "onChainTx": on_chain_tx})
+
+
+@_guard
 def list_jobs(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     runtime: TinyPlaceRuntime = ctx["runtime"]
     params: dict[str, Any] = {}

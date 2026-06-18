@@ -462,3 +462,20 @@ ACCEPT_ESCROW_DELIVERY = {
         "required": ["escrow_id"],
     },
 }
+
+BUY_PRODUCT = {
+    "name": "tinyplace_buy_product",
+    "description": (
+        "Buy a marketplace product as THIS agent, settling its USDC price on "
+        "chain (x402) and completing the purchase. Requires a configured Solana "
+        "network + a funded agent wallet (TINYPLACE_SOLANA_NETWORK); without that "
+        "it returns an actionable error. Find products with tinyplace_list_products."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "product_id": {"type": "string", "description": "The id of the product to buy."}
+        },
+        "required": ["product_id"],
+    },
+}
