@@ -56,12 +56,13 @@ def _make_runtime(tmp_path: Path, monkeypatch) -> "runtime_mod.TinyPlaceRuntime"
     return rt
 
 
-def test_notifications_default_passes_no_params(tmp_path, monkeypatch):
+def test_notifications_defaults_to_unread(tmp_path, monkeypatch):
     rt = _make_runtime(tmp_path, monkeypatch)
     out = json.loads(tools.notifications({}, runtime=rt))
     assert out["ok"] is True
     assert out["inbox"]["unreadCount"] == 1
-    assert rt._client.inbox.list_params is None
+    # Omitting status defaults to unread explicitly (the backend default is broader).
+    assert rt._client.inbox.list_params == {"status": "unread"}
 
 
 def test_notifications_builds_filter_params(tmp_path, monkeypatch):
@@ -84,3 +85,22 @@ def test_mark_notifications_read_all_when_no_id(tmp_path, monkeypatch):
     assert out["ok"] is True and out["scope"] == "all"
     assert rt._client.inbox.mark_all_calls == 1
     assert rt._client.inbox.mark_read_calls == []
+
+
+def test_mark_notifications_read_rejects_blank_item_id(tmp_path, monkeypatch):
+    rt = _make_runtime(tmp_path, monkeypatch)
+    # A provided-but-blank item_id is an error, NOT a silent "mark all".
+    out = json.loads(tools.mark_notifications_read({"item_id": "  "}, runtime=rt))
+    assert out["ok"] is False and "item_id" in out["error"]
+    assert rt._client.inbox.mark_all_calls == 0
+    assert rt._client.inbox.mark_read_calls == []
+
+
+def test_notifications_errors_clearly_without_inbox_support(tmp_path, monkeypatch):
+    rt = _make_runtime(tmp_path, monkeypatch)
+    # An SDK that predates the inbox namespace -> actionable error, not AttributeError.
+    delattr(rt._client, "inbox")
+    out = json.loads(tools.notifications({}, runtime=rt))
+    assert out["ok"] is False
+    assert "AttributeError" not in out["error"]
+    assert "inbox" in out["error"]

@@ -323,17 +323,22 @@ def search(args: dict[str, Any], ctx: dict[str, Any]) -> str:
 @_guard
 def notifications(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     runtime: TinyPlaceRuntime = ctx["runtime"]
-    params: dict[str, Any] = {}
     status = args.get("status")
     if isinstance(status, str) and status.strip():
-        params["status"] = status.strip()
+        status = status.strip()
+    else:
+        # The schema advertises 'unread' as the default, but the backend's list
+        # default is broader (unread,read) — set it explicitly so a plain call
+        # doesn't keep re-surfacing already-read items.
+        status = "unread"
+    params: dict[str, Any] = {"status": status}
     limit = _coerce_limit(args.get("limit"))
     if limit is not None:
         params["limit"] = limit
 
     async def _run() -> Any:
         client = await runtime.get_client()
-        return await client.inbox.list(params or None)
+        return await _require_inbox(client).list(params)
 
     return _ok({"inbox": runtime.run(_run())})
 
@@ -341,21 +346,43 @@ def notifications(args: dict[str, Any], ctx: dict[str, Any]) -> str:
 @_guard
 def mark_notifications_read(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     runtime: TinyPlaceRuntime = ctx["runtime"]
+    # Distinguish "omitted" (mark all) from "provided but invalid" (an error) so
+    # a bad id can't silently fall through to marking the whole inbox read.
+    has_item_id = "item_id" in args
     item = args.get("item_id")
+    if has_item_id and (not isinstance(item, str) or not item.strip()):
+        return _error("'item_id' must be a non-empty string when provided")
     item_id = item.strip() if isinstance(item, str) else ""
 
     async def _run() -> Any:
         client = await runtime.get_client()
+        inbox = _require_inbox(client)
         # A specific id marks that one read; omitting it marks the whole inbox.
-        if item_id:
-            return await client.inbox.mark_read(item_id)
-        return await client.inbox.mark_all_read()
+        if has_item_id:
+            return await inbox.mark_read(item_id)
+        return await inbox.mark_all_read()
 
     result = runtime.run(_run())
-    return _ok({"scope": "item" if item_id else "all", "result": result})
+    return _ok({"scope": "item" if has_item_id else "all", "result": result})
 
 
 # --- helpers ----------------------------------------------------------------
+
+
+def _require_inbox(client: Any) -> Any:
+    """Return the SDK's inbox namespace, or a clear error if it's missing.
+
+    The notifications tools need a tiny.place Python SDK new enough to expose the
+    ``inbox`` namespace; surface an actionable message rather than a cryptic
+    ``AttributeError`` when an older SDK is installed.
+    """
+    inbox = getattr(client, "inbox", None)
+    if inbox is None:
+        raise RuntimeError(
+            "notifications need a tiny.place Python SDK that provides the 'inbox' "
+            "namespace; upgrade the installed SDK."
+        )
+    return inbox
 
 
 async def _resolve_address(runtime: TinyPlaceRuntime, to: str) -> str:

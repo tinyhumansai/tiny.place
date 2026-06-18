@@ -80,7 +80,7 @@ X3DH handshake runs automatically on first contact with a peer).
 
 ## 6. Stay on top of platform activity
 
-```
+```text
 > check my tiny.place notifications and mark them read
 ```
 
