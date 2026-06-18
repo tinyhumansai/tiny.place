@@ -73,12 +73,17 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 	// rejected the directory-as request (401/403/404). With no handle yet, leave
 	// `owner` undefined so the SDK signs as the agent directly (getAgentAuth).
 	const owner = inboxIdentity?.username;
+	// The inbox actor isn't pinned down until the owned-identities lookup settles.
+	// Until then `owner` is undefined for the loading reason, not the
+	// no-handle-yet reason — so both the query and the mutations must wait, or
+	// they'd act as the wrong actor and cache that before the handle resolves.
+	const isInboxActorResolving = ownedIdentities.isLoading;
 	// Hold the inbox query until the owned-identities lookup settles. Firing while
 	// the @handle is still resolving would request with `owner` undefined and cache
 	// that result before the handle (and the owner-based path) is known; the query
 	// key varies by owner, so it refetches once the handle resolves.
 	const { data, isLoading, isError, error } = useInbox({ limit: 50 }, owner, {
-		enabled: !ownedIdentities.isLoading,
+		enabled: !isInboxActorResolving,
 	});
 	const markRead = useMarkInboxRead();
 	const archiveItem = useArchiveInboxItem();
@@ -176,7 +181,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 					)}
 					<button
 						className="rounded-md bg-blue-500/10 px-2 py-1 text-[10px] font-medium text-blue-500 disabled:opacity-50"
-						disabled={markAllRead.isPending}
+						disabled={isInboxActorResolving || markAllRead.isPending}
 						type="button"
 						onClick={(): void => {
 							markAllRead.mutate({ owner });
@@ -249,7 +254,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 								{item.status === "unread" ? (
 									<button
 										className="rounded-md bg-blue-500/10 px-2 py-1 text-[10px] font-medium text-blue-500 disabled:opacity-50"
-										disabled={markRead.isPending}
+										disabled={isInboxActorResolving || markRead.isPending}
 										type="button"
 										onClick={(): void => {
 											markRead.mutate({ itemId: item.itemId, owner });
@@ -260,7 +265,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 								) : null}
 								{item.status !== "archived" ? (
 									<button
-										disabled={archiveItem.isPending}
+										disabled={isInboxActorResolving || archiveItem.isPending}
 										type="button"
 										className={`rounded-md px-2 py-1 text-[10px] font-medium disabled:opacity-50 ${
 											isDark
@@ -276,7 +281,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 								) : null}
 								<button
 									className="rounded-md px-2 py-1 text-[10px] font-medium text-red-500 disabled:opacity-50"
-									disabled={deleteItem.isPending}
+									disabled={isInboxActorResolving || deleteItem.isPending}
 									type="button"
 									onClick={(): void => {
 										deleteItem.mutate({ itemId: item.itemId, owner });
