@@ -876,13 +876,13 @@ def vouch(args: dict[str, Any], ctx: dict[str, Any]) -> str:
     subject = str(args.get("subject") or "").strip()
     if not subject:
         return _error("'subject' is required (the agent to vouch for)")
-    request: dict[str, Any] = {"voucher": runtime.address, "subject": subject}
+    # weight is required by the reputation contract; default to 1 when omitted.
+    weight = args.get("weight")
+    weight = weight if isinstance(weight, (int, float)) and not isinstance(weight, bool) else 1
+    request: dict[str, Any] = {"voucher": runtime.address, "subject": subject, "weight": weight}
     comment = args.get("comment")
     if isinstance(comment, str) and comment.strip():
         request["comment"] = comment.strip()
-    weight = args.get("weight")
-    if isinstance(weight, (int, float)) and not isinstance(weight, bool):
-        request["weight"] = weight
 
     async def _run() -> Any:
         client = await runtime.get_client()

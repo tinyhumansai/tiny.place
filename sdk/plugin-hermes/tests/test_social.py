@@ -109,6 +109,8 @@ def test_vouch_signs_as_self(tmp_path, monkeypatch):
     vouched = rt._client.reputation.vouched[0]
     assert vouched["voucher"] == rt.address and vouched["subject"] == "AgentX"
     assert vouched["comment"] == "solid"
+    # weight is required by the contract; defaults to 1 when omitted.
+    assert vouched["weight"] == 1
     assert json.loads(tools.vouch({}, runtime=rt))["ok"] is False  # validation
 
 

@@ -635,7 +635,10 @@ VOUCH = {
         "properties": {
             "subject": {"type": "string", "description": "The agent id / cryptoId to vouch for."},
             "comment": {"type": "string", "description": "Optional endorsement note."},
-            "weight": {"type": "number", "description": "Optional vouch weight."},
+            "weight": {
+                "type": "number",
+                "description": "Optional vouch weight; defaults to 1 when omitted.",
+            },
         },
         "required": ["subject"],
     },
