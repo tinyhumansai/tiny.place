@@ -25,7 +25,7 @@ export async function dispatchRaw(
   parsed: ParsedArgs,
 ): Promise<unknown> {
   const { client } = ctx;
-  const [first, second] = parsed.positionals;
+  const [first, second, third] = parsed.positionals;
   const flags = parsed.flags;
   const selfId = ctx.signer?.agentId;
   const selfPub = ctx.signer?.publicKeyBase64;
@@ -142,11 +142,48 @@ export async function dispatchRaw(
     case "feed":
       return client.feeds.getFeed(required(first, "feed <handle>"));
     case "feed-posts":
-      return client.feeds.listPosts(required(first, "feed-posts <handle>"));
+      return client.feeds.listPosts(
+        required(first, "feed-posts <handle>"),
+        queryFlags(flags, ["limit", "before"]),
+        selfId,
+      );
     case "feed-post":
       return client.feeds.createPost(
         required(first, "feed-post <handle>"),
         typedBody<{ body: string }>(flags),
+      );
+    case "feed-post-get":
+      return client.feeds.getPost(
+        required(first, "feed-post-get <handle> <postId>"),
+        required(second, "feed-post-get <handle> <postId>"),
+        selfId,
+      );
+    case "feed-post-delete":
+      return client.feeds.deletePost(
+        required(first, "feed-post-delete <handle> <postId>"),
+        required(second, "feed-post-delete <handle> <postId>"),
+      );
+    case "feed-like":
+      return client.feeds.likePost(
+        required(first, "feed-like <handle> <postId>"),
+        required(second, "feed-like <handle> <postId>"),
+        stringFlag(flags, "as") ??
+          stringFlag(flags, "agent-id") ??
+          required(selfId, "feed-like needs --as, --agent-id, or a signer"),
+      );
+    case "feed-unlike":
+      return client.feeds.unlikePost(
+        required(first, "feed-unlike <handle> <postId>"),
+        required(second, "feed-unlike <handle> <postId>"),
+        stringFlag(flags, "as") ??
+          stringFlag(flags, "agent-id") ??
+          required(selfId, "feed-unlike needs --as, --agent-id, or a signer"),
+      );
+    case "feed-likers":
+      return client.feeds.listPostLikers(
+        required(first, "feed-likers <handle> <postId>"),
+        required(second, "feed-likers <handle> <postId>"),
+        queryFlags(flags, ["limit", "offset"]),
       );
     case "feed-comments":
       return client.feeds.listComments(
@@ -157,9 +194,19 @@ export async function dispatchRaw(
       return client.feeds.addComment(
         required(first, "feed-comment <handle> <postId>"),
         required(second, "feed-comment <handle> <postId>"),
-        stringFlag(flags, "agent-id") ??
-          required(selfId, "feed-comment needs --agent-id or a signer"),
+        stringFlag(flags, "as") ??
+          stringFlag(flags, "agent-id") ??
+          required(selfId, "feed-comment needs --as, --agent-id, or a signer"),
         typedBody<{ body: string }>(flags),
+      );
+    case "feed-comment-delete":
+      return client.feeds.deleteComment(
+        required(first, "feed-comment-delete <handle> <postId> <commentId>"),
+        required(second, "feed-comment-delete <handle> <postId> <commentId>"),
+        required(third, "feed-comment-delete <handle> <postId> <commentId>"),
+        stringFlag(flags, "as") ??
+          stringFlag(flags, "agent-id") ??
+          required(selfId, "feed-comment-delete needs --as, --agent-id, or a signer"),
       );
     case "home-feed":
       return client.feeds.homeFeed();
