@@ -8,20 +8,24 @@ from ..auth import sign_fresh_canonical_payload
 from ..crypto import canonical_payload
 from ..http import HttpClient, encode
 from ..signer import Signer
+from ..solana import SOLANA_USDC_MINT, execute_solana_x402_payment
 from ..types import Json, JsonDict, Query
+from ..x402 import build_x402_payment_map
 
 
 class MarketplaceApi:
     """The digital marketplace: products, identity (@handle) listings/bids/offers,
-    reviews and browsing. Mirrors the TS SDK's ``MarketplaceApi`` REST surface.
+    reviews and browsing. Mirrors the TS SDK's ``MarketplaceApi``.
 
     Signed mutations (create/update/delete/review/listing/bid/offer) attach a
     fresh canonical-payload signature from the configured signer, exactly as the
     TS SDK does, and are routed as the named seller/buyer/bidder when present.
 
-    On-chain x402 settlement of purchases/bids (the TS ``*WithSolanaPayment``
-    helpers) is intentionally out of scope here; paid actions accept a prepared
-    ``payment`` map in the request or surface the backend's 402 challenge.
+    The ``*_with_solana_payment`` helpers settle a paid action on chain: product
+    and identity-listing purchases execute an ``exact`` USDC transfer up front;
+    bids and offers attach a signed ``upto`` x402 authorization (no immediate
+    transfer). They reuse the same Solana primitives as registration. A plain
+    paid call without a prepared ``payment`` map surfaces the backend's 402.
     """
 
     def __init__(
@@ -69,6 +73,49 @@ class MarketplaceApi:
         return await self._post_owner(
             f"/marketplace/products/{encode(product_id)}/buy", request.get("buyer"), request
         )
+
+    async def buy_product_with_solana_payment(
+        self,
+        product_id: str,
+        request: JsonDict,
+        *,
+        rpc_url: str,
+        secret_key: str | bytes,
+        mint: str | None = None,
+        decimals: int = 6,
+        nonce: str | None = None,
+        expires_at: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Buy a product, settling its USDC price on chain (exact x402), then retrying
+        the buy with the signed payment map. Mirrors the TS ``buyProductWithSolanaPayment``.
+        """
+        if self._signer is None:
+            raise ValueError("buy_product_with_solana_payment requires a signer")
+        product = await self.get_product(product_id)
+        price = _price(product)
+        execution = await execute_solana_x402_payment(
+            signer=self._signer,
+            rpc_url=rpc_url,
+            secret_key=secret_key,
+            mint=mint or SOLANA_USDC_MINT,
+            decimals=decimals,
+            payment={
+                "scheme": "exact",
+                "network": price["network"],
+                "asset": price["asset"],
+                "amount": price["amount"],
+                "from": request.get("buyer"),
+                "to": product.get("seller") if isinstance(product, dict) else None,
+                "nonce": nonce or _marketplace_nonce("product", product_id),
+                "expiresAt": expires_at,
+                "metadata": {"productId": product_id, "kind": "product", **(metadata or {})},
+            },
+        )
+        purchase = await self.buy_product(
+            product_id, {**request, "payment": execution["payment"]}
+        )
+        return {"product": product, "purchase": purchase, "payment": execution}
 
     async def list_product_reviews(self, product_id: str) -> JsonDict:
         return await self._http.get(f"/marketplace/products/{encode(product_id)}/reviews")
@@ -131,6 +178,52 @@ class MarketplaceApi:
             f"/marketplace/identities/{encode(listing_id)}/buy", request.get("buyer"), request
         )
 
+    async def buy_identity_listing_with_solana_payment(
+        self,
+        listing_id: str,
+        request: JsonDict,
+        *,
+        rpc_url: str,
+        secret_key: str | bytes,
+        mint: str | None = None,
+        decimals: int = 6,
+        nonce: str | None = None,
+        expires_at: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Buy an identity listing, settling its USDC price on chain (exact x402)."""
+        if self._signer is None:
+            raise ValueError("buy_identity_listing_with_solana_payment requires a signer")
+        listing = await self._find_identity_listing(listing_id)
+        price = _price(listing)
+        execution = await execute_solana_x402_payment(
+            signer=self._signer,
+            rpc_url=rpc_url,
+            secret_key=secret_key,
+            mint=mint or SOLANA_USDC_MINT,
+            decimals=decimals,
+            payment={
+                "scheme": "exact",
+                "network": price["network"],
+                "asset": price["asset"],
+                "amount": price["amount"],
+                "from": request.get("buyer"),
+                "to": listing.get("seller"),
+                "nonce": nonce or _marketplace_nonce("identity", listing_id),
+                "expiresAt": expires_at,
+                "metadata": {
+                    "listingId": listing_id,
+                    "identity": listing.get("name"),
+                    "kind": "identity-listing",
+                    **(metadata or {}),
+                },
+            },
+        )
+        sale = await self.buy_identity_listing(
+            listing_id, {**request, "payment": execution["payment"]}
+        )
+        return {"listing": listing, "sale": sale, "payment": execution}
+
     async def list_bids(self, listing_id: str) -> JsonDict:
         return await self._http.get(f"/marketplace/identities/{encode(listing_id)}/bids")
 
@@ -140,6 +233,57 @@ class MarketplaceApi:
         return await self._post_owner(
             f"/marketplace/identities/{encode(listing_id)}/bids", bid.get("bidder"), bid
         )
+
+    async def place_bid_with_solana_payment(
+        self,
+        listing_id: str,
+        bid: JsonDict,
+        *,
+        nonce: str | None = None,
+        expires_at: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Place an identity bid backed by a signed ``upto`` x402 authorization
+        (no immediate transfer; funds are pulled if the bid wins).
+        """
+        if self._signer is None:
+            raise ValueError("place_bid_with_solana_payment requires a signer")
+        price = _price(bid)
+        if not bid.get("bidder") or not price.get("amount"):
+            raise ValueError("identity bid requires bidder and price.amount")
+        listing = await self._find_identity_listing(listing_id)
+        bid_id = bid.get("bidId") or _next_id("bid")
+        payment = await build_x402_payment_map(
+            self._signer,
+            {
+                "scheme": "upto",
+                "network": price["network"],
+                "asset": price["asset"],
+                "amount": price["amount"],
+                "from": bid["bidder"],
+                "to": listing.get("seller"),
+                "nonce": nonce or _marketplace_nonce("bid", bid_id),
+                "expiresAt": expires_at,
+                "metadata": {
+                    "bidId": bid_id,
+                    "identity": listing.get("name"),
+                    "kind": "identity-bid",
+                    "listingId": listing_id,
+                    **(metadata or {}),
+                },
+            },
+        )
+        updated = await self.place_bid(
+            listing_id, {**bid, "bidId": bid_id, "payment": payment}
+        )
+        return {"listing": listing, "updatedListing": updated, "payment": payment}
+
+    async def _find_identity_listing(self, listing_id: str) -> JsonDict:
+        listings = await self.list_identities()
+        for candidate in (listings.get("identities") or []) if isinstance(listings, dict) else []:
+            if isinstance(candidate, dict) and candidate.get("listingId") == listing_id:
+                return candidate
+        raise ValueError(f"Identity listing not found: {listing_id}")
 
     async def close_listing(
         self, listing_id: str, seller: str | None = None, request: JsonDict | None = None
@@ -171,6 +315,43 @@ class MarketplaceApi:
     async def create_offer(self, offer: JsonDict) -> Json:
         offer = await self._signed(offer, _identity_offer_payload, id_field="offerId", id_prefix="offer")
         return await self._post_owner("/marketplace/offers", offer.get("buyer"), offer)
+
+    async def create_offer_with_solana_payment(
+        self,
+        offer: JsonDict,
+        *,
+        nonce: str | None = None,
+        expires_at: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create an identity offer backed by a signed ``upto`` x402 authorization."""
+        if self._signer is None:
+            raise ValueError("create_offer_with_solana_payment requires a signer")
+        price = _price(offer)
+        if not offer.get("buyer") or not offer.get("name") or not price.get("amount"):
+            raise ValueError("identity offer requires buyer, name, and price.amount")
+        offer_id = offer.get("offerId") or _next_id("offer")
+        payment = await build_x402_payment_map(
+            self._signer,
+            {
+                "scheme": "upto",
+                "network": price["network"],
+                "asset": price["asset"],
+                "amount": price["amount"],
+                "from": offer["buyer"],
+                "to": offer["name"],
+                "nonce": nonce or _marketplace_nonce("offer", offer_id),
+                "expiresAt": expires_at,
+                "metadata": {
+                    "kind": "identity-offer",
+                    "name": offer["name"],
+                    "offerId": offer_id,
+                    **(metadata or {}),
+                },
+            },
+        )
+        created = await self.create_offer({**offer, "offerId": offer_id, "payment": payment})
+        return {"offer": created, "payment": payment}
 
     async def cancel_offer(self, offer_id: str) -> None:
         await self._signed_delete(
@@ -253,6 +434,18 @@ class MarketplaceApi:
 
 def _next_id(prefix: str) -> str:
     return f"{prefix}_{int(time.time() * 1000):x}_{secrets.token_hex(6)}"
+
+
+def _marketplace_nonce(kind: str, id_: str) -> str:
+    return f"{kind}_{id_}_{secrets.token_hex(12)}"
+
+
+def _price(obj: Any) -> dict[str, Any]:
+    """Extract the ``{network, asset, amount}`` price object, or raise."""
+    price = obj.get("price") if isinstance(obj, dict) else None
+    if not isinstance(price, dict):
+        raise ValueError("missing price object (expected network/asset/amount)")
+    return price
 
 
 # Canonical signature payloads — must byte-match the backend / TS SDK exactly.
