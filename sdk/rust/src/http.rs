@@ -8,7 +8,7 @@ use std::sync::Arc;
 use base64::Engine as _;
 use reqwest::{Method, Response, StatusCode};
 use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::auth::{
     sign_admin_request, sign_directory_write, sign_request, AdminSigningOptions, Headers,
@@ -35,6 +35,20 @@ enum Auth {
     Agent,
     /// `TinyPlace-Admin` headers.
     Admin,
+}
+
+/// Auth mode for `POST /graphql`.
+#[derive(Clone, Copy, Debug, Default)]
+pub enum GraphQLAuth {
+    /// No auth headers.
+    #[default]
+    None,
+    /// Agent-authenticated request, used by viewer-scoped reads like home feed.
+    Agent,
+    /// Generic signed request.
+    Signed,
+    /// Directory-authenticated request.
+    Directory,
 }
 
 /// Configuration for [`HttpClient`].
@@ -261,6 +275,30 @@ impl HttpClient {
         Ok(serde_json::from_str(&text)?)
     }
 
+    async fn parse_graphql<T: DeserializeOwned>(&self, response: Response) -> Result<T> {
+        let body: GraphQLResponse<T> = self.parse(response).await?;
+        if let Some(errors) = body.errors {
+            let message = errors
+                .iter()
+                .map(|err| err.message.as_str())
+                .collect::<Vec<_>>()
+                .join("; ");
+            return Err(Error::Http(Box::new(crate::error::HttpError {
+                status: 200,
+                message: if message.is_empty() {
+                    "GraphQL errors".to_string()
+                } else {
+                    message
+                },
+                body: serde_json::to_value(&errors).unwrap_or(serde_json::Value::Null),
+                headers: HashMap::new(),
+                payment_required: None,
+            })));
+        }
+        body.data
+            .ok_or_else(|| Error::InvalidArgument("GraphQL response missing data".into()))
+    }
+
     fn body_string<B: Serialize>(body: Option<&B>) -> Result<Option<String>> {
         match body {
             Some(value) => Ok(Some(serde_json::to_string(value)?)),
@@ -376,6 +414,32 @@ impl HttpClient {
     }
 
     // --- POST ------------------------------------------------------------------
+
+    /// Execute a read-only GraphQL query against `POST /graphql`.
+    pub async fn graphql<T: DeserializeOwned, V: Serialize>(
+        &self,
+        query: &str,
+        variables: Option<&V>,
+        auth: GraphQLAuth,
+        operation_name: Option<&str>,
+    ) -> Result<T> {
+        let body = GraphQLRequest {
+            query,
+            variables,
+            operation_name,
+        };
+        let body = Self::body_string(Some(&body))?;
+        let auth = match auth {
+            GraphQLAuth::None => Auth::None,
+            GraphQLAuth::Agent => Auth::Agent,
+            GraphQLAuth::Signed => Auth::Signed,
+            GraphQLAuth::Directory => Auth::Directory,
+        };
+        let response = self
+            .execute(Method::POST, "/graphql", &[], body, auth, None, &[])
+            .await?;
+        self.parse_graphql(response).await
+    }
 
     pub async fn post<T: DeserializeOwned, B: Serialize>(
         &self,
@@ -623,6 +687,32 @@ impl HttpClient {
             .await?;
         self.parse(response).await
     }
+}
+
+#[derive(Serialize)]
+struct GraphQLRequest<'a, V: Serialize> {
+    query: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    variables: Option<&'a V>,
+    #[serde(rename = "operationName", skip_serializing_if = "Option::is_none")]
+    operation_name: Option<&'a str>,
+}
+
+#[derive(Deserialize)]
+struct GraphQLResponse<T> {
+    data: Option<T>,
+    #[serde(default)]
+    errors: Option<Vec<GraphQLError>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GraphQLError {
+    message: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    path: Option<Vec<serde_json::Value>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    extensions: Option<serde_json::Value>,
 }
 
 /// Build a `?a=b&c=d` query string (empty when there are no params), matching

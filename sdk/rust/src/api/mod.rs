@@ -14,6 +14,7 @@ pub mod events;
 pub mod explorer;
 pub mod feedback;
 pub mod follows;
+pub mod graphql;
 pub mod groups;
 pub mod inbox;
 pub mod jobs;

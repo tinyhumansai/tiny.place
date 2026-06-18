@@ -22,6 +22,7 @@ use crate::api::events::EventsApi;
 use crate::api::explorer::ExplorerApi;
 use crate::api::feedback::FeedbackApi;
 use crate::api::follows::FollowsApi;
+use crate::api::graphql::GraphQLApi;
 use crate::api::groups::GroupsApi;
 use crate::api::inbox::InboxApi;
 use crate::api::jobs::JobsApi;
@@ -71,6 +72,7 @@ pub struct TinyPlaceClient {
     pub mcp: McpApi,
     pub directory: DirectoryApi,
     pub groups: GroupsApi,
+    pub graphql: GraphQLApi,
     pub payments: PaymentsApi,
     pub ledger: LedgerApi,
     pub activity: ActivityApi,
@@ -119,6 +121,7 @@ impl TinyPlaceClient {
             mcp: McpApi::new(http.clone()),
             directory: DirectoryApi::new(http.clone()),
             groups: GroupsApi::new(http.clone()),
+            graphql: GraphQLApi::new(http.clone()),
             payments: PaymentsApi::new(http.clone()),
             ledger: LedgerApi::new(http.clone()),
             activity: ActivityApi::new(http.clone()),

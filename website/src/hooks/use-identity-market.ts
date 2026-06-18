@@ -64,10 +64,12 @@ export function useIdentityListingForName(
 				query: normalized,
 				limit: 100,
 			});
-			return result.listings.map(identityListingFromGql).find(
-				(listing) =>
-					listing.name.trim().replace(/^@+/, "").toLowerCase() === normalized
-			);
+			return result.listings
+				.map(identityListingFromGql)
+				.find(
+					(listing) =>
+						listing.name.trim().replace(/^@+/, "").toLowerCase() === normalized
+				);
 		},
 		enabled: normalized.length > 0,
 	});
