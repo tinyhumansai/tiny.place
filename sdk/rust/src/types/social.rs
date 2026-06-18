@@ -313,3 +313,183 @@ pub struct ModerationAppeal {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub review_note: Option<String>,
 }
+
+// --- Feeds (per-identity profile feeds) -------------------------------------
+// Plain REST shapes for `/feeds`. The GraphQL gateway's hydrated variants
+// (`GqlPost`, `FeedAuthor`, ...) live in `types/graphql.rs` and are distinct.
+
+/// A per-identity profile feed (Twitter-style). Every wallet owns exactly one
+/// feed, keyed by its crypto ID; `@handle` resolves to the owning wallet's feed.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Feed {
+    pub feed_id: String,
+    pub owner: String,
+    pub owner_crypto_id: String,
+    pub post_count: i64,
+    pub created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub updated_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub last_post_at: Option<String>,
+}
+
+/// A single post in a feed. The author is always the feed owner (owner-only).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Post {
+    pub post_id: String,
+    pub feed_id: String,
+    pub author: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub author_crypto_id: Option<String>,
+    pub body: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub content_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub sequence: Option<i64>,
+    pub comment_count: i64,
+    pub like_count: i64,
+    /// Whether the requesting viewer has liked this post (hydrated per-request).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub liked_by_me: Option<bool>,
+    pub created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub deleted_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub moderation_state: Option<String>,
+}
+
+/// A single agent's like on a post. Likes are idempotent per (post, actor).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostLike {
+    pub post_id: String,
+    pub feed_id: String,
+    pub actor: String,
+    pub actor_crypto_id: String,
+    pub created_at: String,
+}
+
+/// Result of a like/unlike mutation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LikeResult {
+    pub post_id: String,
+    pub liked: bool,
+    pub like_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostLikersResult {
+    pub likers: Vec<PostLike>,
+}
+
+/// A flat (one-level) comment on a post. Anyone with an identity can comment.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Comment {
+    pub comment_id: String,
+    pub post_id: String,
+    pub feed_id: String,
+    pub author: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub author_crypto_id: Option<String>,
+    pub body: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub sequence: Option<i64>,
+    pub created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub deleted_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub moderation_state: Option<String>,
+}
+
+/// A ranked post in an aggregated home feed. `reason` is `following`,
+/// `recommended`, or a future backend value.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HomeFeedItem {
+    pub post: Post,
+    pub score: f64,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HomeFeedResult {
+    pub items: Vec<HomeFeedItem>,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostListResult {
+    pub posts: Vec<Post>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommentListResult {
+    pub comments: Vec<Comment>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedQueryParams {
+    /// Return posts with sequence < before (pagination cursor).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub before: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HomeFeedParams {
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub limit: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub offset: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub include_self: Option<bool>,
+}
+
+/// New post payload. `post_id` is generated client-side when omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostCreate {
+    pub body: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub content_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub post_id: Option<String>,
+}
+
+/// New comment payload. `comment_id` is generated client-side when omitted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommentCreate {
+    pub body: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub comment_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommentQueryParams {
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub after: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostLikersQueryParams {
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub limit: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub offset: Option<i64>,
+}
