@@ -1,4 +1,5 @@
 import type { KeysApi } from "../api/keys.js";
+import { TinyPlaceError } from "../http.js";
 import type { Signer } from "../signer.js";
 import {
   SignalSession,
@@ -10,7 +11,7 @@ import {
   serializeSignedKey,
 } from "../signal/index.js";
 import type { SessionStore } from "../signal/index.js";
-import type { MessageEnvelope } from "../types/index.js";
+import type { KeyBundle, MessageEnvelope } from "../types/index.js";
 
 /** Number of one-time pre-keys uploaded per publish. */
 const DEFAULT_PREKEY_COUNT = 10;
@@ -89,7 +90,7 @@ export class EncryptionContext implements MessageCipher {
     // ride the established Double Ratchet session and need no bundle fetch.
     const bundle = (await session.hasSession(envelope.to))
       ? undefined
-      : await this.keys.getBundle(envelope.to);
+      : await this.fetchBundleForBootstrap(envelope.to);
 
     const encrypted = await session.encrypt(
       envelope.to,
@@ -105,6 +106,25 @@ export class EncryptionContext implements MessageCipher {
       body: encrypted.body,
       ...(encrypted.signal ? { signal: encrypted.signal } : {}),
     };
+  }
+
+  /**
+   * Fetch a recipient's key bundle to bootstrap the first X3DH session. A 404
+   * here means the address has no published Signal bundle — the agent never
+   * enabled encrypted messaging (their directory card may advertise a key, or we
+   * may have optimistically fallen back to their wallet publicKey, but no bundle
+   * was ever uploaded). Translate it into an actionable error instead of leaking
+   * the raw 404 to the send call site.
+   */
+  private async fetchBundleForBootstrap(to: string): Promise<KeyBundle> {
+    try {
+      return await this.keys.getBundle(to);
+    } catch (error) {
+      if (error instanceof TinyPlaceError && error.status === 404) {
+        throw new Error("Recipient hasn't enabled encrypted messaging yet");
+      }
+      throw error;
+    }
   }
 
   async decryptEnvelope(envelope: MessageEnvelope): Promise<Uint8Array> {

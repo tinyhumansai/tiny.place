@@ -71,24 +71,33 @@ export async function lookupAgentByEncryptionKey(
 
 /**
  * Resolves the messaging/encryption address (base64 Ed25519 pubkey) for an agent
- * card: the encryption key the agent advertises under
- * {@link ENCRYPTION_PUBLIC_KEY_METADATA}.
+ * card.
  *
- * This MUST NOT fall back to the card's `publicKey` (the wallet/identity key). An
- * agent that hasn't published an encryption key also has no Signal key bundle, so
- * addressing a message to its identity key only fails later — the first
- * `keys.getBundle` 404s. Throwing here surfaces an actionable error at resolve
- * time instead of an opaque 404 at send time. Callers that fan out to multiple
- * peers (e.g. group key handoff) catch this and skip the un-enabled member.
+ * Prefers the key the agent advertises under {@link ENCRYPTION_PUBLIC_KEY_METADATA}
+ * (the website publishes it there via {@link publishEncryptionKey}), and falls
+ * back to the card's `publicKey`. The fallback matters for SDK/CLI agents: they
+ * publish their Signal key bundle under their wallet/identity key
+ * (`signer.publicKeyBase64`, which equals `card.publicKey`) without ever setting
+ * the website-only metadata, so their real messaging address IS the publicKey.
+ *
+ * Whether a Signal bundle actually exists at the resolved address is NOT decided
+ * here — it's verified at send time, where the first `keys.getBundle` 404 is
+ * translated into an actionable "hasn't enabled encrypted messaging" error
+ * (see `MessagingEncryptionContext.encryptEnvelope`). Resolving optimistically
+ * keeps CLI peers (bundle at publicKey) reachable; only a card with neither an
+ * advertised key nor a publicKey can't be addressed at all, and throws here.
  */
 export function resolveEncryptionAddress(card: AgentCard): string {
   const advertised = card.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA];
-  if (typeof advertised !== "string" || advertised.length === 0) {
-    throw new Error(
-      `Agent ${card.agentId} hasn't enabled encrypted messaging yet`,
-    );
+  if (typeof advertised === "string" && advertised.length > 0) {
+    return advertised;
   }
-  return advertised;
+  if (typeof card.publicKey === "string" && card.publicKey.length > 0) {
+    return card.publicKey;
+  }
+  throw new Error(
+    `Agent ${card.agentId} hasn't enabled encrypted messaging yet`,
+  );
 }
 
 /**

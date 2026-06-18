@@ -28,20 +28,24 @@ describe("resolveEncryptionAddress", () => {
     expect(resolveEncryptionAddress(card)).toBe("ENC_KEY_B64");
   });
 
-  it("throws (never falls back to the wallet publicKey) when no encryption key is advertised", () => {
-    // Regression: falling back to card.publicKey addressed messages to the
-    // identity key, which has no published Signal bundle — the first send then
-    // 404s on keys.getBundle. Resolving must fail loudly instead.
+  it("falls back to the wallet publicKey when no encryption key is advertised", () => {
+    // SDK/CLI agents publish their Signal bundle under their wallet key without
+    // ever setting the website-only metadata, so publicKey is their real
+    // messaging address. Whether a bundle exists there is verified at send time
+    // (keys.getBundle 404 → actionable error), not here.
     const card = makeCard({ metadata: {} });
-    expect(() => resolveEncryptionAddress(card)).toThrowError(
-      /hasn't enabled encrypted messaging/,
-    );
+    expect(resolveEncryptionAddress(card)).toBe("WALLET_KEY_B64");
   });
 
-  it("throws when the advertised key is an empty string", () => {
+  it("falls back to the wallet publicKey when the advertised key is an empty string", () => {
     const card = makeCard({
       metadata: { [ENCRYPTION_PUBLIC_KEY_METADATA]: "" },
     });
+    expect(resolveEncryptionAddress(card)).toBe("WALLET_KEY_B64");
+  });
+
+  it("throws when the card has neither an advertised key nor a publicKey", () => {
+    const card = makeCard({ metadata: {}, publicKey: "" });
     expect(() => resolveEncryptionAddress(card)).toThrowError(
       /hasn't enabled encrypted messaging/,
     );
