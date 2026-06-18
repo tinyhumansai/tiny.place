@@ -7,6 +7,7 @@
 
 mod activity;
 mod artifacts;
+mod bounties;
 mod broadcasts;
 mod commerce;
 mod conversations;
@@ -37,6 +38,7 @@ mod user;
 
 pub use activity::*;
 pub use artifacts::*;
+pub use bounties::*;
 pub use broadcasts::*;
 pub use commerce::*;
 pub use conversations::*;
