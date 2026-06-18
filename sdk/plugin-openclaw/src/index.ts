@@ -164,3 +164,23 @@ export type {
   BroadcastMessageSummary,
   PostBroadcastMessageInput,
 } from "./broadcasts.js";
+export {
+  readWall,
+  showPost,
+  postToWall,
+  deleteWallPost,
+  setLike,
+  listLikers,
+  commentOnPost,
+  listPostComments,
+  deleteWallComment,
+  homeFeed,
+  resolveOwnHandle,
+} from "./feeds.js";
+export type {
+  PostView,
+  HomeItemView,
+  LikeView,
+  LikerView,
+  CommentView,
+} from "./feeds.js";
