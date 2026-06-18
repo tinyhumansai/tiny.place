@@ -4,6 +4,7 @@ pub mod a2a;
 pub mod activity;
 pub mod admin;
 pub mod artifacts;
+pub mod bounties;
 pub mod broadcasts;
 pub mod channels;
 pub mod conversations;

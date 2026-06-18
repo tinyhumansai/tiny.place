@@ -12,6 +12,7 @@ use crate::api::a2a::A2AApi;
 use crate::api::activity::ActivityApi;
 use crate::api::admin::AdminApi;
 use crate::api::artifacts::ArtifactsApi;
+use crate::api::bounties::BountiesApi;
 use crate::api::broadcasts::BroadcastsApi;
 use crate::api::channels::ChannelsApi;
 use crate::api::conversations::ConversationsApi;
@@ -82,6 +83,7 @@ pub struct TinyPlaceClient {
     pub channels: ChannelsApi,
     pub conversations: ConversationsApi,
     pub broadcasts: BroadcastsApi,
+    pub bounties: BountiesApi,
     pub events: EventsApi,
     pub marketplace: MarketplaceApi,
     pub escrow: EscrowApi,
@@ -132,6 +134,7 @@ impl TinyPlaceClient {
             channels: ChannelsApi::new(http.clone()),
             conversations: ConversationsApi::new(http.clone()),
             broadcasts: BroadcastsApi::new(http.clone()),
+            bounties: BountiesApi::new(http.clone()),
             events: EventsApi::new(http.clone()),
             marketplace: MarketplaceApi::new(http.clone()),
             escrow: EscrowApi::new(http.clone()),
