@@ -8,6 +8,7 @@ import {
 	TinyPlaceError,
 	type X402AuthorizationFields,
 } from "@tinyhumansai/tinyplace";
+import { apiErrorMessage } from "@src/common/api-error";
 import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import {
@@ -327,11 +328,7 @@ export const DomainRegistration = ({
 
 				{registerMutation.isError && (
 					<p className="text-xs text-red-500">
-						{registryPaymentChallenge(registerMutation.error)
-							? "Registration still requires a valid settled x402 payment."
-							: registerMutation.error instanceof Error
-								? registerMutation.error.message
-								: "Registration failed"}
+						{apiErrorMessage(registerMutation.error, "Registration failed")}
 					</p>
 				)}
 			</div>
