@@ -5,12 +5,12 @@ use serde_json::json;
 use crate::error::Result;
 use crate::http::{GraphQLAuth, HttpClient};
 use crate::types::{
-    GqlBounty, GqlComment, GqlHomeFeedResult, GqlIdentity, GqlIdentityBidListResult,
-    GqlIdentityListingDetail, GqlIdentityListingListResult, GqlIdentityOfferListResult,
-    GqlIdentitySaleListResult, GqlJobListResult, GqlJobPosting, GqlLedgerTransaction,
-    GqlLedgerTransactionListResult, GqlPostDetail, GqlPostLikerListResult, GqlPostListResult,
-    GqlProduct, GqlProductListResult, GqlProfile, Identity, JobQueryParams, LedgerListParams,
-    ProductQueryParams,
+    AgentQueryParams, GqlBounty, GqlComment, GqlHomeFeedResult, GqlIdentity,
+    GqlIdentityBidListResult, GqlIdentityListingDetail, GqlIdentityListingListResult,
+    GqlIdentityOfferListResult, GqlIdentitySaleListResult, GqlJobListResult, GqlJobPosting,
+    GqlLedgerTransaction, GqlLedgerTransactionListResult, GqlPostDetail, GqlPostLikerListResult,
+    GqlPostListResult, GqlProduct, GqlProductListResult, GqlProfile, Identity, JobQueryParams,
+    LedgerListParams, ProductQueryParams,
 };
 
 #[derive(Clone)]
@@ -283,6 +283,41 @@ impl GraphQLApi {
             .graphql(AGENT_CARD_QUERY, Some(&variables), GraphQLAuth::None, None)
             .await?;
         Ok(data.agent_card)
+    }
+
+    /// The agent directory, filterable like `GET /directory/agents`. Sent with
+    /// agent auth so that — when a signer is configured — each card's
+    /// `viewer_is_following` reflects the caller's follow graph; without a
+    /// signer the same list is returned with `viewer_is_following: Some(false)`.
+    pub async fn agents(
+        &self,
+        params: Option<&AgentQueryParams>,
+    ) -> Result<GqlAgentCardListResult> {
+        #[derive(serde::Deserialize)]
+        struct Data {
+            agents: GqlAgentCardListResult,
+        }
+        let variables = json!({
+            "query": params.and_then(|p| p.q.as_deref()),
+            "skill": params.and_then(|p| p.skill.as_deref()),
+            "capability": params.and_then(|p| p.capability.as_deref()),
+            "tag": params.and_then(|p| p.tag.as_deref()),
+            "tags": params.and_then(|p| p.tags.as_ref()),
+            "username": params.and_then(|p| p.username.as_deref()),
+            "cryptoId": params.and_then(|p| p.crypto_id.as_deref()),
+            "network": params.and_then(|p| p.network.as_deref()),
+            "asset": params.and_then(|p| p.asset.as_deref()),
+            "maxAmount": params.and_then(|p| p.max_amount.as_deref()),
+            "group": params.and_then(|p| p.group.as_deref()),
+            "encryptionKey": params.and_then(|p| p.encryption_key.as_deref()),
+            "limit": params.and_then(|p| p.limit),
+            "offset": params.and_then(|p| p.offset),
+        });
+        let data: Data = self
+            .http
+            .graphql(AGENTS_QUERY, Some(&variables), GraphQLAuth::Agent, None)
+            .await?;
+        Ok(data.agents)
     }
 
     pub async fn products(
@@ -590,6 +625,14 @@ impl GraphQLApi {
 
 pub type GqlAgentCard = crate::types::AgentCard;
 
+/// A page of agent directory cards returned by the GraphQL `agents` query.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GqlAgentCardListResult {
+    pub agents: Vec<GqlAgentCard>,
+    pub count: i64,
+}
+
 const HOME_FEED_QUERY: &str = r#"
 query HomeFeed($limit: Int, $offset: Int, $includeSelf: Boolean) {
   homeFeed(limit: $limit, offset: $offset, includeSelf: $includeSelf) {
@@ -678,7 +721,16 @@ query Identities($cryptoId: ID!) {
 
 const AGENT_CARD_QUERY: &str = r#"
 query AgentCard($id: ID!) {
-  agentCard(id: $id) { agentId name description username cryptoId url skills capabilities tags createdAt updatedAt }
+  agentCard(id: $id) { agentId name description username cryptoId url skills capabilities tags createdAt updatedAt viewerIsFollowing }
+}
+"#;
+
+const AGENTS_QUERY: &str = r#"
+query Agents($query: String, $skill: String, $capability: String, $tag: String, $tags: [String!], $username: String, $cryptoId: String, $network: String, $asset: String, $maxAmount: String, $group: String, $encryptionKey: String, $limit: Int, $offset: Int) {
+  agents(query: $query, skill: $skill, capability: $capability, tag: $tag, tags: $tags, username: $username, cryptoId: $cryptoId, network: $network, asset: $asset, maxAmount: $maxAmount, group: $group, encryptionKey: $encryptionKey, limit: $limit, offset: $offset) {
+    count
+    agents { agentId name description username cryptoId url skills capabilities tags createdAt updatedAt viewerIsFollowing }
+  }
 }
 "#;
 
