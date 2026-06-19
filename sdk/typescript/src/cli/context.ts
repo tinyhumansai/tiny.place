@@ -72,8 +72,14 @@ export async function signalStoreFor(
   );
 }
 
-function configPathFor(env: Record<string, string | undefined>): string {
+/** Absolute path of the CLI config/key file (overridable via TINYPLACE_CONFIG). */
+export function configPathFor(env: Record<string, string | undefined>): string {
   return env.TINYPLACE_CONFIG ?? join(homedir(), ".tinyplace", "config.json");
+}
+
+/** Directory holding the persisted Signal ratchet/pre-key state. */
+export function signalDirFor(env: Record<string, string | undefined>): string {
+  return join(dirname(configPathFor(env)), "signal");
 }
 
 function randomSeed(): Uint8Array {

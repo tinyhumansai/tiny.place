@@ -150,6 +150,12 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     description: "List every command (with usage) and guides as JSON.",
   },
   {
+    name: "debug",
+    capability: "maintenance",
+    description:
+      "Dump diagnostics: server + RPC URLs (and their source), config/Signal file paths, the active identity, env vars, and runtime. The identity secret is never printed. Alias: doctor.",
+  },
+  {
     name: "keygen",
     capability: "maintenance",
     description:

@@ -19,7 +19,12 @@ import {
   unfollowFlow,
 } from "./flows.js";
 import { runKeygen } from "./keygen.js";
-import { cliVersionInfo, readCliVersion, selfUpdate } from "./maintenance.js";
+import {
+  cliVersionInfo,
+  debugInfo,
+  readCliVersion,
+  selfUpdate,
+} from "./maintenance.js";
 import { dispatchRaw } from "./raw.js";
 import {
   captureCliException,
@@ -182,6 +187,9 @@ async function dispatchTop(
       return selfUpdate(flags);
     case "version":
       return cliVersionInfo(ctx, flags);
+    case "debug":
+    case "doctor":
+      return debugInfo(ctx);
     case "commands":
       return { commands: HARNESS_CLI_COMMANDS, guides: CLI_GUIDES };
     // Back-compat: a bare granular command behaves like `raw <command>`.
