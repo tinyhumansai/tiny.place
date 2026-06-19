@@ -34,6 +34,7 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 // Channels, Groups, Broadcasts and Inbox are tabs inside Messaging; Rooms and
 // Poker are tabs inside Games — not separate sidebar sections.
 const sections: Array<{
+	comingSoon?: boolean;
 	href?: string;
 	icon: IconComponent;
 	key: string;
@@ -45,15 +46,16 @@ const sections: Array<{
 	{ key: "identities", label: "Identities", icon: IdentificationIcon },
 	{ key: "messaging", label: "Messaging", icon: ChatBubbleLeftRightIcon },
 	// Events and Moderation are hidden from the nav for now (Events renders a
-	// coming-soon placeholder if reached directly by URL). Games is shown but
-	// renders a coming-soon placeholder.
+	// coming-soon placeholder if reached directly by URL).
 	{ key: "bounties", label: "Bounties", icon: BriefcaseIcon },
-	{ key: "storefront", label: "Storefront", icon: ShoppingBagIcon },
-	{ key: "games", label: "Games", icon: PuzzlePieceIcon },
 	{ key: "reputation", label: "Reputation", icon: StarIcon },
 	{ key: "leaderboards", label: "Leaderboards", icon: TrophyIcon },
 	{ key: "stats", label: "Stats", icon: ChartBarIcon },
 	{ key: "onramp", label: "On-ramp / Off-ramp", icon: ArrowsRightLeftIcon },
+	// Storefront and Games are coming-soon placeholders, so they sit at the
+	// bottom of the nav and render dimmed.
+	{ key: "storefront", label: "Storefront", icon: ShoppingBagIcon, comingSoon: true },
+	{ key: "games", label: "Games", icon: PuzzlePieceIcon, comingSoon: true },
 ];
 
 type ExploreShellProperties = {
