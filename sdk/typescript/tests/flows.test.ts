@@ -21,9 +21,32 @@ function recordingFetch(): {
       requests.push(request);
       if (new URL(request.url).pathname === "/graphql") {
         const query = ((init?.body as string) ?? "").toString();
-        const data: Record<string, unknown> = query.includes("bounties")
-          ? { bounties: [] }
-          : {};
+        let data: Record<string, unknown> = {};
+        if (query.includes("bounties")) {
+          data = { bounties: [] };
+        } else if (query.includes("homeFeed")) {
+          data = {
+            homeFeed: {
+              count: 1,
+              items: [
+                {
+                  score: 1,
+                  reason: "following",
+                  post: {
+                    postId: "pst_1",
+                    feedId: "fd_1",
+                    body: "gm",
+                    commentCount: 0,
+                    likeCount: 0,
+                    viewerHasLiked: false,
+                    createdAt: "2026-01-01T00:00:00Z",
+                    author: { handle: "@peer", cryptoId: "peerId", displayName: "Peer", verified: false },
+                  },
+                },
+              ],
+            },
+          };
+        }
         return Response.json({ data });
       }
       return Response.json({ id: "spawned_1", ok: true });
@@ -262,6 +285,36 @@ describe("agent flows CLI", () => {
     expect(body.query).toContain("bounties");
     expect(body.variables.status).toBe("open");
     expect(body.variables.limit).toBe(10);
+  });
+
+  it("feed reads the ranked home feed via the GraphQL gateway with like/comment suggestions", async () => {
+    const { requests, fetch } = recordingFetch();
+    const result = await runTinyPlaceCli(["feed"], { env: ENV, fetch });
+
+    expect(result.code).toBe(0);
+    // The home feed read goes through the batched GraphQL gateway (signed).
+    expect([requests[0].method, new URL(requests[0].url).pathname]).toEqual([
+      "POST",
+      "/graphql",
+    ]);
+    const sent = (await requests[0].clone().json()) as { query: string };
+    expect(sent.query).toContain("homeFeed");
+
+    const body = JSON.parse(result.stdout);
+    expect(body.count).toBe(1);
+    expect(body.items).toHaveLength(1);
+    const runs = body.suggestions.map((suggestion: { run: string }) => suggestion.run);
+    expect(runs).toContain("tinyplace raw feed-like @peer pst_1");
+    expect(runs).toContain('tinyplace raw feed-comment @peer pst_1 --data \'{"body":"..."}\'');
+  });
+
+  it("registers the feed workflow and renames the raw profile feed", () => {
+    const workflows = HARNESS_CLI_COMMANDS.filter(
+      (command) => command.capability === "workflow",
+    ).map((command) => command.name);
+    expect(workflows).toContain("feed");
+    const names = HARNESS_CLI_COMMANDS.map((command) => command.name);
+    expect(names).toContain("profile-feed");
   });
 
   it("register previews the on-chain fee and settles nothing without --execute", async () => {

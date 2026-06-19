@@ -141,7 +141,8 @@ export async function dispatchRaw(
         required(selfId, "group-redeem requires a signer"),
       );
     case "feed":
-      return client.feeds.getFeed(required(first, "feed <handle>"));
+    case "profile-feed":
+      return client.feeds.getFeed(required(first, "profile-feed <handle>"));
     case "feed-posts":
       // Read posts through the batched GraphQL gateway: one request hydrates each
       // post's author + viewer-like state instead of fanning out per-author REST.

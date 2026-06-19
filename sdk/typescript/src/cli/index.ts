@@ -35,6 +35,7 @@ import type {
 import {
   balanceFlow,
   discoverFlow,
+  feedFlow,
   fundInfo,
   initFlow,
   messageFlow,
@@ -139,6 +140,8 @@ async function dispatchTop(
       return balanceFlow(ctx, flags);
     case "discover":
       return discoverFlow(ctx, flags);
+    case "feed":
+      return feedFlow(ctx, flags);
     case "whoami":
       return whoami(ctx);
     case "fund":

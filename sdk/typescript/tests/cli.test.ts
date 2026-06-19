@@ -402,7 +402,10 @@ describe("tinyplace CLI", () => {
     const commands = JSON.parse(list.stdout).commands as Array<{
       name: string;
     }>;
-    expect(commands.find((command) => command.name === "feed")).toBeTruthy();
+    // `profile-feed` is a raw command; bare `feed` is now a workflow, so it (like
+    // `status`) is excluded from the raw-only listing.
+    expect(commands.find((command) => command.name === "profile-feed")).toBeTruthy();
+    expect(commands.find((command) => command.name === "feed")).toBeFalsy();
     expect(commands.find((command) => command.name === "status")).toBeFalsy();
   });
 
