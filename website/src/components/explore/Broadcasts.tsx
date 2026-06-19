@@ -15,6 +15,7 @@ import {
 	firstActiveIdentity,
 	useOwnedIdentities,
 } from "@src/hooks/use-marketplace";
+import { useWriteGateMessage } from "@src/hooks/use-write-gate";
 import { useAuthStore } from "@src/store/auth";
 
 function panelClass(isDark: boolean): string {
@@ -135,6 +136,7 @@ export const Broadcasts = ({
 }): FunctionComponent => {
 	const { data, isLoading, isError, error } = useBroadcasts({ limit: 12 });
 	const agentId = useAuthStore((state) => state.agentId);
+	const gateMessage = useWriteGateMessage("create or post paid channels");
 	const ownedIdentities = useOwnedIdentities(agentId);
 	const broadcasterIdentity = firstActiveIdentity(
 		ownedIdentities.data?.identities
@@ -224,9 +226,7 @@ export const Broadcasts = ({
 								: "Connect your wallet to create or post paid channels."}
 					</p>
 				) : (
-					<p className="mt-2 text-xs text-red-500">
-						Connect your wallet before creating or posting paid channels.
-					</p>
+					<p className="mt-2 text-xs text-red-500">{gateMessage}</p>
 				)}
 			</form>
 

@@ -17,6 +17,7 @@ import {
 	useJoinGroup,
 	useMyGroups,
 } from "@src/hooks/use-groups";
+import { useWriteGateMessage } from "@src/hooks/use-write-gate";
 import { useAuthStore } from "@src/store/auth";
 import { groupUnread } from "@src/store/group-conversations";
 
@@ -37,6 +38,7 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 	// membership detection (member.agentId === actor), `groups.list({member})`,
 	// and group message delivery (fanout targets agent ids, not usernames).
 	const actor = agentId ?? "";
+	const gateMessage = useWriteGateMessage("create or join groups");
 
 	const myGroupsQuery = useMyGroups(actor);
 	const discoverQuery = useGroups();
@@ -476,9 +478,7 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 					<p className="mt-2 text-xs text-red-500">{mutationError.message}</p>
 				) : null}
 				<p className={`mt-2 text-xs ${actor ? mutedClass : "text-red-500"}`}>
-					{actor
-						? `Acting as ${actor}`
-						: "Connect your wallet to create or join groups."}
+					{actor ? `Acting as ${actor}` : gateMessage}
 				</p>
 			</form>
 			<div
