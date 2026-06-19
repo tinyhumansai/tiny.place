@@ -4,18 +4,17 @@
 // MUST be divided by 10^decimals before display, or the UI shows a number that
 // is 10^decimals larger than what the wallet actually signs.
 //
-// Kept free of SDK/web3 imports so it can be unit-tested in isolation and pulled
-// into lightweight components (the confirm dialog) without dragging in the
-// Solana web3 bundle. USDC and CASH are both 6-decimal SPL tokens.
+// The challenge's `asset` field is now the on-chain SPL *mint address*, not a
+// symbol, so decimals/symbol are resolved through the x402-assets registry
+// (which maps mint <-> symbol). Kept free of SDK/web3 imports so it can be
+// unit-tested in isolation and pulled into lightweight components (the confirm
+// dialog) without dragging in the Solana web3 bundle.
 
-const ASSET_DECIMALS: Record<string, number> = {
-	USDC: 6,
-	CASH: 6,
-};
+import { assetDecimals, assetSymbol } from "@src/common/x402-assets";
 
-/** Decimals for an x402 asset symbol; defaults to 6 (USDC/CASH) when unknown. */
+/** Decimals for an x402 asset (symbol or mint); defaults to 6 when unknown. */
 export function tokenDecimals(asset?: string): number {
-	return ASSET_DECIMALS[(asset ?? "USDC").toUpperCase()] ?? 6;
+	return assetDecimals(asset);
 }
 
 /**
@@ -34,13 +33,15 @@ export function minorUnitsToDecimal(
 }
 
 /**
- * Formats a base-unit amount for display with its asset symbol, resolving the
- * asset's decimals, e.g. ("1000000", "USDC") => "1 USDC".
+ * Formats a base-unit amount for display with its friendly asset symbol,
+ * resolving both the asset's decimals and symbol from its value (a symbol or an
+ * SPL mint address), e.g. ("1000000", "USDC") => "1 USDC" and
+ * ("1000000", "EPjFW…Dt1v") => "1 USDC".
  */
 export function formatTokenAmount(baseUnits: string, asset?: string): string {
 	const decimals = tokenDecimals(asset);
 	const human = Number(minorUnitsToDecimal(baseUnits, decimals));
-	const symbol = (asset ?? "USDC").toUpperCase();
+	const symbol = assetSymbol(asset);
 	return `${human.toLocaleString(undefined, {
 		maximumFractionDigits: decimals,
 	})} ${symbol}`;

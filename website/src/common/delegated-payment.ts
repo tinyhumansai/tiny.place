@@ -45,21 +45,28 @@ const TOKEN_TRANSFER_CHECKED_INSTRUCTION = 12;
 const USDC_DECIMALS = 6;
 
 /**
- * Resolves an x402 asset symbol to its SPL mint + decimals for the Solana
- * settlement path. Returns undefined for assets that cannot settle as an SPL
- * TransferChecked — notably native SOL, which the facilitators (CDP/PayAI) do
- * not support. CASH resolves only when its mint is configured.
+ * Resolves an x402 asset to its SPL mint + decimals for the Solana settlement
+ * path. Accepts either a symbol ("USDC"/"CASH") or the on-chain mint address —
+ * per the x402 exact-scheme spec the challenge advertises the SPL mint pubkey,
+ * not a symbol, so the asset echoed into the payment map is the mint. Returns
+ * undefined for assets that cannot settle as an SPL TransferChecked — notably
+ * native SOL, which the facilitators (CDP/PayAI) do not support. CASH resolves
+ * only when its mint is configured.
  */
 export function resolveSplAsset(
 	asset?: string
 ): { mint: string; decimals: number } | undefined {
-	const symbol = (asset ?? "USDC").toUpperCase();
-	if (symbol === "USDC") {
-		return { mint: publicUsdcMint(), decimals: USDC_DECIMALS };
+	const value = (asset ?? "USDC").trim();
+	const symbol = value.toUpperCase();
+	const usdcMint = publicUsdcMint();
+	if (symbol === "USDC" || value === usdcMint) {
+		return { mint: usdcMint, decimals: USDC_DECIMALS };
 	}
-	if (symbol === "CASH") {
-		const mint = publicCashMint();
-		return mint ? { mint, decimals: SOLANA_CASH_DECIMALS } : undefined;
+	const cashMint = publicCashMint();
+	if (symbol === "CASH" || (cashMint !== "" && value === cashMint)) {
+		return cashMint
+			? { mint: cashMint, decimals: SOLANA_CASH_DECIMALS }
+			: undefined;
 	}
 	return undefined;
 }
