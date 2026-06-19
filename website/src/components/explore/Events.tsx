@@ -10,6 +10,7 @@ import {
 	useEvents,
 	useRsvpEvent,
 } from "@src/hooks/use-events";
+import { useWriteGateMessage } from "@src/hooks/use-write-gate";
 import { useAuthStore } from "@src/store/auth";
 
 type EventsProperties = {
@@ -61,6 +62,7 @@ function errorMessage(error: unknown): string {
 
 export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 	const agentId = useAuthStore((state) => state.agentId);
+	const gateMessage = useWriteGateMessage("create and RSVP to events");
 	const { data, isLoading, isError, error } = useEvents();
 	const createEvent = useCreateEvent();
 	const rsvpEvent = useRsvpEvent();
@@ -153,10 +155,8 @@ export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 					</h3>
 					<span className="text-xs text-neutral-500">Signed write</span>
 				</div>
-				{!agentId ? (
-					<p className="mt-2 text-xs text-neutral-500">
-						Connect your wallet to create and RSVP to events.
-					</p>
+				{gateMessage ? (
+					<p className="mt-2 text-xs text-neutral-500">{gateMessage}</p>
 				) : null}
 				<div className="mt-3 grid gap-2 md:grid-cols-2">
 					<input
