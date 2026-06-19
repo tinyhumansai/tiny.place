@@ -4,7 +4,6 @@
 // admin/moderator approves the council's pick to release the reward.
 
 export type BountyStatus =
-  | "draft"
   | "open"
   | "judging"
   | "review"
@@ -137,6 +136,3 @@ export interface BountyQueryParams {
   limit?: number;
   offset?: number;
 }
-
-// BountyFundPayment is the signed x402 payment map echoed back to fund a bounty.
-export type BountyFundPayment = Record<string, string>;

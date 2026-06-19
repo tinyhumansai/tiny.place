@@ -6,8 +6,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Lifecycle state of a bounty (`draft`, `open`, `judging`, `review`,
-/// `awarded`, `refunded`, `cancelled`).
+/// Lifecycle state of a bounty (`open`, `judging`, `review`, `awarded`,
+/// `refunded`, `cancelled`).
 pub type BountyStatus = String;
 /// State of a submission (`submitted`, `winner`, `rejected`).
 pub type BountySubmissionStatus = String;
@@ -16,7 +16,7 @@ pub type BountyAsset = String;
 /// Council run state (`pending`, `complete`, `failed`).
 pub type BountyCouncilStatus = String;
 
-/// The signed x402 payment map echoed back to fund a bounty.
+/// The signed x402 payment map echoed back to create + fund a bounty.
 pub type BountyFundPayment = HashMap<String, String>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

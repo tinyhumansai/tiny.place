@@ -16,7 +16,7 @@ from ..x402 import build_x402_payment_map
 # After an `exact` on-chain settlement the backend may not yet see the transfer,
 # returning 402 "transaction not found" / "insufficient confirmations". Retry the
 # (idempotent — same payment map, no new transfer) POST through that window, as
-# registry.register_with_solana_payment and bounties.fund_with_solana_payment do.
+# registry.register_with_solana_payment and bounties.create_with_solana_payment do.
 DEFAULT_SETTLEMENT_ATTEMPTS = 30
 DEFAULT_SETTLEMENT_INTERVAL_MS = 3000
 _SETTLEMENT_RETRY_ERRORS = ("transaction not found", "insufficient confirmations")
