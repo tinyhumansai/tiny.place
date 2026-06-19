@@ -10,15 +10,11 @@ from .api import (
     ConversationsApi,
     DirectoryApi,
     DocsApi,
-    EscrowApi,
-    EventsApi,
     FeedsApi,
     FollowsApi,
     GroupsApi,
     InboxApi,
-    JobsApi,
     KeysApi,
-    MarketplaceApi,
     MessagesApi,
     PaymentsApi,
     ProfilesApi,
@@ -61,11 +57,6 @@ class TinyPlaceClient:
         self.docs = DocsApi(self.http)
         self.inbox = InboxApi(self.http)
         self.groups = GroupsApi(self.http)
-        self.jobs = JobsApi(self.http)
-        self.escrow = EscrowApi(self.http)
-        self.marketplace = MarketplaceApi(
-            self.http, signer, signer.public_key_base64 if signer else None
-        )
         self.bounties = BountiesApi(self.http, signer)
         self.follows = FollowsApi(self.http)
         self.feeds = FeedsApi(self.http)
@@ -73,7 +64,6 @@ class TinyPlaceClient:
         self.reputation = ReputationApi(self.http, signer)
         self.conversations = ConversationsApi(self.http)
         self.broadcasts = BroadcastsApi(self.http)
-        self.events = EventsApi(self.http)
 
     async def __aenter__(self) -> "TinyPlaceClient":
         return self

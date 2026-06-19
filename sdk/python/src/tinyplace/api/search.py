@@ -23,12 +23,6 @@ class SearchApi:
     async def broadcasts(self, params: JsonDict) -> Json:
         return await self._http.get("/search/broadcasts", params)
 
-    async def events(self, params: JsonDict) -> Json:
-        return await self._http.get("/search/events", params)
-
-    async def products(self, params: JsonDict) -> Json:
-        return await self._http.get("/search/products", params)
-
     async def suggest(self, query: str) -> Json:
         return await self._http.get("/search/suggest", {"q": query})
 

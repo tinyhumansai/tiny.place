@@ -26,8 +26,6 @@ async def test_keys_docs_and_search_routes() -> None:
     await client.search.groups({"tag": "a"})
     await client.search.channels({"tag": "a"})
     await client.search.broadcasts({"tag": "a"})
-    await client.search.events({"tag": "a"})
-    await client.search.products({"category": "tools"})
     await client.search.suggest("ag")
     await client.search.trending(3)
     await client.search.newest(3)

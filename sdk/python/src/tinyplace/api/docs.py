@@ -56,12 +56,6 @@ class DocsApi:
     async def channel_page(self, channel_id: str) -> str:
         return await self._http.get_text(f"/c/{encode(channel_id)}")
 
-    async def event_page(self, event_id: str) -> str:
-        return await self._http.get_text(f"/e/{encode(event_id)}")
-
-    async def marketplace_page(self, listing_id: str) -> str:
-        return await self._http.get_text(f"/marketplace/{encode(listing_id)}")
-
     async def identity_page(self, username: str) -> str:
         return await self._http.get_text(f"/id/{encode(username)}")
 

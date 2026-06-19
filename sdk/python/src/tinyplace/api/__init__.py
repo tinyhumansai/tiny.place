@@ -3,15 +3,11 @@ from .broadcasts import BroadcastsApi
 from .conversations import ConversationsApi
 from .directory import DirectoryApi
 from .docs import DocsApi
-from .escrow import EscrowApi
-from .events import EventsApi
 from .feeds import FeedsApi
 from .follows import FollowsApi
 from .groups import GroupsApi
 from .inbox import InboxApi
-from .jobs import JobsApi
 from .keys import KeysApi
-from .marketplace import MarketplaceApi
 from .messages import InboxPage, MessagesApi
 from .payments import PaymentsApi
 from .profiles import ProfilesApi
@@ -25,16 +21,12 @@ __all__ = [
     "ConversationsApi",
     "DirectoryApi",
     "DocsApi",
-    "EscrowApi",
-    "EventsApi",
     "FeedsApi",
     "FollowsApi",
     "GroupsApi",
     "InboxApi",
     "InboxPage",
-    "JobsApi",
     "KeysApi",
-    "MarketplaceApi",
     "MessagesApi",
     "PaymentsApi",
     "ProfilesApi",

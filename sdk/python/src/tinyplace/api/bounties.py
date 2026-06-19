@@ -26,7 +26,7 @@ class BountiesApi:
 
     ``fund`` accepts a prepared x402 payment map (or surfaces the 402 challenge);
     ``fund_with_solana_payment`` settles it on chain automatically, reusing the
-    same Solana primitives as registration/marketplace settlement.
+    same Solana primitives as registration settlement.
     """
 
     def __init__(self, http: HttpClient, signer: Signer | None = None) -> None:
