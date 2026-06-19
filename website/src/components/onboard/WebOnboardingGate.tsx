@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
 	TinyPlaceError,
-	type Identity,
 	type TinyPlaceClient,
 	type User,
 } from "@tinyhumansai/tinyplace";
@@ -28,16 +27,14 @@ function isExcludedPath(pathname: string): boolean {
 	);
 }
 
-function setupIncomplete(
-	user: User | null | undefined,
-	identities: Array<Identity> | undefined
-): boolean {
+// Onboarding is only forced for the essentials: a verified email and a profile
+// display name. Claiming a @handle (an active identity) is optional, so a missing
+// username alone must NOT trigger the redirect — the handle step stays available
+// inside the wizard and on /identities for anyone who wants it.
+function setupIncomplete(user: User | null | undefined): boolean {
 	const verified = Boolean(user?.emailVerified);
 	const profiled = Boolean(user?.displayName?.trim());
-	const active = Boolean(
-		identities?.some((identity) => identity.status === "active")
-	);
-	return !verified || !profiled || !active;
+	return !verified || !profiled;
 }
 
 async function getOptionalUser(
@@ -70,25 +67,18 @@ export function WebOnboardingGate(): null {
 		enabled: Boolean(agentId && signer && !excluded),
 		retry: false,
 	});
-	const identitiesQuery = useQuery({
-		queryKey: ["gql", "identities", agentId] as const,
-		queryFn: (): Promise<Array<Identity>> =>
-			client.graphql.identities(agentId as string),
-		enabled: Boolean(agentId && signer && !excluded),
-		retry: false,
-	});
 
 	useEffect(() => {
 		if (!agentId || !signer || excluded) {
 			return;
 		}
-		if (userQuery.isLoading || identitiesQuery.isLoading) {
+		if (userQuery.isLoading) {
 			return;
 		}
-		if (userQuery.isError || identitiesQuery.isError) {
+		if (userQuery.isError) {
 			return;
 		}
-		if (!setupIncomplete(userQuery.data, identitiesQuery.data)) {
+		if (!setupIncomplete(userQuery.data)) {
 			return;
 		}
 		const current = `${pathname}${searchParameters.toString() ? `?${searchParameters.toString()}` : ""}`;
@@ -97,9 +87,6 @@ export function WebOnboardingGate(): null {
 	}, [
 		agentId,
 		excluded,
-		identitiesQuery.data,
-		identitiesQuery.isError,
-		identitiesQuery.isLoading,
 		pathname,
 		router,
 		searchParameters,
