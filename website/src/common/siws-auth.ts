@@ -8,6 +8,7 @@ import {
 import {
 	WalletSigner,
 	type SignMessageFunction,
+	type WalletSignTransaction,
 } from "@src/common/wallet-signer";
 
 const SIWS_STORAGE_PREFIX = "tinyplace:siws:";
@@ -206,9 +207,12 @@ export class SiwsProofSigner extends Signer {
 		return new SiwsProofSigner(walletSigner, proof);
 	}
 
-	public sign(data: Uint8Array): Uint8Array {
-		void data;
-		return new TextEncoder().encode(this.siwsSignature());
+	public sign(data: Uint8Array): Promise<Uint8Array> {
+		// Request auth uses the reusable SIWS token (via siwsSignature()), but a
+		// direct sign() call — notably an x402 payment authorization — needs a REAL
+		// wallet signature over the given bytes. Returning the SIWS token here makes
+		// the backend reject the payment with "invalid signature".
+		return this.walletSigner.sign(data);
 	}
 
 	public siwsSignature(): string {
@@ -226,6 +230,15 @@ export class SiwsProofSigner extends Signer {
 
 	public x402PaymentMetadata(): Record<string, string> {
 		return this.walletSigner.x402PaymentMetadata();
+	}
+
+	/**
+	 * The wallet's transaction signer, used to build the payer-signed transfer
+	 * for facilitator (PayAI/CDP) x402 settlement. Delegated so a SIWS-mode signer
+	 * is treated as a payment-capable wallet signer.
+	 */
+	public get walletSignTransaction(): WalletSignTransaction | undefined {
+		return this.walletSigner.walletSignTransaction;
 	}
 
 	public get identityPublicKeyBase64(): string {
