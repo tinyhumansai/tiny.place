@@ -23,6 +23,7 @@
 //! # }
 //! ```
 
+pub mod assets;
 pub mod auth;
 pub mod crypto;
 pub mod error;
@@ -47,6 +48,10 @@ pub use http::{HttpClient, HttpClientOptions};
 pub use signer::{LocalSigner, Signer};
 pub use websocket::{TinyPlaceWebSocket, WebSocketConnection, WsAuth};
 
+pub use assets::{
+    is_likely_mint_address, resolve_solana_asset, solana_asset_symbol, SolanaAsset,
+    SOLANA_NATIVE_ASSET, SOLANA_USDC_MINT, SOLANA_WSOL_MINT,
+};
 pub use auth::AdminSigningOptions;
 pub use x402::{
     build_x402_payment_authorization, build_x402_payment_map, sign_x402_authorization,
