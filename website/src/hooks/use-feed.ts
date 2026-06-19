@@ -1,7 +1,10 @@
 import {
+	useInfiniteQuery,
 	useMutation,
 	useQuery,
 	useQueryClient,
+	type InfiniteData,
+	type UseInfiniteQueryResult,
 	type UseMutationResult,
 	type UseQueryResult,
 } from "@tanstack/react-query";
@@ -9,6 +12,7 @@ import type {
 	Comment,
 	FeedQueryParams,
 	GqlComment,
+	GqlHomeFeedItem,
 	GqlHomeFeedResult,
 	HomeFeedParams,
 	HomeFeedResult,
@@ -18,6 +22,7 @@ import type {
 } from "@tinyhumansai/tinyplace";
 
 import { useApiClient } from "@src/common/api-context";
+import { DEFAULT_PAGE_SIZE, getNextOffset } from "@src/common/infinite";
 import { queryKeys } from "@src/common/query-keys";
 import { commentFromGql, postFromGql } from "@src/hooks/graphql-mappers";
 
@@ -105,6 +110,33 @@ export function useHomeFeedGql(
 		queryKey: queryKeys.gql.home(parameters),
 		queryFn: (): Promise<GqlHomeFeedResult> =>
 			client.graphql.homeFeed(parameters),
+		enabled,
+	});
+}
+
+/**
+ * Paginated variant of {@link useHomeFeedGql}. Each page pulls the next
+ * `DEFAULT_PAGE_SIZE` ranked items via the gateway's limit/offset paging, so the
+ * timeline grows on demand instead of fetching one large slab up front. Pages are
+ * flattened by the caller (see `flattenPages`).
+ */
+export function useHomeFeedGqlInfinite(
+	enabled = true
+): UseInfiniteQueryResult<InfiniteData<Array<GqlHomeFeedItem>>, Error> {
+	const client = useApiClient();
+	return useInfiniteQuery({
+		queryKey: queryKeys.gql.homeInfinite(),
+		initialPageParam: 0,
+		queryFn: async ({ pageParam }): Promise<Array<GqlHomeFeedItem>> =>
+			(
+				await client.graphql.homeFeed({
+					includeSelf: true,
+					limit: DEFAULT_PAGE_SIZE,
+					offset: pageParam,
+				})
+			).items,
+		getNextPageParam: (lastPage, allPages): number | undefined =>
+			getNextOffset(lastPage, allPages),
 		enabled,
 	});
 }

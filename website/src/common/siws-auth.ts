@@ -5,7 +5,10 @@ import {
 	type X25519KeyPair,
 } from "@tinyhumansai/tinyplace";
 
-import { WalletSigner, type SignMessageFunction } from "@src/common/wallet-signer";
+import {
+	WalletSigner,
+	type SignMessageFunction,
+} from "@src/common/wallet-signer";
 
 const SIWS_STORAGE_PREFIX = "tinyplace:siws:";
 const SIWS_PROOF_VERSION = 1;
@@ -46,7 +49,9 @@ function randomNonce(): string {
 	}
 	const bytes = new Uint8Array(16);
 	webCrypto.getRandomValues(bytes);
-	return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+	return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
+		""
+	);
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -117,16 +122,18 @@ export function buildSiwsMessage(input: {
 }): string {
 	const origin =
 		input.origin ??
-		(typeof window === "undefined" ? "https://tiny.place" : window.location.origin);
+		(typeof window === "undefined"
+			? "https://tiny.place"
+			: window.location.origin);
 	return [
 		"tiny.place wants you to sign in with your Solana account:",
 		input.address,
 		"",
 		"Authenticate website API requests. This does not authorize a transaction or payment.",
-			"",
-			`URI: ${origin}`,
-			"Version: 1",
-			`Chain ID: ${siwsChainId()}`,
+		"",
+		`URI: ${origin}`,
+		"Version: 1",
+		`Chain ID: ${siwsChainId()}`,
 		`Nonce: ${input.nonce}`,
 		`Issued At: ${input.issuedAt}`,
 		`Expiration Time: ${input.expiresAt}`,
@@ -156,7 +163,9 @@ export class SiwsProofSigner extends Signer {
 		const walletSigner = new WalletSigner(publicKey, signMessage);
 		const storage = options.storage ?? browserStorage();
 		const now = options.now?.() ?? Date.now();
-		const stored = parseProof(storage?.getItem(storageKey(walletSigner.agentId)) ?? null);
+		const stored = parseProof(
+			storage?.getItem(storageKey(walletSigner.agentId)) ?? null
+		);
 		if (
 			stored &&
 			stored.address === walletSigner.agentId &&

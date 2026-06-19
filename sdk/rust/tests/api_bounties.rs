@@ -1,6 +1,6 @@
 //! Bounties API tests. Mirror the TypeScript SDK's coverage: path + query
-//! construction, directory-auth actor wiring, the x402 fund body (omitted vs
-//! present), and the admin-approved payout.
+//! construction, directory-auth actor wiring, the create + fund x402 payment
+//! (omitted vs present), and the admin-approved payout.
 
 mod common;
 
@@ -103,26 +103,38 @@ async fn create_signs_as_creator_and_round_trips_body() {
 }
 
 #[tokio::test]
-async fn fund_omits_payment_then_includes_it() {
-    // First call: no payment → body is an empty object (receives the 402 challenge).
+async fn create_omits_payment_then_includes_it() {
+    // First call: no payment → body omits "payment" (receives the 402 challenge).
     let server = any_ok(bounty_json()).await;
     let client = client_for(&server);
-    client.bounties.fund("b1", "@alice", None).await.unwrap();
+    let request = BountyCreateRequest {
+        creator: Some("@alice".to_string()),
+        title: "Build a thing".to_string(),
+        description: "Do the work".to_string(),
+        amount: "10".to_string(),
+        ..Default::default()
+    };
+    client.bounties.create(&request).await.unwrap();
     let req = only_request(&server).await;
-    assert_eq!(req.url.path(), "/bounties/b1/fund");
+    assert_eq!(req.url.path(), "/bounties");
     let body: Value = serde_json::from_slice(&req.body).unwrap();
-    assert_eq!(body, json!({}), "no payment → empty body");
+    assert!(body.get("payment").is_none(), "no payment → field omitted");
 
-    // Second call: signed payment map echoed back under "payment".
+    // Second call: signed payment map echoed back under "payment", settling into
+    // escrow so the bounty is created already `open`.
     let server = any_ok(bounty_json()).await;
     let client = client_for(&server);
     let mut payment: BountyFundPayment = BountyFundPayment::new();
     payment.insert("signature".to_string(), "sig123".to_string());
-    client
-        .bounties
-        .fund("b1", "@alice", Some(&payment))
-        .await
-        .unwrap();
+    let request = BountyCreateRequest {
+        creator: Some("@alice".to_string()),
+        title: "Build a thing".to_string(),
+        description: "Do the work".to_string(),
+        amount: "10".to_string(),
+        payment: Some(payment),
+        ..Default::default()
+    };
+    client.bounties.create(&request).await.unwrap();
     let req = only_request(&server).await;
     let body: Value = serde_json::from_slice(&req.body).unwrap();
     assert_eq!(body["payment"]["signature"], "sig123");

@@ -1,21 +1,22 @@
 //! Bounty platform (`/bounties`). Mirrors `sdk/typescript/src/api/bounties.ts`.
 //!
-//! Create + fund (x402 → escrow), browse, submit a URL, comment for free, run
-//! the autonomous council, and the admin-approved payout to the council-selected
-//! winner.
+//! Create + fund in one x402 flow (→ escrow), browse, submit a URL, comment for
+//! free, run the autonomous council, and the admin-approved payout to the
+//! council-selected winner.
 
 use crate::error::Result;
 use crate::http::HttpClient;
 use crate::types::{
     Bounty, BountyComment, BountyCommentCreateRequest, BountyCommentQueryParams,
-    BountyCommentsResponse, BountyCreateRequest, BountyFundPayment, BountyListResponse,
+    BountyCommentsResponse, BountyCreateRequest, BountyListResponse,
     BountyQueryParams, BountySubmission, BountySubmissionCreateRequest,
     BountySubmissionQueryParams, BountySubmissionsResponse,
 };
 use crate::util::encode;
 
-/// BountiesApi covers the bounty platform: create + fund, browse, submit, comment
-/// for free, run the autonomous council, and approve the winning payout.
+/// BountiesApi covers the bounty platform: create + fund in one flow, browse,
+/// submit, comment for free, run the autonomous council, and approve the winning
+/// payout.
 #[derive(Clone)]
 pub struct BountiesApi {
     http: HttpClient,
@@ -40,33 +41,14 @@ impl BountiesApi {
             .await
     }
 
-    /// Create a bounty, signed as the creator.
+    /// Create and fund a bounty in a single x402 flow, signed as the creator.
+    /// Call without `request.payment` first to receive the 402 challenge, then
+    /// re-call with the signed payment map to settle into escrow; the bounty is
+    /// created already `open`.
     pub async fn create(&self, request: &BountyCreateRequest) -> Result<Bounty> {
         let creator = request.creator.as_deref().unwrap_or("");
         self.http
             .post_directory_auth_as("/bounties", creator, Some(request))
-            .await
-    }
-
-    /// Route the creator's x402 payment into the escrow wallet. Call without a
-    /// payment first to receive the 402 challenge, then re-call with the signed
-    /// payment map.
-    pub async fn fund(
-        &self,
-        bounty_id: &str,
-        creator: &str,
-        payment: Option<&BountyFundPayment>,
-    ) -> Result<Bounty> {
-        let body = match payment {
-            Some(payment) => serde_json::json!({ "payment": payment }),
-            None => serde_json::json!({}),
-        };
-        self.http
-            .post_directory_auth_as(
-                &format!("/bounties/{}/fund", encode(bounty_id)),
-                creator,
-                Some(&body),
-            )
             .await
     }
 

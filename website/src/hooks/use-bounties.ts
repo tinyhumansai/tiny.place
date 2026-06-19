@@ -1,7 +1,10 @@
 import {
+	useInfiniteQuery,
 	useMutation,
 	useQuery,
 	useQueryClient,
+	type InfiniteData,
+	type UseInfiniteQueryResult,
 	type UseMutationResult,
 	type UseQueryResult,
 } from "@tanstack/react-query";
@@ -19,6 +22,7 @@ import {
 
 import { signX402ChallengePaymentMap } from "@src/common/auth-payment";
 import { useApiClient } from "@src/common/api-context";
+import { DEFAULT_PAGE_SIZE, getNextOffset } from "@src/common/infinite";
 import { queryKeys } from "@src/common/query-keys";
 import { useAuthStore } from "@src/store/auth";
 
@@ -54,6 +58,31 @@ export function useBounties(
 		queryKey: queryKeys.bounties.list(parameters),
 		queryFn: (): Promise<{ bounties: Array<Bounty> }> =>
 			client.bounties.list(parameters),
+	});
+}
+
+/**
+ * Paginated bounty browse list. Bounties stay on the REST list endpoint (the
+ * trimmed GraphQL Bounty omits the thumbnail/council the cards render), but gain
+ * the same limit/offset infinite paging. Pages are flattened by the caller.
+ */
+export function useBountiesInfinite(
+	parameters?: BountyQueryParams
+): UseInfiniteQueryResult<InfiniteData<Array<Bounty>>, Error> {
+	const client = useApiClient();
+	return useInfiniteQuery({
+		queryKey: queryKeys.bounties.infinite(parameters),
+		initialPageParam: 0,
+		queryFn: async ({ pageParam }): Promise<Array<Bounty>> =>
+			(
+				await client.bounties.list({
+					...parameters,
+					limit: DEFAULT_PAGE_SIZE,
+					offset: pageParam,
+				})
+			).bounties,
+		getNextPageParam: (lastPage, allPages): number | undefined =>
+			getNextOffset(lastPage, allPages),
 	});
 }
 
@@ -131,49 +160,6 @@ export function useCreateBounty(): UseMutationResult<
 			}
 		},
 		onSuccess: (): void => {
-			void queryClient.invalidateQueries({ queryKey: ["bounties", "list"] });
-		},
-	});
-}
-
-// useFundBounty funds a draft bounty via x402: the first call triggers the 402
-// challenge, which we sign and retry with the payment map (escrow is the payTo).
-export function useFundBounty(): UseMutationResult<
-	Bounty,
-	Error,
-	{ bountyId: string; creator: string }
-> {
-	const client = useApiClient();
-	const signer = useAuthStore((state) => state.signer);
-	const queryClient = useQueryClient();
-	return useMutation({
-		mutationFn: async ({ bountyId, creator }): Promise<Bounty> => {
-			if (!signer) {
-				throw new Error("Connect your wallet first");
-			}
-			try {
-				return await client.bounties.fund(bountyId, creator);
-			} catch (error) {
-				const challenge = bountyPaymentChallenge(error);
-				if (!challenge) {
-					throw error;
-				}
-				return client.bounties.fund(
-					bountyId,
-					creator,
-					await signX402ChallengePaymentMap({
-						fallbackFrom: creator,
-						noncePrefix: "bounty",
-						payment: challenge.payment,
-						signer,
-					})
-				);
-			}
-		},
-		onSuccess: (_bounty, variables): void => {
-			void queryClient.invalidateQueries({
-				queryKey: queryKeys.bounties.detail(variables.bountyId),
-			});
 			void queryClient.invalidateQueries({ queryKey: ["bounties", "list"] });
 		},
 	});

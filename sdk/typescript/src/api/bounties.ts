@@ -4,15 +4,14 @@ import type {
   BountyComment,
   BountyCommentCreateRequest,
   BountyCreateRequest,
-  BountyFundPayment,
   BountyQueryParams,
   BountySubmission,
   BountySubmissionCreateRequest,
 } from "../types/index.js";
 
-// BountiesApi covers the bounty platform: create + fund (x402 → escrow), browse,
-// submit a URL, comment for free, run the autonomous council, and the
-// admin-approved payout to the council-selected winner.
+// BountiesApi covers the bounty platform: create + fund in one x402 flow (the
+// reward into escrow), browse, submit a URL, comment for free, run the
+// autonomous council, and the admin-approved payout to the selected winner.
 export class BountiesApi {
   constructor(private readonly http: HttpClient) {}
 
@@ -34,21 +33,6 @@ export class BountiesApi {
       "/bounties",
       request.creator ?? "",
       request,
-    );
-  }
-
-  // fund routes the creator's x402 payment into the escrow wallet. Call without
-  // a payment first to receive the 402 challenge, then re-call with the signed
-  // payment map (see signX402ChallengePaymentMap on the website).
-  fund(
-    bountyId: string,
-    creator: string,
-    payment?: BountyFundPayment,
-  ): Promise<Bounty> {
-    return this.http.postDirectoryAuthAs<Bounty>(
-      `/bounties/${encodeURIComponent(bountyId)}/fund`,
-      creator,
-      payment ? { payment } : {},
     );
   }
 

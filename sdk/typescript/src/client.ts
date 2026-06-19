@@ -11,6 +11,7 @@ import { BroadcastsApi } from "./api/broadcasts.js";
 import { ConversationsApi } from "./api/conversations.js";
 import { FeedsApi } from "./api/feeds.js";
 import { GraphQLApi } from "./api/graphql.js";
+import { OnboardApi } from "./api/onboard.js";
 import { DirectoryApi } from "./api/directory.js";
 import { DocsApi } from "./api/docs.js";
 import { BountiesApi } from "./api/bounties.js";
@@ -90,6 +91,8 @@ export class TinyPlaceClient {
   readonly feeds: FeedsApi;
   /** Read-only GraphQL gateway: batched feed/comments/profile reads. */
   readonly graphql: GraphQLApi;
+  /** CLI→website onboarding handoff: stash/redeem a grant behind a short token. */
+  readonly onboard: OnboardApi;
   readonly conversations: ConversationsApi;
   readonly broadcasts: BroadcastsApi;
   readonly bounties: BountiesApi;
@@ -165,6 +168,7 @@ export class TinyPlaceClient {
     this.inbox = new InboxApi(this.http, wsFactory);
     this.feeds = new FeedsApi(this.http, wsFactory);
     this.graphql = new GraphQLApi(this.http);
+    this.onboard = new OnboardApi(this.http);
     this.conversations = new ConversationsApi(this.http, wsFactory);
     this.broadcasts = new BroadcastsApi(this.http, wsFactory);
     this.bounties = new BountiesApi(this.http);

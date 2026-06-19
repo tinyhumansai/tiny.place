@@ -9,17 +9,18 @@ import { useState } from "react";
 import type { Bounty, BountySubmission } from "@tinyhumansai/tinyplace";
 
 import { formatTokenAmount } from "@src/common/format-amount";
+import { flattenPages } from "@src/common/infinite";
 import type { FunctionComponent } from "@src/common/types";
 import { Chip } from "@src/components/ui/Chip";
+import { LoadMore } from "@src/components/ui/LoadMore";
 import {
 	useApproveBounty,
 	useBounty,
 	useBountyComments,
 	useBountySubmissions,
-	useBounties,
+	useBountiesInfinite,
 	useCommentOnBounty,
 	useCreateBounty,
-	useFundBounty,
 	useRunCouncil,
 	useSubmitToBounty,
 	useUploadThumbnail,
@@ -52,8 +53,6 @@ function statusTone(status: string): string {
 	switch (status) {
 		case "open":
 			return "bg-blue-500/15 text-blue-400";
-		case "draft":
-			return "bg-neutral-500/15 text-neutral-400";
 		case "judging":
 		case "review":
 			return "bg-amber-500/15 text-amber-400";
@@ -157,8 +156,15 @@ function BrowseBounties({
 	isDark: boolean;
 	onOpen: (bountyId: string) => void;
 }): FunctionComponent {
-	const { data, isLoading, error } = useBounties();
-	const bounties = data?.bounties ?? [];
+	const {
+		data,
+		isLoading,
+		error,
+		hasNextPage,
+		isFetchingNextPage,
+		fetchNextPage,
+	} = useBountiesInfinite();
+	const bounties = flattenPages(data?.pages);
 
 	if (isLoading) {
 		return <p className={mutedClass(isDark)}>Loading bounties…</p>;
@@ -178,46 +184,60 @@ function BrowseBounties({
 		);
 	}
 	return (
-		<div className="grid gap-2 sm:grid-cols-2">
-			{bounties.map((bounty) => (
-				<button
-					key={bounty.bountyId}
-					className={`${cardClass(isDark)} text-left transition hover:border-primary`}
-					type="button"
-					onClick={(): void => {
-						onOpen(bounty.bountyId);
-					}}
-				>
-					<div className="flex items-start gap-3">
-						{bounty.thumbnail ? (
-							<img
-								alt=""
-								className="h-14 w-14 shrink-0 rounded object-cover"
-								src={`${API_BASE_URL}/bounties/${encodeURIComponent(bounty.bountyId)}/thumbnail`}
-							/>
-						) : null}
-						<div className="min-w-0 flex-1">
-							<div className="flex items-center justify-between gap-2">
-								<span className={`truncate ${strongClass(isDark)}`}>
-									{bounty.title}
-								</span>
-								<StatusBadge status={bounty.status} />
-							</div>
-							<p className={`mt-1 line-clamp-2 text-sm ${mutedClass(isDark)}`}>
-								{bounty.description}
-							</p>
-							<div className="mt-2 flex items-center justify-between text-xs">
-								<span className={strongClass(isDark)}>
-									{formatTokenAmount(bounty.reward.amount, bounty.reward.asset)}
-								</span>
-								<span className={mutedClass(isDark)}>
-									due {formatDeadline(bounty.deadline)}
-								</span>
+		<div className="space-y-3">
+			<div className="grid gap-2 sm:grid-cols-2">
+				{bounties.map((bounty) => (
+					<button
+						key={bounty.bountyId}
+						className={`${cardClass(isDark)} text-left transition hover:border-primary`}
+						type="button"
+						onClick={(): void => {
+							onOpen(bounty.bountyId);
+						}}
+					>
+						<div className="flex items-start gap-3">
+							{bounty.thumbnail ? (
+								<img
+									alt=""
+									className="h-14 w-14 shrink-0 rounded object-cover"
+									src={`${API_BASE_URL}/bounties/${encodeURIComponent(bounty.bountyId)}/thumbnail`}
+								/>
+							) : null}
+							<div className="min-w-0 flex-1">
+								<div className="flex items-center justify-between gap-2">
+									<span className={`truncate ${strongClass(isDark)}`}>
+										{bounty.title}
+									</span>
+									<StatusBadge status={bounty.status} />
+								</div>
+								<p
+									className={`mt-1 line-clamp-2 text-sm ${mutedClass(isDark)}`}
+								>
+									{bounty.description}
+								</p>
+								<div className="mt-2 flex items-center justify-between text-xs">
+									<span className={strongClass(isDark)}>
+										{formatTokenAmount(
+											bounty.reward.amount,
+											bounty.reward.asset
+										)}
+									</span>
+									<span className={mutedClass(isDark)}>
+										due {formatDeadline(bounty.deadline)}
+									</span>
+								</div>
 							</div>
 						</div>
-					</div>
-				</button>
-			))}
+					</button>
+				))}
+			</div>
+			<LoadMore
+				hasNextPage={hasNextPage}
+				isFetchingNextPage={isFetchingNextPage}
+				onClick={(): void => {
+					void fetchNextPage();
+				}}
+			/>
 		</div>
 	);
 }
@@ -360,7 +380,6 @@ function BountyDetail({
 }): FunctionComponent {
 	const { data: bounty, isLoading } = useBounty(bountyId);
 	const agentId = useAuthStore((state) => state.agentId);
-	const fund = useFundBounty();
 	const runCouncil = useRunCouncil(bountyId);
 	const approve = useApproveBounty(bountyId);
 	const uploadThumbnail = useUploadThumbnail(bountyId);
@@ -413,34 +432,15 @@ function BountyDetail({
 					</div>
 				</div>
 
-				{isCreator && bounty.status === "draft" ? (
-					<div className="space-y-2">
-						<button
-							className={primaryButtonClass()}
-							disabled={fund.isPending}
-							type="button"
-							onClick={(): void => {
-								fund.mutate({ bountyId, creator: bounty.creator });
-							}}
-						>
-							{fund.isPending
-								? "Funding…"
-								: `Fund ${formatTokenAmount(bounty.reward.amount, bounty.reward.asset)} into escrow`}
-						</button>
-						{fund.error ? (
-							<p className="text-sm text-danger">
-								{errorMessage(fund.error, "Funding failed")}
-							</p>
-						) : null}
-						<ThumbnailUpload
-							bountyCreator={bounty.creator}
-							isDark={isDark}
-							pending={uploadThumbnail.isPending}
-							onUpload={(file): void => {
-								uploadThumbnail.mutate({ creator: bounty.creator, file });
-							}}
-						/>
-					</div>
+				{isCreator && bounty.status === "open" ? (
+					<ThumbnailUpload
+						bountyCreator={bounty.creator}
+						isDark={isDark}
+						pending={uploadThumbnail.isPending}
+						onUpload={(file): void => {
+							uploadThumbnail.mutate({ creator: bounty.creator, file });
+						}}
+					/>
 				) : null}
 
 				{bounty.status === "open" ? (

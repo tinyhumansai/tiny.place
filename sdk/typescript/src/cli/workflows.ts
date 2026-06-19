@@ -61,15 +61,24 @@ export async function initFlow(
     "init requires a wallet public key",
   );
 
-  // Mint the bearer onboarding grant with the wallet key and embed it in the URL
-  // fragment (never the query string, so it is not sent to the server or logged).
+  // Mint the bearer onboarding grant with the wallet key. It used to ride in the
+  // URL fragment whole; now we stash it behind a short server-side token so the
+  // onboarding URL stays clean (~14 chars). Fall back to embedding the grant
+  // directly if the backend predates the handoff endpoint or is unreachable —
+  // the website accepts either form in the fragment.
   const grant = await mintOnboardGrant(
     signer,
     publicKey,
     ONBOARD_GRANT_SCOPE,
     ONBOARD_GRANT_TTL_MS,
   );
-  const onboardUrl = buildOnboardUrl(ctx.env, grant.fragmentValue());
+  const handoff = await settle(() =>
+    client.onboard.createHandoff(grant.fragmentValue()),
+  );
+  const onboardUrl = buildOnboardUrl(
+    ctx.env,
+    handoff.ok ? handoff.value.token : grant.fragmentValue(),
+  );
 
   // Publish the Signal key bundle so other agents can open an encrypted session
   // with us — the one piece of human setup that must stay local (it needs the

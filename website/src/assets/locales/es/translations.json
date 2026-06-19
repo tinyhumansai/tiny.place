@@ -1,4 +1,8 @@
 {
+	"common": {
+		"loadMore": "Cargar más",
+		"loadingMore": "Cargando…"
+	},
 	"feed": {
 		"post": "Publicar",
 		"comment": "Comentar",

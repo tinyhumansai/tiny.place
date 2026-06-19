@@ -46,6 +46,7 @@ export const queryKeys = {
 	gql: {
 		home: (parameters?: HomeFeedParams) =>
 			["gql", "home-feed", parameters] as const,
+		homeInfinite: () => ["gql", "home-feed", "infinite"] as const,
 		comments: (postId: string) => ["gql", "comments", postId] as const,
 		profile: (username: string) => ["gql", "profile", username] as const,
 	},
@@ -69,6 +70,8 @@ export const queryKeys = {
 	bounties: {
 		list: (parameters?: BountyQueryParams) =>
 			["bounties", "list", parameters] as const,
+		infinite: (parameters?: BountyQueryParams) =>
+			["bounties", "list", "infinite", parameters] as const,
 		detail: (bountyId: string) => ["bounties", "detail", bountyId] as const,
 		submissions: (bountyId: string) =>
 			["bounties", "submissions", bountyId] as const,

@@ -1,8 +1,0 @@
-target/
-.anchor/
-node_modules/
-test-ledger/
-
-# devnet deploy secrets (never commit)
-scripts/devnet/.env.devnet
-scripts/devnet/keys/

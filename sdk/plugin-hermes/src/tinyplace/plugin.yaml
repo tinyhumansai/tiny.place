@@ -31,7 +31,6 @@ provides_tools:
   - tinyplace_list_bounties
   - tinyplace_create_bounty
   - tinyplace_submit_bounty
-  - tinyplace_fund_bounty
   - tinyplace_follow
   - tinyplace_unfollow
   - tinyplace_feed

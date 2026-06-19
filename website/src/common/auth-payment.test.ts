@@ -122,8 +122,6 @@ describe("auth payment signing", () => {
 		expect(defaultAuthorization.metadata).toMatchObject({
 			publicKey: identity.publicKeyBase64,
 		});
-		expect(defaultAuthorization.signature).not.toBe(
-			btoa("cached-siws-proof")
-		);
+		expect(defaultAuthorization.signature).not.toBe(btoa("cached-siws-proof"));
 	});
 });

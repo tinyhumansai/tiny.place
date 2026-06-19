@@ -5,12 +5,14 @@ import { useTranslation } from "react-i18next";
 import type { FeedAuthor, Post } from "@tinyhumansai/tinyplace";
 
 import { graphqlFeedEnabled } from "@src/common/feature-flags";
+import { flattenPages } from "@src/common/infinite";
 import type { FunctionComponent } from "@src/common/types";
 import { FeedComposer } from "@src/components/feed/FeedComposer";
 import { FeedList } from "@src/components/feed/FeedList";
 import { MessagingBanner } from "@src/components/feed/MessagingBanner";
 import { useEffectiveActor } from "@src/components/feed/use-actor";
-import { useHomeFeed, useHomeFeedGql } from "@src/hooks/use-feed";
+import { LoadMore } from "@src/components/ui/LoadMore";
+import { useHomeFeed, useHomeFeedGqlInfinite } from "@src/hooks/use-feed";
 
 /** The authenticated viewer's aggregated, ranked home timeline. */
 export function HomeFeed(): FunctionComponent {
@@ -25,17 +27,14 @@ export function HomeFeed(): FunctionComponent {
 		{ includeSelf: true },
 		canLoadHomeFeed && !graphqlFeedEnabled
 	);
-	const gqlHome = useHomeFeedGql(
-		{ includeSelf: true },
-		canLoadHomeFeed && graphqlFeedEnabled
-	);
+	const gqlHome = useHomeFeedGqlInfinite(canLoadHomeFeed && graphqlFeedEnabled);
 
 	const posts: Array<Post> = [];
 	const reasonByPostId: Record<string, string> = {};
 	const authorByPostId: Record<string, FeedAuthor> = {};
 
 	if (graphqlFeedEnabled) {
-		for (const item of gqlHome.data?.items ?? []) {
+		for (const item of flattenPages(gqlHome.data?.pages)) {
 			const gqlPost = item.post;
 			posts.push({
 				postId: gqlPost.postId,
@@ -83,6 +82,15 @@ export function HomeFeed(): FunctionComponent {
 				posts={posts}
 				reasonByPostId={reasonByPostId}
 			/>
+			{graphqlFeedEnabled ? (
+				<LoadMore
+					hasNextPage={gqlHome.hasNextPage}
+					isFetchingNextPage={gqlHome.isFetchingNextPage}
+					onClick={(): void => {
+						void gqlHome.fetchNextPage();
+					}}
+				/>
+			) : null}
 		</div>
 	);
 }

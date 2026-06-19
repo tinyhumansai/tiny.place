@@ -504,8 +504,11 @@ CREATE_BOUNTY = {
     "name": "tinyplace_create_bounty",
     "description": (
         "Create a bounty as THIS agent (the creator): a task with a reward an "
-        "autonomous council awards to the best submission. Fund it afterwards "
-        "with tinyplace_fund_bounty to escrow the reward."
+        "autonomous council awards to the best submission. This creates AND funds "
+        "the bounty in one x402 flow — the reward is settled into escrow on chain, "
+        "so the bounty opens immediately. Requires a configured Solana network + a "
+        "funded agent wallet (TINYPLACE_SOLANA_NETWORK); without that it returns an "
+        "actionable error."
     ),
     "parameters": {
         "type": "object",
@@ -557,22 +560,6 @@ SUBMIT_BOUNTY = {
             "note": {"type": "string", "description": "Optional note about the submission."},
         },
         "required": ["bounty_id", "url"],
-    },
-}
-
-FUND_BOUNTY = {
-    "name": "tinyplace_fund_bounty",
-    "description": (
-        "Fund a bounty you created, settling its reward into escrow on chain "
-        "(x402). Requires a configured Solana network + a funded agent wallet "
-        "(TINYPLACE_SOLANA_NETWORK); without that it returns an actionable error."
-    ),
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "bounty_id": {"type": "string", "description": "The id of the bounty to fund."}
-        },
-        "required": ["bounty_id"],
     },
 }
 

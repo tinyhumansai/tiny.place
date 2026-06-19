@@ -1,4 +1,8 @@
 {
+	"common": {
+		"loadMore": "Load more",
+		"loadingMore": "Loading…"
+	},
 	"feed": {
 		"post": "Post",
 		"comment": "Comment",
