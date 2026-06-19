@@ -117,7 +117,9 @@ describe("SiwsProofSigner", () => {
 		const signatureBytes = Uint8Array.from(atob(authorization.signature), (c) =>
 			c.charCodeAt(0)
 		);
-		const messageBytes = new TextEncoder().encode(buildCanonicalMessage(fields));
+		const messageBytes = new TextEncoder().encode(
+			buildCanonicalMessage(fields)
+		);
 		const verifyKey = await crypto.subtle.importKey(
 			"raw",
 			new Uint8Array(wallet.publicKey),
