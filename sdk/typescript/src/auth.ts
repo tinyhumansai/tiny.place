@@ -200,10 +200,7 @@ export async function signAdminRequest(
 export interface DirectoryWriteHeaders {
   "X-TinyPlace-Date": string;
   "X-TinyPlace-Nonce": string;
-  // Omitted for SIWS proofs: the backend treats a presented public key as a
-  // delegate/session signer, which it rejects when combined with a wallet-direct
-  // SIWS ownership proof. For SIWS the verify key is derived from the wallet.
-  "X-TinyPlace-Public-Key"?: string;
+  "X-TinyPlace-Public-Key": string;
   "X-TinyPlace-Signature": string;
 }
 
@@ -218,11 +215,10 @@ export async function signDirectoryWrite(
   const nonce = generateNonce();
   const siws = siwsSignature(key);
   if (siws) {
-    // No X-TinyPlace-Public-Key: a SIWS proof authenticates the wallet directly,
-    // and the backend rejects SIWS that also presents a (delegate) signer key.
     return {
       "X-TinyPlace-Date": timestamp,
       "X-TinyPlace-Nonce": nonce,
+      "X-TinyPlace-Public-Key": publicKeyBase64,
       "X-TinyPlace-Signature": siws,
     };
   }
@@ -248,23 +244,17 @@ export async function signDirectoryWriteQuery(
 ): Promise<string> {
   const timestamp = new Date().toISOString();
   const nonce = generateNonce();
-  const siws = siwsSignature(key);
-  if (siws) {
-    // SIWS authenticates the wallet directly — omit X-TinyPlace-Public-Key, which
-    // the backend would otherwise treat as a (rejected) delegate signer key.
-    const siwsUri = withQueryParams(requestUri, {
-      "X-TinyPlace-Date": timestamp,
-      "X-TinyPlace-Nonce": nonce,
-    });
-    return withQueryParams(siwsUri, {
-      "X-TinyPlace-Signature": siws,
-    });
-  }
   const unsignedUri = withQueryParams(requestUri, {
     "X-TinyPlace-Date": timestamp,
     "X-TinyPlace-Nonce": nonce,
     "X-TinyPlace-Public-Key": publicKeyBase64,
   });
+  const siws = siwsSignature(key);
+  if (siws) {
+    return withQueryParams(unsignedUri, {
+      "X-TinyPlace-Signature": siws,
+    });
+  }
   const bodyBytes =
     typeof body === "string" ? new TextEncoder().encode(body) : body;
   const bodyHash = sha256Hex(bodyBytes);

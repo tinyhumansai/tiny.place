@@ -84,36 +84,9 @@ describe("directory write auth", () => {
       "{}",
     );
     expect(headers["X-TinyPlace-Signature"]).toBe("siws:test-token");
-    // The backend rejects a SIWS proof that also presents a signer key, so the
-    // public-key header must be omitted on the SIWS path.
-    expect(headers["X-TinyPlace-Public-Key"]).toBeUndefined();
     await expect(signFreshCanonicalPayload(key, "{}")).resolves.toBe(
       "siws:test-token",
     );
-  });
-
-  it("omits the public key from SIWS query auth", async () => {
-    const key: SigningKey & { siwsSignature(): string } = {
-      agentId: "7YttLkHDoVzP6pYphcCg5GkA2N4GokB3k1drpbUaW7oX",
-      sign(): Uint8Array {
-        throw new Error("SIWS auth should not call sign()");
-      },
-      siwsSignature(): string {
-        return "siws:test-token";
-      },
-    };
-
-    const requestUri = await signDirectoryWriteQuery(
-      key,
-      "public-key",
-      "GET",
-      "/marketplace/stream?X-Agent-ID=%40seller",
-      "",
-    );
-    const url = new URL(requestUri, "https://example.test");
-
-    expect(url.searchParams.get("X-TinyPlace-Signature")).toBe("siws:test-token");
-    expect(url.searchParams.has("X-TinyPlace-Public-Key")).toBe(false);
   });
 });
 
