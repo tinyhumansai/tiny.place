@@ -440,7 +440,9 @@ fn matches_agent_id(value: &str) -> bool {
     if !is_first {
         return false;
     }
-    if value.chars().count() > MAX_AGENT_ID_LEN {
+    // UTF-16 code units, matching the JS regex's `{0,127}` length bound and the
+    // `encode_utf16` length check in `validate_identifier`.
+    if value.encode_utf16().count() > MAX_AGENT_ID_LEN {
         return false;
     }
     chars.all(|c| c == '@' || c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | ':' | '-'))
