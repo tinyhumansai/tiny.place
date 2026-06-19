@@ -166,13 +166,6 @@ describeStaging("staging: unauthenticated endpoints", () => {
     expect(Array.isArray(result.agents)).toBe(true);
   });
 
-  it("directory.listIdentities returns identity listings", async () => {
-    const result = await client.directory.listIdentities({ limit: 3 });
-    expect(result).toHaveProperty("identities");
-    expect(Array.isArray(result.identities)).toBe(true);
-    expect(result).toHaveProperty("cursor");
-  });
-
   it("search.unified returns results structure", async () => {
     const result = await client.search.unified("test");
     expect(result).toHaveProperty("results");
@@ -243,34 +236,6 @@ describeStaging("staging: unauthenticated endpoints", () => {
     }
   });
 
-  it("marketplace.listIdentities returns identities array", async () => {
-    const result = await client.marketplace.listIdentities({ limit: 3 });
-    expect(result).toHaveProperty("identities");
-    expect(Array.isArray(result.identities)).toBe(true);
-  });
-
-  it("marketplace.featured returns items array", async () => {
-    const result = await client.marketplace.featured();
-    expect(result).toHaveProperty("items");
-    expect(Array.isArray(result.items)).toBe(true);
-  });
-
-  it("marketplace.recent returns sales array", async () => {
-    const result = await client.marketplace.recent();
-    expect(result).toHaveProperty("sales");
-    expect(Array.isArray(result.sales)).toBe(true);
-  });
-
-  it("marketplace.identityFloor returns floor metadata", async () => {
-    const result = await client.marketplace.identityFloor(6);
-    expect(result.length).toBe(6);
-  });
-
-  it("marketplace.identitySaleHistory returns history field", async () => {
-    const result = await client.marketplace.identitySaleHistory("@alpha");
-    expect(result).toHaveProperty("history");
-  });
-
   it("groups.list returns array", async () => {
     const result = await client.groups.list();
     expect(result).toHaveProperty("groups");
@@ -279,17 +244,6 @@ describeStaging("staging: unauthenticated endpoints", () => {
   it("broadcasts.list returns array", async () => {
     const result = await client.broadcasts.list();
     expect(result).toHaveProperty("broadcasts");
-  });
-
-  it("events.list returns array", async () => {
-    const result = await client.events.list();
-    expect(result).toHaveProperty("events");
-  });
-
-  it("rooms.list returns array", async () => {
-    const result = await client.rooms.list();
-    expect(result).toHaveProperty("rooms");
-    expect(Array.isArray(result.rooms)).toBe(true);
   });
 
   it("reputation.leaderboard returns data", async () => {
@@ -665,59 +619,6 @@ describeStaging("staging: authenticated flows", () => {
     });
   });
 
-  describe("events", () => {
-    let eventId: string;
-
-    it("creates an event", async () => {
-      const event = await client.events.create({
-        title: `SDK Test Event ${Date.now()}`,
-        description: "Integration test event",
-        type: "meetup",
-        host: publicKeyB64,
-        hostCryptoId: publicKeyB64,
-        schedule: {
-          startAt: new Date(Date.now() + 3600000).toISOString(),
-          endAt: new Date(Date.now() + 7200000).toISOString(),
-        },
-        visibility: "public",
-      } as any);
-      expect(event).toHaveProperty("eventId");
-      eventId = event.eventId;
-    });
-
-    it("retrieves the event", async () => {
-      const event = await client.events.get(eventId);
-      expect(event.eventId).toBe(eventId);
-    });
-
-    it("RSVPs to the event", async () => {
-      const attendee = await client.events.rsvp(eventId);
-      expect(attendee).toBeDefined();
-    });
-
-    it("lists attendees", async () => {
-      const result = await client.events.attendees(eventId);
-      expect(result).toHaveProperty("attendees");
-    });
-
-    it("updates the event", async () => {
-      const updated = await client.events.update(eventId, {
-        description: "Updated event description",
-      } as any);
-      expect(updated).toBeDefined();
-    });
-
-    it("appears in events listing", async () => {
-      const result = await client.events.list();
-      const found = (result.events ?? []).find((e) => e.eventId === eventId);
-      expect(found).toBeDefined();
-    });
-
-    it("cleans up: deletes the event", async () => {
-      await client.events.remove(eventId);
-    });
-  });
-
   describe("relay messages (Signal encrypted)", () => {
     let secondSigner: LocalSigner;
     let secondClient: TinyPlaceClient;
@@ -866,42 +767,6 @@ describeStaging("staging: authenticated flows", () => {
     it("gets attestations for an agent", async () => {
       const result = await client.reputation.getAttestations(cryptoId);
       expect(result).toHaveProperty("attestations");
-    });
-  });
-
-  describe("rooms operator endpoints", () => {
-    it("routes room close errors through TinyPlaceError", async () => {
-      try {
-        await client.rooms.close("missing-codex-room", { operator: cryptoId });
-        expect.fail("should have thrown");
-      } catch (error) {
-        expect(error).toBeInstanceOf(TinyPlaceError);
-        expect((error as TinyPlaceError).status).toBeGreaterThanOrEqual(400);
-      }
-    });
-
-    it("routes room hand start errors through TinyPlaceError", async () => {
-      try {
-        await client.rooms.startHand("missing-codex-room", { operator: cryptoId });
-        expect.fail("should have thrown");
-      } catch (error) {
-        expect(error).toBeInstanceOf(TinyPlaceError);
-        expect((error as TinyPlaceError).status).toBeGreaterThanOrEqual(400);
-      }
-    });
-
-    it("routes room hand settlement errors through TinyPlaceError", async () => {
-      try {
-        await client.rooms.settleHand("missing-codex-room", "missing-codex-hand", {
-          operator: cryptoId,
-          winners: [],
-          txHash: "test-tx-" + Date.now(),
-        });
-        expect.fail("should have thrown");
-      } catch (error) {
-        expect(error).toBeInstanceOf(TinyPlaceError);
-        expect((error as TinyPlaceError).status).toBeGreaterThanOrEqual(400);
-      }
     });
   });
 

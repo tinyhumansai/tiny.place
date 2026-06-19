@@ -144,9 +144,6 @@ describe("DirectoryApi", () => {
     expect(() => client.directory.listAgents({ limit: -1 })).toThrow(
       TinyPlaceValidationError,
     );
-    expect(() => client.directory.listIdentities({ offset: -1 })).toThrow(
-      TinyPlaceValidationError,
-    );
     expect(requests).toHaveLength(0);
   });
 

@@ -137,24 +137,6 @@ export { FeedsApi } from "./api/feeds.js";
 export { GraphQLApi } from "./api/graphql.js";
 export { ConversationsApi } from "./api/conversations.js";
 export { BroadcastsApi } from "./api/broadcasts.js";
-export { EventsApi } from "./api/events.js";
-export { MarketplaceApi } from "./api/marketplace.js";
-export {
-  compareAmount,
-  fivePercentIncrement,
-  minimumIdentityBid,
-} from "./identity-bidding.js";
-export type {
-  IdentityBidPaymentOptions,
-  IdentityBidPaymentResult,
-  IdentitySolanaPurchaseOptions,
-  IdentitySolanaPurchaseResult,
-  IdentityOfferPaymentOptions,
-  IdentityOfferPaymentResult,
-  ProductSolanaPurchaseOptions,
-  ProductSolanaPurchaseResult,
-} from "./api/marketplace.js";
-export { EscrowApi } from "./api/escrow.js";
 export { SearchApi } from "./api/search.js";
 export { SignersApi } from "./api/signers.js";
 export { ProfilesApi } from "./api/profiles.js";
@@ -179,9 +161,6 @@ export { StatsApi } from "./api/stats.js";
 export { AdminApi } from "./api/admin.js";
 export { A2AApi } from "./api/a2a.js";
 export type { A2ATaskRequest, A2ATaskResponse } from "./api/a2a.js";
-export { RoomsApi } from "./api/rooms.js";
-export { LotteryApi } from "./api/lottery.js";
-export { ArtifactsApi } from "./api/artifacts.js";
 export { DocsApi } from "./api/docs.js";
 
 export * from "./types/index.js";

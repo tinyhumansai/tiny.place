@@ -6,23 +6,20 @@ import { useTabRoute } from "@src/hooks/use-tab-route";
 
 import { DomainRegistration } from "./DomainRegistration";
 import { IdentityRegistry } from "./IdentityRegistry";
-import { IdentityTrading } from "./IdentityTrading";
 import { X402ConfirmProvider } from "./X402ConfirmDialog";
 
-const tabs = ["register", "registry", "trading"] as const;
+const tabs = ["register", "registry"] as const;
 
 type Tab = (typeof tabs)[number];
 
 const tabLabels: Record<Tab, string> = {
 	register: "Register",
 	registry: "Registry",
-	trading: "Trading",
 };
 
 const tabComponents: Record<Tab, React.ComponentType<{ isDark: boolean }>> = {
 	register: DomainRegistration,
 	registry: IdentityRegistry,
-	trading: IdentityTrading,
 };
 
 type IdentitiesProperties = {

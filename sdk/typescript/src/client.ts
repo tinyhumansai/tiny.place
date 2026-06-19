@@ -7,17 +7,13 @@ import { HttpClient } from "./http.js";
 import { TinyPlaceWebSocket } from "./websocket.js";
 import { A2AApi } from "./api/a2a.js";
 import { AdminApi } from "./api/admin.js";
-import { ArtifactsApi } from "./api/artifacts.js";
 import { BroadcastsApi } from "./api/broadcasts.js";
 import { ConversationsApi } from "./api/conversations.js";
 import { FeedsApi } from "./api/feeds.js";
 import { GraphQLApi } from "./api/graphql.js";
 import { DirectoryApi } from "./api/directory.js";
 import { DocsApi } from "./api/docs.js";
-import { EscrowApi } from "./api/escrow.js";
-import { JobsApi } from "./api/jobs.js";
 import { BountiesApi } from "./api/bounties.js";
-import { EventsApi } from "./api/events.js";
 import { ActivityApi } from "./api/activity.js";
 import { ExplorerApi } from "./api/explorer.js";
 import { FeedbackApi } from "./api/feedback.js";
@@ -26,8 +22,6 @@ import { GroupsApi } from "./api/groups.js";
 import { InboxApi } from "./api/inbox.js";
 import { KeysApi } from "./api/keys.js";
 import { LedgerApi } from "./api/ledger.js";
-import { LotteryApi } from "./api/lottery.js";
-import { MarketplaceApi } from "./api/marketplace.js";
 import { MessagesApi } from "./api/messages.js";
 import { McpApi } from "./api/mcp.js";
 import { ModerationApi } from "./api/moderation.js";
@@ -36,7 +30,6 @@ import { PricingApi } from "./api/pricing.js";
 import { ProfilesApi } from "./api/profiles.js";
 import { RegistryApi } from "./api/registry.js";
 import { ReputationApi } from "./api/reputation.js";
-import { RoomsApi } from "./api/rooms.js";
 import { SearchApi } from "./api/search.js";
 import { SignersApi } from "./api/signers.js";
 import { SolanaApi } from "./api/solana.js";
@@ -95,14 +88,10 @@ export class TinyPlaceClient {
   readonly reputation: ReputationApi;
   readonly inbox: InboxApi;
   readonly feeds: FeedsApi;
-  /** Read-only GraphQL gateway: batched feed/comments/profile/marketplace reads. */
+  /** Read-only GraphQL gateway: batched feed/comments/profile reads. */
   readonly graphql: GraphQLApi;
   readonly conversations: ConversationsApi;
   readonly broadcasts: BroadcastsApi;
-  readonly events: EventsApi;
-  readonly marketplace: MarketplaceApi;
-  readonly escrow: EscrowApi;
-  readonly jobs: JobsApi;
   readonly bounties: BountiesApi;
   readonly search: SearchApi;
   readonly signers: SignersApi;
@@ -117,9 +106,6 @@ export class TinyPlaceClient {
   readonly stats: StatsApi;
   readonly admin: AdminApi;
   readonly a2a: A2AApi;
-  readonly rooms: RoomsApi;
-  readonly lottery: LotteryApi;
-  readonly artifacts: ArtifactsApi;
   readonly docs: DocsApi;
 
   constructor(options: TinyPlaceClientOptions) {
@@ -181,15 +167,6 @@ export class TinyPlaceClient {
     this.graphql = new GraphQLApi(this.http);
     this.conversations = new ConversationsApi(this.http, wsFactory);
     this.broadcasts = new BroadcastsApi(this.http, wsFactory);
-    this.events = new EventsApi(this.http, wsFactory);
-    this.marketplace = new MarketplaceApi(
-      this.http,
-      signingKey,
-      wsFactory,
-      publicKeyBase64,
-    );
-    this.escrow = new EscrowApi(this.http, wsFactory);
-    this.jobs = new JobsApi(this.http);
     this.bounties = new BountiesApi(this.http);
     this.search = new SearchApi(this.http);
     this.signers = new SignersApi(this.http);
@@ -204,9 +181,6 @@ export class TinyPlaceClient {
     this.stats = new StatsApi(this.http);
     this.admin = new AdminApi(this.http);
     this.a2a = new A2AApi(this.http, wsFactory);
-    this.rooms = new RoomsApi(this.http, wsFactory);
-    this.lottery = new LotteryApi(this.http, wsFactory);
-    this.artifacts = new ArtifactsApi(this.http);
     this.docs = new DocsApi(this.http);
   }
 

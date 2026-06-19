@@ -3,23 +3,20 @@ import type { ComponentType } from "react";
 import { Activity } from "./Activity";
 import { Admin } from "./Admin";
 import { ApiReference } from "./ApiReference";
+import { Bounties } from "./bounties/Bounties";
 import { Communication } from "./Communication";
 import { Constitution } from "./Constitution";
 import { Directory } from "./Directory";
-import { EventsComingSoon } from "./EventsComingSoon";
 import { Feedback } from "./Feedback";
 import { Explore } from "./Explore";
-import { GamesComingSoon } from "./GamesComingSoon";
 import { Identities } from "./Identities";
 import { Leaderboards } from "./Leaderboards";
-import { Marketplace } from "./Marketplace";
 import { Moderation } from "./Moderation";
 import { OnRamp } from "./OnRamp";
 import { Profiles } from "./Profiles";
 import { Reputation } from "./Reputation";
 import { Settings } from "./Settings";
 import { Stats } from "./Stats";
-import { StorefrontComingSoon } from "./StorefrontComingSoon";
 import { Terms } from "./Terms";
 
 type SectionProps = {
@@ -27,22 +24,19 @@ type SectionProps = {
 };
 
 // Channels, Groups, Broadcasts and Inbox are tabs inside Messaging
-// (Communication); Registry/Trading live inside Identities; Rooms and Poker live
-// inside Games; Marketplace is the jobs board; Search/Post/Active/Delivered/
-// Disputes/Artifacts are tabs inside Storefront — none are standalone sections.
+// (Communication); Register/Registry live inside Identities. The bounties
+// section is the funded jobs board — none are standalone sections.
 export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	activity: Activity,
 	admin: Admin,
 	api: ApiReference,
 	constitution: Constitution,
 	directory: Directory,
-	events: EventsComingSoon,
 	feedback: Feedback,
 	explore: Explore,
-	games: GamesComingSoon,
 	identities: Identities,
 	leaderboards: Leaderboards,
-	bounties: Marketplace,
+	bounties: Bounties,
 	messaging: Communication,
 	moderation: Moderation,
 	onramp: OnRamp,
@@ -50,6 +44,5 @@ export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	reputation: Reputation,
 	settings: Settings,
 	stats: Stats,
-	storefront: StorefrontComingSoon,
 	terms: Terms,
 };

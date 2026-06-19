@@ -124,12 +124,6 @@ describe("agent flows CLI", () => {
     expect(names).toEqual(
       expect.arrayContaining([
         "register",
-        "post-job",
-        "proposals",
-        "hire",
-        "apply",
-        "deliver",
-        "find-work",
         "join",
         "create-group",
         "follow",
@@ -138,14 +132,10 @@ describe("agent flows CLI", () => {
     );
   });
 
-  it("registers granular jobs/groups/social raw commands", () => {
+  it("registers granular groups/social raw commands", () => {
     const names = HARNESS_CLI_COMMANDS.map((command) => command.name);
     expect(names).toEqual(
       expect.arrayContaining([
-        "job-create",
-        "job-proposals",
-        "job-select",
-        "job-dispute",
         "group-create",
         "group-join",
         "group-members",
@@ -154,36 +144,6 @@ describe("agent flows CLI", () => {
         "social-feed",
       ]),
     );
-  });
-
-  it("post-job posts to /jobs and suggests reviewing proposals", async () => {
-    const { requests, fetch } = recordingFetch();
-    const result = await runTinyPlaceCli(
-      ["post-job", "--title", "Summarize papers", "--budget", "25", "--asset", "SOL"],
-      { env: ENV, fetch },
-    );
-
-    expect(result.code).toBe(0);
-    const body = JSON.parse(result.stdout);
-    expect(body.status).toBe("done");
-    expect(body.suggestions[0].run).toContain("tinyplace proposals");
-    expect(requests.map((request) => [request.method, new URL(request.url).pathname])).toEqual([
-      ["POST", "/jobs"],
-    ]);
-  });
-
-  it("apply posts a proposal to the job", async () => {
-    const { requests, fetch } = recordingFetch();
-    const result = await runTinyPlaceCli(
-      ["apply", "job_42", "--rate", "20", "--note", "fast turnaround"],
-      { env: ENV, fetch },
-    );
-
-    expect(result.code).toBe(0);
-    expect([requests[0].method, new URL(requests[0].url).pathname]).toEqual([
-      "POST",
-      "/jobs/job_42/proposals",
-    ]);
   });
 
   it("join hits the group join route", async () => {
@@ -206,20 +166,6 @@ describe("agent flows CLI", () => {
     ]);
   });
 
-  it("find-work lists open jobs with apply suggestions", async () => {
-    const { requests, fetch } = recordingFetch();
-    const result = await runTinyPlaceCli(["find-work", "--skill", "research"], {
-      env: ENV,
-      fetch,
-    });
-
-    expect(result.code).toBe(0);
-    const url = new URL(requests[0].url);
-    expect(url.pathname).toBe("/jobs");
-    expect(url.searchParams.get("status")).toBe("open");
-    expect(url.searchParams.get("skill")).toBe("research");
-  });
-
   it("register previews the on-chain fee and settles nothing without --execute", async () => {
     const { requests, fetch } = registrationFetch();
     const result = await runTinyPlaceCli(["register", "@me"], { env: ENV, fetch });
@@ -238,18 +184,6 @@ describe("agent flows CLI", () => {
     expect(requests.map((request) => new URL(request.url).pathname)).toEqual([
       "/registry/names",
     ]);
-  });
-
-  it("hire previews and performs nothing without --execute", async () => {
-    const { requests, fetch } = recordingFetch();
-    const result = await runTinyPlaceCli(["hire", "job_1", "prop_1"], {
-      env: ENV,
-      fetch,
-    });
-
-    expect(result.code).toBe(0);
-    expect(JSON.parse(result.stdout).status).toBe("needs-confirmation");
-    expect(requests).toHaveLength(0);
   });
 
   it("register --execute completes immediately when no payment is required", async () => {

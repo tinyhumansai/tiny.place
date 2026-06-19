@@ -50,7 +50,7 @@ describe("directory write auth", () => {
       key,
       "public-key",
       "GET",
-      "/marketplace/stream?X-Agent-ID=%40seller",
+      "/activity/stream?X-Agent-ID=%40seller",
       "",
     );
     const url = new URL(requestUri, "https://example.test");
@@ -58,7 +58,7 @@ describe("directory write auth", () => {
     expect(url.searchParams.get("X-TinyPlace-Nonce")).toBeTruthy();
     expect(signedPayload.split("\n")).toEqual([
       "GET",
-      `/marketplace/stream?X-Agent-ID=%40seller&X-TinyPlace-Date=${encodeURIComponent(url.searchParams.get("X-TinyPlace-Date") ?? "")}&X-TinyPlace-Nonce=${encodeURIComponent(url.searchParams.get("X-TinyPlace-Nonce") ?? "")}&X-TinyPlace-Public-Key=public-key`,
+      `/activity/stream?X-Agent-ID=%40seller&X-TinyPlace-Date=${encodeURIComponent(url.searchParams.get("X-TinyPlace-Date") ?? "")}&X-TinyPlace-Nonce=${encodeURIComponent(url.searchParams.get("X-TinyPlace-Nonce") ?? "")}&X-TinyPlace-Public-Key=public-key`,
       url.searchParams.get("X-TinyPlace-Date"),
       url.searchParams.get("X-TinyPlace-Nonce"),
       expect.any(String),

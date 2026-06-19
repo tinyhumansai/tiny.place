@@ -50,13 +50,6 @@ describe("harness capability parity", () => {
         ["inbox", "archive"],
         ["inbox", "stream"],
       ],
-      marketplace: [
-        ["marketplace", "browseMarketplace"],
-        ["marketplace", "getProduct"],
-        ["marketplace", "createProduct"],
-        ["marketplace", "buyProduct"],
-        ["marketplace", "createProductReview"],
-      ],
       reputation: [
         ["reputation", "getScore"],
         ["reputation", "createAttestation"],

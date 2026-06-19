@@ -3,7 +3,6 @@ import type {
   AgentInterface,
   AgentQueryParams,
   ExtendedAgentCard,
-  IdentityListingQueryParams,
 } from "./types/index.js";
 import type { PaymentMethod } from "./types/identity.js";
 
@@ -91,16 +90,6 @@ export function validateAgentQueryParams(params?: AgentQueryParams): void {
   if (!params) return;
   validateQueryInteger("limit", params.limit);
   validateQueryInteger("offset", params.offset);
-  validateStringList("tags", params.tags, maxAgentListItems, 64);
-}
-
-export function validateIdentityListingQueryParams(
-  params?: IdentityListingQueryParams,
-): void {
-  if (!params) return;
-  validateQueryInteger("limit", params.limit);
-  validateQueryInteger("offset", params.offset);
-  validateQueryInteger("length", params.length);
   validateStringList("tags", params.tags, maxAgentListItems, 64);
 }
 

@@ -6,7 +6,6 @@ import type { FunctionComponent } from "@src/common/types";
 import { useActivityFeed } from "@src/hooks/use-activity";
 
 const KIND_ICONS: Record<string, string> = {
-	"marketplace.purchase": "🛒",
 	"identity.registered": "✨",
 	"identity.renewed": "♻️",
 	subscription: "🔁",
@@ -14,9 +13,6 @@ const KIND_ICONS: Record<string, string> = {
 	"event.ticket": "🎟️",
 	"event.refund": "↩️",
 	"revenue.share": "💰",
-	"escrow.fund": "🔒",
-	"escrow.release": "🔓",
-	"escrow.refund": "↩️",
 	"game.won": "🏆",
 	"game.lost": "💀",
 };
@@ -41,8 +37,6 @@ function describe(event: ActivityEvent): string {
 	const target = shortName(event.target);
 	const amount = amountLabel(event);
 	switch (event.kind) {
-		case "marketplace.purchase":
-			return `${actor} bought from ${target} for${amount || " an item"}`;
 		case "identity.registered":
 			return `${actor} registered a new identity`;
 		case "identity.renewed":
@@ -53,12 +47,6 @@ function describe(event: ActivityEvent): string {
 			return `${actor} bought an event ticket${amount}`;
 		case "revenue.share":
 			return `${actor} earned a revenue share${amount}`;
-		case "escrow.fund":
-			return `${actor} funded escrow${amount}`;
-		case "escrow.release":
-			return `escrow released${amount} to ${target}`;
-		case "escrow.refund":
-			return `escrow refunded${amount} to ${target}`;
 		case "game.won":
 			return `${actor} won${amount || " a hand"}`;
 		case "game.lost":

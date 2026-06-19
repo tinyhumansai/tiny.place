@@ -1,19 +1,12 @@
 import type {
 	AgentQueryParams,
-	ArtifactQueryParams,
 	BroadcastQueryParams,
-	EventQueryParams,
-	EscrowQueryParams,
 	FeedQueryParams,
 	FollowListParams,
-	GameRoomQueryParams,
 	HomeFeedParams,
 	GroupQueryParams,
-	IdentityListingQueryParams,
 	InboxQueryParams,
-	JobQueryParams,
 	BountyQueryParams,
-	ProductQueryParams,
 } from "@tinyhumansai/tinyplace";
 
 export const queryKeys = {
@@ -24,8 +17,7 @@ export const queryKeys = {
 		agents: (parameters?: AgentQueryParams) =>
 			["directory", "agents", parameters] as const,
 		agent: (agentId: string) => ["directory", "agent", agentId] as const,
-		identities: (parameters?: IdentityListingQueryParams) =>
-			["directory", "identities", parameters] as const,
+		identities: () => ["directory", "identities"] as const,
 		reverse: (cryptoId: string) => ["directory", "reverse", cryptoId] as const,
 	},
 	groups: {
@@ -56,8 +48,6 @@ export const queryKeys = {
 			["gql", "home-feed", parameters] as const,
 		comments: (postId: string) => ["gql", "comments", postId] as const,
 		profile: (username: string) => ["gql", "profile", username] as const,
-		products: (parameters?: ProductQueryParams) =>
-			["gql", "products", parameters] as const,
 	},
 	follows: {
 		stats: (agentId: string) => ["follows", "stats", agentId] as const,
@@ -76,30 +66,6 @@ export const queryKeys = {
 			parameters?: { agentId?: string; limit?: number; offset?: number }
 		) => ["broadcasts", "messages", broadcastId, parameters] as const,
 	},
-	events: {
-		list: (parameters?: EventQueryParams) =>
-			["events", "list", parameters] as const,
-		detail: (eventId: string) => ["events", "detail", eventId] as const,
-		attendees: (eventId: string) => ["events", "attendees", eventId] as const,
-		polls: (eventId: string) => ["events", "polls", eventId] as const,
-		questions: (eventId: string) => ["events", "questions", eventId] as const,
-		recording: (eventId: string) => ["events", "recording", eventId] as const,
-		series: () => ["events", "series"] as const,
-		seriesDetail: (seriesId: string) => ["events", "series", seriesId] as const,
-		stage: (eventId: string) => ["events", "stage", eventId] as const,
-	},
-	escrow: {
-		list: (parameters?: EscrowQueryParams) =>
-			["escrow", "list", parameters] as const,
-		detail: (escrowId: string) => ["escrow", "detail", escrowId] as const,
-		dispute: (escrowId: string) => ["escrow", "dispute", escrowId] as const,
-	},
-	jobs: {
-		list: (parameters?: JobQueryParams) =>
-			["jobs", "list", parameters] as const,
-		detail: (jobId: string) => ["jobs", "detail", jobId] as const,
-		proposals: (jobId: string) => ["jobs", "proposals", jobId] as const,
-	},
 	bounties: {
 		list: (parameters?: BountyQueryParams) =>
 			["bounties", "list", parameters] as const,
@@ -107,35 +73,6 @@ export const queryKeys = {
 		submissions: (bountyId: string) =>
 			["bounties", "submissions", bountyId] as const,
 		comments: (bountyId: string) => ["bounties", "comments", bountyId] as const,
-	},
-	marketplace: {
-		products: (parameters?: ProductQueryParams) =>
-			["marketplace", "products", parameters] as const,
-		product: (productId: string) =>
-			["marketplace", "product", productId] as const,
-		productDelivery: (
-			productId: string,
-			purchaseId: string,
-			actorId?: string
-		) =>
-			[
-				"marketplace",
-				"product-delivery",
-				productId,
-				purchaseId,
-				actorId,
-			] as const,
-		categories: () => ["marketplace", "categories"] as const,
-		featured: () => ["marketplace", "featured"] as const,
-		identityListings: () => ["marketplace", "identity-listings"] as const,
-		identityHistory: (name: string) =>
-			["marketplace", "identity-history", name] as const,
-		identityBids: (listingId: string) =>
-			["marketplace", "identity-bids", listingId] as const,
-		identityFloor: (length: number) =>
-			["marketplace", "identity-floor", length] as const,
-		identityRecent: () => ["marketplace", "identity-recent"] as const,
-		identityOffers: () => ["marketplace", "identity-offers"] as const,
 	},
 	search: {
 		unified: (query: string) => ["search", "unified", query] as const,
@@ -222,23 +159,6 @@ export const queryKeys = {
 		pairs: () => ["pricing", "pairs"] as const,
 		networks: () => ["pricing", "networks"] as const,
 		gas: (network: string) => ["pricing", "gas", network] as const,
-	},
-	rooms: {
-		list: (parameters?: GameRoomQueryParams) =>
-			["rooms", "list", parameters] as const,
-		detail: (roomId: string, actorId?: string) =>
-			["rooms", "detail", roomId, actorId] as const,
-		hands: (roomId: string, actorId?: string) =>
-			["rooms", "hands", roomId, actorId] as const,
-		hand: (roomId: string, handId: string, actorId?: string) =>
-			["rooms", "hand", roomId, handId, actorId] as const,
-		collusion: (roomId: string) => ["rooms", "collusion", roomId] as const,
-	},
-	artifacts: {
-		list: (parameters?: ArtifactQueryParams) =>
-			["artifacts", "list", parameters] as const,
-		detail: (artifactId: string) =>
-			["artifacts", "detail", artifactId] as const,
 	},
 	signers: {
 		list: (grantor: string | undefined) =>

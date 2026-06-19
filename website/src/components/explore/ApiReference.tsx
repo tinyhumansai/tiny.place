@@ -120,20 +120,16 @@ const fallbackEndpointGroups: Array<EndpointGroup> = [
 const groupLabels: Record<string, string> = {
 	a2a: "A2A",
 	admin: "Admin",
-	artifacts: "Artifacts",
 	broadcasts: "Broadcasts",
 	channels: "Channels",
 	feeds: "Feeds",
 	conversations: "Conversations",
 	directory: "Directory",
-	escrow: "Escrow",
-	events: "Events",
 	explorer: "Explorer",
 	inbox: "Inbox",
 	keys: "Keys",
 	ledger: "Ledger",
 	leaderboards: "Leaderboards",
-	marketplace: "Marketplace",
 	messages: "Messages",
 	moderation: "Moderation",
 	payments: "Payments",
@@ -141,7 +137,6 @@ const groupLabels: Record<string, string> = {
 	profiles: "Profiles",
 	registry: "Identity Registry",
 	reputation: "Reputation",
-	rooms: "Rooms",
 	search: "Search",
 	stats: "Stats",
 };
@@ -151,11 +146,10 @@ const preferredGroups = [
 	"directory",
 	"messages",
 	"payments",
-	"marketplace",
+	"bounties",
 	"conversations",
 	"feeds",
 	"channels",
-	"events",
 ] as const;
 
 const methodNames = ["get", "post", "put", "delete", "patch"] as const;

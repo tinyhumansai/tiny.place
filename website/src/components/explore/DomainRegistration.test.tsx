@@ -62,7 +62,7 @@ vi.mock("@src/hooks/use-registry", () => ({
 	},
 }));
 
-vi.mock("@src/hooks/use-marketplace", () => ({
+vi.mock("@src/hooks/use-owned-identities", () => ({
 	useOwnedIdentities: (): {
 		data: { identities: Array<{ primary: boolean }> };
 	} => ({

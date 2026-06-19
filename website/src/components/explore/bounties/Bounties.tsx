@@ -36,7 +36,7 @@ import {
 	secondaryButtonClass,
 	selectClass,
 	strongClass,
-} from "../marketplace/shared";
+} from "./shared";
 
 const API_BASE_URL =
 	process.env["NEXT_PUBLIC_API_BASE_URL"] ?? "https://staging-api.tiny.place";

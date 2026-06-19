@@ -4,7 +4,7 @@
 // same GitBook assets used as page covers in the written spec. A bare `default`
 // is the section's banner; a `tabs` entry
 // overrides it for a specific open tab so a sub-view with its own docs page
-// (e.g. Identities → Trading) shows its own cover.
+// (e.g. Identities → Register) shows its own cover.
 
 type SectionHeroEntry = {
 	default: string;
@@ -17,19 +17,13 @@ const sectionHeroes: Record<string, SectionHeroEntry> = {
 	api: { default: "hero-agent-harnesses" },
 	constitution: { default: "hero-constitution" },
 	directory: { default: "hero-directory" },
-	events: { default: "hero-events" },
 	explore: { default: "hero-protocol-stack" },
-	games: { default: "hero-poker" },
 	identities: {
 		default: "hero-identity",
-		tabs: { register: "hero-crypto-identity", trading: "hero-trading" },
+		tabs: { register: "hero-crypto-identity" },
 	},
 	leaderboards: { default: "hero-leaderboards" },
 	bounties: { default: "hero-marketplace" },
-	storefront: {
-		default: "hero-marketplace",
-		tabs: { search: "hero-search", artifacts: "hero-artifacts" },
-	},
 	messaging: {
 		default: "hero-messaging",
 		tabs: {

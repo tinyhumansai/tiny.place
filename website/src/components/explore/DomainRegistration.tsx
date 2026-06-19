@@ -24,7 +24,7 @@ import {
 	MIN_HANDLE_LENGTH,
 	useHandleAvailability,
 } from "@src/hooks/use-registry";
-import { useOwnedIdentities } from "@src/hooks/use-marketplace";
+import { useOwnedIdentities } from "@src/hooks/use-owned-identities";
 import { useAuthStore } from "@src/store/auth";
 
 import { useOptionalX402Confirm } from "./x402-confirm";

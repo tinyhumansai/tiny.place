@@ -1,7 +1,7 @@
 import {
 	firstActiveIdentity,
 	useOwnedIdentities,
-} from "@src/hooks/use-marketplace";
+} from "@src/hooks/use-owned-identities";
 import { useAuthStore } from "@src/store/auth";
 
 /**

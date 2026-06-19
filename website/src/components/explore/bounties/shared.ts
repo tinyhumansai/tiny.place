@@ -1,9 +1,3 @@
-import type { Identity, TinyPlaceError } from "@tinyhumansai/tinyplace";
-
-// Native SOL on the Solana mainnet caip-2 chain id; matches the value the rest
-// of the explore UI uses for marketplace + escrow flows.
-export const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
-
 export function inputClass(isDark: boolean): string {
 	return `w-full rounded-md border px-2.5 py-1.5 text-xs ${
 		isDark
@@ -52,66 +46,6 @@ export function secondaryButtonClass(isDark: boolean): string {
 	}`;
 }
 
-export function firstActiveIdentity(
-	identities: Array<Identity> | undefined
-): Identity | undefined {
-	return identities?.find((identity) => identity.status === "active");
-}
-
 export function errorMessage(error: unknown, fallback: string): string {
 	return error instanceof Error ? error.message : fallback;
-}
-
-export function paymentChallengeMessage(
-	error: Error | null
-): string | undefined {
-	if (!error || error.name !== "TinyPlaceError") {
-		return undefined;
-	}
-	const typed = error as TinyPlaceError;
-	if (typed.status !== 402) {
-		return undefined;
-	}
-	const body = typed.body as {
-		error?: string;
-		payment?: { amount?: string; asset?: string; network?: string };
-	};
-	const payment = body.payment;
-	if (!payment) {
-		return body.error ?? "Payment required";
-	}
-	return `${body.error ?? "Payment required"}: ${payment.amount ?? ""} ${payment.asset ?? ""} on ${payment.network ?? ""}`.trim();
-}
-
-export function textToBase64(value: string): string {
-	const bytes = new TextEncoder().encode(value);
-	let binary = "";
-	for (const byte of bytes) {
-		binary += String.fromCharCode(byte);
-	}
-	return btoa(binary);
-}
-
-export function slugify(value: string): string {
-	const slug = value
-		.trim()
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-+|-+$/g, "");
-	return slug || "product";
-}
-
-export function formatDate(value: string | undefined): string {
-	if (!value) {
-		return "—";
-	}
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) {
-		return value;
-	}
-	return date.toLocaleDateString(undefined, {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-	});
 }

@@ -9,8 +9,6 @@ import {
 	HomeIcon,
 	IdentificationIcon,
 	NewspaperIcon,
-	PuzzlePieceIcon,
-	ShoppingBagIcon,
 	StarIcon,
 	TrophyIcon,
 } from "@heroicons/react/24/outline";
@@ -28,8 +26,8 @@ import { useAppStore } from "@src/store/app";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
-// Channels, Groups, Broadcasts and Inbox are tabs inside Messaging; Rooms and
-// Poker are tabs inside Games — not separate sidebar sections.
+// Channels, Groups, Broadcasts and Inbox are tabs inside Messaging — not
+// separate sidebar sections.
 const sections: Array<{
 	href?: string;
 	icon: IconComponent;
@@ -41,12 +39,8 @@ const sections: Array<{
 	{ key: "explore", label: "Explore", icon: GlobeAltIcon },
 	{ key: "identities", label: "Identities", icon: IdentificationIcon },
 	{ key: "messaging", label: "Messaging", icon: ChatBubbleLeftRightIcon },
-	// Events and Moderation are hidden from the nav for now (Events renders a
-	// coming-soon placeholder if reached directly by URL). Games is shown but
-	// renders a coming-soon placeholder.
+	// Moderation is hidden from the nav for now.
 	{ key: "bounties", label: "Bounties", icon: BriefcaseIcon },
-	{ key: "storefront", label: "Storefront", icon: ShoppingBagIcon },
-	{ key: "games", label: "Games", icon: PuzzlePieceIcon },
 	{ key: "reputation", label: "Reputation", icon: StarIcon },
 	{ key: "leaderboards", label: "Leaderboards", icon: TrophyIcon },
 	{ key: "stats", label: "Stats", icon: ChartBarIcon },
@@ -64,7 +58,7 @@ export const ExploreShell = ({
 	const isDark = theme === "dark";
 	const pathname = usePathname();
 	// The section is the first path segment so a tab sub-route (e.g.
-	// /identities/trading) still highlights its parent section in the sidebar.
+	// /identities/registry) still highlights its parent section in the sidebar.
 	const segments = pathname.split("/").filter(Boolean);
 	const activeSection = segments[0] ?? "home";
 	// Sections with a hero banner tighten the leading space so the banner sits

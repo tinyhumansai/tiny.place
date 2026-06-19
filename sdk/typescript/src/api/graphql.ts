@@ -5,21 +5,12 @@ import {
   BOUNTY_QUERY,
   HOME_FEED_QUERY,
   IDENTITIES_QUERY,
-  IDENTITY_BIDS_QUERY,
-  IDENTITY_LISTING_QUERY,
-  IDENTITY_LISTINGS_QUERY,
-  IDENTITY_OFFERS_QUERY,
   IDENTITY_QUERY,
-  IDENTITY_SALES_QUERY,
-  JOB_QUERY,
-  JOBS_QUERY,
   LEDGER_TRANSACTION_QUERY,
   LEDGER_TRANSACTIONS_QUERY,
-  MARKETPLACE_PRODUCTS_QUERY,
   POST_LIKERS_QUERY,
   POST_QUERY,
   POST_COMMENTS_QUERY,
-  PRODUCT_QUERY,
   USER_BY_CRYPTO_ID_QUERY,
   USER_PROFILE_QUERY,
   USER_POSTS_QUERY,
@@ -30,29 +21,16 @@ import type {
   HomeFeedParams,
 } from "../types/social.js";
 import type { Identity } from "../types/identity.js";
-import type { IdentityListingQueryParams } from "../types/directory.js";
-import type { IdentityOffer, ProductQueryParams } from "../types/marketplace.js";
-import type { JobQueryParams } from "../types/jobs.js";
 import type { LedgerListParams } from "../types/ledger.js";
 import type {
   GqlAgentCard,
   GqlBounty,
   GqlIdentity,
-  GqlIdentityBidListResult,
-  GqlIdentityListing,
-  GqlIdentityListingDetail,
-  GqlIdentityListingListResult,
-  GqlIdentityOfferListResult,
-  GqlIdentitySaleListResult,
-  GqlJobListResult,
-  GqlJobPosting,
   GqlLedgerTransaction,
   GqlLedgerTransactionListResult,
   GqlPostDetail,
   GqlPostLikerListResult,
   GqlPostListResult,
-  GqlProduct,
-  GqlProductListResult,
   GqlProfile,
 } from "../types/graphql.js";
 
@@ -67,10 +45,6 @@ export interface PaginationGraphQLParams {
   limit?: number;
   offset?: number;
 }
-
-export type ProductGraphQLParams = Omit<ProductQueryParams, "q" | "type"> & {
-  query?: string;
-};
 
 export interface CommentGraphQLParams {
   feedId?: string;
@@ -90,25 +64,6 @@ export interface PostDetailGraphQLParams {
   commentAfter?: number;
   likerLimit?: number;
   likerOffset?: number;
-}
-
-export interface IdentityOfferGraphQLParams
-  extends Partial<Pick<IdentityOffer, "buyer" | "name" | "status">> {
-  agent?: string;
-  limit?: number;
-  offset?: number;
-}
-
-export interface IdentitySalesGraphQLParams {
-  limit?: number;
-  offset?: number;
-}
-
-export interface IdentityListingDetailGraphQLParams {
-  bidLimit?: number;
-  bidOffset?: number;
-  historyLimit?: number;
-  historyOffset?: number;
 }
 
 /**
@@ -228,144 +183,6 @@ export class GraphQLApi {
     return this.http
       .graphql<{ agentCard: GqlAgentCard | null }>(AGENT_CARD_QUERY, { id })
       .then((data) => data.agentCard);
-  }
-
-  /** Marketplace products with sellers embedded. Public. */
-  products(params?: ProductGraphQLParams): Promise<Array<GqlProduct>> {
-    return this.http
-      .graphql<{ products: GqlProductListResult }>(MARKETPLACE_PRODUCTS_QUERY, {
-        query: params?.query,
-        category: params?.category,
-        tags: params?.tags,
-        seller: params?.seller,
-        minPrice: params?.minPrice,
-        maxPrice: params?.maxPrice,
-        sortBy: params?.sortBy,
-        limit: params?.limit,
-        offset: params?.offset,
-      })
-      .then((data) => data.products.products);
-  }
-
-  /** A single marketplace product with seller embedded. Public. */
-  product(id: string): Promise<GqlProduct | null> {
-    return this.http
-      .graphql<{ product: GqlProduct | null }>(PRODUCT_QUERY, { id })
-      .then((data) => data.product);
-  }
-
-  /** Identity marketplace listings, with hydrated sellers and count. Public. */
-  identityListings(
-    params?: IdentityListingQueryParams & { query?: string },
-  ): Promise<GqlIdentityListingListResult> {
-    return this.http
-      .graphql<{ identityListings: GqlIdentityListingListResult }>(
-        IDENTITY_LISTINGS_QUERY,
-        {
-          query: params?.query ?? params?.q,
-          tag: params?.tag,
-          tags: params?.tags,
-          category: params?.category,
-          seller: params?.seller,
-          minPrice: params?.minPrice,
-          maxPrice: params?.maxPrice,
-          sortBy: params?.sortBy,
-          length: params?.length,
-          limit: params?.limit,
-          offset: params?.offset,
-        },
-      )
-      .then((data) => data.identityListings);
-  }
-
-  /** One identity marketplace listing, with paginated bids/history embedded. Public. */
-  identityListing(
-    id: string,
-    params?: IdentityListingDetailGraphQLParams,
-  ): Promise<GqlIdentityListingDetail | null> {
-    return this.http
-      .graphql<{ identityListing: GqlIdentityListingDetail | null }>(
-        IDENTITY_LISTING_QUERY,
-        {
-          id,
-          bidLimit: params?.bidLimit,
-          bidOffset: params?.bidOffset,
-          historyLimit: params?.historyLimit,
-          historyOffset: params?.historyOffset,
-        },
-      )
-      .then((data) => data.identityListing);
-  }
-
-  /** Bids for an identity auction listing, with bidder details embedded. Public. */
-  identityBids(
-    listingId: string,
-    params?: PaginationGraphQLParams,
-  ): Promise<GqlIdentityBidListResult> {
-    return this.http
-      .graphql<{ identityBids: GqlIdentityBidListResult }>(IDENTITY_BIDS_QUERY, {
-        listingId,
-        limit: params?.limit,
-        offset: params?.offset,
-      })
-      .then((data) => data.identityBids);
-  }
-
-  /** Identity offers, with buyer details embedded. Public. */
-  identityOffers(
-    params?: IdentityOfferGraphQLParams,
-  ): Promise<GqlIdentityOfferListResult> {
-    return this.http
-      .graphql<{ identityOffers: GqlIdentityOfferListResult }>(
-        IDENTITY_OFFERS_QUERY,
-        {
-          agent: params?.agent,
-          buyer: params?.buyer,
-          name: params?.name,
-          status: params?.status,
-          limit: params?.limit,
-          offset: params?.offset,
-        },
-      )
-      .then((data) => data.identityOffers);
-  }
-
-  /** Sale history for one @handle, with seller/buyer details embedded. Public. */
-  identitySales(
-    name: string,
-    params?: IdentitySalesGraphQLParams,
-  ): Promise<GqlIdentitySaleListResult> {
-    return this.http
-      .graphql<{ identitySales: GqlIdentitySaleListResult }>(
-        IDENTITY_SALES_QUERY,
-        {
-          name,
-          limit: params?.limit,
-          offset: params?.offset,
-        },
-      )
-      .then((data) => data.identitySales);
-  }
-
-  /** Bounties/jobs with client profiles embedded. Public. */
-  jobs(params?: JobQueryParams): Promise<GqlJobListResult> {
-    return this.http
-      .graphql<{ jobs: GqlJobListResult }>(JOBS_QUERY, {
-        client: params?.client,
-        status: params?.status,
-        category: params?.category,
-        skill: params?.skill,
-        limit: params?.limit,
-        offset: params?.offset,
-      })
-      .then((data) => data.jobs);
-  }
-
-  /** A single bounty/job with client profile embedded. Public. */
-  job(id: string): Promise<GqlJobPosting | null> {
-    return this.http
-      .graphql<{ job: GqlJobPosting | null }>(JOB_QUERY, { id })
-      .then((data) => data.job);
   }
 
   /** Ledger transactions with public filters and count. Public. */

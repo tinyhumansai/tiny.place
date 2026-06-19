@@ -7,7 +7,7 @@ import type { FunctionComponent } from "@src/common/types";
 import {
 	firstActiveIdentity,
 	useOwnedIdentities,
-} from "@src/hooks/use-marketplace";
+} from "@src/hooks/use-owned-identities";
 import {
 	useGroupInvitePreview,
 	useRedeemGroupInvite,
