@@ -10,8 +10,8 @@ use common::*;
 use serde_json::json;
 use tinyplace::api::directory::DirectorySkillsParams;
 use tinyplace::types::{
-    AgentCard, AgentQueryParams, ExtendedAgentCard, IdentityListingQueryParams,
-    UserEmailVerificationConfirmRequest, UserEmailVerificationRequest, UserProfileUpdate,
+    AgentCard, AgentQueryParams, ExtendedAgentCard, UserEmailVerificationConfirmRequest,
+    UserEmailVerificationRequest, UserProfileUpdate,
 };
 
 // --- UsersApi ---
@@ -288,19 +288,6 @@ async fn directory_delete_agent() {
     assert_eq!(req.method.as_str(), "DELETE");
     assert!(req.url.path().contains("directory/agents"));
     assert!(req.url.path().contains("agent-1"));
-}
-
-#[tokio::test]
-async fn directory_list_identities() {
-    let server = any_ok(json!({"identities": []})).await;
-    let client = client_for(&server);
-    let _ = client
-        .directory
-        .list_identities(Some(&IdentityListingQueryParams::default()))
-        .await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().ends_with("/directory/identities"));
 }
 
 #[tokio::test]

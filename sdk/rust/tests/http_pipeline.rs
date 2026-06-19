@@ -22,10 +22,10 @@ async fn get_parses_json_body() {
 
 #[tokio::test]
 async fn signed_request_attaches_authorization_header() {
-    let server = any_ok(json!({"escrows": []})).await;
+    let server = any_empty_ok().await;
     let client = client_for(&server);
-    // escrow.list is a Signed (getAuth) request → Authorization: tiny.place ...
-    let _ = client.escrow.list(None).await;
+    // moderation.get_report is a Signed (getAuth) request → Authorization: tiny.place ...
+    let _ = client.moderation.get_report("rep1").await;
     let req = only_request(&server).await;
     let auth = req.headers.get("authorization").unwrap().to_str().unwrap();
     assert!(auth.starts_with("tiny.place "), "auth was {auth}");

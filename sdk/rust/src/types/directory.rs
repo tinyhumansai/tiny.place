@@ -182,40 +182,6 @@ pub struct AgentQueryParams {
     pub offset: Option<i64>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IdentityListingQueryParams {
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub q: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub tag: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub tags: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub category: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub seller: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub min_price: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub max_price: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub sort_by: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub length: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub limit: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub offset: Option<i64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DirectoryIdentityListingsResponse {
-    pub identities: Vec<crate::types::IdentityListing>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub cursor: Option<String>,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

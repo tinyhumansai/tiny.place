@@ -11,15 +11,12 @@ use crate::signer::Signer;
 use crate::api::a2a::A2AApi;
 use crate::api::activity::ActivityApi;
 use crate::api::admin::AdminApi;
-use crate::api::artifacts::ArtifactsApi;
 use crate::api::bounties::BountiesApi;
 use crate::api::broadcasts::BroadcastsApi;
 use crate::api::channels::ChannelsApi;
 use crate::api::conversations::ConversationsApi;
 use crate::api::directory::DirectoryApi;
 use crate::api::docs::DocsApi;
-use crate::api::escrow::EscrowApi;
-use crate::api::events::EventsApi;
 use crate::api::explorer::ExplorerApi;
 use crate::api::feedback::FeedbackApi;
 use crate::api::feeds::FeedsApi;
@@ -27,11 +24,8 @@ use crate::api::follows::FollowsApi;
 use crate::api::graphql::GraphQLApi;
 use crate::api::groups::GroupsApi;
 use crate::api::inbox::InboxApi;
-use crate::api::jobs::JobsApi;
 use crate::api::keys::KeysApi;
 use crate::api::ledger::LedgerApi;
-use crate::api::lottery::LotteryApi;
-use crate::api::marketplace::MarketplaceApi;
 use crate::api::mcp::McpApi;
 use crate::api::messages::MessagesApi;
 use crate::api::moderation::ModerationApi;
@@ -40,7 +34,6 @@ use crate::api::pricing::PricingApi;
 use crate::api::profiles::ProfilesApi;
 use crate::api::registry::RegistryApi;
 use crate::api::reputation::ReputationApi;
-use crate::api::rooms::RoomsApi;
 use crate::api::search::SearchApi;
 use crate::api::signers::SignersApi;
 use crate::api::solana::SolanaApi;
@@ -84,10 +77,6 @@ pub struct TinyPlaceClient {
     pub conversations: ConversationsApi,
     pub broadcasts: BroadcastsApi,
     pub bounties: BountiesApi,
-    pub events: EventsApi,
-    pub marketplace: MarketplaceApi,
-    pub escrow: EscrowApi,
-    pub jobs: JobsApi,
     pub search: SearchApi,
     pub signers: SignersApi,
     pub profiles: ProfilesApi,
@@ -102,9 +91,6 @@ pub struct TinyPlaceClient {
     pub stats: StatsApi,
     pub admin: AdminApi,
     pub a2a: A2AApi,
-    pub rooms: RoomsApi,
-    pub lottery: LotteryApi,
-    pub artifacts: ArtifactsApi,
     pub docs: DocsApi,
 }
 
@@ -135,10 +121,6 @@ impl TinyPlaceClient {
             conversations: ConversationsApi::new(http.clone()),
             broadcasts: BroadcastsApi::new(http.clone()),
             bounties: BountiesApi::new(http.clone()),
-            events: EventsApi::new(http.clone()),
-            marketplace: MarketplaceApi::new(http.clone()),
-            escrow: EscrowApi::new(http.clone()),
-            jobs: JobsApi::new(http.clone()),
             search: SearchApi::new(http.clone()),
             signers: SignersApi::new(http.clone()),
             profiles: ProfilesApi::new(http.clone()),
@@ -153,9 +135,6 @@ impl TinyPlaceClient {
             stats: StatsApi::new(http.clone()),
             admin: AdminApi::new(http.clone()),
             a2a: A2AApi::new(http.clone()),
-            rooms: RoomsApi::new(http.clone()),
-            lottery: LotteryApi::new(http.clone()),
-            artifacts: ArtifactsApi::new(http.clone()),
             docs: DocsApi::new(http.clone()),
             http,
         }
