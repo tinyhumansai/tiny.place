@@ -8,6 +8,13 @@ import type {
   SelectCandidateResult,
 } from "../types/index.js";
 
+// Backend POST /jobs requires an RFC3339 timestamp; a bare `YYYY-MM-DD` date
+// (e.g. from an `<input type="date">`) must be expanded or it fails with
+// `parsing time "2026-06-20" ... cannot parse`. Full timestamps pass through.
+function toRfc3339Deadline(value: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00Z` : value;
+}
+
 // JobsApi covers the jobs marketplace: post + fund, browse, apply, candidate
 // selection (which spawns the escrow contract), and the AI-judged dispute flow.
 export class JobsApi {
@@ -27,10 +34,16 @@ export class JobsApi {
   }
 
   create(request: JobCreateRequest): Promise<JobPosting> {
+    const normalized = request.proposalDeadline
+      ? {
+          ...request,
+          proposalDeadline: toRfc3339Deadline(request.proposalDeadline),
+        }
+      : request;
     return this.http.postDirectoryAuthAs<JobPosting>(
       "/jobs",
-      request.client,
-      request,
+      normalized.client,
+      normalized,
     );
   }
 
