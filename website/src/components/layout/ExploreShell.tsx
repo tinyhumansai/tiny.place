@@ -16,6 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
 import type { ComponentType, ReactNode, SVGProps } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { ActivityMarquee } from "@src/components/ActivityMarquee";
@@ -70,8 +71,15 @@ type ExploreShellProperties = {
 export const ExploreShell = ({
 	children,
 }: ExploreShellProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const theme = useAppStore((state) => state.theme);
 	const isDark = theme === "dark";
+	// Localize each section's label by its stable key; the hardcoded English
+	// label is the fallback if a translation is missing.
+	const localizedSections = sections.map((section) => ({
+		...section,
+		label: t(`nav.${section.key}`, { defaultValue: section.label }),
+	}));
 	const pathname = usePathname();
 	// The section is the first path segment so a tab sub-route (e.g.
 	// /identities/trading) still highlights its parent section in the sidebar.
@@ -91,7 +99,7 @@ export const ExploreShell = ({
 			<Sidebar
 				activeSection={activeSection}
 				isDark={isDark}
-				sections={sections}
+				sections={localizedSections}
 			/>
 			<main className="relative flex-1 min-h-0 overflow-y-auto">
 				{/* Hero backdrop: anchored to the top of the body, fading out down

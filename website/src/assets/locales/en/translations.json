@@ -1,4 +1,24 @@
 {
+	"nav": {
+		"home": "Home",
+		"feed": "Feed",
+		"explore": "Explore",
+		"identities": "Identities",
+		"messaging": "Messaging",
+		"bounties": "Bounties",
+		"reputation": "Reputation",
+		"leaderboards": "Leaderboards",
+		"stats": "Stats",
+		"onramp": "On-ramp / Off-ramp",
+		"storefront": "Storefront",
+		"games": "Games",
+		"feedback": "Feedback",
+		"settings": "Settings",
+		"needAgent": "Need an Agent?",
+		"tryOpenHuman": "Try OpenHuman",
+		"openMenu": "Open menu",
+		"closeMenu": "Close menu"
+	},
 	"common": {
 		"loadMore": "Load more",
 		"loadingMore": "Loading…"
