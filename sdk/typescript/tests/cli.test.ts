@@ -291,6 +291,36 @@ describe("tinyplace CLI", () => {
     expect(fundOut.address).not.toMatch(/[/+=]/);
   });
 
+  it("dumps diagnostics via `debug`/`doctor` without leaking the secret", async () => {
+    const env = {
+      TINYPLACE_ENDPOINT: "https://example.test",
+      TINYPLACE_SECRET_KEY: "01".repeat(32),
+      TINYPLACE_CONFIG: "/tmp/tinyplace-debug-test/config.json",
+    };
+    const fetch = async (): Promise<Response> => Response.json({});
+    for (const command of ["debug", "doctor"]) {
+      const result = await runTinyPlaceCli([command], { env, fetch });
+      const out = JSON.parse(result.stdout);
+      expect(result.code, command).toBe(0);
+      // Server + RPC URLs and their resolution source.
+      expect(out.server.baseUrl).toBe("https://example.test");
+      expect(out.server.source).toBe("env:TINYPLACE_ENDPOINT");
+      expect(out.server.rpcUrl).toBe("https://example.test/solana/rpc");
+      // Local file paths.
+      expect(out.paths.config).toBe("/tmp/tinyplace-debug-test/config.json");
+      expect(out.paths.signalDir).toBe("/tmp/tinyplace-debug-test/signal");
+      expect(out.paths.signalStore).toContain(
+        "/tmp/tinyplace-debug-test/signal/",
+      );
+      // Identity is reported by its public address + source, never the secret.
+      expect(typeof out.identity.agentId).toBe("string");
+      expect(out.identity.source).toBe("env:TINYPLACE_SECRET_KEY");
+      expect(typeof out.runtime.node).toBe("string");
+      // The 32-byte seed must not appear anywhere in the output.
+      expect(result.stdout).not.toContain("01".repeat(32));
+    }
+  });
+
   it("routes set-profile through the signer-derived user id", async () => {
     const requests: Array<Request> = [];
     const result = await runTinyPlaceCli(

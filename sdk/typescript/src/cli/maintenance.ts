@@ -110,13 +110,13 @@ export async function debugInfo(ctx: CliContext): Promise<unknown> {
         ? { signalStore: FileSessionStore.defaultPath(publicKey, signalDir) }
         : {}),
     },
+    // URL/config resolution inputs only. The secret is never echoed here; where
+    // the active key came from is reported by `identity.source` instead.
     env: {
       TINYPLACE_ENDPOINT: env.TINYPLACE_ENDPOINT ?? null,
       TINYPLACE_API_URL: env.TINYPLACE_API_URL ?? null,
       NEXT_PUBLIC_API_URL: env.NEXT_PUBLIC_API_URL ?? null,
       TINYPLACE_CONFIG: env.TINYPLACE_CONFIG ?? null,
-      // Never print the secret itself — only whether one is set.
-      TINYPLACE_SECRET_KEY: env.TINYPLACE_SECRET_KEY ? "<set>" : null,
     },
     runtime: {
       node: process.versions.node,
