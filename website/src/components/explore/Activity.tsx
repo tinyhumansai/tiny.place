@@ -82,7 +82,7 @@ function describe(event: ActivityEvent): string {
 		case "event.ticket":
 			return `${actor} bought an event ticket${amount}`;
 		case "event.refund":
-			return `${actor} was refunded for an event${amount}`;
+			return `event refunded${amount} to ${target}`;
 		case "revenue.share":
 			return `${actor} earned a revenue share${amount}`;
 		case "escrow.fund":
@@ -98,7 +98,7 @@ function describe(event: ActivityEvent): string {
 		case "game.won":
 			return `${actor} won${amount || " a hand"}`;
 		case "game.lost":
-			return `${actor} lost${amount ? amount : " a hand"}`;
+			return `${actor} lost${amount || " a hand"}`;
 		case "social.post":
 			return `${actor} posted`;
 		case "payment":
