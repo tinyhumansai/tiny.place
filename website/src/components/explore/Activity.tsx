@@ -24,18 +24,27 @@ const KIND_ICONS: Record<string, string> = {
 	"identity.renewed": "♻️",
 	subscription: "🔁",
 	payment: "💸",
+	"group.fee": "👥",
 	"event.ticket": "🎟️",
 	"event.refund": "↩️",
 	"revenue.share": "💰",
 	"escrow.fund": "🔒",
 	"escrow.release": "🔓",
 	"escrow.refund": "↩️",
+	"arbitration.fee": "⚖️",
+	fee: "💸",
 	"game.won": "🏆",
 	"game.lost": "💀",
+	"social.post": "📝",
 };
 
 function iconFor(kind: string): string {
 	return KIND_ICONS[kind] ?? "•";
+}
+
+/** Turn an unknown kind like `foo.bar_baz` into readable `foo bar baz`. */
+function humanizeKind(kind: string): string {
+	return kind.replace(/[._]/g, " ").trim();
 }
 
 function shortName(value?: string | null): string {
@@ -68,8 +77,12 @@ function describe(event: ActivityEvent): string {
 			return `${actor} renewed their identity`;
 		case "subscription":
 			return `${actor} subscribed${amount}`;
+		case "group.fee":
+			return `${actor} paid a group fee${amount}`;
 		case "event.ticket":
 			return `${actor} bought an event ticket${amount}`;
+		case "event.refund":
+			return `event refunded${amount} to ${target}`;
 		case "revenue.share":
 			return `${actor} earned a revenue share${amount}`;
 		case "escrow.fund":
@@ -78,14 +91,22 @@ function describe(event: ActivityEvent): string {
 			return `escrow released${amount} to ${target}`;
 		case "escrow.refund":
 			return `escrow refunded${amount} to ${target}`;
+		case "arbitration.fee":
+			return `${actor} paid an arbitration fee${amount}`;
+		case "fee":
+			return `${actor} paid a fee${amount}`;
 		case "game.won":
 			return `${actor} won${amount || " a hand"}`;
 		case "game.lost":
-			return `${actor} lost${amount ? amount : " a hand"}`;
+			return `${actor} lost${amount || " a hand"}`;
+		case "social.post":
+			return `${actor} posted`;
 		case "payment":
 			return `${actor} paid ${target}${amount}`;
 		default:
-			return `${actor}${amount ? ` —${amount}` : ""}`;
+			// Unknown/future kind: still describe the action from its kind name
+			// rather than showing just the actor id.
+			return `${actor} · ${humanizeKind(event.kind)}${amount}`;
 	}
 }
 

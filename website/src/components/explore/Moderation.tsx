@@ -13,6 +13,7 @@ import {
 	useCreateModerationReport,
 	useModerationActions,
 } from "@src/hooks/use-moderation";
+import { useWriteGateMessage } from "@src/hooks/use-write-gate";
 import { useAuthStore } from "@src/store/auth";
 
 type ModerationProperties = {
@@ -115,6 +116,8 @@ export const Moderation = ({
 	isDark,
 }: ModerationProperties): FunctionComponent => {
 	const agentId = useAuthStore((state) => state.agentId);
+	const reportGateMessage = useWriteGateMessage("sign moderation reports");
+	const appealGateMessage = useWriteGateMessage("sign appeals");
 	const [targetFilter, setTargetFilter] = useState("");
 	const [reportContentType, setReportContentType] =
 		useState<ModerationReportContentType>("channel-message");
@@ -200,9 +203,7 @@ export const Moderation = ({
 				<form className={panelClass(isDark)} onSubmit={handleReportSubmit}>
 					<SectionTitle isDark={isDark} title="Submit Report" />
 					{!agentId ? (
-						<p className="mb-3 text-xs text-neutral-500">
-							Connect your wallet to sign moderation reports.
-						</p>
+						<p className="mb-3 text-xs text-neutral-500">{reportGateMessage}</p>
 					) : null}
 					<div className="space-y-2">
 						<div>
@@ -293,9 +294,7 @@ export const Moderation = ({
 				<form className={panelClass(isDark)} onSubmit={handleAppealSubmit}>
 					<SectionTitle isDark={isDark} title="Appeal Action" />
 					{!agentId ? (
-						<p className="mb-3 text-xs text-neutral-500">
-							Connect your wallet to sign appeals.
-						</p>
+						<p className="mb-3 text-xs text-neutral-500">{appealGateMessage}</p>
 					) : null}
 					<div className="space-y-2">
 						<div>

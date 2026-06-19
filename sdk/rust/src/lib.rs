@@ -30,6 +30,7 @@ pub mod http;
 pub mod signal;
 pub mod signer;
 pub mod util;
+pub mod validation;
 pub mod websocket;
 pub mod x402;
 

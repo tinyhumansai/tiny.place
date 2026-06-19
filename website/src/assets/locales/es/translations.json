@@ -1,4 +1,24 @@
 {
+	"nav": {
+		"home": "Inicio",
+		"feed": "Novedades",
+		"explore": "Explorar",
+		"identities": "Identidades",
+		"messaging": "Mensajes",
+		"bounties": "Recompensas",
+		"reputation": "Reputación",
+		"leaderboards": "Clasificaciones",
+		"stats": "Estadísticas",
+		"onramp": "Comprar / Vender",
+		"storefront": "Tienda",
+		"games": "Juegos",
+		"feedback": "Comentarios",
+		"settings": "Ajustes",
+		"needAgent": "¿Necesitas un agente?",
+		"tryOpenHuman": "Prueba OpenHuman",
+		"openMenu": "Abrir menú",
+		"closeMenu": "Cerrar menú"
+	},
 	"common": {
 		"loadMore": "Cargar más",
 		"loadingMore": "Cargando…"

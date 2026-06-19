@@ -16,6 +16,7 @@ import {
 	firstActiveIdentity,
 	useOwnedIdentities,
 } from "@src/hooks/use-marketplace";
+import { useWriteGateMessage } from "@src/hooks/use-write-gate";
 import { useAuthStore } from "@src/store/auth";
 
 const filterOptions = ["All", "Tasks", "Payments", "Invites"] as const;
@@ -69,6 +70,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 	const ownedIdentities = useOwnedIdentities(agentId);
 	const inboxIdentity = firstActiveIdentity(ownedIdentities.data?.identities);
 	const owner = inboxIdentity?.username ?? agentId;
+	const gateMessage = useWriteGateMessage("view your inbox");
 	const { data, isLoading, isError, error } = useInbox({ limit: 50 }, owner);
 	const markRead = useMarkInboxRead();
 	const archiveItem = useArchiveInboxItem();
@@ -86,7 +88,10 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 		"status" in error &&
 		(error as { status: number }).status === 401;
 
-	if (isAuthError) {
+	// No session yet (wallet not connected, or connected but session not
+	// approved): show a connect/approve prompt rather than letting the query run
+	// keyless and surface a misleading "Failed to load inbox". Covers a 401 too.
+	if (gateMessage || isAuthError) {
 		return (
 			<div
 				className={`flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border ${isDark ? "border-neutral-800 bg-neutral-950" : "border-neutral-200 bg-neutral-50"}`}
@@ -94,7 +99,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 				<p
 					className={`text-sm ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
 				>
-					Connect your wallet to view your inbox
+					{gateMessage ?? "Connect your wallet to view your inbox"}
 				</p>
 			</div>
 		);
