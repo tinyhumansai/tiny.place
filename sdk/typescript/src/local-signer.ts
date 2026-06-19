@@ -8,27 +8,71 @@ import type { KeyPair } from "./crypto.js";
 import { ed25519SeedToX25519KeyPair } from "./signal/crypto.js";
 import type { X25519KeyPair } from "./signal/crypto.js";
 
+/** Options shared by the LocalSigner factory methods. */
+export interface LocalSignerOptions {
+  /**
+   * When true (the default), the signer mints a reusable SIWS ownership proof
+   * and authenticates requests with it (the preferred scheme). Set to false to
+   * fall back to per-request freshness-bound Ed25519 signatures ("raw"), which
+   * is still required for delegated session keys, x402, and admin auth.
+   */
+  siws?: boolean;
+  /**
+   * SIWS chain id advertised in the minted proof (e.g. "solana:mainnet"). The
+   * backend derives the wallet from the signing key, so this is informational.
+   */
+  siwsNetwork?: string;
+  /** Origin/URI recorded in the SIWS message. Defaults to https://tiny.place. */
+  siwsOrigin?: string;
+}
+
+// A minted SIWS proof is reusable until it expires; mirror the website's 7-day
+// window so a single mint covers a long-lived agent session.
+const SIWS_TIME_TO_LIVE_MS = 7 * 24 * 60 * 60 * 1000;
+
 export class LocalSigner extends Signer {
   readonly agentId: string;
   readonly publicKeyBase64: string;
   readonly publicKey: Uint8Array;
 
   private readonly privateKey: CryptoKey;
+  private readonly siwsEnabled: boolean;
+  private readonly siwsNetwork: string;
+  private readonly siwsOrigin: string;
+  private siwsToken: string | undefined;
 
-  private constructor(keyPair: KeyPair) {
+  private constructor(keyPair: KeyPair, options?: LocalSignerOptions) {
     super();
     this.publicKey = keyPair.publicKey;
     this.privateKey = keyPair.privateKey;
     this.agentId = deriveCryptoId(keyPair.publicKey);
     this.publicKeyBase64 = publicKeyToBase64(keyPair.publicKey);
+    this.siwsEnabled = options?.siws ?? true;
+    this.siwsNetwork = options?.siwsNetwork ?? "solana:mainnet";
+    this.siwsOrigin = options?.siwsOrigin ?? "https://tiny.place";
   }
 
-  static async generate(): Promise<LocalSigner> {
+  /** Construct and pre-mint the SIWS proof (when enabled) before returning. */
+  private static async create(
+    keyPair: KeyPair,
+    options?: LocalSignerOptions,
+  ): Promise<LocalSigner> {
+    const signer = new LocalSigner(keyPair, options);
+    if (signer.siwsEnabled) {
+      await signer.mintSiws();
+    }
+    return signer;
+  }
+
+  static async generate(options?: LocalSignerOptions): Promise<LocalSigner> {
     const keyPair = await generateKeyPair();
-    return new LocalSigner(keyPair);
+    return LocalSigner.create(keyPair, options);
   }
 
-  static async fromPrivateKey(privateKey: CryptoKey): Promise<LocalSigner> {
+  static async fromPrivateKey(
+    privateKey: CryptoKey,
+    options?: LocalSignerOptions,
+  ): Promise<LocalSigner> {
     const crypto = globalThis.crypto;
     const jwk = await crypto.subtle.exportKey("jwk", privateKey);
     const publicOnlyJwk = { ...jwk, d: undefined, key_ops: ["verify"] };
@@ -42,11 +86,14 @@ export class LocalSigner extends Signer {
     const publicKeyRaw = new Uint8Array(
       await crypto.subtle.exportKey("raw", publicCryptoKey),
     );
-    return new LocalSigner({ publicKey: publicKeyRaw, privateKey });
+    return LocalSigner.create({ publicKey: publicKeyRaw, privateKey }, options);
   }
 
   static fromKeyPair(keyPair: KeyPair): LocalSigner {
-    return new LocalSigner(keyPair);
+    // Synchronous construction cannot pre-mint the SIWS proof (signing is async),
+    // so this low-level path authenticates with raw signatures. Use an async
+    // factory (generate/fromSeed/fromSolanaSecretKey) to default to SIWS.
+    return new LocalSigner(keyPair, { siws: false });
   }
 
   /**
@@ -58,7 +105,10 @@ export class LocalSigner extends Signer {
    * @param seed - Exactly 32 bytes of secret seed material.
    * @returns A signer backed by the derived Ed25519 key.
    */
-  static async fromSeed(seed: Uint8Array): Promise<LocalSigner> {
+  static async fromSeed(
+    seed: Uint8Array,
+    options?: LocalSignerOptions,
+  ): Promise<LocalSigner> {
     if (seed.length !== 32) {
       throw new Error(`Ed25519 seed must be 32 bytes, got ${seed.length}`);
     }
@@ -77,7 +127,7 @@ export class LocalSigner extends Signer {
       true,
       ["sign"],
     );
-    return LocalSigner.fromPrivateKey(privateKey);
+    return LocalSigner.fromPrivateKey(privateKey, options);
   }
 
   /**
@@ -90,6 +140,7 @@ export class LocalSigner extends Signer {
    */
   static async fromSolanaSecretKey(
     secretKey: string | Uint8Array,
+    options?: LocalSignerOptions,
   ): Promise<LocalSigner> {
     const secretBytes =
       typeof secretKey === "string" ? decodeBase58(secretKey) : secretKey;
@@ -99,7 +150,7 @@ export class LocalSigner extends Signer {
       );
     }
 
-    const signer = await LocalSigner.fromSeed(secretBytes.slice(0, 32));
+    const signer = await LocalSigner.fromSeed(secretBytes.slice(0, 32), options);
     if (secretBytes.length === 64) {
       const expectedPublicKey = secretBytes.slice(32);
       if (!bytesEqual(signer.publicKey, expectedPublicKey)) {
@@ -123,6 +174,71 @@ export class LocalSigner extends Signer {
     const seed = base64urlToBytes(jwk.d!);
     return ed25519SeedToX25519KeyPair(seed);
   }
+
+  /**
+   * Returns the cached SIWS proof token used to authenticate requests, or an
+   * empty string when SIWS is disabled (callers then fall back to raw
+   * signatures). The SDK auth helpers prefer this token when it is present.
+   */
+  siwsSignature(): string {
+    return this.siwsToken ?? "";
+  }
+
+  /**
+   * Mints (or re-mints) the reusable SIWS ownership proof by signing a Sign-In
+   * With Solana message with this key. Called automatically by the async
+   * factories; can be invoked again to refresh an expired proof.
+   */
+  async mintSiws(): Promise<void> {
+    const issuedAt = new Date();
+    const expiresAt = new Date(issuedAt.getTime() + SIWS_TIME_TO_LIVE_MS);
+    const message = [
+      "tiny.place wants you to sign in with your Solana account:",
+      this.agentId,
+      "",
+      "Authenticate website API requests. This does not authorize a transaction or payment.",
+      "",
+      `URI: ${this.siwsOrigin}`,
+      "Version: 1",
+      `Chain ID: ${this.siwsNetwork}`,
+      `Nonce: ${generateSiwsNonce()}`,
+      `Issued At: ${issuedAt.toISOString()}`,
+      `Expiration Time: ${expiresAt.toISOString()}`,
+    ].join("\n");
+    const messageBytes = new TextEncoder().encode(message);
+    const signature = await this.sign(messageBytes);
+    const token = {
+      signedMessage: bytesToBase64(messageBytes),
+      signature: bytesToBase64(signature),
+      signatureType: "ed25519",
+    };
+    this.siwsToken = `siws:${utf8ToBase64Url(JSON.stringify(token))}`;
+  }
+}
+
+function generateSiwsNonce(): string {
+  if (typeof globalThis.crypto.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  return bytesToBase64(bytes);
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
+function utf8ToBase64Url(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  return bytesToBase64(bytes)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/u, "");
 }
 
 const BASE58_ALPHABET =
