@@ -1,5 +1,7 @@
 import type { Identity, TinyPlaceError } from "@tinyhumansai/tinyplace";
 
+import { formatTokenAmount } from "@src/common/format-amount";
+
 // Native SOL on the Solana mainnet caip-2 chain id; matches the value the rest
 // of the explore UI uses for marketplace + escrow flows.
 export const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
@@ -80,7 +82,12 @@ export function paymentChallengeMessage(
 	if (!payment) {
 		return body.error ?? "Payment required";
 	}
-	return `${body.error ?? "Payment required"}: ${payment.amount ?? ""} ${payment.asset ?? ""} on ${payment.network ?? ""}`.trim();
+	// The challenge advertises the SPL mint in `asset` and the amount in base
+	// units; format both back to a human "1 USDC" for the message.
+	const formatted = payment.amount
+		? formatTokenAmount(payment.amount, payment.asset)
+		: (payment.asset ?? "");
+	return `${body.error ?? "Payment required"}: ${formatted} on ${payment.network ?? ""}`.trim();
 }
 
 export function textToBase64(value: string): string {

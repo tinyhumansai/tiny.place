@@ -1,5 +1,7 @@
 import type { X402AuthorizationFields } from "@tinyhumansai/tinyplace";
 
+import { sameAsset } from "@src/common/x402-assets";
+
 /**
  * Shape of the server-supplied payment portion of an HTTP 402 challenge. The
  * server may omit `expiresAt`/`nonce` (the client fills those in before signing),
@@ -68,7 +70,14 @@ export function assertValidX402Challenge(
 			`Payment amount mismatch: challenge requests "${payment.amount}" but expected "${expected.amount}".`
 		);
 	}
-	if (expected.asset !== undefined && payment.asset !== expected.asset) {
+	// The challenge advertises the SPL mint address in `asset`, while a caller's
+	// expected value is often the symbol it listed in ("USDC"). Compare by token
+	// identity so a symbol expectation matches a mint-valued challenge (and vice
+	// versa) — a genuinely swapped asset still fails.
+	if (
+		expected.asset !== undefined &&
+		!sameAsset(payment.asset, expected.asset)
+	) {
 		throw new Error(
 			`Payment asset mismatch: challenge requests "${payment.asset}" but expected "${expected.asset}".`
 		);

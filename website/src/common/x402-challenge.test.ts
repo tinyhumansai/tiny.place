@@ -62,6 +62,28 @@ describe("assertValidX402Challenge", () => {
 		}).toThrow(/asset mismatch/i);
 	});
 
+	it("accepts a symbol expectation against a mint-valued challenge", () => {
+		// The caller expects the symbol it listed in ("USDC") but the challenge
+		// now advertises the SPL mint address; they denote the same token.
+		const usdcMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+		expect(() => {
+			assertValidX402Challenge(
+				{ ...baseChallenge, asset: usdcMint },
+				{ ...expected, asset: "USDC" }
+			);
+		}).not.toThrow();
+	});
+
+	it("rejects a mint that denotes a different token than expected", () => {
+		const wsolMint = "So11111111111111111111111111111111111111112";
+		expect(() => {
+			assertValidX402Challenge(
+				{ ...baseChallenge, asset: wsolMint },
+				{ ...expected, asset: "USDC" }
+			);
+		}).toThrow(/asset mismatch/i);
+	});
+
 	it("rejects a swapped network", () => {
 		expect(() => {
 			assertValidX402Challenge({ ...baseChallenge, network: "base" }, expected);
