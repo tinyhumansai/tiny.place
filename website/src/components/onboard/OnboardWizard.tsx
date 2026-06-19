@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import {
 	parseOnboardGrant,
 	type OnboardGrantCredential,
 	type TinyPlaceClient,
 } from "@tinyhumansai/tinyplace";
 
-import { createOnboardClient } from "@src/common/api-client";
+import { createClient, createOnboardClient } from "@src/common/api-client";
 import type { FunctionComponent } from "@src/common/types";
 
 type StepKey = "email" | "profile" | "fund" | "done";
@@ -26,13 +26,65 @@ const primaryButtonClass =
 const ghostButtonClass =
 	"rounded-lg border border-border px-4 py-2 text-sm font-medium text-front hover:bg-surface disabled:opacity-50";
 
-/** Reads the bearer grant from `#grant=<wallet>:<token>` in the URL fragment. */
-function readGrantFromHash(): OnboardGrantCredential | undefined {
+/**
+ * Reads the raw `#grant=…` fragment value. It is either the whole bearer grant
+ * (`<wallet>:og1.…`) or a short handoff token minted by `tinyplace init`; the
+ * caller decides which by trying to parse it as a grant first.
+ */
+function readHandoffFromHash(): string | undefined {
 	if (typeof window === "undefined") return undefined;
 	const hash = window.location.hash.replace(/^#/, "");
-	const raw = new URLSearchParams(hash).get("grant");
-	if (!raw) return undefined;
-	return parseOnboardGrant(raw);
+	return new URLSearchParams(hash).get("grant") ?? undefined;
+}
+
+type GrantResolution =
+	| { status: "loading" }
+	| { status: "ready"; grant: OnboardGrantCredential }
+	| { status: "missing" };
+
+/**
+ * Resolves the onboarding grant from the URL fragment. The fragment carries
+ * either the whole grant (used as-is) or a short handoff token, which we exchange
+ * server-side (public POST /onboard/handoff/redeem) for the grant. The redeemed
+ * grant is held in memory; a reload re-redeems while the token still lives.
+ */
+function useOnboardGrant(): GrantResolution {
+	const raw = useMemo(() => readHandoffFromHash(), []);
+	const direct = useMemo(
+		() => (raw ? parseOnboardGrant(raw) : undefined),
+		[raw]
+	);
+	const [redeemed, setRedeemed] = useState<
+		OnboardGrantCredential | undefined
+	>();
+	const [redeeming, setRedeeming] = useState(Boolean(raw) && !direct);
+
+	useEffect(() => {
+		// `redeeming` already starts true in exactly this case (a token, not a
+		// parseable grant), so the effect only has to clear it when the exchange
+		// settles — no synchronous setState on entry.
+		if (!raw || direct) return undefined;
+		let active = true;
+		createClient()
+			.onboard.redeemHandoff(raw)
+			.then((result): void => {
+				if (active) setRedeemed(parseOnboardGrant(result.grant));
+			})
+			.catch((): void => {
+				// An unknown/expired token resolves to the MissingGrant prompt below.
+			})
+			.finally((): void => {
+				if (active) setRedeeming(false);
+			});
+		return (): void => {
+			active = false;
+		};
+	}, [raw, direct]);
+
+	if (direct) return { status: "ready", grant: direct };
+	if (redeemed) return { status: "ready", grant: redeemed };
+	if (redeeming) return { status: "loading" };
+	return { status: "missing" };
 }
 
 function errorMessage(error: unknown): string {
@@ -43,6 +95,15 @@ function shortWallet(wallet: string): string {
 	return wallet.length > 12
 		? `${wallet.slice(0, 6)}…${wallet.slice(-4)}`
 		: wallet;
+}
+
+function ResolvingGrant(): ReactElement {
+	return (
+		<main className="mx-auto flex min-h-screen w-full max-w-xl flex-col gap-4 px-4 py-10">
+			<h1 className="text-xl font-semibold text-front">Opening your link…</h1>
+			<p className="text-sm text-muted">Verifying your onboarding link.</p>
+		</main>
+	);
 }
 
 function MissingGrant(): ReactElement {
@@ -360,7 +421,8 @@ function DoneStep({
  * funding is an on-ramp deposit that needs nothing but the wallet address.
  */
 export function OnboardWizard(): FunctionComponent {
-	const grant = useMemo(() => readGrantFromHash(), []);
+	const resolution = useOnboardGrant();
+	const grant = resolution.status === "ready" ? resolution.grant : undefined;
 	const client = useMemo<TinyPlaceClient | undefined>(
 		() => (grant ? createOnboardClient(grant) : undefined),
 		[grant]
@@ -369,6 +431,9 @@ export function OnboardWizard(): FunctionComponent {
 	const [emailDone, setEmailDone] = useState(false);
 	const [profileDone, setProfileDone] = useState(false);
 
+	if (resolution.status === "loading") {
+		return <ResolvingGrant />;
+	}
 	if (!grant || !client) {
 		return <MissingGrant />;
 	}
