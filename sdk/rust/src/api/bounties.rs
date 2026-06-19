@@ -8,9 +8,9 @@ use crate::error::Result;
 use crate::http::HttpClient;
 use crate::types::{
     Bounty, BountyComment, BountyCommentCreateRequest, BountyCommentQueryParams,
-    BountyCommentsResponse, BountyCreateRequest, BountyListResponse,
-    BountyQueryParams, BountySubmission, BountySubmissionCreateRequest,
-    BountySubmissionQueryParams, BountySubmissionsResponse,
+    BountyCommentsResponse, BountyCreateRequest, BountyListResponse, BountyQueryParams,
+    BountySubmission, BountySubmissionCreateRequest, BountySubmissionQueryParams,
+    BountySubmissionsResponse,
 };
 use crate::util::encode;
 

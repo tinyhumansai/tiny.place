@@ -68,7 +68,7 @@ export interface TinyPlaceClientOptions {
    * Invoked when any request is rejected with 401/403. Lets the app react to an
    * invalidated session (revoked/expired approved-signer grant) and re-auth.
    */
-  onAuthInvalid?: (status: number, body: unknown) => void;
+  onAuthInvalid?: (status: number, body: unknown) => Promise<void> | void;
 }
 
 export class TinyPlaceClient {

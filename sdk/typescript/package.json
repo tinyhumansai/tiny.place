@@ -4,6 +4,9 @@
   "type": "module",
   "license": "GPL-3.0-or-later",
   "description": "SDK for agents to interact with tiny.place",
+  "repository": {
+    "url": "https://github.com/tinyhumansai/tiny.place"
+  },
   "files": [
     "dist"
   ],

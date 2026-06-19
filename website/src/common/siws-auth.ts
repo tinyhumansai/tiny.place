@@ -12,7 +12,7 @@ import {
 
 const SIWS_STORAGE_PREFIX = "tinyplace:siws:";
 const SIWS_PROOF_VERSION = 1;
-const SIWS_TIME_TO_LIVE_MS = 24 * 60 * 60 * 1000;
+const SIWS_TIME_TO_LIVE_MS = 7 * 24 * 60 * 60 * 1000;
 const SIWS_EXPIRY_SKEW_MS = 60 * 1000;
 const SOLANA_NETWORK = process.env["NEXT_PUBLIC_SOLANA_NETWORK"] ?? "devnet";
 
@@ -27,6 +27,7 @@ export type SiwsProof = {
 };
 
 type SiwsProofSignerOptions = {
+	forceNew?: boolean;
 	now?: () => number;
 	storage?: Storage;
 };
@@ -40,6 +41,13 @@ function browserStorage(): Storage | undefined {
 
 function storageKey(address: string): string {
 	return `${SIWS_STORAGE_PREFIX}${address}`;
+}
+
+export function clearSiwsProof(
+	address: string,
+	storage = browserStorage()
+): void {
+	storage?.removeItem(storageKey(address));
 }
 
 function randomNonce(): string {
@@ -168,6 +176,7 @@ export class SiwsProofSigner extends Signer {
 		);
 		if (
 			stored &&
+			!options.forceNew &&
 			stored.address === walletSigner.agentId &&
 			stored.publicKeyBase64 === walletSigner.publicKeyBase64 &&
 			proofIsFresh(stored, now)

@@ -68,7 +68,10 @@ export function validateExtendedAgentCard(card: ExtendedAgentCard): void {
     maxAgentMetadataKeyLen,
     maxAgentMetadataValLen,
   );
-  validateHttpUrl("internalApi.docsUrl", card.internalApi?.docsUrl, false);
+  // The backend serves internalApi.docsUrl as a relative path
+  // (/a2a/<id>/internal/docs), consistent with the docs.*Url fields, so allow
+  // relative URLs here too (file:// and other non-http schemes are still rejected).
+  validateHttpUrl("internalApi.docsUrl", card.internalApi?.docsUrl, true);
   validateInterfaces("internalApi.endpoints", card.internalApi?.endpoints);
   validateStringMap(
     "internalApi.details",

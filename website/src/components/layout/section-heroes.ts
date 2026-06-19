@@ -11,6 +11,19 @@ type SectionHeroEntry = {
 	tabs?: Record<string, string>;
 };
 
+// The hero artwork is served straight from the GitBook assets checked into the
+// repo, via GitHub's raw CDN. We point at the raw host (not a `/blob/` URL,
+// which returns an HTML page) so the images render as plain image bytes.
+const HERO_ASSET_BASE_URL =
+	"https://raw.githubusercontent.com/tinyhumansai/tiny.place/main/gitbooks/.gitbook/assets";
+
+/**
+ * Resolves a hero image name (e.g. `hero-activity`) to its full GitHub raw URL.
+ */
+export function heroImageUrl(name: string): string {
+	return `${HERO_ASSET_BASE_URL}/${name}.png`;
+}
+
 const sectionHeroes: Record<string, SectionHeroEntry> = {
 	activity: { default: "hero-activity" },
 	admin: { default: "hero-admin" },

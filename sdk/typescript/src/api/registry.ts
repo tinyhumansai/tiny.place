@@ -3,6 +3,7 @@ import { signFreshCanonicalPayload } from "../auth.js";
 import { canonicalPayload } from "../crypto.js";
 import {
   TinyPlaceError,
+  type BodySigner,
   type HttpClient,
   type PaymentChallenge,
 } from "../http.js";
@@ -117,10 +118,7 @@ export class RegistryApi {
     };
 
     const headers: Record<string, string> = {};
-    let signature: string | undefined;
     if (this.signingKey && !request.signature) {
-      const payload = registrationSignaturePayload(request);
-      signature = await signFreshCanonicalPayload(this.signingKey, payload);
       // Present the signing key so the backend can authorize a delegated hot
       // session key: it verifies the signature against this key, then checks the
       // key is an active delegate of request.publicKey (the wallet key the handle
@@ -135,11 +133,9 @@ export class RegistryApi {
 
     return this.http.postPublic<Identity>(
       "/registry/names",
-      {
-        ...request,
-        ...(signature ? { signature } : {}),
-      },
+      request,
       headers,
+      this.freshBodySigner(registrationSignaturePayload),
     );
   }
 
@@ -344,38 +340,30 @@ export class RegistryApi {
     name: string,
     update: ProfileVisibilityUpdate,
   ): Promise<ProfileVisibility> {
-    if (this.signingKey && !update.signature) {
-      const payload = canonicalPayload("identity.profile.visibility", {
-        activity: update.activity ?? null,
-        agentCard: update.agentCard ?? null,
-        attestations: update.attestations ?? null,
-        broadcasts: update.broadcasts ?? null,
-        groups: update.groups ?? null,
-        searchEngineIndexing: update.searchEngineIndexing ?? null,
-        username: name,
-      });
-      update = {
-        ...update,
-        signature: await signFreshCanonicalPayload(this.signingKey, payload),
-      };
-    }
     return this.http.putDirectoryAuth<ProfileVisibility>(
       `/registry/names/${encodeURIComponent(name)}/profile-visibility`,
       update,
+      this.freshBodySigner((body) =>
+        canonicalPayload("identity.profile.visibility", {
+          activity: body.activity ?? null,
+          agentCard: body.agentCard ?? null,
+          attestations: body.attestations ?? null,
+          broadcasts: body.broadcasts ?? null,
+          groups: body.groups ?? null,
+          searchEngineIndexing: body.searchEngineIndexing ?? null,
+          username: name,
+        }),
+      ),
     );
   }
 
   async renew(name: string, request: RenewalRequest): Promise<Identity> {
-    if (this.signingKey && !request.signature) {
-      const payload = canonicalPayload("identity.renew", { username: name });
-      request = {
-        ...request,
-        signature: await signFreshCanonicalPayload(this.signingKey, payload),
-      };
-    }
     return this.http.postDirectoryAuth<Identity>(
       `/registry/names/${encodeURIComponent(name)}/renew`,
       request,
+      this.freshBodySigner(() =>
+        canonicalPayload("identity.renew", { username: name }),
+      ),
     );
   }
 
@@ -390,20 +378,16 @@ export class RegistryApi {
     name: string,
     request: IdentityTransferRequest,
   ): Promise<Identity> {
-    if (this.signingKey && !request.signature) {
-      const payload = canonicalPayload("identity.transfer", {
-        cryptoId: request.cryptoId,
-        publicKey: request.publicKey,
-        username: name,
-      });
-      request = {
-        ...request,
-        signature: await signFreshCanonicalPayload(this.signingKey, payload),
-      };
-    }
     return this.http.postDirectoryAuth<Identity>(
       `/registry/names/${encodeURIComponent(name)}/transfer`,
       request,
+      this.freshBodySigner((body) =>
+        canonicalPayload("identity.transfer", {
+          cryptoId: body.cryptoId,
+          publicKey: body.publicKey,
+          username: name,
+        }),
+      ),
     );
   }
 
@@ -425,32 +409,24 @@ export class RegistryApi {
 
   private async setPrimary(name: string, primary: boolean): Promise<Identity> {
     const action = primary ? "identity.assign" : "identity.unassign";
-    const body: { signature?: string } = {};
-    if (this.signingKey) {
-      const payload = canonicalPayload(action, { username: name });
-      body.signature = await signFreshCanonicalPayload(this.signingKey, payload);
-    }
     return this.http.postDirectoryAuth<Identity>(
       `/registry/names/${encodeURIComponent(name)}/${primary ? "assign" : "unassign"}`,
-      body,
+      {},
+      this.freshBodySigner(() => canonicalPayload(action, { username: name })),
     );
   }
 
   async claim(name: string, request: IdentityClaimRequest): Promise<Identity> {
-    if (this.signingKey && !request.signature) {
-      const payload = canonicalPayload("identity.claim", {
-        cryptoId: request.cryptoId,
-        publicKey: request.publicKey,
-        username: name,
-      });
-      request = {
-        ...request,
-        signature: await signFreshCanonicalPayload(this.signingKey, payload),
-      };
-    }
     return this.http.post<Identity>(
       `/registry/names/${encodeURIComponent(name)}/claim`,
       request,
+      this.freshBodySigner((body) =>
+        canonicalPayload("identity.claim", {
+          cryptoId: body.cryptoId,
+          publicKey: body.publicKey,
+          username: name,
+        }),
+      ),
     );
   }
 
@@ -458,21 +434,17 @@ export class RegistryApi {
     name: string,
     request: SubnameCreateRequest,
   ): Promise<Subname> {
-    if (this.signingKey && !request.signature) {
-      const payload = canonicalPayload("identity.subname.create", {
-        bio: request.bio,
-        subname: request.subname,
-        target: request.target,
-        username: name,
-      });
-      request = {
-        ...request,
-        signature: await signFreshCanonicalPayload(this.signingKey, payload),
-      };
-    }
     return this.http.postDirectoryAuth<Subname>(
       `/registry/names/${encodeURIComponent(name)}/subnames`,
       request,
+      this.freshBodySigner((body) =>
+        canonicalPayload("identity.subname.create", {
+          bio: body.bio,
+          subname: body.subname,
+          target: body.target,
+          username: name,
+        }),
+      ),
     );
   }
 
@@ -499,6 +471,26 @@ export class RegistryApi {
       undefined,
       headers,
     );
+  }
+
+  private freshBodySigner<TBody extends { signature?: string }>(
+    payload: (body: TBody) => string,
+  ): BodySigner<TBody> | undefined {
+    if (!this.signingKey) {
+      return undefined;
+    }
+    return async (body): Promise<TBody> => {
+      if (body.signature) {
+        return body;
+      }
+      return {
+        ...body,
+        signature: await signFreshCanonicalPayload(
+          this.signingKey as SigningKey,
+          payload(body),
+        ),
+      };
+    };
   }
 
   private async registerRetryingPayment(

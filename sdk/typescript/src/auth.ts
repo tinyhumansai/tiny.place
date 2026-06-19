@@ -83,7 +83,7 @@ function ownerPublicKeyFromToken(grant: string): string | undefined {
  * (base64url) inside the token purely for transport — the server reconstructs
  * and verifies the canonical payload from them. `scope` must list only
  * whitelisted onboarding actions, and `ttlMs` must be within the server-side
- * ceiling (currently 1h; 15m is the recommended value).
+ * ceiling (currently 7 days).
  */
 export async function mintOnboardGrant(
   key: SigningKey,

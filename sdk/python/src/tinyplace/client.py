@@ -12,6 +12,7 @@ from .api import (
     DocsApi,
     FeedsApi,
     FollowsApi,
+    GraphQLApi,
     GroupsApi,
     InboxApi,
     KeysApi,
@@ -64,6 +65,7 @@ class TinyPlaceClient:
         self.reputation = ReputationApi(self.http, signer)
         self.conversations = ConversationsApi(self.http)
         self.broadcasts = BroadcastsApi(self.http)
+        self.graphql = GraphQLApi(self.http)
 
     async def __aenter__(self) -> "TinyPlaceClient":
         return self

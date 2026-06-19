@@ -37,16 +37,12 @@ export class UsersApi {
     update: UserProfileUpdate,
   ): Promise<User> {
     update = withDefaultHarnessKey(update, this.harnessKey);
-    if (this.signingKey && !update.signature) {
-      const payload = userProfileSignaturePayload(cryptoId, update);
-      update = {
-        ...update,
-        signature: await signFreshCanonicalPayload(this.signingKey, payload),
-      };
-    }
     return this.http.putDirectoryAuth<User>(
       `/users/${encodeURIComponent(cryptoId)}/profile`,
       update,
+      this.freshBodySigner((body) =>
+        userProfileSignaturePayload(cryptoId, body),
+      ),
     );
   }
 
@@ -60,16 +56,12 @@ export class UsersApi {
     request: UserEmailVerificationRequest,
   ): Promise<User> {
     request = withDefaultHarnessKey(request, this.harnessKey);
-    if (this.signingKey && !request.signature) {
-      const payload = userEmailStartSignaturePayload(cryptoId, request);
-      request = {
-        ...request,
-        signature: await signFreshCanonicalPayload(this.signingKey, payload),
-      };
-    }
     return this.http.postDirectoryAuth<User>(
       `/users/${encodeURIComponent(cryptoId)}/email/verification`,
       request,
+      this.freshBodySigner((body) =>
+        userEmailStartSignaturePayload(cryptoId, body),
+      ),
     );
   }
 
@@ -82,17 +74,33 @@ export class UsersApi {
     request: UserEmailVerificationConfirmRequest,
   ): Promise<User> {
     request = withDefaultHarnessKey(request, this.harnessKey);
-    if (this.signingKey && !request.signature) {
-      const payload = userEmailConfirmSignaturePayload(cryptoId, request);
-      request = {
-        ...request,
-        signature: await signFreshCanonicalPayload(this.signingKey, payload),
-      };
-    }
     return this.http.postDirectoryAuth<User>(
       `/users/${encodeURIComponent(cryptoId)}/email/verification/confirm`,
       request,
+      this.freshBodySigner((body) =>
+        userEmailConfirmSignaturePayload(cryptoId, body),
+      ),
     );
+  }
+
+  private freshBodySigner<TBody extends { signature?: string }>(
+    payload: (body: TBody) => string,
+  ): ((body: TBody) => Promise<TBody>) | undefined {
+    if (!this.signingKey) {
+      return undefined;
+    }
+    return async (body): Promise<TBody> => {
+      if (body.signature) {
+        return body;
+      }
+      return {
+        ...body,
+        signature: await signFreshCanonicalPayload(
+          this.signingKey as SigningKey,
+          payload(body),
+        ),
+      };
+    };
   }
 }
 

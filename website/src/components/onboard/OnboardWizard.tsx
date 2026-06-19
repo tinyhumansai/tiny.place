@@ -1,20 +1,24 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactElement } from "react";
 import {
 	parseOnboardGrant,
+	type Identity,
 	type OnboardGrantCredential,
 	type TinyPlaceClient,
+	type User,
 } from "@tinyhumansai/tinyplace";
 
 import { createClient, createOnboardClient } from "@src/common/api-client";
 import type { FunctionComponent } from "@src/common/types";
 
-type StepKey = "email" | "profile" | "fund" | "done";
+type StepKey = "email" | "profile" | "handle" | "fund" | "done";
 
 const STEPS: Array<{ key: StepKey; title: string }> = [
 	{ key: "email", title: "Verify email" },
 	{ key: "profile", title: "Your profile" },
+	{ key: "handle", title: "Claim handle" },
 	{ key: "fund", title: "Fund wallet" },
 	{ key: "done", title: "All set" },
 ];
@@ -126,7 +130,7 @@ function Stepper({
 	done,
 }: {
 	current: StepKey;
-	done: { email: boolean; profile: boolean };
+	done: { email: boolean; handle: boolean; profile: boolean };
 }): ReactElement {
 	return (
 		<ol className="flex items-center gap-2 text-xs">
@@ -134,6 +138,7 @@ function Stepper({
 				const complete =
 					(entry.key === "email" && done.email) ||
 					(entry.key === "profile" && done.profile) ||
+					(entry.key === "handle" && done.handle) ||
 					(entry.key === "done" && current === "done");
 				const active = entry.key === current;
 				return (
@@ -270,11 +275,13 @@ function EmailStep({
 
 function ProfileStep({
 	client,
-	grant,
+	ownerPublicKey,
+	wallet,
 	onDone,
 }: {
 	client: TinyPlaceClient;
-	grant: OnboardGrantCredential;
+	ownerPublicKey?: string;
+	wallet: string;
 	onDone: () => void;
 }): ReactElement {
 	const [displayName, setDisplayName] = useState("");
@@ -286,20 +293,21 @@ function ProfileStep({
 		setBusy(true);
 		setError(undefined);
 		try {
-			await client.users.updateProfile(grant.wallet, {
+			await client.users.updateProfile(wallet, {
 				displayName: displayName.trim(),
 				bio: bio.trim(),
+				actorType: "human",
 			});
 			// Best-effort: publish a discovery card so the profile is findable. This
 			// needs the wallet public key (recovered from the grant) and must not
 			// block the required profile step if it fails.
-			if (grant.ownerPublicKey && displayName.trim()) {
+			if (ownerPublicKey && displayName.trim()) {
 				const now = new Date().toISOString();
 				await client.directory
-					.upsertAgent(grant.wallet, {
-						agentId: grant.wallet,
-						cryptoId: grant.wallet,
-						publicKey: grant.ownerPublicKey,
+					.upsertAgent(wallet, {
+						agentId: wallet,
+						cryptoId: wallet,
+						publicKey: ownerPublicKey,
 						name: displayName.trim(),
 						...(bio.trim() ? { description: bio.trim() } : {}),
 						createdAt: now,
@@ -358,6 +366,38 @@ function ProfileStep({
 	);
 }
 
+function HandleStep({
+	active,
+	onDone,
+}: {
+	active: boolean;
+	onDone: () => void;
+}): ReactElement {
+	return (
+		<section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+			<h2 className="text-sm font-medium text-front">Claim your handle</h2>
+			<p className="text-xs text-muted">
+				An active handle makes your wallet usable across feeds, messaging,
+				marketplace listings, and agent discovery.
+			</p>
+			{active ? (
+				<p className="text-xs text-positive">
+					You already have an active handle.
+				</p>
+			) : (
+				<div className="flex items-center gap-2">
+					<Link className={primaryButtonClass} href="/identities">
+						Claim a handle
+					</Link>
+					<button className={ghostButtonClass} type="button" onClick={onDone}>
+						I&rsquo;ll do this later
+					</button>
+				</div>
+			)}
+		</section>
+	);
+}
+
 function FundStep({
 	wallet,
 	onDone,
@@ -392,22 +432,24 @@ function FundStep({
 
 function DoneStep({
 	emailDone,
+	handleDone,
 	profileDone,
 }: {
 	emailDone: boolean;
+	handleDone: boolean;
 	profileDone: boolean;
 }): ReactElement {
 	return (
 		<section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
 			<h2 className="text-sm font-medium text-front">You&rsquo;re all set</h2>
 			<ul className="flex flex-col gap-1 text-sm text-front">
-				<li>{emailDone ? "✓" : "•"} Email verified</li>
-				<li>{profileDone ? "✓" : "•"} Profile saved</li>
+				<li>{emailDone ? "Complete" : "Skipped"}: Email verified</li>
+				<li>{profileDone ? "Complete" : "Skipped"}: Profile saved</li>
+				<li>{handleDone ? "Complete" : "Skipped"}: Active handle</li>
 			</ul>
 			<p className="text-xs text-muted">
-				Back in your terminal, run <code>tinyplace status</code> to start your
-				agent. To claim a <code>@handle</code>, fund your wallet then run{" "}
-				<code>tinyplace register @you --execute</code>.
+				You can return to tiny.place now. If you skipped a handle, claim one
+				from Identities before posting, messaging, or listing work.
 			</p>
 		</section>
 	);
@@ -430,6 +472,7 @@ export function OnboardWizard(): FunctionComponent {
 	const [step, setStep] = useState<StepKey>("email");
 	const [emailDone, setEmailDone] = useState(false);
 	const [profileDone, setProfileDone] = useState(false);
+	const handleDone = false;
 
 	if (resolution.status === "loading") {
 		return <ResolvingGrant />;
@@ -460,7 +503,11 @@ export function OnboardWizard(): FunctionComponent {
 
 			<Stepper
 				current={step}
-				done={{ email: emailDone, profile: profileDone }}
+				done={{
+					email: emailDone,
+					handle: handleDone,
+					profile: profileDone,
+				}}
 			/>
 
 			{step === "email" ? (
@@ -477,10 +524,20 @@ export function OnboardWizard(): FunctionComponent {
 			{step === "profile" ? (
 				<ProfileStep
 					client={client}
-					grant={grant}
+					ownerPublicKey={grant.ownerPublicKey}
+					wallet={grant.wallet}
 					onDone={() => {
 						setProfileDone(true);
 						advance("profile");
+					}}
+				/>
+			) : null}
+
+			{step === "handle" ? (
+				<HandleStep
+					active={handleDone}
+					onDone={() => {
+						advance("handle");
 					}}
 				/>
 			) : null}
@@ -495,7 +552,146 @@ export function OnboardWizard(): FunctionComponent {
 			) : null}
 
 			{step === "done" ? (
-				<DoneStep emailDone={emailDone} profileDone={profileDone} />
+				<DoneStep
+					emailDone={emailDone}
+					handleDone={handleDone}
+					profileDone={profileDone}
+				/>
+			) : null}
+		</main>
+	);
+}
+
+type WebOnboardWizardProperties = {
+	activeIdentities?: Array<Identity>;
+	client: TinyPlaceClient;
+	user?: User | null;
+	wallet: string;
+};
+
+function hasProfile(user: User | null | undefined): boolean {
+	return Boolean(user?.displayName?.trim());
+}
+
+function hasVerifiedEmail(user: User | null | undefined): boolean {
+	return Boolean(user?.emailVerified);
+}
+
+function hasActiveIdentity(identities: Array<Identity> | undefined): boolean {
+	return Boolean(identities?.some((identity) => identity.status === "active"));
+}
+
+function firstIncompleteStep({
+	activeIdentities,
+	user,
+}: Pick<WebOnboardWizardProperties, "activeIdentities" | "user">): StepKey {
+	if (!hasVerifiedEmail(user)) {
+		return "email";
+	}
+	if (!hasProfile(user)) {
+		return "profile";
+	}
+	if (!hasActiveIdentity(activeIdentities)) {
+		return "handle";
+	}
+	return "done";
+}
+
+export function WebOnboardWizard({
+	activeIdentities,
+	client,
+	user,
+	wallet,
+}: WebOnboardWizardProperties): FunctionComponent {
+	const [step, setStep] = useState<StepKey>(() =>
+		firstIncompleteStep({ activeIdentities, user })
+	);
+	const [emailCompleted, setEmailCompleted] = useState(false);
+	const [profileCompleted, setProfileCompleted] = useState(false);
+	const emailDone = hasVerifiedEmail(user) || emailCompleted;
+	const profileDone = hasProfile(user) || profileCompleted;
+	const handleDone = hasActiveIdentity(activeIdentities);
+
+	const advance = (from: StepKey): void => {
+		const index = STEPS.findIndex((entry) => entry.key === from);
+		const remaining = STEPS.slice(index + 1);
+		const next =
+			remaining.find((entry) => {
+				if (entry.key === "email") return !emailDone;
+				if (entry.key === "profile") return !profileDone;
+				if (entry.key === "handle") return !handleDone;
+				return true;
+			}) ?? STEPS[STEPS.length - 1];
+		setStep(next?.key ?? "done");
+	};
+
+	return (
+		<main className="mx-auto flex min-h-screen w-full max-w-xl flex-col gap-6 px-4 py-10">
+			<header className="flex flex-col gap-1">
+				<h1 className="text-xl font-semibold text-front">
+					Finish setting up your account
+				</h1>
+				<p className="text-sm text-muted">
+					Wallet{" "}
+					<span className="font-mono text-front">{shortWallet(wallet)}</span>
+				</p>
+			</header>
+
+			<Stepper
+				current={step}
+				done={{
+					email: emailDone,
+					handle: handleDone,
+					profile: profileDone,
+				}}
+			/>
+
+			{step === "email" ? (
+				<EmailStep
+					client={client}
+					wallet={wallet}
+					onDone={() => {
+						setEmailCompleted(true);
+						advance("email");
+					}}
+				/>
+			) : null}
+
+			{step === "profile" ? (
+				<ProfileStep
+					client={client}
+					wallet={wallet}
+					onDone={() => {
+						setProfileCompleted(true);
+						advance("profile");
+					}}
+				/>
+			) : null}
+
+			{step === "handle" ? (
+				<HandleStep
+					active={handleDone}
+					onDone={() => {
+						advance("handle");
+					}}
+				/>
+			) : null}
+
+			{step === "fund" ? (
+				<FundStep
+					wallet={wallet}
+					onDone={() => {
+						advance("fund");
+					}}
+				/>
+			) : null}
+
+			{step === "done" ? (
+				<DoneStep
+					emailDone={emailDone}
+					handleDone={handleDone}
+					profileDone={profileDone}
+				/>
 			) : null}
 		</main>
 	);

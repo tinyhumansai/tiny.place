@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 
+import { apiErrorMessage } from "@src/common/api-error";
 import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 
@@ -179,9 +180,7 @@ export const X402ConfirmProvider = ({
 			setStatus("done");
 		} catch (caught) {
 			setStatus("error");
-			setError(
-				caught instanceof Error ? caught.message : "Payment failed. Try again."
-			);
+			setError(apiErrorMessage(caught, "Payment failed. Try again."));
 		}
 	}, [pending]);
 

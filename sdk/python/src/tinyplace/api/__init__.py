@@ -5,6 +5,7 @@ from .directory import DirectoryApi
 from .docs import DocsApi
 from .feeds import FeedsApi
 from .follows import FollowsApi
+from .graphql import GraphQLApi
 from .groups import GroupsApi
 from .inbox import InboxApi
 from .keys import KeysApi
@@ -23,6 +24,7 @@ __all__ = [
     "DocsApi",
     "FeedsApi",
     "FollowsApi",
+    "GraphQLApi",
     "GroupsApi",
     "InboxApi",
     "InboxPage",

@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 
+import { heroImageUrl } from "@src/components/layout/section-heroes";
 import type { FunctionComponent } from "@src/common/types";
 
 type SectionHeroProperties = {
@@ -10,7 +11,7 @@ type SectionHeroProperties = {
 
 /**
  * A small, very horizontal banner showing a section's GitBook hero artwork. The
- * image is served from `/heroes` and is purely decorative — the page content
+ * image is served from GitHub's raw CDN and is purely decorative — the page content
  * carries the accessible meaning — so it is hidden from assistive tech. A soft
  * gradient overlay keeps it legible against the page chrome in both dark and
  * light themes.
@@ -23,7 +24,7 @@ export const SectionHero = ({
 	image,
 }: SectionHeroProperties): FunctionComponent => {
 	const style: CSSProperties = {
-		backgroundImage: `url('/heroes/${image}.png')`,
+		backgroundImage: `url('${heroImageUrl(image)}')`,
 	};
 
 	return (

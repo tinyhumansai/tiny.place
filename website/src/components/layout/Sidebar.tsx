@@ -12,6 +12,7 @@ import { type ComponentType, type SVGProps, useState } from "react";
 import type { FunctionComponent } from "@src/common/types";
 
 type Section = {
+	comingSoon?: boolean;
 	href?: string;
 	icon?: ComponentType<SVGProps<SVGSVGElement>>;
 	key: string;
@@ -108,7 +109,7 @@ const NavContent = ({
 									? "text-white bg-neutral-800"
 									: "text-black bg-neutral-200"
 								: inactiveClasses
-						}`}
+						} ${section.comingSoon ? "opacity-50" : ""}`}
 						onClick={onNavigate}
 					>
 						{Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}

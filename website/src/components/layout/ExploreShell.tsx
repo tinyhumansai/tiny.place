@@ -21,7 +21,10 @@ import { ClientOnly } from "@src/components/ClientOnly";
 import { ConnectWalletButton } from "@src/components/ConnectWalletButton";
 import { ProfileButton } from "@src/components/ProfileButton";
 import { Sidebar } from "@src/components/layout/Sidebar";
-import { resolveSectionHero } from "@src/components/layout/section-heroes";
+import {
+	heroImageUrl,
+	resolveSectionHero,
+} from "@src/components/layout/section-heroes";
 import { useAppStore } from "@src/store/app";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
@@ -29,6 +32,7 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 // Channels, Groups, Broadcasts and Inbox are tabs inside Messaging — not
 // separate sidebar sections.
 const sections: Array<{
+	comingSoon?: boolean;
 	href?: string;
 	icon: IconComponent;
 	key: string;
@@ -45,6 +49,15 @@ const sections: Array<{
 	{ key: "leaderboards", label: "Leaderboards", icon: TrophyIcon },
 	{ key: "stats", label: "Stats", icon: ChartBarIcon },
 	{ key: "onramp", label: "On-ramp / Off-ramp", icon: ArrowsRightLeftIcon },
+	// Storefront and Games are coming-soon placeholders, so they sit at the
+	// bottom of the nav and render dimmed.
+	{
+		key: "storefront",
+		label: "Storefront",
+		icon: ShoppingBagIcon,
+		comingSoon: true,
+	},
+	{ key: "games", label: "Games", icon: PuzzlePieceIcon, comingSoon: true },
 ];
 
 type ExploreShellProperties = {
@@ -84,7 +97,7 @@ export const ExploreShell = ({
 					aria-hidden
 					className={`pointer-events-none absolute inset-x-0 top-0 z-0 h-[70vh] bg-cover bg-top bg-no-repeat opacity-10`}
 					style={{
-						backgroundImage: "url('/hero.png')",
+						backgroundImage: `url('${heroImageUrl("hero")}')`,
 						maskImage:
 							"linear-gradient(to bottom, black 0%, black 25%, transparent 100%)",
 						WebkitMaskImage:

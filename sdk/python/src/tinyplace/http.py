@@ -10,7 +10,7 @@ import aiohttp
 
 from .auth import AdminSigningOptions, sign_admin_request, sign_directory_write, sign_request
 from .signer import Signer
-from .types import Headers, Json, Query
+from .types import Headers, Json, JsonDict, Query
 
 AuthInvalidHook = Callable[[int, Json], None]
 
@@ -121,6 +121,36 @@ class HttpClient:
 
     async def post_directory_auth(self, path: str, body: Json = None) -> Json:
         return await self._request("POST", path, body=body, auth="directory")
+
+    async def graphql(
+        self,
+        query: str,
+        variables: Json = None,
+        *,
+        auth: str | None = None,
+        operation_name: str | None = None,
+    ) -> Json:
+        """POST a query to the read-only ``/graphql`` gateway and unwrap the envelope.
+
+        Returns ``body["data"]`` on success. If the response carries top-level
+        ``errors``, raises :class:`TinyPlaceError` with the joined error messages.
+        Pass ``auth="agent"`` for operations that require the signing agent
+        (e.g. ``homeFeed``); everything else is public.
+        """
+        body: JsonDict = {"query": query}
+        if variables is not None:
+            body["variables"] = variables
+        if operation_name is not None:
+            body["operationName"] = operation_name
+        result = await self._request("POST", "/graphql", body=body, auth=auth)
+        errors = result.get("errors") if isinstance(result, dict) else None
+        if errors:
+            message = "; ".join(
+                str(error.get("message", error)) if isinstance(error, dict) else str(error)
+                for error in errors
+            )
+            raise TinyPlaceError(200, result, f"GraphQL error: {message}")
+        return result.get("data") if isinstance(result, dict) else None
 
     async def post_directory_auth_as(self, path: str, actor: str, body: Json = None) -> Json:
         return await self._request("POST", path, body=body, auth="directory", actor=actor)

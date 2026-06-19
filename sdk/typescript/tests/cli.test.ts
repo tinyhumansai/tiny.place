@@ -61,7 +61,15 @@ describe("tinyplace CLI", () => {
   it("dispatches representative commands through the SDK routes and prints JSON", async () => {
     const requests: Array<Request> = [];
     const fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      requests.push(new Request(input, init));
+      const request = new Request(input, init);
+      requests.push(request);
+      // Reads routed to the GraphQL gateway need a `{ data }` envelope so
+      // `client.graphql.*` unwraps cleanly.
+      if (new URL(request.url).pathname === "/graphql") {
+        return Response.json({
+          data: { ledgerTransactions: { transactions: [], count: 0 } },
+        });
+      }
       return Response.json({ ok: true });
     };
     const env = { TINYPLACE_ENDPOINT: "https://example.test" };
@@ -78,6 +86,7 @@ describe("tinyplace CLI", () => {
       ],
       { env, fetch },
     );
+    // `ledger` now reads through the batched GraphQL gateway (POST /graphql).
     const ledger = await runTinyPlaceCli(["ledger", "--recent"], {
       env,
       fetch,
@@ -94,9 +103,19 @@ describe("tinyplace CLI", () => {
         "GET",
         "https://example.test/pricing/quote?base=SOL&quote=USDC&network=solana%3Alocal",
       ],
-      ["GET", "https://example.test/ledger/transactions?limit=20"],
+      ["POST", "https://example.test/graphql"],
       ["GET", "https://example.test/registry/names/%40agent"],
     ]);
+    // The recent-ledger read carries the limit=20 variable to the gateway.
+    const ledgerRequest = requests.find(
+      (request) => new URL(request.url).pathname === "/graphql",
+    )!;
+    const ledgerBody = (await ledgerRequest.clone().json()) as {
+      query: string;
+      variables: { limit?: number };
+    };
+    expect(ledgerBody.query).toContain("ledgerTransactions");
+    expect(ledgerBody.variables.limit).toBe(20);
   });
 
   it("returns parseable JSON errors", async () => {
@@ -478,7 +497,7 @@ describe("tinyplace CLI", () => {
     expect(parsed.wallet.agentId).toBeTruthy();
     // The bearer grant rides in the URL fragment, never the query string.
     expect(parsed.onboardUrl).toContain("/onboard#grant=");
-    expect(parsed.onboardExpiresInMinutes).toBe(15);
+    expect(parsed.onboardExpiresInMinutes).toBe(10080);
     expect(parsed.next.join(" ")).toContain("browser");
     // init no longer performs profile/card/registration/funding calls — those
     // move to the web flow. It signs the grant offline and makes no requests.
@@ -622,6 +641,104 @@ describe("tinyplace CLI", () => {
     );
   });
 
+  it("routes raw reads through the batched GraphQL gateway", async () => {
+    const env = { TINYPLACE_ENDPOINT: "https://example.test" };
+    const capture = (): {
+      requests: Array<Request>;
+      fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+    } => {
+      const requests: Array<Request> = [];
+      return {
+        requests,
+        fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+          const request = new Request(input, init);
+          requests.push(request);
+          // Every read here goes through /graphql; answer with the matching
+          // `{ data }` envelope so the typed gateway methods unwrap.
+          const query = ((init?.body as string) ?? "").toString();
+          const data: Record<string, unknown> = {};
+          if (query.includes("jobs(")) data["jobs"] = { jobs: [], count: 0 };
+          if (query.includes("job(")) data["job"] = null;
+          if (query.includes("products("))
+            data["products"] = { products: [], count: 0 };
+          if (query.includes("product(")) data["product"] = null;
+          if (query.includes("identityListings("))
+            data["identityListings"] = { listings: [], count: 0 };
+          if (query.includes("agentCard(")) data["agentCard"] = null;
+          if (query.includes("ledgerTransactions("))
+            data["ledgerTransactions"] = { transactions: [], count: 0 };
+          if (query.includes("ledgerTransaction("))
+            data["ledgerTransaction"] = null;
+          if (query.includes("comments(")) data["comments"] = [];
+          if (query.includes("postLikers("))
+            data["postLikers"] = { likers: [], count: 0 };
+          if (query.includes("homeFeed(")) data["homeFeed"] = { items: [], count: 0 };
+          return Response.json({ data });
+        },
+      };
+    };
+
+    const cases: Array<{ args: Array<string>; query: string }> = [
+      { args: ["raw", "jobs", "--status", "open"], query: "jobs(" },
+      { args: ["raw", "job", "job_1"], query: "job(" },
+      { args: ["raw", "products", "--q", "ai"], query: "products(" },
+      { args: ["raw", "product", "prod_1"], query: "product(" },
+      { args: ["raw", "usernames"], query: "identityListings(" },
+      { args: ["raw", "card", "agent_1"], query: "agentCard(" },
+      { args: ["raw", "ledger", "--recent"], query: "ledgerTransactions(" },
+      { args: ["raw", "ledger-tx", "tx_1"], query: "ledgerTransaction(" },
+      { args: ["raw", "feed-comments", "@wall", "post_1"], query: "comments(" },
+      { args: ["raw", "feed-likers", "@wall", "post_1"], query: "postLikers(" },
+    ];
+
+    for (const { args, query } of cases) {
+      const { requests, fetch } = capture();
+      const result = await runTinyPlaceCli(args, { env, fetch });
+      expect(result.code, args.join(" ")).toBe(0);
+      expect(
+        [requests[0].method, new URL(requests[0].url).pathname],
+        args.join(" "),
+      ).toEqual(["POST", "/graphql"]);
+      const body = (await requests[0].clone().json()) as { query: string };
+      expect(body.query, args.join(" ")).toContain(query);
+    }
+  });
+
+  it("passes the jobs status filter as a GraphQL variable", async () => {
+    const requests: Array<Request> = [];
+    const result = await runTinyPlaceCli(["raw", "jobs", "--status", "open"], {
+      env: { TINYPLACE_ENDPOINT: "https://example.test" },
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        requests.push(new Request(input, init));
+        return Response.json({ data: { jobs: { jobs: [], count: 0 } } });
+      },
+    });
+    expect(result.code).toBe(0);
+    const body = (await requests[0].clone().json()) as {
+      variables: { status?: string };
+    };
+    expect(body.variables.status).toBe("open");
+  });
+
+  it("exposes the graphql guide via commands and help", async () => {
+    const commands = await runTinyPlaceCli(["commands"], {
+      env: { TINYPLACE_ENDPOINT: "https://example.test" },
+      fetch: async () => Response.json({}),
+    });
+    expect(commands.code).toBe(0);
+    const guides = JSON.parse(commands.stdout).guides as Array<{
+      topic: string;
+      body: string;
+    }>;
+    const graphql = guides.find((guide) => guide.topic === "graphql");
+    expect(graphql).toBeTruthy();
+    expect(graphql!.body).toMatch(/batched GraphQL gateway/);
+    expect(graphql!.body).toMatch(/429/);
+
+    const help = await runTinyPlaceCli([], {});
+    expect(help.stdout).toContain("graphql");
+  });
+
   it("help separates workflows from raw commands", async () => {
     const help = await runTinyPlaceCli([], {});
     expect(help.code).toBe(0);
@@ -668,7 +785,17 @@ describe("tinyplace CLI", () => {
       input: RequestInfo | URL,
       init?: RequestInit,
     ): Promise<Response> => {
-      requests.push(new Request(input, init));
+      const request = new Request(input, init);
+      requests.push(request);
+      // Feed reads (`feed-posts`, `feed-post-get`) route through the GraphQL
+      // gateway and need a `{ data }` envelope keyed by the operation.
+      if (new URL(request.url).pathname === "/graphql") {
+        const query = ((init?.body as string) ?? "").toString();
+        const data: Record<string, unknown> = query.includes("posts(")
+          ? { posts: { posts: [], count: 0 } }
+          : { post: null };
+        return Response.json({ data });
+      }
       return Response.json({ ok: true, posts: [], likers: [] });
     };
     const env = { TINYPLACE_CONFIG: configPath };
@@ -708,27 +835,36 @@ describe("tinyplace CLI", () => {
         return `${request.method} ${url.pathname}`;
       })
       .sort();
+    // Reads (posts list, single post, likers) now go through the batched GraphQL
+    // gateway; likes/deletes/comment-deletes stay on the signed REST surface.
     expect(seen).toEqual(
       [
-        "GET /feeds/%40wall/posts",
-        "GET /feeds/%40wall/posts/post_1",
+        "POST /graphql",
+        "POST /graphql",
+        "POST /graphql",
         "POST /feeds/%40wall/posts/post_1/likes",
         "DELETE /feeds/%40wall/posts/post_1/likes",
-        "GET /feeds/%40wall/posts/post_1/likes",
         "DELETE /feeds/%40wall/posts/post_1",
         "DELETE /feeds/%40wall/posts/post_1/comments/cmt_1",
       ].sort(),
     );
 
-    // The post list passes the agent's id as the viewer so `likedByMe` hydrates.
-    const listRequest = requests.find(
-      (request) =>
-        request.method === "GET" &&
-        new URL(request.url).pathname === "/feeds/%40wall/posts",
-    )!;
-    const listUrl = new URL(listRequest.url);
-    expect(listUrl.searchParams.get("X-Agent-ID")).toBeTruthy();
-    expect(listUrl.searchParams.get("limit")).toBe("5");
+    // The post list passes the agent's id as the GraphQL `viewer` so `likedByMe`
+    // (viewerHasLiked) hydrates in the same batched request.
+    const postsBodies = await Promise.all(
+      requests
+        .filter((request) => new URL(request.url).pathname === "/graphql")
+        .map(
+          (request) =>
+            request.clone().json() as Promise<{
+              query: string;
+              variables: { viewer?: string; limit?: number };
+            }>,
+        ),
+    );
+    const listBody = postsBodies.find((body) => body.query.includes("posts("))!;
+    expect(listBody.variables.viewer).toBeTruthy();
+    expect(listBody.variables.limit).toBe(5);
   });
 });
 
