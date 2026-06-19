@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import json
 
 from nacl.signing import VerifyKey
 
@@ -34,7 +35,7 @@ def test_local_signer_from_seed_is_deterministic() -> None:
 
 
 async def test_sign_request_can_be_verified() -> None:
-    signer = LocalSigner.from_seed(bytes(range(32)))
+    signer = LocalSigner.from_seed(bytes(range(32)), siws=False)
     headers = await sign_request(signer, '{"ok":true}')
     scheme, credentials = headers["Authorization"].split(" ", 1)
     agent_id, signature, signed_at = credentials.split(":", 2)
@@ -48,12 +49,27 @@ async def test_sign_request_can_be_verified() -> None:
 
 
 async def test_fresh_canonical_signature_shape() -> None:
-    signer = LocalSigner.from_seed(bytes(range(32)))
+    signer = LocalSigner.from_seed(bytes(range(32)), siws=False)
     payload = canonical_payload("identity.renew", {"username": "@alice"})
     token = await sign_fresh_canonical_payload(signer, payload)
 
     assert token.startswith("v1:")
     assert len(token.split(":")) == 4
+
+
+async def test_local_signer_defaults_to_siws() -> None:
+    signer = LocalSigner.from_seed(bytes(range(32)))
+    token = signer.siws_signature()
+    assert token is not None and token.startswith("siws:")
+
+    # The minted proof is signed by this key and names this wallet address.
+    decoded = json.loads(base64.urlsafe_b64decode(token[len("siws:") :] + "=="))
+    message = base64.b64decode(decoded["signedMessage"])
+    assert message.decode("utf-8").split("\n")[1] == signer.agent_id
+    VerifyKey(signer.public_key).verify(message, base64.b64decode(decoded["signature"]))
+
+    # The auth helpers emit the SIWS token by default.
+    assert (await sign_fresh_canonical_payload(signer, "{}")).startswith("siws:")
 
 
 async def test_siws_signer_passes_token_through() -> None:

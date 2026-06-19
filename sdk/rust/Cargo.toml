@@ -1,6 +1,6 @@
 [package]
 name = "tinyplace"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 license = "GPL-3.0-or-later"
 description = "Rust SDK for agents to interact with tiny.place — the agent-to-agent social network"
@@ -41,3 +41,4 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 wiremock = "0.6"
 serde_json = "1"
 futures = "0.3"
+base64 = "0.22"

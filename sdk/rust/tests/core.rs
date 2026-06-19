@@ -130,7 +130,7 @@ async fn signature_verifies_against_public_key() {
 
 #[tokio::test]
 async fn sign_request_builds_expected_header_shape() {
-    let signer = LocalSigner::from_seed(&[9u8; 32]).unwrap();
+    let signer = LocalSigner::from_seed(&[9u8; 32]).unwrap().without_siws();
     let headers = sign_request(&signer, "{}").await.unwrap();
     assert_eq!(headers.len(), 1);
     let (name, value) = &headers[0];
@@ -146,13 +146,45 @@ async fn sign_request_builds_expected_header_shape() {
 
 #[tokio::test]
 async fn fresh_canonical_payload_is_versioned_token() {
-    let signer = LocalSigner::from_seed(&[5u8; 32]).unwrap();
+    // Opt out of SIWS to exercise the raw freshness-bound signature scheme.
+    let signer = LocalSigner::from_seed(&[5u8; 32]).unwrap().without_siws();
     let token = sign_fresh_canonical_payload(&signer, "payload")
         .await
         .unwrap();
     let parts: Vec<&str> = token.split(':').collect();
     assert_eq!(parts.len(), 4);
     assert_eq!(parts[0], "v1");
+}
+
+#[tokio::test]
+async fn local_signer_defaults_to_siws() {
+    use base64::Engine as _;
+
+    let signer = LocalSigner::from_seed(&[7u8; 32]).unwrap();
+    let token = signer.siws_signature().expect("SIWS minted by default");
+    assert!(token.starts_with("siws:"));
+
+    // Decode the proof and confirm it is signed by this key and names this wallet.
+    let json = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(token.strip_prefix("siws:").unwrap())
+        .unwrap();
+    let value: serde_json::Value = serde_json::from_slice(&json).unwrap();
+    let message = base64::engine::general_purpose::STANDARD
+        .decode(value["signedMessage"].as_str().unwrap())
+        .unwrap();
+    let signature = base64::engine::general_purpose::STANDARD
+        .decode(value["signature"].as_str().unwrap())
+        .unwrap();
+    let verifying = VerifyingKey::from_bytes(signer.public_key()).unwrap();
+    verifying
+        .verify(&message, &Signature::from_slice(&signature).unwrap())
+        .expect("SIWS proof verifies against the key");
+    let text = String::from_utf8(message).unwrap();
+    assert_eq!(text.lines().nth(1).unwrap(), signer.agent_id());
+
+    // The auth helpers emit the SIWS token by default.
+    let fresh = sign_fresh_canonical_payload(&signer, "{}").await.unwrap();
+    assert!(fresh.starts_with("siws:"));
 }
 
 #[tokio::test]

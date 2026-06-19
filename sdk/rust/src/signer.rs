@@ -2,10 +2,16 @@
 //! [`Signer`] trait lets you plug in remote wallets, HSMs, or API-based signers.
 
 use async_trait::async_trait;
+use chrono::{Duration, SecondsFormat, Utc};
 use ed25519_dalek::{Signer as _, SigningKey as DalekSigningKey, VerifyingKey};
 
-use crate::crypto::{decode_base58, derive_crypto_id, public_key_to_base64};
+use crate::crypto::{
+    decode_base58, derive_crypto_id, public_key_to_base64, to_base64, to_base64_url,
+};
 use crate::error::{Error, Result};
+
+const SIWS_NETWORK: &str = "solana:mainnet";
+const SIWS_ORIGIN: &str = "https://tiny.place";
 
 /// Abstract signing strategy. Implementors authorize requests by producing an
 /// Ed25519 signature over a payload and identifying themselves by `agent_id`
@@ -29,24 +35,73 @@ pub trait Signer: Send + Sync {
 }
 
 /// An in-process signer backed by an Ed25519 key pair.
+///
+/// By default the signer mints a reusable SIWS ownership proof and authenticates
+/// requests with it (the preferred scheme). Call [`LocalSigner::without_siws`] to
+/// fall back to per-request freshness-bound Ed25519 signatures, which are still
+/// required for delegated session keys, x402, and admin auth.
 #[derive(Clone)]
 pub struct LocalSigner {
     signing_key: DalekSigningKey,
     public_key: [u8; 32],
     agent_id: String,
     public_key_base64: String,
+    siws_token: Option<String>,
 }
 
 impl LocalSigner {
     fn from_dalek(signing_key: DalekSigningKey) -> Self {
         let verifying: VerifyingKey = signing_key.verifying_key();
         let public_key = verifying.to_bytes();
-        Self {
+        let mut signer = Self {
             agent_id: derive_crypto_id(&public_key),
             public_key_base64: public_key_to_base64(&public_key),
             public_key,
             signing_key,
-        }
+            siws_token: None,
+        };
+        signer.siws_token = Some(signer.mint_siws());
+        signer
+    }
+
+    /// Disable SIWS for this signer, reverting to per-request raw signatures.
+    pub fn without_siws(mut self) -> Self {
+        self.siws_token = None;
+        self
+    }
+
+    /// Mint (or re-mint) the reusable SIWS ownership proof token by signing a
+    /// Sign-In With Solana message with this key.
+    pub fn mint_siws(&self) -> String {
+        let issued_at = Utc::now();
+        let expires_at = issued_at + Duration::days(7);
+        let nonce: [u8; 16] = rand::random();
+        let nonce_hex: String = nonce.iter().map(|b| format!("{b:02x}")).collect();
+        let message = [
+            "tiny.place wants you to sign in with your Solana account:",
+            &self.agent_id,
+            "",
+            "Authenticate website API requests. This does not authorize a transaction or payment.",
+            "",
+            &format!("URI: {SIWS_ORIGIN}"),
+            "Version: 1",
+            &format!("Chain ID: {SIWS_NETWORK}"),
+            &format!("Nonce: {nonce_hex}"),
+            &format!("Issued At: {}", issued_at.to_rfc3339_opts(SecondsFormat::Millis, true)),
+            &format!(
+                "Expiration Time: {}",
+                expires_at.to_rfc3339_opts(SecondsFormat::Millis, true)
+            ),
+        ]
+        .join("\n");
+        let signature = self.signing_key.sign(message.as_bytes()).to_bytes();
+        // The b64 fields contain no JSON metacharacters, so build the token directly.
+        let token = format!(
+            r#"{{"signedMessage":"{}","signature":"{}","signatureType":"ed25519"}}"#,
+            to_base64(message.as_bytes()),
+            to_base64(&signature),
+        );
+        format!("siws:{}", to_base64_url(&token))
     }
 
     /// Generate a fresh random signer.
@@ -117,5 +172,9 @@ impl Signer for LocalSigner {
 
     async fn sign(&self, data: &[u8]) -> Result<Vec<u8>> {
         Ok(self.signing_key.sign(data).to_bytes().to_vec())
+    }
+
+    fn siws_signature(&self) -> Option<String> {
+        self.siws_token.clone()
     }
 }

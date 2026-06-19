@@ -48,3 +48,4 @@ sdk/python/.pytest_cache/
 sdk/python/**/__pycache__/
 sdk/python/**/*.py[cod]
 website/.env.local.bak
+sdk/python/.coverage
