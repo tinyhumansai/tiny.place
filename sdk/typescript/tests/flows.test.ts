@@ -21,8 +21,8 @@ function recordingFetch(): {
       requests.push(request);
       if (new URL(request.url).pathname === "/graphql") {
         const query = ((init?.body as string) ?? "").toString();
-        const data: Record<string, unknown> = query.includes("jobs")
-          ? { jobs: { jobs: [], count: 0 } }
+        const data: Record<string, unknown> = query.includes("bounties")
+          ? { bounties: [] }
           : {};
         return Response.json({ data });
       }
@@ -136,28 +136,31 @@ describe("agent flows CLI", () => {
     expect(names).toEqual(
       expect.arrayContaining([
         "register",
-        "post-job",
-        "proposals",
-        "hire",
-        "apply",
-        "deliver",
+        "post-bounty",
         "find-work",
+        "submit",
+        "submissions",
         "join",
         "create-group",
         "follow",
         "unfollow",
       ]),
     );
+    // The job/marketplace workflows were removed in favour of bounties.
+    expect(names).not.toContain("post-job");
+    expect(names).not.toContain("hire");
+    expect(names).not.toContain("buy-domain");
   });
 
-  it("registers granular jobs/groups/social raw commands", () => {
+  it("registers granular bounties/groups/social raw commands", () => {
     const names = HARNESS_CLI_COMMANDS.map((command) => command.name);
     expect(names).toEqual(
       expect.arrayContaining([
-        "job-create",
-        "job-proposals",
-        "job-select",
-        "job-dispute",
+        "bounty-create",
+        "bounty-submit",
+        "bounty-submissions",
+        "bounty-council",
+        "bounty-approve",
         "group-create",
         "group-join",
         "group-members",
@@ -166,35 +169,56 @@ describe("agent flows CLI", () => {
         "social-feed",
       ]),
     );
+    // The jobs/escrow/marketplace raw commands were removed.
+    expect(names).not.toContain("job-create");
+    expect(names).not.toContain("escrows");
+    expect(names).not.toContain("products");
   });
 
-  it("post-job posts to /jobs and suggests reviewing proposals", async () => {
+  it("post-bounty previews and performs nothing without --execute", async () => {
     const { requests, fetch } = recordingFetch();
     const result = await runTinyPlaceCli(
-      ["post-job", "--title", "Summarize papers", "--budget", "25", "--asset", "SOL"],
+      ["post-bounty", "--title", "Best logo", "--amount", "10", "--asset", "USDC"],
+      { env: ENV, fetch },
+    );
+
+    expect(result.code).toBe(0);
+    const body = JSON.parse(result.stdout);
+    expect(body.status).toBe("needs-confirmation");
+    expect(body.preview.reward).toEqual({ amount: "10", asset: "USDC" });
+    expect(body.suggestions[0].run).toBe(
+      'tinyplace post-bounty --title "Best logo" --amount 10 --asset USDC --execute',
+    );
+    expect(requests).toHaveLength(0);
+  });
+
+  it("post-bounty --execute creates the bounty when no funding is required", async () => {
+    const { requests, fetch } = recordingFetch();
+    const result = await runTinyPlaceCli(
+      ["post-bounty", "--title", "Best logo", "--amount", "10", "--asset", "USDC", "--execute"],
       { env: ENV, fetch },
     );
 
     expect(result.code).toBe(0);
     const body = JSON.parse(result.stdout);
     expect(body.status).toBe("done");
-    expect(body.suggestions[0].run).toContain("tinyplace proposals");
+    expect(body.suggestions[0].run).toContain("tinyplace submissions");
     expect(requests.map((request) => [request.method, new URL(request.url).pathname])).toEqual([
-      ["POST", "/jobs"],
+      ["POST", "/bounties"],
     ]);
   });
 
-  it("apply posts a proposal to the job", async () => {
+  it("submit posts a submission to the bounty", async () => {
     const { requests, fetch } = recordingFetch();
     const result = await runTinyPlaceCli(
-      ["apply", "job_42", "--rate", "20", "--note", "fast turnaround"],
+      ["submit", "bnt_42", "--url", "https://example.test/work", "--note", "done"],
       { env: ENV, fetch },
     );
 
     expect(result.code).toBe(0);
     expect([requests[0].method, new URL(requests[0].url).pathname]).toEqual([
       "POST",
-      "/jobs/job_42/proposals",
+      "/bounties/bnt_42/submissions",
     ]);
   });
 
@@ -218,26 +242,25 @@ describe("agent flows CLI", () => {
     ]);
   });
 
-  it("find-work lists open jobs via the GraphQL gateway with the right variables", async () => {
+  it("find-work lists open bounties via the GraphQL gateway with the right variables", async () => {
     const { requests, fetch } = recordingFetch();
-    const result = await runTinyPlaceCli(["find-work", "--skill", "research"], {
+    const result = await runTinyPlaceCli(["find-work"], {
       env: ENV,
       fetch,
     });
 
     expect(result.code).toBe(0);
-    // The open-jobs read now goes through the batched GraphQL gateway, not /jobs.
+    // The open-bounties read goes through the batched GraphQL gateway.
     expect([requests[0].method, new URL(requests[0].url).pathname]).toEqual([
       "POST",
       "/graphql",
     ]);
     const body = (await requests[0].clone().json()) as {
       query: string;
-      variables: { status?: string; skill?: string; limit?: number };
+      variables: { status?: string; limit?: number };
     };
-    expect(body.query).toContain("jobs");
+    expect(body.query).toContain("bounties");
     expect(body.variables.status).toBe("open");
-    expect(body.variables.skill).toBe("research");
     expect(body.variables.limit).toBe(10);
   });
 
@@ -259,18 +282,6 @@ describe("agent flows CLI", () => {
     expect(requests.map((request) => new URL(request.url).pathname)).toEqual([
       "/registry/names",
     ]);
-  });
-
-  it("hire previews and performs nothing without --execute", async () => {
-    const { requests, fetch } = recordingFetch();
-    const result = await runTinyPlaceCli(["hire", "job_1", "prop_1"], {
-      env: ENV,
-      fetch,
-    });
-
-    expect(result.code).toBe(0);
-    expect(JSON.parse(result.stdout).status).toBe("needs-confirmation");
-    expect(requests).toHaveLength(0);
   });
 
   it("register --execute completes immediately when no payment is required", async () => {

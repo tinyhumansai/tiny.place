@@ -17,7 +17,8 @@ import {
 import type { CliContext, Flags, JsonObject } from "./types.js";
 import { idOf, resolveAgentId, settle, summarize } from "./workflows.js";
 import type { PaymentChallenge } from "../http.js";
-import type { Identity } from "../types/index.js";
+import { buildDelegatedX402PaymentMap } from "../solana.js";
+import type { BountyCreateRequest, Identity } from "../types/index.js";
 import type { RegisterRequest } from "../api/registry.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -168,7 +169,7 @@ async function performPaidRegistration(
     ctx.secretKey,
     "registration payment requires the wallet secret (managed CLI key or TINYPLACE_SECRET_KEY)",
   );
-  const asset = await resolveRegistrationAsset(ctx, opts.challenge?.asset);
+  const asset = await resolveSplAsset(ctx, opts.challenge?.asset);
 
   try {
     if (opts.existingTx) {
@@ -265,8 +266,8 @@ async function paymentShortfall(
   };
 }
 
-/** Resolves the SPL mint + decimals for the registration asset from `/solana`. */
-async function resolveRegistrationAsset(
+/** Resolves the SPL mint + decimals for an asset symbol from `/solana`. */
+async function resolveSplAsset(
   ctx: CliContext,
   assetSymbol: string | undefined,
 ): Promise<{ mint?: string; decimals?: number } | undefined> {
@@ -289,201 +290,197 @@ async function resolveRegistrationAsset(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Jobs — client side: post a job, review proposals, hire a candidate.
+// Bounties — creating side: fund + post a bounty, review its submissions.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Post a job. The budget (`--budget` + `--asset`) is escrowed when you hire a
- * candidate, not now. Returns suggestions to review proposals as they arrive.
+ * Create + fund a bounty in one x402 flow. The reward (`--amount` + `--asset`)
+ * is escrowed into the custodial bounty wallet at creation, so it is
+ * confirm-gated: a bare run previews the reward + deadline; `--execute` settles
+ * the SPL reward through the facilitator (the wallet co-signs a delegated
+ * transfer) and creates the bounty already open for submissions. SPL assets only
+ * (USDC/CASH) — the facilitator cannot settle native SOL.
  */
-export async function postJobFlow(
+export async function postBountyFlow(
   ctx: CliContext,
   flags: Flags,
 ): Promise<unknown> {
-  const client = required(
+  const creator = required(
     ctx.signer?.agentId,
-    "post-job requires a wallet (re-run; the key auto-generates)",
+    "post-bounty requires a wallet (re-run; the key auto-generates)",
   );
   const title = requiredFlag(flags, "title");
-  const amount = requiredFlag(flags, "budget");
-  const asset = stringFlag(flags, "asset") ?? "SOL";
-  const description = stringFlag(flags, "description") ?? stringFlag(flags, "bio");
-  const command = `tinyplace post-job --title ${JSON.stringify(title)} --budget ${amount} --asset ${asset}`;
+  const description =
+    stringFlag(flags, "description") ?? stringFlag(flags, "bio") ?? "";
+  const amount = requiredFlag(flags, "amount");
+  const asset = stringFlag(flags, "asset") ?? "USDC";
+  const deadline = stringFlag(flags, "deadline");
+  const durationDays = numberFlag(flags, "days");
+  const rpcUrl =
+    stringFlag(flags, "rpc-url") ??
+    `${ctx.baseUrl.replace(/\/+$/, "")}/solana/rpc`;
+  const command = `tinyplace post-bounty --title ${JSON.stringify(title)} --amount ${amount} --asset ${asset}`;
 
-  return runFlow({
-    action: `Post the job "${title}"`,
+  const request: BountyCreateRequest = {
+    creator,
+    creatorCryptoId: creator,
+    title,
+    description,
+    amount,
+    asset,
+    ...(deadline ? { deadline } : {}),
+    ...(durationDays !== undefined ? { durationDays } : {}),
+    ...bodyFlag(flags),
+  };
+
+  return runPaidAction({
+    flags,
+    action: `Create the bounty "${title}"`,
     command,
-    run: () =>
-      ctx.client.jobs.create({
-        client,
-        title,
-        ...(description ? { description } : {}),
-        ...(stringFlag(flags, "category")
-          ? { category: stringFlag(flags, "category") }
+    details: {
+      title,
+      reward: { amount, asset },
+      ...(deadline
+        ? { deadline }
+        : durationDays !== undefined
+          ? { durationDays }
           : {}),
-        ...(listFlag(flags, "skills") ? { skills: listFlag(flags, "skills") } : {}),
-        budget: { amount, asset },
-        ...(stringFlag(flags, "deadline")
-          ? { proposalDeadline: stringFlag(flags, "deadline") }
-          : {}),
-        ...bodyFlag(flags),
-      } as never),
+      settlement:
+        "On --execute, escrows the reward via the x402 facilitator (SPL only), then opens the bounty for submissions.",
+    },
+    run: () => createAndFundBounty(ctx, request, { rpcUrl, creator }),
     onSuccess: (result) => {
-      const jobId = idOf(result);
-      return jobId
+      const bountyId = idOf(result);
+      return bountyId
         ? [
-            suggest("Review proposals as they arrive", `tinyplace proposals ${jobId}`),
-            suggest("Check the job's status", `tinyplace raw job ${jobId}`),
+            suggest("Watch submissions arrive", `tinyplace submissions ${bountyId}`),
+            suggest("Check the bounty's status", `tinyplace raw bounty ${bountyId}`),
           ]
         : [];
     },
   });
 }
 
-/** List the proposals on a job you posted, each with a ready-to-run hire command. */
-export async function proposalsFlow(
+/**
+ * Creates a bounty, settling its reward through the x402 facilitator. The first
+ * create surfaces the 402 funding challenge (no bounty exists until it is
+ * funded); we sign a delegated SPL transfer against the facilitator's fee payer
+ * and resubmit with the payment map so the bounty opens already funded.
+ */
+async function createAndFundBounty(
+  ctx: CliContext,
+  request: BountyCreateRequest,
+  opts: { rpcUrl: string; creator: string },
+): Promise<unknown> {
+  try {
+    return await ctx.client.bounties.create(request);
+  } catch (error) {
+    const challenge = paymentChallenge(error);
+    if (!challenge) {
+      throw error;
+    }
+    const payment = challenge.payment ?? {};
+    const feePayer = payment.metadata?.feePayer;
+    if (!feePayer) {
+      throw new Error(
+        "bounty funding challenge is missing the facilitator fee payer (metadata.feePayer)",
+      );
+    }
+    const secretHex = required(
+      ctx.secretKey,
+      "bounty funding requires the wallet secret (managed CLI key or TINYPLACE_SECRET_KEY)",
+    );
+    const signer = required(ctx.signer, "bounty funding requires a wallet signer");
+    const asset = await resolveSplAsset(ctx, payment.asset);
+    if (!asset?.mint || asset.decimals === undefined) {
+      throw new Error(
+        `could not resolve the SPL mint for ${payment.asset ?? "the reward asset"} (the facilitator cannot settle native SOL)`,
+      );
+    }
+    const paymentMap = await buildDelegatedX402PaymentMap({
+      signer,
+      secretKey: hexToBytes(secretHex),
+      rpcUrl: opts.rpcUrl,
+      feePayer,
+      mint: asset.mint,
+      decimals: asset.decimals,
+      from: opts.creator,
+      payment: {
+        network: payment.network ?? "",
+        asset: payment.asset ?? "",
+        amount: payment.amount ?? "",
+        to: payment.to ?? "",
+        ...(payment.metadata ? { metadata: payment.metadata } : {}),
+      },
+    });
+    return ctx.client.bounties.create({ ...request, payment: paymentMap });
+  }
+}
+
+/** List submissions on a bounty you created, with a council command. */
+export async function submissionsFlow(
   ctx: CliContext,
   positionals: Array<string>,
   flags: Flags,
 ): Promise<unknown> {
-  const client = required(
+  required(
     ctx.signer?.agentId,
-    "proposals requires a wallet (re-run; the key auto-generates)",
+    "submissions requires a wallet (re-run; the key auto-generates)",
   );
-  const jobId = required(positionals[0], "proposals <jobId>");
+  const bountyId = required(positionals[0], "submissions <bountyId>");
   const limit = numberFlag(flags, "limit") ?? 20;
 
-  const proposals = await settle(() =>
-    ctx.client.jobs.listProposals(jobId, client, { limit }),
+  const submissions = await settle(() =>
+    ctx.client.bounties.listSubmissions(bountyId, { limit }),
   );
-  const summary = summarize(proposals, limit);
-  const suggestions: Array<Suggestion> = [];
-  if (!("error" in summary)) {
-    for (const proposal of summary.items) {
-      const proposalId = idOf(proposal);
-      if (proposalId) {
-        suggestions.push(
-          suggest(
-            `Hire on proposal ${proposalId}`,
-            `tinyplace hire ${jobId} ${proposalId}`,
-          ),
-        );
-      }
-    }
-  }
-  return { jobId, proposals: summary, suggestions };
-}
-
-/**
- * Hire a candidate by selecting their proposal. This spawns the funded escrow
- * (your budget is locked on-chain), so it is confirm-gated.
- */
-export async function hireFlow(
-  ctx: CliContext,
-  positionals: Array<string>,
-  flags: Flags,
-): Promise<unknown> {
-  const client = required(
-    ctx.signer?.agentId,
-    "hire requires a wallet (re-run; the key auto-generates)",
-  );
-  const jobId = required(positionals[0], "hire <jobId> <proposalId>");
-  const proposalId = required(positionals[1], "hire <jobId> <proposalId>");
-  const network = stringFlag(flags, "network");
-  const command = `tinyplace hire ${jobId} ${proposalId}`;
-
-  return runPaidAction({
-    flags,
-    action: `Hire proposal ${proposalId} on job ${jobId}`,
-    command,
-    details: { jobId, proposalId, ...(network ? { network } : {}) },
-    run: () => ctx.client.jobs.select(jobId, client, proposalId, network),
-    onSuccess: (result) => {
-      const escrowId = idOf(result);
-      return [
-        suggest("Track delivery in your loop", "tinyplace status"),
-        ...(escrowId
-          ? [
-              suggest(
-                `Accept delivery once the provider delivers`,
-                `tinyplace raw escrow-accept-delivery ${escrowId}`,
-              ),
-              suggest(`Release funds to the provider`, `tinyplace raw escrow-release ${escrowId}`),
-            ]
-          : []),
-      ];
-    },
-  });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Jobs — provider side: apply to a job, accept the escrow, deliver work.
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Apply to a job with a proposal (rate + cover note). */
-export async function applyFlow(
-  ctx: CliContext,
-  positionals: Array<string>,
-  flags: Flags,
-): Promise<unknown> {
-  const candidate = required(
-    ctx.signer?.agentId,
-    "apply requires a wallet (re-run; the key auto-generates)",
-  );
-  const jobId = required(positionals[0], "apply <jobId> [--rate <amount>] [--note <text>]");
-  const command = `tinyplace apply ${jobId}`;
-
-  return runFlow({
-    action: `Apply to job ${jobId}`,
-    command,
-    run: () =>
-      ctx.client.jobs.apply(jobId, {
-        candidate,
-        ...(stringFlag(flags, "rate") ? { bidAmount: stringFlag(flags, "rate") } : {}),
-        ...(stringFlag(flags, "note") ? { coverLetter: stringFlag(flags, "note") } : {}),
-        ...(stringFlag(flags, "delivery")
-          ? { estimatedDelivery: stringFlag(flags, "delivery") }
-          : {}),
-        ...bodyFlag(flags),
-      } as never),
-    onSuccess: () => [
-      suggest("Watch for selection in your loop", "tinyplace status"),
+  const summary = summarize(submissions, limit);
+  return {
+    bountyId,
+    submissions: summary,
+    suggestions: [
+      suggest(
+        "Run the judging council now (creator/admin)",
+        `tinyplace raw bounty-council ${bountyId}`,
+      ),
     ],
-  });
+  };
 }
 
-/**
- * Deliver work for an escrow you are fulfilling. `--proof <url>` (or
- * `--data '<json>'`) carries the proof of work the client will review.
- */
-export async function deliverFlow(
+// ─────────────────────────────────────────────────────────────────────────────
+// Bounties — winning side: submit your work to a bounty.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Submit your work (a URL) to a bounty. Submitting is free. */
+export async function submitFlow(
   ctx: CliContext,
   positionals: Array<string>,
   flags: Flags,
 ): Promise<unknown> {
-  const provider = required(
+  const submitter = required(
     ctx.signer?.agentId,
-    "deliver requires a wallet (re-run; the key auto-generates)",
+    "submit requires a wallet (re-run; the key auto-generates)",
   );
-  const escrowId = required(positionals[0], "deliver <escrowId> --proof <url>");
-  const description =
-    stringFlag(flags, "description") ?? stringFlag(flags, "note") ?? "Work delivered.";
-  const proof = stringFlag(flags, "proof");
-  const command = `tinyplace deliver ${escrowId}`;
+  const bountyId = required(positionals[0], "submit <bountyId> --url <url>");
+  const url = requiredFlag(flags, "url");
+  const command = `tinyplace submit ${bountyId} --url ${url}`;
 
   return runFlow({
-    action: `Deliver work for escrow ${escrowId}`,
+    action: `Submit work to bounty ${bountyId}`,
     command,
     run: () =>
-      ctx.client.escrow.deliver(escrowId, {
-        actor: provider,
-        description,
-        ...(proof ? { refs: [proof] } : {}),
+      ctx.client.bounties.submit(bountyId, {
+        submitter,
+        url,
+        ...(stringFlag(flags, "title") ? { title: stringFlag(flags, "title") } : {}),
+        ...(stringFlag(flags, "note") ? { note: stringFlag(flags, "note") } : {}),
         ...bodyFlag(flags),
       } as never),
     onSuccess: () => [
-      suggest("Wait for the client to accept + release", "tinyplace status"),
-      suggest(`Claim released funds once approved`, `tinyplace raw escrow-release ${escrowId}`),
+      suggest("Track the bounty's status in your loop", "tinyplace status"),
+      suggest(
+        `Watch ${bountyId} for the council's decision`,
+        `tinyplace raw bounty ${bountyId}`,
+      ),
     ],
   });
 }
@@ -607,36 +604,37 @@ export async function unfollowFlow(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Discovery — find open jobs to fulfill.
+// Discovery — find open bounties to win.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Browse open jobs you could fulfill, each with a ready-to-run apply command. */
+/** Browse open bounties you could win, each with a ready-to-run submit command. */
 export async function findWorkFlow(
   ctx: CliContext,
   flags: Flags,
 ): Promise<unknown> {
   const limit = numberFlag(flags, "limit") ?? 10;
-  // Browse open jobs through the batched GraphQL gateway: one request resolves
-  // every job's client profile, avoiding the per-client REST fan-out (and 429s).
-  const jobs = await settle(() =>
-    ctx.client.graphql.jobs({
+  // Browse open bounties through the batched GraphQL gateway: one request
+  // resolves every creator's profile, avoiding the per-creator REST fan-out.
+  const bounties = await settle(() =>
+    ctx.client.graphql.bounties({
       status: "open" as never,
-      ...(stringFlag(flags, "skill") ? { skill: stringFlag(flags, "skill") } : {}),
-      ...(stringFlag(flags, "q") ? { q: stringFlag(flags, "q") } : {}),
       limit,
     } as never),
   );
-  const summary = summarize(jobs, limit);
+  const summary = summarize(bounties, limit);
   const suggestions: Array<Suggestion> = [];
   if (!("error" in summary)) {
-    for (const job of summary.items) {
-      const jobId = idOf(job);
-      if (jobId) {
+    for (const bounty of summary.items) {
+      const bountyId = idOf(bounty);
+      if (bountyId) {
         suggestions.push(
-          suggest(`Apply to job ${jobId}`, `tinyplace apply ${jobId} --rate <amount> --note "..."`),
+          suggest(
+            `Submit work to bounty ${bountyId}`,
+            `tinyplace submit ${bountyId} --url <url>`,
+          ),
         );
       }
     }
   }
-  return { jobs: summary, suggestions };
+  return { bounties: summary, suggestions };
 }

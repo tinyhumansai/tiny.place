@@ -12,7 +12,7 @@ import {
   grindVanityIdentity,
   type VanityIdentity,
 } from "./keygen.js";
-import { runFlow, runPaidAction, suggest, type Suggestion } from "./suggest.js";
+import { runFlow, suggest, type Suggestion } from "./suggest.js";
 import type { CliContext, Flags, JsonObject } from "./types.js";
 import type { OnChainBalances } from "../api/solana.js";
 
@@ -208,17 +208,16 @@ export async function statusFlow(
   const publicKey = ctx.signer?.publicKeyBase64;
   const limit = numberFlag(flags, "limit") ?? 5;
 
-  const [counts, inbox, messages, escrows, jobs, keyHealth, balances] =
+  const [counts, inbox, messages, bounties, keyHealth, balances] =
     await Promise.all([
       settle(() => ctx.client.inbox.counts(agentId)),
       settle(() => ctx.client.inbox.list(undefined, agentId)),
       // listRaw, not list: status is a non-consuming peek. The consuming decrypt
       // (which acks) belongs to `read`; counting here must not eat the agent's mail.
       settle(() => ctx.client.messages.listRaw(publicKey ?? agentId, limit)),
-      settle(() => ctx.client.escrow.list({ limit })),
-      // Read open jobs through the batched GraphQL gateway: one request hydrates
-      // each job's client profile, instead of fanning out per-client REST calls.
-      settle(() => ctx.client.graphql.jobs({ status: "open", limit } as never)),
+      // Read your bounties through the batched GraphQL gateway: one request
+      // hydrates each creator profile, instead of fanning out per-creator REST.
+      settle(() => ctx.client.graphql.bounties({ creator: agentId, limit } as never)),
       settle(() =>
         publicKey
           ? ctx.client.keys.health(publicKey)
@@ -229,7 +228,7 @@ export async function statusFlow(
 
   const inboxSummary = summarize(inbox, limit);
   const messageSummary = summarize(messages, limit);
-  const escrowSummary = summarize(escrows, limit);
+  const bountySummary = summarize(bounties, limit);
 
   const attention: Array<string> = [];
   const suggestions: Array<Suggestion> = [];
@@ -255,15 +254,15 @@ export async function statusFlow(
       suggest("Read and reply to pending messages", "tinyplace read"),
     );
   }
-  if (!("error" in escrowSummary) && escrowSummary.count) {
+  if (!("error" in bountySummary) && bountySummary.count) {
     attention.push(
-      `${escrowSummary.count} active escrow(s) — check if any await you`,
+      `${bountySummary.count} of your bounties — check if any await the council or approval`,
     );
-    for (const item of escrowSummary.items) {
+    for (const item of bountySummary.items) {
       const id = idOf(item);
       if (id) {
         suggestions.push(
-          suggest(`Review escrow ${id}`, `tinyplace raw escrow ${id}`),
+          suggest(`Review submissions on ${id}`, `tinyplace submissions ${id}`),
         );
       }
     }
@@ -308,8 +307,7 @@ export async function statusFlow(
     counts: counts.ok ? counts.value : { error: counts.error },
     inbox: inboxSummary,
     messages: messageSummary,
-    escrows: escrowSummary,
-    jobs: summarize(jobs, limit),
+    bounties: bountySummary,
     keys: keyHealth.ok ? keyHealth.value : { error: keyHealth.error },
     attention,
     suggestions,
@@ -593,51 +591,6 @@ export async function replyFlow(
   });
 }
 
-// ── Marketplace workflow: confirm-gated identity purchase. ────────────────────
-
-export async function buyDomainFlow(
-  ctx: CliContext,
-  positionals: Array<string>,
-  flags: Flags,
-): Promise<unknown> {
-  const buyer = required(
-    ctx.signer?.agentId,
-    "buy-domain requires a wallet (re-run; the key auto-generates)",
-  );
-  const listingId = required(positionals[0], "buy-domain <listingId>");
-  const command = `tinyplace buy-domain ${listingId}`;
-
-  // Best-effort preview: surface the listing being bought before confirming.
-  const listings = await settle(() =>
-    ctx.client.marketplace.listIdentities({}),
-  );
-  const details = listings.ok
-    ? (pickArray(listings.value).find((listing) => {
-        const record = listing as Record<string, unknown>;
-        return record.listingId === listingId || record.id === listingId;
-      }) as JsonObject | undefined)
-    : undefined;
-
-  return runPaidAction({
-    flags,
-    action: `Buy @handle listing ${listingId}`,
-    command,
-    ...(details ? { details } : {}),
-    run: () =>
-      ctx.client.marketplace.buyIdentityListing(listingId, {
-        buyer,
-        ...bodyFlag(flags),
-      } as never),
-    onSuccess: () => [
-      suggest(
-        "Make the purchased handle your primary identity",
-        "tinyplace raw set-primary <handle>",
-      ),
-      suggest("Confirm your identity", "tinyplace whoami"),
-    ],
-  });
-}
-
 export async function resolveRecipient(
   ctx: CliContext,
   to: string,
@@ -804,10 +757,10 @@ export function idOf(value: unknown): string | undefined {
     const record = value as Record<string, unknown>;
     const id =
       record.id ??
-      record.escrowId ??
+      record.bountyId ??
+      record.submissionId ??
       record.itemId ??
       record.messageId ??
-      record.jobId ??
       record.listingId;
     return typeof id === "string" ? id : undefined;
   }

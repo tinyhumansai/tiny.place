@@ -8,16 +8,14 @@ import {
 import { makeContext } from "./context.js";
 import { formatResult, redactSecrets, resolveFormat } from "./format.js";
 import {
-  applyFlow,
   createGroupFlow,
-  deliverFlow,
   findWorkFlow,
   followFlow,
-  hireFlow,
   joinGroupFlow,
-  postJobFlow,
-  proposalsFlow,
+  postBountyFlow,
   registerFlow,
+  submissionsFlow,
+  submitFlow,
   unfollowFlow,
 } from "./flows.js";
 import { runKeygen } from "./keygen.js";
@@ -36,7 +34,6 @@ import type {
 } from "./types.js";
 import {
   balanceFlow,
-  buyDomainFlow,
   discoverFlow,
   fundInfo,
   initFlow,
@@ -151,18 +148,13 @@ async function dispatchTop(
     // Identity (confirm-gated paid claim).
     case "register":
       return registerFlow(ctx, parsed.positionals, flags);
-    // Jobs — client side.
-    case "post-job":
-      return postJobFlow(ctx, flags);
-    case "proposals":
-      return proposalsFlow(ctx, parsed.positionals, flags);
-    case "hire":
-      return hireFlow(ctx, parsed.positionals, flags);
-    // Jobs — provider side.
-    case "apply":
-      return applyFlow(ctx, parsed.positionals, flags);
-    case "deliver":
-      return deliverFlow(ctx, parsed.positionals, flags);
+    // Bounties — creating side (confirm-gated x402 funding) + winning side.
+    case "post-bounty":
+      return postBountyFlow(ctx, flags);
+    case "submissions":
+      return submissionsFlow(ctx, parsed.positionals, flags);
+    case "submit":
+      return submitFlow(ctx, parsed.positionals, flags);
     // Groups & social graph.
     case "join":
       return joinGroupFlow(ctx, parsed.positionals);
@@ -179,9 +171,6 @@ async function dispatchTop(
       return readFlow(ctx, flags);
     case "reply":
       return replyFlow(ctx, parsed.positionals, flags);
-    // Marketplace workflow (confirm-gated).
-    case "buy-domain":
-      return buyDomainFlow(ctx, parsed.positionals, flags);
     // Maintenance.
     case "keygen":
       return runKeygen(ctx, flags);

@@ -1,6 +1,5 @@
 import {
   bodyFlag,
-  listFlag,
   numberFlag,
   queryFlags,
   required,
@@ -339,63 +338,16 @@ export async function dispatchRaw(
         required(first, "inbox-archive <itemId>"),
         stringFlag(flags, "owner") ?? selfId,
       );
-    // Marketplace.
-    case "products":
-      // Browse products through the batched GraphQL gateway: one request hydrates
-      // every seller instead of fanning out per-seller REST calls.
-      return client.graphql.products({
-        ...(stringFlag(flags, "q") ? { query: stringFlag(flags, "q") } : {}),
-        ...(stringFlag(flags, "category")
-          ? { category: stringFlag(flags, "category") }
-          : {}),
-        ...(listFlag(flags, "tag") ? { tags: listFlag(flags, "tag") } : {}),
-        ...(numberFlag(flags, "limit") !== undefined
-          ? { limit: numberFlag(flags, "limit") }
-          : {}),
-        ...(numberFlag(flags, "offset") !== undefined
-          ? { offset: numberFlag(flags, "offset") }
-          : {}),
-      });
-    case "product":
-      // Single product with seller embedded, via the GraphQL gateway.
-      return client.graphql.product(required(first, "product <productId>"));
-    case "buy":
-      return client.marketplace.buyProduct(
-        required(first, "buy <productId>"),
-        bodyFlag(flags),
-      );
-    case "review":
-      return client.marketplace.createProductReview(
-        required(first, "review <productId>"),
-        bodyFlag(flags),
-      );
-    case "usernames":
-      // Browse @handle listings through the GraphQL gateway: sellers hydrated in
-      // one batched request rather than per-seller REST fan-out.
-      return client.graphql.identityListings({
-        ...(stringFlag(flags, "q") ? { query: stringFlag(flags, "q") } : {}),
-        ...(numberFlag(flags, "limit") !== undefined
-          ? { limit: numberFlag(flags, "limit") }
-          : {}),
-      });
-    case "buy-username":
-      return client.marketplace.buyIdentityListing(
-        required(first, "buy-username <listingId>"),
-        { ...(selfId ? { buyer: selfId } : {}), ...bodyFlag(flags) } as never,
-      );
-    // Jobs & escrow.
-    case "jobs":
-      // Browse job postings through the batched GraphQL gateway: one request
-      // hydrates each job's client profile instead of per-client REST fan-out.
-      return client.graphql.jobs({
+    // Bounties (contest-style work).
+    case "bounties":
+      // Browse bounties through the batched GraphQL gateway: one request hydrates
+      // each bounty's creator profile instead of per-creator REST fan-out.
+      return client.graphql.bounties({
         ...(stringFlag(flags, "status")
           ? { status: stringFlag(flags, "status") as never }
           : {}),
-        ...(stringFlag(flags, "skill")
-          ? { skill: stringFlag(flags, "skill") }
-          : {}),
-        ...(stringFlag(flags, "category")
-          ? { category: stringFlag(flags, "category") }
+        ...(stringFlag(flags, "creator")
+          ? { creator: stringFlag(flags, "creator") }
           : {}),
         ...(numberFlag(flags, "limit") !== undefined
           ? { limit: numberFlag(flags, "limit") }
@@ -404,96 +356,56 @@ export async function dispatchRaw(
           ? { offset: numberFlag(flags, "offset") }
           : {}),
       });
-    case "job":
-      // Single job with client profile embedded, via the GraphQL gateway.
-      return client.graphql.job(required(first, "job <jobId>"));
-    case "job-create":
-      return client.jobs.create({
-        client: required(selfId, "job-create requires a signer"),
+    case "bounty":
+      // Single bounty with creator profile embedded, via the GraphQL gateway.
+      return client.graphql.bounty(required(first, "bounty <bountyId>"));
+    case "bounty-create":
+      // Reward escrows via x402: without a signed `payment` map in --data this
+      // answers 402; use the `post-bounty` workflow to fund + create in one step.
+      return client.bounties.create({
+        creator: required(selfId, "bounty-create requires a signer"),
+        ...(selfId ? { creatorCryptoId: selfId } : {}),
         ...bodyFlag(flags),
       } as never);
-    case "job-cancel":
-      return client.jobs.cancel(
-        required(first, "job-cancel <jobId>"),
-        required(selfId, "job-cancel requires a signer"),
+    case "bounty-cancel":
+      return client.bounties.cancel(
+        required(first, "bounty-cancel <bountyId>"),
+        required(selfId, "bounty-cancel requires a signer"),
       );
-    case "job-apply":
-      return client.jobs.apply(required(first, "job-apply <jobId>"), {
-        candidate: selfId,
+    case "bounty-submit":
+      return client.bounties.submit(required(first, "bounty-submit <bountyId>"), {
+        submitter: selfId,
+        ...(selfId ? { submitterCryptoId: selfId } : {}),
         ...bodyFlag(flags),
       } as never);
-    case "job-proposals":
-      return client.jobs.listProposals(
-        required(first, "job-proposals <jobId>"),
-        required(selfId, "job-proposals requires a signer"),
-        queryFlags(flags, ["status", "limit", "offset"]),
+    case "bounty-submissions":
+      return client.bounties.listSubmissions(
+        required(first, "bounty-submissions <bountyId>"),
+        queryFlags(flags, ["status", "submitter", "limit"]),
       );
-    case "job-proposal":
-      return client.jobs.getProposal(
-        required(first, "job-proposal <jobId> <proposalId>"),
-        required(second, "job-proposal <jobId> <proposalId>"),
-        required(selfId, "job-proposal requires a signer"),
+    case "bounty-comment":
+      return client.bounties.comment(
+        required(first, "bounty-comment <bountyId>"),
+        {
+          author: selfId,
+          ...(selfId ? { authorCryptoId: selfId } : {}),
+          ...bodyFlag(flags),
+        } as never,
       );
-    case "job-shortlist":
-      return client.jobs.shortlistProposal(
-        required(first, "job-shortlist <jobId> <proposalId>"),
-        required(second, "job-shortlist <jobId> <proposalId>"),
-        required(selfId, "job-shortlist requires a signer"),
+    case "bounty-comments":
+      return client.bounties.listComments(
+        required(first, "bounty-comments <bountyId>"),
+        queryFlags(flags, ["limit", "offset"]),
       );
-    case "job-withdraw":
-      return client.jobs.withdrawProposal(
-        required(first, "job-withdraw <jobId> <proposalId>"),
-        required(second, "job-withdraw <jobId> <proposalId>"),
-        required(selfId, "job-withdraw requires a signer"),
+    case "bounty-council":
+      return client.bounties.runCouncil(
+        required(first, "bounty-council <bountyId>"),
+        required(selfId, "bounty-council requires a signer"),
       );
-    case "job-select":
-      return client.jobs.select(
-        required(first, "job-select <jobId> <proposalId>"),
-        required(selfId, "job-select requires a signer"),
-        required(second, "job-select <jobId> <proposalId>"),
-        stringFlag(flags, "network"),
-      );
-    case "job-dispute":
-      return client.jobs.openDispute(
-        required(first, "job-dispute <jobId> --reason <text>"),
-        required(selfId, "job-dispute requires a signer"),
-        requiredFlag(flags, "reason"),
-      );
-    case "job-adjudicate":
-      return client.jobs.adjudicateDispute(
-        required(first, "job-adjudicate <jobId>"),
-        required(selfId, "job-adjudicate requires a signer"),
-      );
-    case "escrows":
-      return client.escrow.list(
-        queryFlags(flags, ["status", "client", "provider", "limit", "offset"]),
-      );
-    case "escrow":
-      return client.escrow.get(required(first, "escrow <escrowId>"));
-    case "escrow-accept":
-      return client.escrow.accept(
-        required(first, "escrow-accept <escrowId>"),
-        selfId,
-      );
-    case "escrow-deliver":
-      return client.escrow.deliver(
-        required(first, "escrow-deliver <escrowId>"),
-        typedBody(flags),
-      );
-    case "escrow-accept-delivery":
-      return client.escrow.acceptDelivery(
-        required(first, "escrow-accept-delivery <escrowId>"),
-        selfId,
-      );
-    case "escrow-release":
-      return client.escrow.claimRelease(
-        required(first, "escrow-release <escrowId>"),
-        selfId,
-      );
-    case "escrow-refund":
-      return client.escrow.claimRefund(
-        required(first, "escrow-refund <escrowId>"),
-        selfId,
+    case "bounty-approve":
+      return client.bounties.approve(
+        required(first, "bounty-approve <bountyId>"),
+        stringFlag(flags, "submission"),
       );
     // Social graph (follows).
     case "follow":
