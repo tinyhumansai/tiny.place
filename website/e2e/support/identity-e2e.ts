@@ -101,10 +101,10 @@ export async function registerHandle(
 ): Promise<LocalSigner> {
 	const wallet = await walletFromSeed(seedHex);
 	const client = new TinyPlaceClient({ baseUrl: API_URL, signer: wallet });
+	// publicKey is derived from cryptoId by the SDK.
 	const request = {
 		username: name,
 		cryptoId: wallet.agentId,
-		publicKey: wallet.publicKeyBase64,
 		primary,
 	};
 	let challenge: Record<string, string> | undefined;
