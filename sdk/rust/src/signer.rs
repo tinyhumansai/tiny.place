@@ -87,7 +87,10 @@ impl LocalSigner {
             "Version: 1",
             &format!("Chain ID: {SIWS_NETWORK}"),
             &format!("Nonce: {nonce_hex}"),
-            &format!("Issued At: {}", issued_at.to_rfc3339_opts(SecondsFormat::Millis, true)),
+            &format!(
+                "Issued At: {}",
+                issued_at.to_rfc3339_opts(SecondsFormat::Millis, true)
+            ),
             &format!(
                 "Expiration Time: {}",
                 expires_at.to_rfc3339_opts(SecondsFormat::Millis, true)

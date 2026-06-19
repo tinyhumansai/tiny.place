@@ -516,7 +516,10 @@ async fn graphql_profile_unwraps_and_sends_username() {
     let req = only_request(&server).await;
     assert!(req.headers.get("x-agent-id").is_none());
     let body: Value = serde_json::from_slice(&req.body).unwrap();
-    assert!(body["query"].as_str().unwrap().contains("profile(username:"));
+    assert!(body["query"]
+        .as_str()
+        .unwrap()
+        .contains("profile(username:"));
     assert_eq!(body["variables"]["username"], "@alice");
 }
 
@@ -558,7 +561,10 @@ async fn graphql_identity_unwraps_and_sends_username() {
     let req = only_request(&server).await;
     assert!(req.headers.get("x-agent-id").is_none());
     let body: Value = serde_json::from_slice(&req.body).unwrap();
-    assert!(body["query"].as_str().unwrap().contains("identity(username:"));
+    assert!(body["query"]
+        .as_str()
+        .unwrap()
+        .contains("identity(username:"));
     assert_eq!(body["variables"]["username"], "alice");
 }
 
@@ -573,7 +579,10 @@ async fn graphql_identities_unwraps_list_and_sends_crypto_id() {
     let req = only_request(&server).await;
     assert!(req.headers.get("x-agent-id").is_none());
     let body: Value = serde_json::from_slice(&req.body).unwrap();
-    assert!(body["query"].as_str().unwrap().contains("identities(cryptoId:"));
+    assert!(body["query"]
+        .as_str()
+        .unwrap()
+        .contains("identities(cryptoId:"));
     assert_eq!(body["variables"]["cryptoId"], "wallet-a");
 }
 
@@ -719,7 +728,10 @@ async fn graphql_identity_listing_unwraps_detail_with_bids_and_history() {
     let req = only_request(&server).await;
     assert!(req.headers.get("x-agent-id").is_none());
     let body: Value = serde_json::from_slice(&req.body).unwrap();
-    assert!(body["query"].as_str().unwrap().contains("identityListing(id:"));
+    assert!(body["query"]
+        .as_str()
+        .unwrap()
+        .contains("identityListing(id:"));
     assert_eq!(body["variables"]["id"], "lst-1");
     assert_eq!(body["variables"]["bidLimit"], 5);
     assert_eq!(body["variables"]["historyLimit"], 3);
@@ -898,7 +910,10 @@ async fn graphql_ledger_transactions_unwraps_counted_result_and_sends_filters() 
     let req = only_request(&server).await;
     assert!(req.headers.get("x-agent-id").is_none());
     let body: Value = serde_json::from_slice(&req.body).unwrap();
-    assert!(body["query"].as_str().unwrap().contains("ledgerTransactions"));
+    assert!(body["query"]
+        .as_str()
+        .unwrap()
+        .contains("ledgerTransactions"));
     assert_eq!(body["variables"]["agent"], "wallet-a");
     assert_eq!(body["variables"]["type"], "PAYMENT");
     assert_eq!(body["variables"]["visibility"], "public");
@@ -923,7 +938,10 @@ async fn graphql_ledger_transaction_unwraps_and_sends_id() {
     let req = only_request(&server).await;
     assert!(req.headers.get("x-agent-id").is_none());
     let body: Value = serde_json::from_slice(&req.body).unwrap();
-    assert!(body["query"].as_str().unwrap().contains("ledgerTransaction(id:"));
+    assert!(body["query"]
+        .as_str()
+        .unwrap()
+        .contains("ledgerTransaction(id:"));
     assert_eq!(body["variables"]["id"], "tx-1");
 }
 
