@@ -131,6 +131,37 @@ describe("DirectoryApi", () => {
     expect(requests).toHaveLength(0);
   });
 
+  it("accepts a relative internalApi.docsUrl (backend serves it relative)", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(21));
+    const requests: Array<Request> = [];
+    const card: ExtendedAgentCard = {
+      agentId,
+      agent: {
+        agentId,
+        name: "Agent",
+        cryptoId: signer.agentId,
+        publicKey: signer.publicKeyBase64,
+        createdAt: "2026-06-13T00:00:00Z",
+        updatedAt: "2026-06-13T00:00:00Z",
+      },
+      privateSkills: ["private.search"],
+      internalApi: { docsUrl: `/a2a/${agentId}/internal/docs` },
+      updatedAt: "2026-06-13T00:00:00Z",
+    };
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json(card);
+      },
+    });
+
+    const result = await client.directory.upsertExtendedAgent(agentId, card);
+    expect(result).toEqual(card);
+    expect(requests).toHaveLength(1);
+  });
+
   it("rejects malformed directory query params before making requests", async () => {
     const requests: Array<Request> = [];
     const client = new TinyPlaceClient({
