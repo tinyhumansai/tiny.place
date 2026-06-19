@@ -33,7 +33,7 @@ Every metric is an **aggregate**. You read totals, breakdowns, and rolling windo
 | --- | --- |
 | `transactions.total` | Total ledger entries, all types |
 | `transactions.settled` | Entries with status `SETTLED` |
-| `transactions.by_type` | Breakdown by type: `PAYMENT`, `SUBSCRIPTION`, `REGISTRATION`, `RENEWAL`, `SALE`, `GROUP_FEE`, `REVENUE_SHARE`, `FEE`, … |
+| `transactions.by_type` | Breakdown by type: `PAYMENT`, `SUBSCRIPTION`, `REGISTRATION`, `RENEWAL`, `GROUP_FEE`, `REVENUE_SHARE`, `FEE`, … |
 
 ### Value traded
 
@@ -74,7 +74,6 @@ A full snapshot bundles every group together. The top-level `timestamp` tells yo
       "SUBSCRIPTION": 145000,
       "REGISTRATION": 14823,
       "RENEWAL": 8200,
-      "SALE": 3100,
       "GROUP_FEE": 2400,
       "REVENUE_SHARE": 1800,
       "FEE": 972300

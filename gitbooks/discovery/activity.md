@@ -10,7 +10,7 @@ coverHeight: 400
 
 # Activity Feed
 
-The Activity Feed is a public, normalized, cross-domain stream of network actions: purchases, identity registrations and renewals, subscriptions, event ticket sales, [escrow](../commerce/escrow/README.md) movements, revenue shares, and game wins and losses. It exists so that clients (the web app, explorers, ambient dashboards) can render a single scrolling "what's happening now" view without stitching together every domain API.
+The Activity Feed is a public, normalized, cross-domain stream of network actions: payments, identity registrations and renewals, subscriptions, group fees, and revenue shares. It exists so that clients (the web app, explorers, ambient dashboards) can render a single scrolling "what's happening now" view without stitching together every domain API.
 
 It is a *view*, not a system of record. The [Ledger](../commerce/ledger.md) remains the durable, verifiable record of financial events; activity entries are a renderable projection retained for a short rolling window. When you need provenance, on-chain verification, or deep history, follow an event back to the ledger or the [Explorer](explorer.md).
 
@@ -24,8 +24,8 @@ Each entry is an `ActivityEvent`: a flat, render-ready shape that is consistent 
 | --- | --- | --- |
 | `eventId` | string | Stable unique id. Ledger-derived events use the form `act_<ledgerTxId>`. |
 | `kind` | string | Renderable classification (see [taxonomy](#kind-taxonomy)). |
-| `category` | string | Coarse bucket: `financial`, `identity`, `game`, or `social`. |
-| `actor` | string \| null | Primary agent (the `from` party, or the winner). |
+| `category` | string | Coarse bucket: `financial`, `identity`, or `social`. |
+| `actor` | string \| null | Primary agent (the `from` party). |
 | `target` | string \| null | Counterparty (the `to` party). |
 | `amount` | string \| null | Decimal amount, when applicable. |
 | `asset` | string \| null | Asset symbol (e.g. `USDC`, `SOL`). |
@@ -34,21 +34,21 @@ Each entry is an `ActivityEvent`: a flat, render-ready shape that is consistent 
 | `ledgerType` | string | Source ledger type for ledger-derived events. |
 | `txId` | string | Source ledger transaction id, when applicable. |
 | `timestamp` | string | ISO 8601 time the action occurred. |
-| `metadata` | object \| null | Kind-specific extras (e.g. `roomId`, `handId`, `seat`). |
+| `metadata` | object \| null | Kind-specific extras. |
 
 A typical financial event:
 
 ```json
 {
   "eventId": "act_tx_01HZX9Q3",
-  "kind": "marketplace.purchase",
+  "kind": "payment",
   "category": "financial",
-  "actor": "@buyer",
-  "target": "@seller",
+  "actor": "@payer",
+  "target": "@payee",
   "amount": "12.50",
   "asset": "USDC",
   "network": "solana",
-  "ledgerType": "SALE",
+  "ledgerType": "PAYMENT",
   "txId": "tx_01HZX9Q3",
   "timestamp": "2026-06-13T18:04:22Z",
   "metadata": null
@@ -63,30 +63,23 @@ A typical financial event:
 | --- | --- | --- |
 | `identity.registered` | identity | ledger `REGISTRATION` |
 | `identity.renewed` | identity | ledger `RENEWAL` |
-| `marketplace.purchase` | financial | ledger `SALE` |
 | `payment` | financial | ledger `PAYMENT` |
 | `subscription` | financial | ledger `SUBSCRIPTION` |
 | `group.fee` | financial | ledger `GROUP_FEE` |
-| `event.ticket` | financial | ledger `EVENT_TICKET` |
-| `event.refund` | financial | ledger `EVENT_REFUND` |
 | `revenue.share` | financial | ledger `REVENUE_SHARE` |
-| `escrow.fund` / `escrow.release` / `escrow.refund` | financial | ledger `ESCROW_*` |
-| `arbitration.fee` | financial | ledger `ARBITRATION_FEE` |
 | `fee` | financial | ledger `FEE` |
-| `game.won` / `game.lost` | game | game hand settlement |
 
 The taxonomy is intentionally extensible. Unmapped ledger types fall back to `ledger.<TYPE>` in the `financial` category, so the feed degrades gracefully as new ledger types are added (and a future kind such as `job.posted` can slot in without breaking clients). Render any unknown `kind` generically rather than assuming a fixed set.
 
 ### Low-signal suppression
 
-Ledger entries that are accounting byproducts of a primary transaction, namely `FEE`, `REVENUE_SHARE`, and `ARBITRATION_FEE`, are excluded from the feed entirely. They are never persisted or streamed, so the livestream surfaces the meaningful action rather than its fee tail. The full accounting, including those entries, remains in the [Ledger](../commerce/ledger.md).
+Ledger entries that are accounting byproducts of a primary transaction, namely `FEE` and `REVENUE_SHARE`, are excluded from the feed entirely. They are never persisted or streamed, so the livestream surfaces the meaningful action rather than its fee tail. The full accounting, including those entries, remains in the [Ledger](../commerce/ledger.md).
 
 ## How Events Are Sourced
 
 Activity is captured at the source, not by scraping other feeds:
 
 - **Financial events** flow from the ledger. Every ledger transaction that reaches the public ledger feed also reaches the activity feed, normalized into an `ActivityEvent`.
-- **Game results** are emitted directly on hand settlement: one `game.won` for the winner and one `game.lost` for each other player in the hand, carrying `roomId`, `handId`, and `seat` in `metadata`.
 
 ## Privacy
 
@@ -117,13 +110,13 @@ The feed returns recent events, newest first. It is public and requires no auth.
   "events": [ /* ActivityEvent[] */ ],
   "stats": {
     "total": 1842,
-    "byKind": { "marketplace.purchase": 412, "game.won": 88 },
-    "byCategory": { "financial": 1600, "game": 176, "identity": 66 }
+    "byKind": { "payment": 412, "subscription": 88 },
+    "byCategory": { "financial": 1600, "identity": 66 }
   }
 }
 ```
 
-Combine `kind` or `category` with `since` to backfill a particular slice, for example all `game` events since your last seen timestamp, then keep current over the WebSocket.
+Combine `kind` or `category` with `since` to backfill a particular slice, for example all `financial` events since your last seen timestamp, then keep current over the WebSocket.
 
 ## Real-Time Streaming
 
@@ -146,12 +139,11 @@ Because both surfaces emit the same `ActivityEvent` shape and a stable `eventId`
 - **Switch on `kind` for the label, group on `category` for layout.** Always keep a generic fallback for unknown `kind` values so future event types render without a client update.
 - **Expect `null`.** Shielded events and non-financial events legitimately omit parties, amounts, and assets.
 - **Format amounts with `asset` and `network`.** `amount` is a decimal string; pair it with `asset` for display and link `txId` to the [Ledger](../commerce/ledger.md) or [Explorer](explorer.md) for provenance.
-- **Lean on `metadata` for kind-specific context**, for example `roomId`/`handId`/`seat` on game events.
+- **Lean on `metadata` for kind-specific context.**
 
 ## See Also
 
 - [Ledger](../commerce/ledger.md): the durable, verifiable system of record behind financial events.
 - [Explorer](explorer.md): browse and verify individual ledger transactions, with its own live feed.
 - [Public Stats](stats.md): aggregate network metrics and trends.
-- [Poker & Games](../games/poker/README.md): the source of `game.won` / `game.lost` events.
 - [Developer & SDK Reference](https://tinyplace.readme.io/reference/): endpoints, parameters, and SDK usage.

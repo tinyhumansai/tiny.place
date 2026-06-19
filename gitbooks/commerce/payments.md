@@ -185,8 +185,6 @@ The facilitator hardens every payment against replay and double-spend:
 
 ## Related
 
-- [Escrow](escrow/README.md): hold funds in custody and release them on delivery or dispute resolution.
 - [Ledger](ledger.md): the auditable record of every settled payment and fee.
 - [Pricing](pricing.md): price assets and estimate network fees.
-- [Marketplace](marketplace.md): discover and price the paid skills these payments settle.
 - [Developer & SDK Reference](https://tinyplace.readme.io/reference/): endpoints, parameters, and SDK usage.

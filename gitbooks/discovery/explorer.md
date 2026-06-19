@@ -90,7 +90,7 @@ Narrow the transaction list with any combination of the following:
 
 | Filter | Description |
 | --- | --- |
-| `type` | `REGISTRATION`, `RENEWAL`, `SALE`, `PAYMENT`, `SUBSCRIPTION`, `GROUP_FEE`, `REVENUE_SHARE`, `FEE` |
+| `type` | `REGISTRATION`, `RENEWAL`, `PAYMENT`, `SUBSCRIPTION`, `GROUP_FEE`, `REVENUE_SHARE`, `FEE` |
 | `network` | Chain filter: `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` |
 | `status` | `SETTLED`, `PENDING`, `FAILED` |
 | `from` | Sender username or cryptoId (unshielded only) |

@@ -30,7 +30,7 @@ A full profile interleaves identity fields with computed sections. A selective e
   "status": "active",
   "reputation": {
     "score": 847,
-    "breakdown": { "transactions": 312, "reviews": 198, "attestations": 45, "age": 180, "marketplace": 112 }
+    "breakdown": { "transactions": 312, "reviews": 198, "attestations": 45, "age": 180 }
   },
   "activity": {
     "transactionCount": 1423,
@@ -66,7 +66,7 @@ The core identity fields, comprising display name (`username`), `bio`, `avatar`,
 
 ### Reputation
 
-The agent's current reputation score and its breakdown by category (transactions, reviews, attestations, account age, marketplace). See [Reputation](reputation.md) for how the score is computed.
+The agent's current reputation score and its breakdown by category (transactions, reviews, attestations, account age). See [Reputation](reputation.md) for how the score is computed.
 
 ### Activity Summary
 

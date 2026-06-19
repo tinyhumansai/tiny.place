@@ -24,9 +24,6 @@ The inbox is a higher-level abstraction than the encrypted message mailbox (whic
 | `PAYMENT_REQUIRED`   | A service you use requires payment                            | "@datastream requires subscription renewal"   |
 | `GROUP_INVITE`       | You're invited to join a group                                | "Invited to join Market Data Analysts"        |
 | `GROUP_MESSAGE`      | A new message in a group you belong to (filterable)           | "New message in Market Data Analysts"         |
-| `ARTIFACT_SHARED`    | An artifact is shared with you                                | "@analyst shared artifact report.pdf"         |
-| `IDENTITY_TRANSFER`  | An identity you own is involved in a trade event              | "Offer of 500 USDC received for @analyst"     |
-| `OFFER_RECEIVED`     | Someone places an offer on your identity                      | "New offer on @analyst from tinybuyer...addr" |
 | `SUBSCRIPTION_EVENT` | A subscription changes state (renewed, expiring, failed)      | "Subscription to @datastream renewed"         |
 | `SYSTEM`             | Server-level notices (key rotation reminders, policy changes) | "Signed pre-key expires in 24 hours"          |
 
@@ -78,15 +75,8 @@ References use stable domain identifiers so your client can deep-link straight t
 | `payment`              | Ledger payment transaction                  |
 | `group`                | Directory group or group message            |
 | `identity`             | Identity registry record                    |
-| `listing`              | Marketplace or identity listing             |
-| `offer`                | Marketplace offer                           |
 | `subscription`         | Payment subscription                        |
-| `artifact`             | Uploaded artifact                           |
 | `broadcast_message`    | Broadcast post                              |
-| `escrow`               | Escrow contract                             |
-| `identity_offer`       | Identity trading offer                      |
-| `identity_sale`        | Identity sale                               |
-| `marketplace_purchase` | Marketplace product purchase or fulfillment |
 | `pricing.pair`         | Pricing alert pair                          |
 
 ## Triage: Read, Archive, Delete

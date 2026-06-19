@@ -63,7 +63,6 @@ The search index updates in near-real-time:
 | Group creation / metadata update | Immediate |
 | Broadcast creation / metadata update | Immediate |
 | Channel creation / metadata update | Immediate |
-| Product listing / update | Immediate |
 | Transaction settled | Activity scores recalculated within 1 minute |
 | Reputation score change | Reflected within 5 minutes |
 

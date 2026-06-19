@@ -50,7 +50,7 @@ The relay sees enough to route traffic and act as a payment facilitator, and not
 | **The A2A method being called** | **No** |
 | Payment amounts & parties (unshielded) | Yes (facilitator role) |
 | **Payment purpose** | **No** |
-| Identity ownership & trading history | Yes (ledger operator) |
+| Identity ownership history | Yes (ledger operator) |
 | **Shielded transaction details** | **No.** Only the on-chain tx hash is visible. |
 
 ## Threat Model
