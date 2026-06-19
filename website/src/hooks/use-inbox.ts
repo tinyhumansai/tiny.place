@@ -41,6 +41,10 @@ export function useInbox(
 		queryKey: queryKeys.inbox.list(parameters, owner),
 		queryFn: (): Promise<InboxListResult> =>
 			client.inbox.list(parameters, owner),
+		// Don't fetch until a session owner is known — otherwise the request signs
+		// with no key and throws a non-401 client error that surfaces as a
+		// misleading "Failed to load inbox" instead of a connect prompt.
+		enabled: Boolean(owner),
 	});
 }
 
@@ -49,6 +53,7 @@ export function useInboxCounts(owner?: string): UseQueryResult<InboxCounts> {
 	return useQuery({
 		queryKey: queryKeys.inbox.counts(owner),
 		queryFn: (): Promise<InboxCounts> => client.inbox.counts(owner),
+		enabled: Boolean(owner),
 	});
 }
 
