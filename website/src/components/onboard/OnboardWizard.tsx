@@ -565,15 +565,15 @@ export function OnboardWizard(): FunctionComponent {
 type WebOnboardWizardProperties = {
 	activeIdentities?: Array<Identity>;
 	client: TinyPlaceClient;
-	user?: User;
+	user?: User | null;
 	wallet: string;
 };
 
-function hasProfile(user: User | undefined): boolean {
+function hasProfile(user: User | null | undefined): boolean {
 	return Boolean(user?.displayName?.trim());
 }
 
-function hasVerifiedEmail(user: User | undefined): boolean {
+function hasVerifiedEmail(user: User | null | undefined): boolean {
 	return Boolean(user?.emailVerified);
 }
 

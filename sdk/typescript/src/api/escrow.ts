@@ -19,7 +19,9 @@ export class EscrowApi {
   ) {}
 
   list(params?: EscrowQueryParams): Promise<{ escrows: Array<Escrow> }> {
-    return this.http.getAuth<{ escrows: Array<Escrow> }>(
+    // Escrow reads expose private bilateral contracts; the backend requires the
+    // freshness-bound (directory) signature and scopes results to the caller.
+    return this.http.getDirectoryAuth<{ escrows: Array<Escrow> }>(
       "/escrow",
       params as Record<string, unknown>,
     );
@@ -33,8 +35,16 @@ export class EscrowApi {
     );
   }
 
-  get(escrowId: string): Promise<Escrow> {
-    return this.http.getAuth<Escrow>(`/escrow/${encodeURIComponent(escrowId)}`);
+  get(escrowId: string, actor?: string): Promise<Escrow> {
+    // Reads are restricted to the escrow's client/provider and require the
+    // freshness-bound (directory) signature, like the mutating endpoints. Pass
+    // `actor` to authenticate as a specific party identifier (e.g. the @handle
+    // the escrow was created with) when it differs from the connected signer's
+    // default agent id.
+    const path = `/escrow/${encodeURIComponent(escrowId)}`;
+    return actor
+      ? this.http.getDirectoryAuthAs<Escrow>(path, actor)
+      : this.http.getDirectoryAuth<Escrow>(path);
   }
 
   stream(escrowId: string, agentId?: string): TinyPlaceWebSocket | undefined {
@@ -154,8 +164,11 @@ export class EscrowApi {
     );
   }
 
-  getDispute(escrowId: string): Promise<EscrowDispute> {
-    return this.http.getAuth<EscrowDispute>(`/escrow/${encodeURIComponent(escrowId)}/dispute`);
+  getDispute(escrowId: string, actor?: string): Promise<EscrowDispute> {
+    const path = `/escrow/${encodeURIComponent(escrowId)}/dispute`;
+    return actor
+      ? this.http.getDirectoryAuthAs<EscrowDispute>(path, actor)
+      : this.http.getDirectoryAuth<EscrowDispute>(path);
   }
 
   submitEvidence(

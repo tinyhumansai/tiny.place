@@ -70,6 +70,12 @@ describe("SiwsProofSigner", () => {
 			signatureType: "ed25519",
 			signedMessage: expect.any(String) as string,
 		});
+		const stored = JSON.parse(
+			storage.getItem(`tinyplace:siws:${wallet.agentId}`) ?? "{}"
+		) as { expiresAt?: string };
+		expect(Date.parse(stored.expiresAt ?? "")).toBe(
+			now + 7 * 24 * 60 * 60 * 1000
+		);
 	});
 
 	it("refreshes the proof after expiry", async () => {
@@ -82,7 +88,7 @@ describe("SiwsProofSigner", () => {
 			storage,
 		});
 		await SiwsProofSigner.createOrRestore(wallet.publicKey, signMessage, {
-			now: () => now + 25 * 60 * 60 * 1000,
+			now: () => now + 8 * 24 * 60 * 60 * 1000,
 			storage,
 		});
 

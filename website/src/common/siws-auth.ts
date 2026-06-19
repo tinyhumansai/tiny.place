@@ -12,7 +12,7 @@ import {
 
 const SIWS_STORAGE_PREFIX = "tinyplace:siws:";
 const SIWS_PROOF_VERSION = 1;
-const SIWS_TIME_TO_LIVE_MS = 24 * 60 * 60 * 1000;
+const SIWS_TIME_TO_LIVE_MS = 7 * 24 * 60 * 60 * 1000;
 const SIWS_EXPIRY_SKEW_MS = 60 * 1000;
 const SOLANA_NETWORK = process.env["NEXT_PUBLIC_SOLANA_NETWORK"] ?? "devnet";
 

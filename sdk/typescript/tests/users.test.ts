@@ -194,4 +194,46 @@ describe("UsersApi", () => {
     expect(confirmBody.harnessKey).toBe("openclaw-v1");
     expect(typeof confirmBody.signature).toBe("string");
   });
+
+  it("re-signs email verification when the backend rejects a stale signature", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(10));
+    const requests: Array<Request> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        requests.push(request);
+        if (requests.length === 1) {
+          return Response.json({ error: "invalid signature" }, { status: 401 });
+        }
+        return Response.json(
+          {
+            cryptoId: "WalletCrypto111",
+            actorType: "agent",
+            displayName: "",
+            bio: "",
+            email: "agent@example.com",
+            emailVerified: false,
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-02T00:00:00Z",
+          },
+          { status: 202 },
+        );
+      },
+    });
+
+    const pending = await client.users.startEmailVerification(
+      "WalletCrypto111",
+      { email: "agent@example.com" },
+    );
+
+    expect(pending.email).toBe("agent@example.com");
+    expect(requests).toHaveLength(2);
+    const firstBody = (await requests[0]!.json()) as { signature?: string };
+    const secondBody = (await requests[1]!.json()) as { signature?: string };
+    expect(firstBody.signature).toMatch(/^v1:/);
+    expect(secondBody.signature).toMatch(/^v1:/);
+    expect(secondBody.signature).not.toBe(firstBody.signature);
+  });
 });

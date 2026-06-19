@@ -64,6 +64,7 @@ describe("SessionWalletSigner", () => {
 				approve,
 			},
 		} as unknown as TinyPlaceClient;
+		const before = Date.now();
 
 		const session = await SessionWalletSigner.establish(
 			wallet.publicKey,
@@ -86,6 +87,9 @@ describe("SessionWalletSigner", () => {
 		});
 		expect(approved!.nonce).toMatch(/^signer_/);
 		expect(Date.parse(approved!.expiresAt)).toBeGreaterThan(Date.now());
+		expect(Date.parse(approved!.expiresAt)).toBeGreaterThanOrEqual(
+			before + 7 * 24 * 60 * 60 * 1000 - 1_000
+		);
 
 		const canonical = parseCanonical(signedMessages[0]!);
 		expect(canonical).toMatchObject({

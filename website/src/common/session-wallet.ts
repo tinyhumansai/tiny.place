@@ -28,7 +28,7 @@ export type WalletSignTransaction = (
 type ClientFactory = (signer?: Signer) => TinyPlaceClient;
 
 // How long a session grant stays valid before the wallet must re-approve.
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // x402 grant scope. The budget bounds *payments* only; non-payment auth
 // (directory, messaging, groups, …) is gated solely by the grant being active
 // and unexpired, so the session key can act as the wallet for everything.

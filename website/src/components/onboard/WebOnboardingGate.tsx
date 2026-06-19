@@ -29,7 +29,7 @@ function isExcludedPath(pathname: string): boolean {
 }
 
 function setupIncomplete(
-	user: User | undefined,
+	user: User | null | undefined,
 	identities: Array<Identity> | undefined
 ): boolean {
 	const verified = Boolean(user?.emailVerified);
