@@ -9,6 +9,10 @@ use crate::types::{
     ExtendedAgentCard, IdentityListingQueryParams, ResolveResponse, ReverseResponse,
 };
 use crate::util::encode;
+use crate::validation::{
+    validate_agent_card, validate_agent_query_params, validate_extended_agent_card,
+    validate_identity_listing_query_params,
+};
 
 /// Response wrapper for [`DirectoryApi::list_agents`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,6 +47,7 @@ impl DirectoryApi {
         &self,
         params: Option<&AgentQueryParams>,
     ) -> Result<ListAgentsResponse> {
+        validate_agent_query_params(params)?;
         let query = params.map(agent_query_to_query).unwrap_or_default();
         self.http.get("/directory/agents", &query).await
     }
@@ -92,6 +97,7 @@ impl DirectoryApi {
         agent_id: &str,
         card: &ExtendedAgentCard,
     ) -> Result<ExtendedAgentCard> {
+        validate_extended_agent_card(card)?;
         self.http
             .put_directory_auth(
                 &format!("/directory/agents/{}/extended", encode(agent_id)),
@@ -101,6 +107,7 @@ impl DirectoryApi {
     }
 
     pub async fn upsert_agent(&self, agent_id: &str, card: &AgentCard) -> Result<AgentCard> {
+        validate_agent_card(card)?;
         self.http
             .put_directory_auth(
                 &format!("/directory/agents/{}", encode(agent_id)),
@@ -124,6 +131,7 @@ impl DirectoryApi {
         &self,
         params: Option<&IdentityListingQueryParams>,
     ) -> Result<DirectoryIdentityListingsResponse> {
+        validate_identity_listing_query_params(params)?;
         let query = params.map(identity_query_to_query).unwrap_or_default();
         self.http.get("/directory/identities", &query).await
     }
