@@ -5,11 +5,12 @@ use serde_json::json;
 use crate::error::Result;
 use crate::http::{GraphQLAuth, HttpClient};
 use crate::types::{
-    GqlComment, GqlHomeFeedResult, GqlIdentity, GqlIdentityBidListResult, GqlIdentityListingDetail,
-    GqlIdentityListingListResult, GqlIdentityOfferListResult, GqlIdentitySaleListResult,
-    GqlJobListResult, GqlJobPosting, GqlLedgerTransaction, GqlLedgerTransactionListResult,
-    GqlPostDetail, GqlPostLikerListResult, GqlPostListResult, GqlProduct, GqlProductListResult,
-    GqlProfile, Identity, JobQueryParams, LedgerListParams, ProductQueryParams,
+    GqlBounty, GqlComment, GqlHomeFeedResult, GqlIdentity, GqlIdentityBidListResult,
+    GqlIdentityListingDetail, GqlIdentityListingListResult, GqlIdentityOfferListResult,
+    GqlIdentitySaleListResult, GqlJobListResult, GqlJobPosting, GqlLedgerTransaction,
+    GqlLedgerTransactionListResult, GqlPostDetail, GqlPostLikerListResult, GqlPostListResult,
+    GqlProduct, GqlProductListResult, GqlProfile, Identity, JobQueryParams, LedgerListParams,
+    ProductQueryParams,
 };
 
 #[derive(Clone)]
@@ -67,6 +68,14 @@ pub struct IdentityListingDetailGraphQLParams {
     pub bid_offset: Option<i64>,
     pub history_limit: Option<i64>,
     pub history_offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct BountyGraphQLParams {
+    pub status: Option<String>,
+    pub creator: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -544,6 +553,39 @@ impl GraphQLApi {
             .await?;
         Ok(data.ledger_transaction)
     }
+
+    /// Bounties, newest first, optionally filtered by status / creator. Public.
+    pub async fn bounties(&self, params: Option<&BountyGraphQLParams>) -> Result<Vec<GqlBounty>> {
+        #[derive(serde::Deserialize)]
+        struct Data {
+            bounties: Vec<GqlBounty>,
+        }
+        let variables = json!({
+            "status": params.and_then(|p| p.status.as_deref()),
+            "creator": params.and_then(|p| p.creator.as_deref()),
+            "limit": params.and_then(|p| p.limit),
+            "offset": params.and_then(|p| p.offset),
+        });
+        let data: Data = self
+            .http
+            .graphql(BOUNTIES_QUERY, Some(&variables), GraphQLAuth::None, None)
+            .await?;
+        Ok(data.bounties)
+    }
+
+    /// A single bounty by id. Public.
+    pub async fn bounty(&self, id: &str) -> Result<Option<GqlBounty>> {
+        #[derive(serde::Deserialize)]
+        struct Data {
+            bounty: Option<GqlBounty>,
+        }
+        let variables = json!({ "id": id });
+        let data: Data = self
+            .http
+            .graphql(BOUNTY_QUERY, Some(&variables), GraphQLAuth::None, None)
+            .await?;
+        Ok(data.bounty)
+    }
 }
 
 pub type GqlAgentCard = crate::types::AgentCard;
@@ -728,5 +770,21 @@ query LedgerTransactions($agent: String, $type: String, $network: String, $statu
 const LEDGER_TRANSACTION_QUERY: &str = r#"
 query LedgerTransaction($id: ID!) {
   ledgerTransaction(id: $id) { txId visibility type from to amount asset network timestamp reference { kind id parentTxId rate } onChainTx status metadata }
+}
+"#;
+
+const BOUNTIES_QUERY: &str = r#"
+query Bounties($status: String, $creator: String, $limit: Int, $offset: Int) {
+  bounties(status: $status, creator: $creator, limit: $limit, offset: $offset) {
+    bountyId creator title description reward { amount asset network } status submissionCount commentCount winnerSubmissionId winnerAgent startAt deadline createdAt updatedAt
+  }
+}
+"#;
+
+const BOUNTY_QUERY: &str = r#"
+query Bounty($id: ID!) {
+  bounty(id: $id) {
+    bountyId creator title description reward { amount asset network } status submissionCount commentCount winnerSubmissionId winnerAgent startAt deadline createdAt updatedAt
+  }
 }
 "#;

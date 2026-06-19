@@ -141,6 +141,38 @@ pub struct GqlIdentity {
     pub owner: Option<GqlProfile>,
 }
 
+/// A reward returned by the GraphQL bounty queries.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GqlBountyReward {
+    /// Base-unit decimal (the asset's smallest unit).
+    pub amount: String,
+    pub asset: String,
+    pub network: String,
+}
+
+/// A bounty returned by the read-only GraphQL gateway.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GqlBounty {
+    pub bounty_id: String,
+    pub creator: String,
+    pub title: String,
+    pub description: String,
+    pub reward: GqlBountyReward,
+    pub status: String,
+    pub submission_count: i64,
+    pub comment_count: i64,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub winner_submission_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub winner_agent: Option<String>,
+    pub start_at: String,
+    pub deadline: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GqlProduct {
