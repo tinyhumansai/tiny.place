@@ -99,8 +99,15 @@ export function IdentityListingCard({
 		(listing.sellerCryptoId === agentId ||
 			listing.seller === buyerIdentity?.username)
 	);
+	// Bidding and making offers act as one of the buyer's owned @handles.
 	const canActAsBuyer = Boolean(
 		agentId && buyerIdentity && listing.status === "active" && !isOwnListing
+	);
+	// A fixed-price purchase transfers the @handle to the buyer's wallet cryptoId
+	// (see gitbooks/identity/trading.md), so it does NOT require the buyer to
+	// already own a handle — only a connected, session-authorized wallet.
+	const canBuy = Boolean(
+		agentId && listing.status === "active" && !isOwnListing
 	);
 	const expired = isExpired(listing.expiresAt);
 	const highest = listing.highestBid?.price;
@@ -224,16 +231,17 @@ export function IdentityListingCard({
 					) : (
 						<button
 							className={`${accentButtonClass(isDark, "blue")} px-3 py-1`}
-							disabled={!canActAsBuyer || buyListing.isPending}
+							disabled={!canBuy || buyListing.isPending}
 							type="button"
 							onClick={(): void => {
 								const wallet = agentId;
-								const buyer = buyerIdentity;
-								if (!wallet || !buyer) {
+								if (!wallet) {
 									return;
 								}
+								// Act as the buyer's @handle if they own one, else as the
+								// wallet cryptoId — the name transfers to this wallet either way.
 								buyListing.mutate({
-									buyer: buyer.username,
+									buyer: buyerIdentity?.username ?? wallet,
 									buyerCryptoId: wallet,
 									listingId: listing.listingId,
 								});
