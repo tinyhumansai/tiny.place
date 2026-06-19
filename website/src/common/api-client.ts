@@ -17,7 +17,7 @@ const API_BASE_URL =
  */
 export function createClient(
 	signer?: Signer,
-	onAuthInvalid?: (status: number, body: unknown) => void,
+	onAuthInvalid?: (status: number, body: unknown) => Promise<void> | void,
 	encryption?: { store: SessionStore }
 ): TinyPlaceClient {
 	return new TinyPlaceClient({
@@ -37,7 +37,7 @@ export function createClient(
  */
 export function createOnboardClient(
 	onboardGrant: OnboardGrantCredential,
-	onAuthInvalid?: (status: number, body: unknown) => void
+	onAuthInvalid?: (status: number, body: unknown) => Promise<void> | void
 ): TinyPlaceClient {
 	return new TinyPlaceClient({
 		baseUrl: API_BASE_URL,

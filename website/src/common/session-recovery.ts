@@ -5,7 +5,11 @@
 //
 // Kept outside React so the SDK client (plain TS) can reach it without a hook.
 
-type SessionInvalidHandler = () => void;
+export type SessionInvalidReason = {
+	forceResign?: boolean;
+};
+
+type SessionInvalidHandler = (reason?: SessionInvalidReason) => void;
 
 let handler: SessionInvalidHandler | undefined;
 
@@ -17,6 +21,6 @@ export function setSessionInvalidHandler(
 }
 
 /** Signals that the current session was rejected and should be re-established. */
-export function notifySessionInvalid(): void {
-	handler?.();
+export function notifySessionInvalid(reason?: SessionInvalidReason): void {
+	handler?.(reason);
 }

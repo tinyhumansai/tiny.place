@@ -14,6 +14,16 @@ type ApiProviderProperties = {
 	children: ReactNode;
 };
 
+function isInvalidSignature(body: unknown): boolean {
+	if (typeof body === "string") {
+		return body.toLowerCase().includes("invalid signature");
+	}
+	if (body && typeof body === "object" && "error" in body) {
+		return String(body.error).toLowerCase().includes("invalid signature");
+	}
+	return false;
+}
+
 export const ApiProvider = ({
 	children,
 }: ApiProviderProperties): FunctionComponent => {
@@ -24,8 +34,8 @@ export const ApiProvider = ({
 	// a valid session.
 	const client = useMemo(
 		() =>
-			createClient(signer, () => {
-				notifySessionInvalid();
+			createClient(signer, (_status, body) => {
+				notifySessionInvalid({ forceResign: isInvalidSignature(body) });
 			}),
 		[signer]
 	);

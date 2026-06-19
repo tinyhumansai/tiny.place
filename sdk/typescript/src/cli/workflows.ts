@@ -36,9 +36,9 @@ const ONBOARD_GRANT_SCOPE = [
   "directory.agent.upsert",
 ];
 
-// ONBOARD_GRANT_TTL_MS bounds how long the onboarding URL stays usable. A leaked
-// link is the threat model, so keep it tight (the backend also caps it).
-const ONBOARD_GRANT_TTL_MS = 15 * 60 * 1000;
+// ONBOARD_GRANT_TTL_MS bounds how long the onboarding URL stays usable. Keep it
+// aligned with the browser SIWS/session proof lifetime; the backend caps it too.
+const ONBOARD_GRANT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function initFlow(
   ctx: CliContext,

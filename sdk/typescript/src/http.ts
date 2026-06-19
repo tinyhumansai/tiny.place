@@ -6,6 +6,8 @@ import {
   type AdminSigningOptions,
 } from "./auth.js";
 
+export type BodySigner<TBody = any> = (body: TBody) => Promise<TBody> | TBody;
+
 export class TinyPlaceError extends Error {
   public readonly paymentRequired?: PaymentRequiredChallenge;
   public readonly headers: Record<string, string>;
@@ -66,7 +68,7 @@ export interface HttpClientOptions {
    * thrown. Lets the caller react to an invalidated session (e.g. a revoked or
    * expired approved-signer grant) by re-authenticating. Must not throw.
    */
-  onAuthInvalid?: (status: number, body: unknown) => void;
+  onAuthInvalid?: (status: number, body: unknown) => Promise<void> | void;
 }
 
 function buildQuery(params: Record<string, unknown>): string {
@@ -96,7 +98,7 @@ export class HttpClient {
   private readonly admin?: AdminSigningOptions;
   private readonly onboardGrant?: OnboardGrantCredential;
   private readonly _fetch: typeof globalThis.fetch;
-  private readonly onAuthInvalid?: (status: number, body: unknown) => void;
+  private readonly onAuthInvalid?: (status: number, body: unknown) => Promise<void> | void;
 
   constructor(options: HttpClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
@@ -132,10 +134,54 @@ export class HttpClient {
       adminAuth?: boolean;
       headers?: Record<string, string>;
       responseType?: "json" | "text" | "raw";
+      signBody?: BodySigner;
     },
   ): Promise<T> {
     const queryString = options?.query ? buildQuery(options.query) : "";
     const url = `${this.baseUrl}${path}${queryString}`;
+    let body = options?.body;
+    if (options?.signBody && body != null) {
+      body = await options.signBody(body);
+    }
+
+    try {
+      return await this.sendRequest<T>(method, path, queryString, url, {
+        ...options,
+        body,
+      });
+    } catch (error) {
+      if (!shouldRetryInvalidSignature(error) || !options?.signBody) {
+        throw error;
+      }
+      const nextBody = await options.signBody(stripSignature(body));
+      if (bodySignature(nextBody) === bodySignature(body)) {
+        throw error;
+      }
+      return this.sendRequest<T>(method, path, queryString, url, {
+        ...options,
+        body: nextBody,
+      });
+    }
+  }
+
+  private async sendRequest<T>(
+    method: string,
+    path: string,
+    queryString: string,
+    url: string,
+    options?: {
+      body?: unknown;
+      query?: Record<string, unknown>;
+      signed?: boolean;
+      directoryAuth?: boolean;
+      directoryActor?: string;
+      agentAuth?: boolean;
+      adminAuth?: boolean;
+      headers?: Record<string, string>;
+      responseType?: "json" | "text" | "raw";
+      signBody?: BodySigner;
+    },
+  ): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...(options?.headers ?? {}),
@@ -197,7 +243,7 @@ export class HttpClient {
         parsed = errorBody;
       }
       if (response.status === 401 && this.onAuthInvalid) {
-        this.onAuthInvalid(response.status, parsed);
+        await this.onAuthInvalid(response.status, parsed);
       }
       throw new TinyPlaceError(
         response.status,
@@ -365,8 +411,8 @@ export class HttpClient {
     return unwrapGraphQL<T>(result);
   }
 
-  post<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("POST", path, { body, signed: true });
+  post<T>(path: string, body?: unknown, signBody?: BodySigner): Promise<T> {
+    return this.request<T>("POST", path, { body, signed: true, signBody });
   }
 
   postAdmin<T>(path: string, body?: unknown): Promise<T> {
@@ -377,8 +423,9 @@ export class HttpClient {
     path: string,
     body?: unknown,
     headers?: Record<string, string>,
+    signBody?: BodySigner,
   ): Promise<T> {
-    return this.request<T>("POST", path, { body, headers });
+    return this.request<T>("POST", path, { body, headers, signBody });
   }
 
   postPublicRaw(
@@ -393,43 +440,55 @@ export class HttpClient {
     });
   }
 
-  put<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("PUT", path, { body, signed: true });
+  put<T>(path: string, body?: unknown, signBody?: BodySigner): Promise<T> {
+    return this.request<T>("PUT", path, { body, signed: true, signBody });
   }
 
   putAdmin<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("PUT", path, { body, adminAuth: true });
   }
 
-  postDirectoryAuth<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("POST", path, { body, directoryAuth: true });
+  postDirectoryAuth<T>(
+    path: string,
+    body?: unknown,
+    signBody?: BodySigner,
+  ): Promise<T> {
+    return this.request<T>("POST", path, { body, directoryAuth: true, signBody });
   }
 
   postDirectoryAuthAs<T>(
     path: string,
     actor: string,
     body?: unknown,
+    signBody?: BodySigner,
   ): Promise<T> {
     return this.request<T>("POST", path, {
       body,
       directoryAuth: true,
       directoryActor: actor,
+      signBody,
     });
   }
 
-  putDirectoryAuth<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("PUT", path, { body, directoryAuth: true });
+  putDirectoryAuth<T>(
+    path: string,
+    body?: unknown,
+    signBody?: BodySigner,
+  ): Promise<T> {
+    return this.request<T>("PUT", path, { body, directoryAuth: true, signBody });
   }
 
   putDirectoryAuthAs<T>(
     path: string,
     actor: string,
     body?: unknown,
+    signBody?: BodySigner,
   ): Promise<T> {
     return this.request<T>("PUT", path, {
       body,
       directoryAuth: true,
       directoryActor: actor,
+      signBody,
     });
   }
 
@@ -441,8 +500,8 @@ export class HttpClient {
     return this.request<T>("POST", path, { body, agentAuth: true });
   }
 
-  delete<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("DELETE", path, { body, signed: true });
+  delete<T>(path: string, body?: unknown, signBody?: BodySigner): Promise<T> {
+    return this.request<T>("DELETE", path, { body, signed: true, signBody });
   }
 
   deletePublic<T>(
@@ -467,8 +526,16 @@ export class HttpClient {
     });
   }
 
-  deleteDirectoryAuth<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("DELETE", path, { body, directoryAuth: true });
+  deleteDirectoryAuth<T>(
+    path: string,
+    body?: unknown,
+    signBody?: BodySigner,
+  ): Promise<T> {
+    return this.request<T>("DELETE", path, {
+      body,
+      directoryAuth: true,
+      signBody,
+    });
   }
 
   deleteAgentAuth<T>(path: string, body?: unknown): Promise<T> {
@@ -479,13 +546,44 @@ export class HttpClient {
     path: string,
     actor: string,
     body?: unknown,
+    signBody?: BodySigner,
   ): Promise<T> {
     return this.request<T>("DELETE", path, {
       body,
       directoryAuth: true,
       directoryActor: actor,
+      signBody,
     });
   }
+}
+
+function shouldRetryInvalidSignature(error: unknown): boolean {
+  if (!(error instanceof TinyPlaceError) || error.status !== 401) {
+    return false;
+  }
+  const body = error.body;
+  if (typeof body === "string") {
+    return body.toLowerCase().includes("invalid signature");
+  }
+  if (body && typeof body === "object" && "error" in body) {
+    return String(body.error).toLowerCase().includes("invalid signature");
+  }
+  return false;
+}
+
+function stripSignature(body: unknown): unknown {
+  if (!body || typeof body !== "object" || !("signature" in body)) {
+    return body;
+  }
+  const { signature: _signature, ...rest } = body as Record<string, unknown>;
+  return rest;
+}
+
+function bodySignature(body: unknown): unknown {
+  if (!body || typeof body !== "object" || !("signature" in body)) {
+    return undefined;
+  }
+  return (body as { signature?: unknown }).signature;
 }
 
 function responseHeaders(headers: Headers): Record<string, string> {

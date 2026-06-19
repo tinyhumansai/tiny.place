@@ -504,7 +504,7 @@ describe("tinyplace CLI", () => {
     expect(parsed.wallet.agentId).toBeTruthy();
     // The bearer grant rides in the URL fragment, never the query string.
     expect(parsed.onboardUrl).toContain("/onboard#grant=");
-    expect(parsed.onboardExpiresInMinutes).toBe(15);
+    expect(parsed.onboardExpiresInMinutes).toBe(10080);
     expect(parsed.next.join(" ")).toContain("browser");
     // init no longer performs profile/card/registration/funding calls — those
     // move to the web flow. It signs the grant offline and makes no requests.

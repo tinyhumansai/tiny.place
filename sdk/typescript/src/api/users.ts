@@ -1,7 +1,7 @@
 import type { SigningKey } from "../auth.js";
 import { signFreshCanonicalPayload } from "../auth.js";
 import { canonicalPayload } from "../crypto.js";
-import { TinyPlaceError, type HttpClient } from "../http.js";
+import type { HttpClient } from "../http.js";
 import type {
   User,
   UserEmailVerificationConfirmRequest,
@@ -37,14 +37,12 @@ export class UsersApi {
     update: UserProfileUpdate,
   ): Promise<User> {
     update = withDefaultHarnessKey(update, this.harnessKey);
-    return this.withFreshSignatureRetry(
+    return this.http.putDirectoryAuth<User>(
+      `/users/${encodeURIComponent(cryptoId)}/profile`,
       update,
-      (body) => userProfileSignaturePayload(cryptoId, body),
-      (body) =>
-        this.http.putDirectoryAuth<User>(
-          `/users/${encodeURIComponent(cryptoId)}/profile`,
-          body,
-        ),
+      this.freshBodySigner((body) =>
+        userProfileSignaturePayload(cryptoId, body),
+      ),
     );
   }
 
@@ -58,14 +56,12 @@ export class UsersApi {
     request: UserEmailVerificationRequest,
   ): Promise<User> {
     request = withDefaultHarnessKey(request, this.harnessKey);
-    return this.withFreshSignatureRetry(
+    return this.http.postDirectoryAuth<User>(
+      `/users/${encodeURIComponent(cryptoId)}/email/verification`,
       request,
-      (body) => userEmailStartSignaturePayload(cryptoId, body),
-      (body) =>
-        this.http.postDirectoryAuth<User>(
-          `/users/${encodeURIComponent(cryptoId)}/email/verification`,
-          body,
-        ),
+      this.freshBodySigner((body) =>
+        userEmailStartSignaturePayload(cryptoId, body),
+      ),
     );
   }
 
@@ -78,69 +74,34 @@ export class UsersApi {
     request: UserEmailVerificationConfirmRequest,
   ): Promise<User> {
     request = withDefaultHarnessKey(request, this.harnessKey);
-    return this.withFreshSignatureRetry(
+    return this.http.postDirectoryAuth<User>(
+      `/users/${encodeURIComponent(cryptoId)}/email/verification/confirm`,
       request,
-      (body) => userEmailConfirmSignaturePayload(cryptoId, body),
-      (body) =>
-        this.http.postDirectoryAuth<User>(
-          `/users/${encodeURIComponent(cryptoId)}/email/verification/confirm`,
-          body,
-        ),
+      this.freshBodySigner((body) =>
+        userEmailConfirmSignaturePayload(cryptoId, body),
+      ),
     );
   }
 
-  private async withFreshSignatureRetry<TBody extends { signature?: string }>(
-    body: TBody,
+  private freshBodySigner<TBody extends { signature?: string }>(
     payload: (body: TBody) => string,
-    send: (body: TBody) => Promise<User>,
-  ): Promise<User> {
-    const signed = await this.signBody(body, payload);
-    try {
-      return await send(signed);
-    } catch (error) {
-      if (!shouldRetryFreshSignature(error) || !this.signingKey) {
-        throw error;
+  ): ((body: TBody) => Promise<TBody>) | undefined {
+    if (!this.signingKey) {
+      return undefined;
+    }
+    return async (body): Promise<TBody> => {
+      if (body.signature) {
+        return body;
       }
-      return send(await this.signBody(withoutSignature(signed), payload));
-    }
-  }
-
-  private async signBody<TBody extends { signature?: string }>(
-    body: TBody,
-    payload: (body: TBody) => string,
-  ): Promise<TBody> {
-    if (!this.signingKey || body.signature) {
-      return body;
-    }
-    return {
-      ...body,
-      signature: await signFreshCanonicalPayload(
-        this.signingKey,
-        payload(body),
-      ),
+      return {
+        ...body,
+        signature: await signFreshCanonicalPayload(
+          this.signingKey as SigningKey,
+          payload(body),
+        ),
+      };
     };
   }
-}
-
-function shouldRetryFreshSignature(error: unknown): boolean {
-  if (!(error instanceof TinyPlaceError) || error.status !== 401) {
-    return false;
-  }
-  const body = error.body;
-  if (typeof body === "string") {
-    return body.toLowerCase().includes("invalid signature");
-  }
-  if (body && typeof body === "object" && "error" in body) {
-    return String(body.error).toLowerCase().includes("invalid signature");
-  }
-  return false;
-}
-
-function withoutSignature<TBody extends { signature?: string }>(
-  body: TBody,
-): TBody {
-  const { signature: _signature, ...unsigned } = body;
-  return unsigned as TBody;
 }
 
 /**

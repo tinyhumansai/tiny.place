@@ -10,6 +10,7 @@ import {
 	useSolana,
 } from "@phantom/react-sdk";
 import { Connection, PublicKey, type Transaction } from "@solana/web3.js";
+import { clearSession as clearStoredSession } from "@tinyhumansai/tinyplace";
 import {
 	useCallback,
 	useEffect,
@@ -30,6 +31,7 @@ import {
 	primarySolanaRpcUrl,
 	solanaConnectionConfig,
 } from "@src/common/solana-rpc";
+import { clearSiwsProof } from "@src/common/siws-auth";
 import {
 	ConnectionContext,
 	WalletStateContext,
@@ -330,7 +332,7 @@ const WalletAuthSync = (): FunctionComponent => {
 	}, [loginSignature, signMessage]);
 
 	const establish = useCallback(
-		(throttle: boolean): void => {
+		(throttle: boolean, forceResign = false): void => {
 			if (!(connected && publicKey && signMessage)) return;
 			if (inFlight.current) return;
 			const now = Date.now();
@@ -344,7 +346,8 @@ const WalletAuthSync = (): FunctionComponent => {
 			// direct WalletSigner so custom per-request signatures still work.
 			inFlight.current = SiwsProofSigner.createOrRestore(
 				publicKeyBytes,
-				confirmLoginSignature
+				confirmLoginSignature,
+				{ forceNew: forceResign }
 			)
 				.then((signer) => {
 					if (activeWalletId.current !== walletId) return;
@@ -396,13 +399,18 @@ const WalletAuthSync = (): FunctionComponent => {
 	// Re-establish when the backend rejects the session mid-use (revoked or
 	// expired grant surfaced as a 401/403 via the API client).
 	useEffect(() => {
-		setSessionInvalidHandler(() => {
-			establish(true);
+		setSessionInvalidHandler((reason) => {
+			const walletId = publicKey?.toBase58();
+			if (reason?.forceResign && walletId) {
+				clearSiwsProof(walletId);
+				void clearStoredSession(walletId);
+			}
+			establish(true, Boolean(reason?.forceResign));
 		});
 		return (): void => {
 			setSessionInvalidHandler(undefined);
 		};
-	}, [establish]);
+	}, [establish, publicKey]);
 
 	return loginSignature ? (
 		<LoginSignatureDialog
