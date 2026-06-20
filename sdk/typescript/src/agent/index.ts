@@ -16,6 +16,19 @@ export type { WithAutoPaymentOptions, X402Signer } from "./x402-auto.js";
 export { normalizeHandle } from "./handles.js";
 
 export {
+  isMessagingKey,
+  publishKeys,
+  readMessages,
+  resolveRecipientKey,
+  sendMessage,
+} from "./messaging.js";
+export type {
+  PublishKeysResult,
+  ReadMessage,
+  SendMessageResult,
+} from "./messaging.js";
+
+export {
   buyDomain,
   checkDomain,
   discoverAgents,
