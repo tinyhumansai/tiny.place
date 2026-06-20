@@ -4,6 +4,7 @@ import { Signer } from "./signer.js";
 import { EncryptionContext } from "./messaging/encryption.js";
 import type { SessionStore } from "./signal/index.js";
 import { HttpClient } from "./http.js";
+import type { RetryOptions } from "./http.js";
 import { TinyPlaceWebSocket } from "./websocket.js";
 import { A2AApi } from "./api/a2a.js";
 import { AdminApi } from "./api/admin.js";
@@ -76,6 +77,17 @@ export interface TinyPlaceClientOptions {
    * invalidated session and re-auth.
    */
   onAuthInvalid?: (status: number, body: unknown) => Promise<void> | void;
+  /**
+   * Per-request timeout in milliseconds before a slow/hung backend is aborted
+   * (and retried when eligible). Default `30000`; `0` disables it.
+   */
+  timeoutMs?: number;
+  /**
+   * Automatic retry-with-backoff for transient failures (network errors,
+   * 5xx/429). Defaults to retrying idempotent reads twice; pass `{ retries: 0 }`
+   * to disable.
+   */
+  retry?: RetryOptions;
 }
 
 export class TinyPlaceClient {
@@ -142,6 +154,8 @@ export class TinyPlaceClient {
       onboardGrant: options.onboardGrant,
       fetch: options.fetch,
       onAuthInvalid: options.onAuthInvalid,
+      timeoutMs: options.timeoutMs,
+      retry: options.retry,
     });
 
     const wsFactory = (
