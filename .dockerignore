@@ -12,6 +12,10 @@ website/playwright-report
 website/storybook-static
 
 # Rust / Anchor build artifacts (large, not needed for the web build).
+# Match every Cargo/Anchor target dir anywhere in the tree — the Rust SDK
+# (sdk/rust/target) alone is tens of GB and was previously shipped to the
+# daemon on every build, dominating the build-context transfer.
+**/target
 contracts-sol/target
 fuzz/target
 
