@@ -52,15 +52,22 @@ export interface SessionStore {
   getSession(address: string): Promise<SessionState | null>;
   storeSession(address: string, session: SessionState): Promise<void>;
   removeSession(address: string): Promise<void>;
+}
 
-  // Optional group sender-key persistence. Implemented by stores that back group
-  // messaging (e.g. the node FileSessionStore); omitted by stores that only need
-  // 1:1 sessions, so existing implementations stay valid.
-  hasSignedPreKey?(): Promise<boolean>;
-  getOwnSenderKey?(groupId: string): Promise<OwnSenderKeyEntry | null>;
-  setOwnSenderKey?(groupId: string, entry: OwnSenderKeyEntry): Promise<void>;
-  getReceiverSenderKey?(key: string): Promise<SenderKeyReceiverState | null>;
-  setReceiverSenderKey?(
+/**
+ * The optional group sender-key capability, modeled as a SEPARATE interface so
+ * {@link SessionStore} stays unchanged (a 1:1-only store, or a third-party store
+ * with its own sync group methods, keeps conforming). The node FileSessionStore
+ * implements both. Use a structural check (`"getOwnSenderKey" in store`) or accept
+ * a `GroupSessionStore` where group messaging is required.
+ */
+export interface GroupSessionStore {
+  /** True once a signed pre-key has been generated and stored. */
+  hasSignedPreKey(): Promise<boolean>;
+  getOwnSenderKey(groupId: string): Promise<OwnSenderKeyEntry | null>;
+  setOwnSenderKey(groupId: string, entry: OwnSenderKeyEntry): Promise<void>;
+  getReceiverSenderKey(key: string): Promise<SenderKeyReceiverState | null>;
+  setReceiverSenderKey(
     key: string,
     state: SenderKeyReceiverState,
   ): Promise<void>;

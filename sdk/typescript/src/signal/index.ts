@@ -12,6 +12,7 @@ export type {
   PreKeyPair,
   SignedPreKeyPair,
   SessionStore,
+  GroupSessionStore,
   OwnSenderKeyEntry,
 } from "./store.js";
 

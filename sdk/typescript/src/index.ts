@@ -225,6 +225,7 @@ export {
 } from "./signal/index.js";
 export type {
   SessionStore,
+  GroupSessionStore,
   SessionState,
   OwnSenderKeyEntry,
   PreKeyPair,

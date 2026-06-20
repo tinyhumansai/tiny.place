@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fromBase64, toBase64 } from "../signal/index.js";
 import type {
+  GroupSessionStore,
   OwnSenderKeyEntry,
   PreKeyPair,
   SenderKeyReceiverState,
@@ -129,7 +130,7 @@ function deserializeSession(value: SerializedSession): SessionState {
  * seed and supplied at construction, never written to disk by the store. The whole
  * file is read once and rewritten on each mutation — fine for a single-process CLI.
  */
-export class FileSessionStore implements SessionStore {
+export class FileSessionStore implements SessionStore, GroupSessionStore {
   private cache?: PersistShape;
 
   constructor(
