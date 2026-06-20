@@ -22,7 +22,7 @@ import {
 import type { BakedTexture, TextureFactory } from "./textures";
 import type { FurnitureConfig, InteractionPoint } from "./types";
 
-type PartShape = "cuboid" | "decal" | "chair";
+type PartShape = "cuboid" | "decal" | "chair" | "buildingDetail";
 
 interface FurniturePart {
 	shape: PartShape;
@@ -34,6 +34,12 @@ interface FurniturePart {
 	lift?: number;
 	tint?: number;
 	alpha?: number;
+	// Building-detail overlay parameters.
+	windowRows?: number;
+	windowColumns?: number;
+	windowColor?: number;
+	roofColor?: number;
+	doorColor?: number;
 }
 
 interface FurnitureBlueprint {
@@ -58,6 +64,47 @@ function sit(
 	seatDropY = 6
 ): InteractionPoint {
 	return { tileOffsetX, tileOffsetY, action: "sit", facing, seatDropY };
+}
+
+/** A pixelated building: a tinted body cuboid plus an untinted detail overlay. */
+function buildingBlueprint(options: {
+	footprintWidth: number;
+	footprintHeight: number;
+	height: number;
+	bodyTint: number;
+	windowRows: number;
+	windowColumns: number;
+	windowColor: number;
+	roofColor: number;
+	doorColor: number;
+}): FurnitureBlueprint {
+	return {
+		footprintWidth: options.footprintWidth,
+		footprintHeight: options.footprintHeight,
+		solid: true,
+		baseTint: options.bodyTint,
+		parts: [
+			{
+				shape: "cuboid",
+				footprintWidth: options.footprintWidth,
+				footprintHeight: options.footprintHeight,
+				height: options.height,
+			},
+			{
+				shape: "buildingDetail",
+				footprintWidth: options.footprintWidth,
+				footprintHeight: options.footprintHeight,
+				height: options.height,
+				tint: 0xffffff,
+				windowRows: options.windowRows,
+				windowColumns: options.windowColumns,
+				windowColor: options.windowColor,
+				roofColor: options.roofColor,
+				doorColor: options.doorColor,
+			},
+		],
+		interactionPoints: [],
+	};
 }
 
 export const FURNITURE_BLUEPRINTS: Record<string, FurnitureBlueprint> = {
@@ -528,6 +575,80 @@ export const FURNITURE_BLUEPRINTS: Record<string, FurnitureBlueprint> = {
 		],
 		interactionPoints: [],
 	},
+	// ---- Outdoor buildings --------------------------------------------------
+	house: buildingBlueprint({
+		footprintWidth: 3,
+		footprintHeight: 3,
+		height: 48,
+		bodyTint: 0xb98a6b,
+		windowRows: 2,
+		windowColumns: 2,
+		windowColor: 0xffe9a8,
+		roofColor: 0x9a4b3c,
+		doorColor: 0x5a3d28,
+	}),
+	shop: buildingBlueprint({
+		footprintWidth: 3,
+		footprintHeight: 2,
+		height: 40,
+		bodyTint: 0xc98b6a,
+		windowRows: 1,
+		windowColumns: 3,
+		windowColor: 0x9ad0ec,
+		roofColor: 0x3f7d6a,
+		doorColor: 0x4a3526,
+	}),
+	cafe: buildingBlueprint({
+		footprintWidth: 3,
+		footprintHeight: 2,
+		height: 44,
+		bodyTint: 0xa86b8a,
+		windowRows: 1,
+		windowColumns: 3,
+		windowColor: 0xffd9a8,
+		roofColor: 0xb04a4a,
+		doorColor: 0x5a3d28,
+	}),
+	tower: buildingBlueprint({
+		footprintWidth: 2,
+		footprintHeight: 2,
+		height: 96,
+		bodyTint: 0x8a9bb0,
+		windowRows: 5,
+		windowColumns: 2,
+		windowColor: 0xffe9a8,
+		roofColor: 0x55606e,
+		doorColor: 0x2a2d3a,
+	}),
+	fountain: {
+		footprintWidth: 2,
+		footprintHeight: 2,
+		solid: true,
+		baseTint: 0x9298a4,
+		parts: [
+			{ shape: "cuboid", footprintWidth: 2, footprintHeight: 2, height: 10 },
+			{
+				shape: "decal",
+				footprintWidth: 1.6,
+				footprintHeight: 1.6,
+				offsetTileX: 0.2,
+				offsetTileY: 0.2,
+				lift: 10,
+				tint: 0x5aa9e6,
+			},
+			{
+				shape: "cuboid",
+				footprintWidth: 0.36,
+				footprintHeight: 0.36,
+				height: 16,
+				offsetTileX: 0.82,
+				offsetTileY: 0.82,
+				lift: 10,
+				tint: 0xbfe3f5,
+			},
+		],
+		interactionPoints: [],
+	},
 };
 
 /** A station an agent can occupy: the world tile plus what it does there. */
@@ -604,6 +725,19 @@ export class FurnitureSprite extends Container {
 					return factory.decal(
 						part.footprintWidth ?? 1,
 						part.footprintHeight ?? 1
+					);
+				case "buildingDetail":
+					return factory.buildingDetail(
+						part.footprintWidth ?? 2,
+						part.footprintHeight ?? 2,
+						part.height ?? 40,
+						{
+							windowRows: part.windowRows ?? 2,
+							windowColumns: part.windowColumns ?? 2,
+							windowColor: part.windowColor ?? 0xffe9a8,
+							roofColor: part.roofColor ?? 0x8a4b3c,
+							doorColor: part.doorColor ?? 0x4a3526,
+						}
 					);
 				default:
 					return factory.cuboid(

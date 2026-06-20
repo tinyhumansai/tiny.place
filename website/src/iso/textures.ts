@@ -342,6 +342,129 @@ export class TextureFactory {
 		return this.bake(`wall:${height}`, graphics);
 	}
 
+	/**
+	 * The detail overlay for a building: a coloured roof, a grid of lit windows
+	 * on both visible faces, and a door. Baked untinted so it keeps its own
+	 * colours over a tinted body cuboid (much like the agent face over a body).
+	 */
+	public buildingDetail(
+		footprintWidth: number,
+		footprintHeight: number,
+		height: number,
+		options: {
+			windowRows: number;
+			windowColumns: number;
+			windowColor: number;
+			roofColor: number;
+			doorColor: number;
+		}
+	): BakedTexture {
+		const { windowRows, windowColumns, windowColor, roofColor, doorColor } =
+			options;
+		const graphics = new Graphics();
+		const top = diamondPoints(footprintWidth, footprintHeight, height);
+		const northX = top[0]!;
+		const northY = top[1]!;
+		const eastX = top[2]!;
+		const eastY = top[3]!;
+		const southX = top[4]!;
+		const southY = top[5]!;
+		const westX = top[6]!;
+		const westY = top[7]!;
+
+		const facePoint = (
+			aX: number,
+			aY: number,
+			bX: number,
+			bY: number,
+			u: number,
+			v: number
+		): Array<number> => [aX + (bX - aX) * u, aY + (bY - aY) * u + v * height];
+
+		const drawFace = (aX: number, aY: number, bX: number, bY: number): void => {
+			// Eave shadow band under the roof.
+			graphics
+				.poly([
+					...facePoint(aX, aY, bX, bY, 0, 0),
+					...facePoint(aX, aY, bX, bY, 1, 0),
+					...facePoint(aX, aY, bX, bY, 1, 0.06),
+					...facePoint(aX, aY, bX, bY, 0, 0.06),
+				])
+				.fill({ color: 0x000000, alpha: 0.2 });
+			// Window grid.
+			const bandTop = 0.14;
+			const bandBottom = windowRows >= 4 ? 0.86 : 0.6;
+			const gapV = 0.045;
+			const cellV =
+				(bandBottom - bandTop - (windowRows - 1) * gapV) / windowRows;
+			const padU = 0.16;
+			const gapU = 0.07;
+			const cellU = (1 - 2 * padU - (windowColumns - 1) * gapU) / windowColumns;
+			for (let row = 0; row < windowRows; row++) {
+				const v1 = bandTop + row * (cellV + gapV);
+				const v2 = v1 + cellV;
+				for (let column = 0; column < windowColumns; column++) {
+					const u1 = padU + column * (cellU + gapU);
+					const u2 = u1 + cellU;
+					graphics
+						.poly([
+							...facePoint(aX, aY, bX, bY, u1, v1),
+							...facePoint(aX, aY, bX, bY, u2, v1),
+							...facePoint(aX, aY, bX, bY, u2, v2),
+							...facePoint(aX, aY, bX, bY, u1, v2),
+						])
+						.fill({ color: 0x161a24 });
+					const mu = 0.014;
+					const mv = cellV * 0.16;
+					graphics
+						.poly([
+							...facePoint(aX, aY, bX, bY, u1 + mu, v1 + mv),
+							...facePoint(aX, aY, bX, bY, u2 - mu, v1 + mv),
+							...facePoint(aX, aY, bX, bY, u2 - mu, v2 - mv),
+							...facePoint(aX, aY, bX, bY, u1 + mu, v2 - mv),
+						])
+						.fill({ color: windowColor });
+				}
+			}
+		};
+		drawFace(eastX, eastY, southX, southY);
+		drawFace(southX, southY, westX, westY);
+
+		// A door near the south corner of the right face.
+		graphics
+			.poly([
+				...facePoint(eastX, eastY, southX, southY, 0.44, 0.66),
+				...facePoint(eastX, eastY, southX, southY, 0.6, 0.66),
+				...facePoint(eastX, eastY, southX, southY, 0.6, 0.97),
+				...facePoint(eastX, eastY, southX, southY, 0.44, 0.97),
+			])
+			.fill({ color: doorColor });
+
+		// Roof cap with a soft highlight.
+		graphics
+			.poly(top)
+			.fill({ color: roofColor })
+			.stroke({ color: EDGE_COLOR, width: 1, alpha: 0.35 });
+		const centerX = (northX + eastX + southX + westX) / 4;
+		const centerY = (northY + eastY + southY + westY) / 4;
+		const inset = (x: number, y: number): Array<number> => [
+			x + (centerX - x) * 0.2,
+			y + (centerY - y) * 0.2,
+		];
+		graphics
+			.poly([
+				...inset(northX, northY),
+				...inset(eastX, eastY),
+				...inset(southX, southY),
+				...inset(westX, westY),
+			])
+			.fill({ color: 0xffffff, alpha: 0.12 });
+		return this.bake(
+			`building:${footprintWidth}x${footprintHeight}x${height}:${windowRows}x${windowColumns}:${windowColor}:${roofColor}:${doorColor}`,
+			graphics
+		);
+	}
+
 	/** A small chair: a seat block with a low back, facing the camera. */
 	public chair(): BakedTexture {
 		const graphics = new Graphics();

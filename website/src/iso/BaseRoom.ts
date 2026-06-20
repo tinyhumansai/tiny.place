@@ -211,12 +211,13 @@ export abstract class BaseRoom {
 				}
 			}
 		}
-		// Pad vertically for wall height and overhead chat bubbles.
+		// Pad vertically for wall/building height and overhead chat bubbles.
+		const topMargin = this.definition.topMargin ?? WALL_HEIGHT;
 		return {
 			centerX: (minX + maxX) / 2,
-			centerY: (minY + maxY) / 2,
+			centerY: (minY + maxY) / 2 - (topMargin - WALL_HEIGHT) / 2,
 			width: maxX - minX,
-			height: maxY - minY + WALL_HEIGHT,
+			height: maxY - minY + topMargin,
 		};
 	}
 

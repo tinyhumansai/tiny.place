@@ -9,6 +9,7 @@ export {
 	CourtHouseRoom,
 	OfficeRoom,
 	HomeRoom,
+	OutsideWorldRoom,
 } from "./rooms";
 export type { RoomEntry } from "./rooms";
 export { ChatBubble } from "./ChatBubble";

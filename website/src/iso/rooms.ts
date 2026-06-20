@@ -128,6 +128,15 @@ const HOME_PALETTE: RoomPalette = {
 	accent: 0xfbbf24,
 };
 
+const OUTSIDE_PALETTE: RoomPalette = {
+	background: 0x223047,
+	floorTop: 0x5f9450,
+	floorSide: 0x3f6e35,
+	wall: 0x6b7280,
+	dais: 0x7a8a6a,
+	accent: 0x7fc8a9,
+};
+
 // ---- Poker table room -------------------------------------------------------
 
 function pokerDefinition(): RoomDefinition {
@@ -316,6 +325,88 @@ function homeDefinition(): RoomDefinition {
 	};
 }
 
+// ---- Outside world ----------------------------------------------------------
+
+function outsideDefinition(): RoomDefinition {
+	// A big open plot of grass — no walls, it's outdoors.
+	const matrix = floorGrid(22, 22);
+	const prop = (
+		kind: string,
+		tileX: number,
+		tileY: number
+	): FurnitureConfig => ({
+		kind,
+		tileX,
+		tileY,
+	});
+	const furniture: Array<FurnitureConfig> = [
+		// Skyline of buildings along the back (north + west) edges.
+		prop("house", 1, 0),
+		prop("shop", 5, 0),
+		prop("tower", 9, 0),
+		prop("cafe", 12, 0),
+		prop("house", 16, 0),
+		prop("tower", 20, 0),
+		prop("shop", 0, 4),
+		prop("house", 0, 8),
+		prop("cafe", 0, 13),
+		prop("house", 0, 18),
+		// A few buildings on the front/right edges, kept to the corners so the
+		// plaza stays visible.
+		prop("tower", 20, 4),
+		prop("house", 19, 8),
+		prop("shop", 19, 13),
+		prop("cafe", 19, 17),
+		prop("cafe", 3, 20),
+		prop("shop", 15, 20),
+		// Central plaza: paved square with a fountain, benches and lamps.
+		{
+			kind: "rug",
+			tileX: 8,
+			tileY: 8,
+			footprintWidth: 6,
+			footprintHeight: 6,
+			tint: 0x9298a4,
+		},
+		prop("fountain", 10, 10),
+		chair(9, 9, "right", 0, 0x6b7280),
+		chair(12, 9, "left", 0, 0x6b7280),
+		chair(9, 12, "right", 0, 0x6b7280),
+		chair(12, 12, "left", 0, 0x6b7280),
+		prop("lamp", 8, 8),
+		prop("lamp", 13, 8),
+		prop("lamp", 8, 13),
+		prop("lamp", 13, 13),
+		// Market stalls.
+		prop("barCounter", 5, 16),
+		prop("crate", 5, 15),
+		prop("barCounter", 14, 5),
+		prop("crate", 16, 5),
+		// Street trees and planters.
+		prop("fern", 6, 6),
+		prop("fern", 15, 6),
+		prop("fern", 6, 15),
+		prop("fern", 15, 15),
+		prop("plant", 11, 5),
+		prop("plant", 5, 11),
+		prop("plant", 16, 11),
+		prop("plant", 11, 16),
+		prop("lamp", 17, 10),
+		prop("lamp", 4, 10),
+	];
+	return {
+		key: "outside",
+		name: "Outside World",
+		description:
+			"A large open plaza ringed with pixelated buildings — the world beyond the rooms.",
+		matrix,
+		palette: OUTSIDE_PALETTE,
+		furniture,
+		spawnTile: { x: 10, y: 15 },
+		topMargin: 150,
+	};
+}
+
 // ---- Concrete room subclasses ----------------------------------------------
 
 export class PokerTableRoom extends BaseRoom {
@@ -339,6 +430,12 @@ export class OfficeRoom extends BaseRoom {
 export class HomeRoom extends BaseRoom {
 	public constructor(factory: TextureFactory) {
 		super(homeDefinition(), factory);
+	}
+}
+
+export class OutsideWorldRoom extends BaseRoom {
+	public constructor(factory: TextureFactory) {
+		super(outsideDefinition(), factory);
 	}
 }
 
@@ -373,5 +470,11 @@ export const ROOM_REGISTRY: Array<RoomEntry> = [
 		name: "Home",
 		description: "A cosy lounge with couches and a rug.",
 		create: (factory) => new HomeRoom(factory),
+	},
+	{
+		key: "outside",
+		name: "Outside World",
+		description: "A large open plaza ringed with buildings.",
+		create: (factory) => new OutsideWorldRoom(factory),
 	},
 ];

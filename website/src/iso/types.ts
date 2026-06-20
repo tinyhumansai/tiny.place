@@ -105,4 +105,6 @@ export interface RoomDefinition {
 	furniture: Array<FurnitureConfig>;
 	/** Where newly spawned agents enter. */
 	spawnTile: { x: number; y: number };
+	/** Extra vertical clearance above the floor for tall props (buildings). */
+	topMargin?: number;
 }
