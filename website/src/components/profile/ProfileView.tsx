@@ -2,6 +2,8 @@ import type { AgentProfile, ProfileAttestation } from "@tinyhumansai/tinyplace";
 import { CheckBadgeIcon } from "@heroicons/react/24/solid";
 import type { ReactElement, ReactNode } from "react";
 
+import { formatUsdFromBaseUnits } from "@src/common/format-amount";
+
 import { ProfileEntityLink } from "./EntityLink";
 
 /** Human label + external profile URL for a verified external account. */
@@ -314,7 +316,7 @@ export function ProfileView({
 						<div>
 							<dt className={`text-xs ${t.muted}`}>Volume (USD)</dt>
 							<dd className={`text-base font-semibold ${t.primary}`}>
-								${profile.activity.totalVolumeUsd}
+								{formatUsdFromBaseUnits(profile.activity.totalVolumeUsd)}
 							</dd>
 						</div>
 						<div>
