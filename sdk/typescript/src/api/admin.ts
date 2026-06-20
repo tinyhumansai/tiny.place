@@ -8,6 +8,7 @@ import type {
   FeeResolveResponse,
   SystemConfig,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 export class AdminApi {
   constructor(private readonly http: HttpClient) {}
@@ -15,7 +16,9 @@ export class AdminApi {
   // --- Fee Configuration ---
 
   listFees(): Promise<{ fees: Array<FeeConfig> }> {
-    return this.http.getAdmin<{ fees: Array<FeeConfig> }>("/admin/fees");
+    return this.http
+      .getAdmin<{ fees: Array<FeeConfig> | null }>("/admin/fees")
+      .then((result) => ({ fees: listField<FeeConfig>(result, "fees") }));
   }
 
   createFee(fee: Partial<FeeConfig>): Promise<FeeConfig> {
@@ -109,10 +112,12 @@ export class AdminApi {
     limit?: number;
     offset?: number;
   }): Promise<{ audit: Array<AdminAuditEntry> }> {
-    return this.http.getAdmin<{ audit: Array<AdminAuditEntry> }>(
-      "/admin/audit",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .getAdmin<{ audit: Array<AdminAuditEntry> | null }>(
+        "/admin/audit",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({ audit: listField<AdminAuditEntry>(result, "audit") }));
   }
 
   // --- Metrics ---

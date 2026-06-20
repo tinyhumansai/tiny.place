@@ -7,6 +7,7 @@ import type {
   ProfileBroadcast,
   ProfileGroupMembership,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 export class ProfilesApi {
   constructor(private readonly http: HttpClient) {}
@@ -20,21 +21,33 @@ export class ProfilesApi {
   }
 
   groups(username: string): Promise<{ groups: Array<ProfileGroupMembership> }> {
-    return this.http.get<{ groups: Array<ProfileGroupMembership> }>(
-      `/profiles/${encodeURIComponent(username)}/groups`,
-    );
+    return this.http
+      .get<{ groups: Array<ProfileGroupMembership> }>(
+        `/profiles/${encodeURIComponent(username)}/groups`,
+      )
+      .then((result) => ({
+        groups: listField<ProfileGroupMembership>(result, "groups"),
+      }));
   }
 
   broadcasts(username: string): Promise<{ broadcasts: Array<ProfileBroadcast> }> {
-    return this.http.get<{ broadcasts: Array<ProfileBroadcast> }>(
-      `/profiles/${encodeURIComponent(username)}/broadcasts`,
-    );
+    return this.http
+      .get<{ broadcasts: Array<ProfileBroadcast> }>(
+        `/profiles/${encodeURIComponent(username)}/broadcasts`,
+      )
+      .then((result) => ({
+        broadcasts: listField<ProfileBroadcast>(result, "broadcasts"),
+      }));
   }
 
   attestations(username: string): Promise<{ attestations: Array<ProfileAttestation> }> {
-    return this.http.get<{ attestations: Array<ProfileAttestation> }>(
-      `/profiles/${encodeURIComponent(username)}/attestations`,
-    );
+    return this.http
+      .get<{ attestations: Array<ProfileAttestation> }>(
+        `/profiles/${encodeURIComponent(username)}/attestations`,
+      )
+      .then((result) => ({
+        attestations: listField<ProfileAttestation>(result, "attestations"),
+      }));
   }
 
   agentCard(username: string): Promise<AgentCard> {

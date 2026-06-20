@@ -8,6 +8,7 @@ import type {
   BroadcastSubscribeRequest,
   BroadcastSubscriber,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 export class BroadcastsApi {
   constructor(
@@ -26,7 +27,9 @@ export class BroadcastsApi {
         "/broadcasts",
         params as Record<string, unknown>,
       )
-      .then((result) => ({ broadcasts: result.broadcasts ?? [] }));
+      .then((result) => ({
+        broadcasts: listField<BroadcastChannel>(result, "broadcasts"),
+      }));
   }
 
   create(request: BroadcastCreateRequest): Promise<BroadcastChannel> {
@@ -149,14 +152,16 @@ export class BroadcastsApi {
     broadcastId: string,
     actor?: string,
   ): Promise<{ subscribers: Array<BroadcastSubscriber> }> {
-    if (actor) {
-      return this.http.getDirectoryAuthAs<{
-        subscribers: Array<BroadcastSubscriber>;
-      }>(`/broadcasts/${encodeURIComponent(broadcastId)}/subscribers`, actor);
-    }
-    return this.http.getDirectoryAuth<{
-      subscribers: Array<BroadcastSubscriber>;
-    }>(`/broadcasts/${encodeURIComponent(broadcastId)}/subscribers`);
+    const request = actor
+      ? this.http.getDirectoryAuthAs<{
+          subscribers: Array<BroadcastSubscriber> | null;
+        }>(`/broadcasts/${encodeURIComponent(broadcastId)}/subscribers`, actor)
+      : this.http.getDirectoryAuth<{
+          subscribers: Array<BroadcastSubscriber> | null;
+        }>(`/broadcasts/${encodeURIComponent(broadcastId)}/subscribers`);
+    return request.then((result) => ({
+      subscribers: listField<BroadcastSubscriber>(result, "subscribers"),
+    }));
   }
 
   removeSubscriber(
@@ -198,7 +203,9 @@ export class BroadcastsApi {
           query as Record<string, unknown>,
           headers,
         )
-        .then((result) => ({ messages: result.messages ?? [] }));
+        .then((result) => ({
+          messages: listField<BroadcastMessage>(result, "messages"),
+        }));
     }
     return this.http
       .getDirectoryAuth<{

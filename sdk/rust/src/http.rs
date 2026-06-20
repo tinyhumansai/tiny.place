@@ -4,11 +4,72 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use base64::Engine as _;
 use reqwest::{Method, Response, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use tokio::time::sleep;
+
+/// The default per-request timeout when none is configured.
+pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Controls automatic retry-with-backoff for transient failures (the backend
+/// being slow, briefly down, or returning a 5xx/429). To avoid silently
+/// duplicating a write, only idempotent methods are retried by default.
+#[derive(Clone)]
+pub struct RetryOptions {
+    /// Max retry attempts after the first try. `0` disables retries.
+    pub retries: u32,
+    /// Base backoff delay (exponential, with jitter).
+    pub base_delay: Duration,
+    /// Upper bound on a single backoff delay.
+    pub max_delay: Duration,
+    /// HTTP statuses treated as transient.
+    pub retryable_statuses: Vec<u16>,
+    /// HTTP methods eligible for retry (idempotent reads only by default).
+    pub retry_methods: Vec<Method>,
+    /// Retry connection-level failures (timeout, refused, DNS) for eligible methods.
+    pub retry_network_errors: bool,
+}
+
+impl Default for RetryOptions {
+    fn default() -> Self {
+        Self {
+            retries: 2,
+            base_delay: Duration::from_millis(200),
+            max_delay: Duration::from_secs(5),
+            retryable_statuses: vec![408, 429, 500, 502, 503, 504],
+            retry_methods: vec![Method::GET, Method::HEAD, Method::OPTIONS],
+            retry_network_errors: true,
+        }
+    }
+}
+
+/// Exponential backoff (capped) with half jitter for the given attempt index.
+fn backoff_delay(retry: &RetryOptions, attempt: u32) -> Duration {
+    let factor = 2u32.checked_pow(attempt).unwrap_or(u32::MAX);
+    let exp = retry
+        .base_delay
+        .checked_mul(factor)
+        .unwrap_or(retry.max_delay);
+    let capped = std::cmp::min(exp, retry.max_delay);
+    let half = capped / 2;
+    let half_nanos = half.as_nanos() as u64;
+    let jitter = if half_nanos == 0 {
+        0
+    } else {
+        rand::random::<u64>() % (half_nanos + 1)
+    };
+    half + Duration::from_nanos(jitter)
+}
+
+/// Parse a `Retry-After` header (delta-seconds form) into a delay.
+fn retry_after_delay(response: &Response) -> Option<Duration> {
+    let value = response.headers().get("retry-after")?.to_str().ok()?;
+    value.trim().parse::<u64>().ok().map(Duration::from_secs)
+}
 
 use crate::auth::{
     sign_admin_request, sign_directory_write, sign_request, AdminSigningOptions, Headers,
@@ -59,6 +120,11 @@ pub struct HttpClientOptions {
     pub admin_signer: Option<Arc<dyn Signer>>,
     pub admin: AdminSigningOptions,
     pub on_auth_invalid: Option<AuthInvalidHook>,
+    /// Per-request timeout. `None` uses [`DEFAULT_TIMEOUT`] (30s);
+    /// `Some(Duration::ZERO)` disables the timeout.
+    pub timeout: Option<Duration>,
+    /// Retry-with-backoff policy for transient failures.
+    pub retry: RetryOptions,
 }
 
 /// The shared HTTP client. Cheap to clone (everything is `Arc`-backed).
@@ -75,21 +141,29 @@ struct HttpClientInner {
     admin_signer: Option<Arc<dyn Signer>>,
     admin: AdminSigningOptions,
     on_auth_invalid: Option<AuthInvalidHook>,
+    retry: RetryOptions,
 }
 
 impl HttpClient {
     pub fn new(options: HttpClientOptions) -> Self {
         let base_url = options.base_url.trim_end_matches('/').to_string();
         let public_key_base64 = options.signer.as_ref().map(|s| s.public_key_base64());
+        let timeout = options.timeout.unwrap_or(DEFAULT_TIMEOUT);
+        let mut builder = reqwest::Client::builder();
+        if !timeout.is_zero() {
+            builder = builder.timeout(timeout);
+        }
+        let client = builder.build().unwrap_or_else(|_| reqwest::Client::new());
         Self {
             inner: Arc::new(HttpClientInner {
                 base_url,
-                client: reqwest::Client::new(),
+                client,
                 signer: options.signer,
                 public_key_base64,
                 admin_signer: options.admin_signer,
                 admin: options.admin,
                 on_auth_invalid: options.on_auth_invalid,
+                retry: options.retry,
             }),
         }
     }
@@ -151,33 +225,66 @@ impl HttpClient {
         let url = format!("{}{request_uri}", self.inner.base_url);
         let body = body_str.unwrap_or_default();
 
-        let mut headers: Headers =
-            vec![("Content-Type".to_string(), "application/json".to_string())];
-        headers.extend(extra_headers.iter().cloned());
+        let retry = &self.inner.retry;
+        let eligible =
+            retry.retries > 0 && retry.retry_methods.iter().any(|allowed| allowed == &method);
+        let mut attempt: u32 = 0;
+        loop {
+            // Re-sign on every attempt so retries carry a fresh timestamp/nonce
+            // and are never rejected as a replay.
+            let mut headers: Headers =
+                vec![("Content-Type".to_string(), "application/json".to_string())];
+            headers.extend(extra_headers.iter().cloned());
+            self.apply_auth(
+                &mut headers,
+                &method,
+                &request_uri,
+                &body,
+                auth,
+                directory_actor,
+            )
+            .await?;
 
-        self.apply_auth(
-            &mut headers,
-            &method,
-            &request_uri,
-            &body,
-            auth,
-            directory_actor,
-        )
-        .await?;
+            let mut builder = self.inner.client.request(method.clone(), &url);
+            for (name, value) in &headers {
+                builder = builder.header(name.as_str(), value.as_str());
+            }
+            if !body.is_empty() {
+                builder = builder.body(body.clone());
+            }
 
-        let mut builder = self.inner.client.request(method, &url);
-        for (name, value) in &headers {
-            builder = builder.header(name.as_str(), value.as_str());
+            match builder.send().await {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        return Ok(response);
+                    }
+                    let status = response.status().as_u16();
+                    if eligible
+                        && attempt < retry.retries
+                        && retry.retryable_statuses.contains(&status)
+                    {
+                        let wait = retry_after_delay(&response)
+                            .unwrap_or_else(|| backoff_delay(retry, attempt));
+                        attempt += 1;
+                        sleep(wait).await;
+                        continue;
+                    }
+                    return Err(self.error_from_response(path, response).await);
+                }
+                Err(err) => {
+                    // Connection-level failure (timeout, refused, DNS): retry
+                    // eligible idempotent methods, otherwise surface the typed
+                    // transport error.
+                    if eligible && attempt < retry.retries && retry.retry_network_errors {
+                        let wait = backoff_delay(retry, attempt);
+                        attempt += 1;
+                        sleep(wait).await;
+                        continue;
+                    }
+                    return Err(Error::from(err));
+                }
+            }
         }
-        if !body.is_empty() {
-            builder = builder.body(body);
-        }
-
-        let response = builder.send().await?;
-        if response.status().is_success() {
-            return Ok(response);
-        }
-        Err(self.error_from_response(path, response).await)
     }
 
     async fn apply_auth(

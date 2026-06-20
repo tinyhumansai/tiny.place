@@ -10,35 +10,46 @@ pub type GameAction = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameStakes {
+    #[serde(default)]
     pub small_blind: String,
+    #[serde(default)]
     pub big_blind: String,
+    #[serde(default)]
     pub asset: String,
+    #[serde(default)]
     pub network: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameBuyIn {
+    #[serde(default)]
     pub min: String,
+    #[serde(default)]
     pub max: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameEscrow {
+    #[serde(default)]
     pub contract: String,
+    #[serde(default)]
     pub network: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameSeat {
+    #[serde(default)]
     pub seat: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub handle: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub crypto_id: Option<String>,
+    #[serde(default)]
     pub stack: String,
+    #[serde(default)]
     pub status: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub consecutive_timeouts: Option<i64>,
@@ -68,7 +79,9 @@ pub struct GameEmergencyWithdrawal {
 pub struct GameEmergencyWithdrawalRequest {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub operator: Option<String>,
+    #[serde(default)]
     pub agent_id: String,
+    #[serde(default)]
     pub request_tx_hash: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub requested_at: Option<String>,
@@ -85,9 +98,11 @@ pub struct GameEmergencyWithdrawalResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameCollusionFlag {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default)]
     pub flag_type: String,
+    #[serde(default)]
     pub agents: Vec<String>,
+    #[serde(default)]
     pub detail: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub hand_ids: Option<Vec<String>>,
@@ -96,18 +111,26 @@ pub struct GameCollusionFlag {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameAgentPairStats {
+    #[serde(default)]
     pub agent_a: String,
+    #[serde(default)]
     pub agent_b: String,
+    #[serde(default)]
     pub hands_together: i64,
+    #[serde(default)]
     pub folds_against_each: i64,
+    #[serde(default)]
     pub showdowns_together: i64,
+    #[serde(default)]
     pub fold_rate: f64,
+    #[serde(default)]
     pub showdown_rate: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameCollusionReport {
+    #[serde(default)]
     pub hands_analyzed: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub flags: Option<Vec<GameCollusionFlag>>,
@@ -118,45 +141,55 @@ pub struct GameCollusionReport {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameTimeouts {
+    #[serde(default)]
     pub decision: i64,
+    #[serde(default)]
     pub disconnect_grace: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameRake {
+    #[serde(default)]
     pub rate: String,
+    #[serde(default)]
     pub cap: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameHandAction {
+    #[serde(default)]
     pub seat: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub agent_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub round: Option<String>,
+    #[serde(default)]
     pub action: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub amount: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tx_hash: Option<String>,
+    #[serde(default)]
     pub created_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameHandWinner {
+    #[serde(default)]
     pub seat: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub agent: Option<String>,
+    #[serde(default)]
     pub payout: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameHandPlayer {
+    #[serde(default)]
     pub seat: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub handle: Option<String>,
@@ -179,9 +212,13 @@ pub struct GameHandPlayer {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameHand {
+    #[serde(default)]
     pub hand_id: String,
+    #[serde(default)]
     pub room_id: String,
+    #[serde(default)]
     pub number: i64,
+    #[serde(default)]
     pub status: String,
     /// Seat with the dealer button this hand.
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -202,6 +239,7 @@ pub struct GameHand {
     /// When the on-the-clock seat's decision window started (RFC3339).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub current_action_started_at: Option<String>,
+    #[serde(default)]
     pub pot: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub rake: Option<String>,
@@ -222,6 +260,7 @@ pub struct GameHand {
     pub ledger_rake_tx_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub deck_seed_hash: Option<String>,
+    #[serde(default)]
     pub started_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub completed_at: Option<String>,
@@ -230,29 +269,41 @@ pub struct GameHand {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameRoom {
+    #[serde(default)]
     pub room_id: String,
+    #[serde(default)]
     pub game: String,
+    #[serde(default)]
     pub variant: String,
+    #[serde(default)]
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub creator: Option<String>,
     pub stakes: GameStakes,
     pub buy_in: GameBuyIn,
     pub escrow: GameEscrow,
+    #[serde(default)]
     pub seats: i64,
+    #[serde(default)]
     pub players: Vec<GameSeat>,
+    #[serde(default)]
     pub observer_count: i64,
+    #[serde(default)]
     pub speed: String,
     pub timeouts: GameTimeouts,
     pub rake: GameRake,
+    #[serde(default)]
     pub hand_number: i64,
+    #[serde(default)]
     pub status: GameRoomStatus,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tags: Option<Vec<String>>,
     /// Live hand state; hole cards are redacted per requesting agent.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub current_hand: Option<GameHand>,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub closed_at: Option<String>,
@@ -308,6 +359,7 @@ pub struct GameActionRequest {
     pub hand_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub round: Option<String>,
+    #[serde(default)]
     pub action: GameAction,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub amount: Option<String>,
@@ -330,9 +382,11 @@ pub struct GameJoinResponse {
 #[serde(rename_all = "camelCase")]
 pub struct GameLeaveResponse {
     pub room: GameRoom,
+    #[serde(default)]
     pub seat: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub handle: Option<String>,
+    #[serde(default)]
     pub returned: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tx_hash: Option<String>,
@@ -373,9 +427,11 @@ pub struct GameStartHandResponse {
 pub struct GameSettleRequest {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub operator: Option<String>,
+    #[serde(default)]
     pub winners: Vec<GameHandWinner>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub rake: Option<String>,
+    #[serde(default)]
     pub tx_hash: String,
 }
 

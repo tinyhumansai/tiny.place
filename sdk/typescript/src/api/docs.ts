@@ -4,6 +4,7 @@ import type {
   TermsDocument,
   TermsHistoryResponse,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 export class DocsApi {
   constructor(private readonly http: HttpClient) {}
@@ -45,7 +46,11 @@ export class DocsApi {
   }
 
   termsHistory(): Promise<TermsHistoryResponse> {
-    return this.http.get<TermsHistoryResponse>("/terms/history");
+    return this.http
+      .get<TermsHistoryResponse>("/terms/history")
+      .then((result) => ({
+        terms: listField<TermsDocument>(result, "terms"),
+      }));
   }
 
   llms(): Promise<string> {

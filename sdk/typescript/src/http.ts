@@ -8,6 +8,19 @@ import {
 
 export type BodySigner<TBody = any> = (body: TBody) => Promise<TBody> | TBody;
 
+interface RequestOptions {
+  body?: unknown;
+  query?: Record<string, unknown>;
+  signed?: boolean;
+  directoryAuth?: boolean;
+  directoryActor?: string;
+  agentAuth?: boolean;
+  adminAuth?: boolean;
+  headers?: Record<string, string>;
+  responseType?: "json" | "text" | "raw";
+  signBody?: BodySigner;
+}
+
 export class TinyPlaceError extends Error {
   public readonly paymentRequired?: PaymentRequiredChallenge;
   public readonly headers: Record<string, string>;
@@ -49,6 +62,60 @@ interface TinyPlaceErrorOptions {
   paymentRequired?: PaymentRequiredChallenge;
 }
 
+/**
+ * Controls automatic retry-with-backoff for transient failures (the backend
+ * being slow, briefly down, or returning a 5xx/429). Retries are only attempted
+ * for idempotent methods by default so a write is never silently duplicated.
+ */
+export interface RetryOptions {
+  /** Max retry attempts after the first try. `0` disables retries. Default `2`. */
+  retries?: number;
+  /** Base backoff delay in ms (exponential, with jitter). Default `200`. */
+  baseDelayMs?: number;
+  /** Upper bound on a single backoff delay in ms. Default `5000`. */
+  maxDelayMs?: number;
+  /** HTTP statuses treated as transient. Default `[408, 429, 500, 502, 503, 504]`. */
+  retryableStatuses?: Array<number>;
+  /**
+   * HTTP methods eligible for retry. Default `["GET", "HEAD", "OPTIONS"]`
+   * (idempotent reads only — writes are never auto-retried unless added here).
+   */
+  retryMethods?: Array<string>;
+  /**
+   * Retry connection-level failures (network unreachable, DNS, timeout) for the
+   * eligible methods. Default `true`.
+   */
+  retryNetworkErrors?: boolean;
+}
+
+interface ResolvedRetryOptions {
+  retries: number;
+  baseDelayMs: number;
+  maxDelayMs: number;
+  retryableStatuses: Set<number>;
+  retryMethods: Set<string>;
+  retryNetworkErrors: boolean;
+}
+
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+function resolveRetryOptions(options?: RetryOptions): ResolvedRetryOptions {
+  return {
+    retries: options?.retries ?? 2,
+    baseDelayMs: options?.baseDelayMs ?? 200,
+    maxDelayMs: options?.maxDelayMs ?? 5_000,
+    retryableStatuses: new Set(
+      options?.retryableStatuses ?? [408, 429, 500, 502, 503, 504],
+    ),
+    retryMethods: new Set(
+      (options?.retryMethods ?? ["GET", "HEAD", "OPTIONS"]).map((method) =>
+        method.toUpperCase(),
+      ),
+    ),
+    retryNetworkErrors: options?.retryNetworkErrors ?? true,
+  };
+}
+
 export interface HttpClientOptions {
   baseUrl: string;
   signingKey?: SigningKey;
@@ -69,6 +136,19 @@ export interface HttpClientOptions {
    * re-authenticating. Must not throw.
    */
   onAuthInvalid?: (status: number, body: unknown) => Promise<void> | void;
+  /**
+   * Per-request timeout in milliseconds. A request that does not produce a
+   * response within this window is aborted and surfaces as a `TinyPlaceError`
+   * with `status: 0` (and is retried when the method is eligible). Default
+   * `30000`. Pass `0` to disable the timeout.
+   */
+  timeoutMs?: number;
+  /**
+   * Automatic retry-with-backoff for transient failures. Defaults retry
+   * idempotent reads (GET/HEAD/OPTIONS) twice on network errors and 5xx/429
+   * responses. See {@link RetryOptions}. Pass `{ retries: 0 }` to disable.
+   */
+  retry?: RetryOptions;
 }
 
 function buildQuery(params: Record<string, unknown>): string {
@@ -99,6 +179,8 @@ export class HttpClient {
   private readonly onboardGrant?: OnboardGrantCredential;
   private readonly _fetch: typeof globalThis.fetch;
   private readonly onAuthInvalid?: (status: number, body: unknown) => Promise<void> | void;
+  private readonly timeoutMs: number;
+  private readonly retryOptions: ResolvedRetryOptions;
 
   constructor(options: HttpClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
@@ -109,6 +191,8 @@ export class HttpClient {
     this.onboardGrant = options.onboardGrant;
     this._fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.onAuthInvalid = options.onAuthInvalid;
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.retryOptions = resolveRetryOptions(options.retry);
   }
 
   /**
@@ -124,18 +208,7 @@ export class HttpClient {
   private async request<T>(
     method: string,
     path: string,
-    options?: {
-      body?: unknown;
-      query?: Record<string, unknown>;
-      signed?: boolean;
-      directoryAuth?: boolean;
-      directoryActor?: string;
-      agentAuth?: boolean;
-      adminAuth?: boolean;
-      headers?: Record<string, string>;
-      responseType?: "json" | "text" | "raw";
-      signBody?: BodySigner;
-    },
+    options?: RequestOptions,
   ): Promise<T> {
     const queryString = options?.query ? buildQuery(options.query) : "";
     const url = `${this.baseUrl}${path}${queryString}`;
@@ -145,7 +218,7 @@ export class HttpClient {
     }
 
     try {
-      return await this.sendRequest<T>(method, path, queryString, url, {
+      return await this.sendWithRetry<T>(method, path, queryString, url, {
         ...options,
         body,
       });
@@ -157,10 +230,51 @@ export class HttpClient {
       if (bodySignature(nextBody) === bodySignature(body)) {
         throw error;
       }
-      return this.sendRequest<T>(method, path, queryString, url, {
+      return this.sendWithRetry<T>(method, path, queryString, url, {
         ...options,
         body: nextBody,
       });
+    }
+  }
+
+  /**
+   * Wrap {@link sendRequest} with retry-with-backoff for transient failures.
+   * Each attempt re-enters `sendRequest`, which re-signs the request, so retries
+   * carry a fresh timestamp/nonce and are never rejected as a replay. Network
+   * errors and configured retryable statuses are retried for eligible
+   * (idempotent) methods only; a `Retry-After` header is honoured when present.
+   */
+  private async sendWithRetry<T>(
+    method: string,
+    path: string,
+    queryString: string,
+    url: string,
+    options?: RequestOptions,
+  ): Promise<T> {
+    const retry = this.retryOptions;
+    const eligible =
+      retry.retries > 0 && retry.retryMethods.has(method.toUpperCase());
+    let attempt = 0;
+    for (;;) {
+      try {
+        return await this.sendRequest<T>(
+          method,
+          path,
+          queryString,
+          url,
+          options,
+        );
+      } catch (error) {
+        if (!eligible || attempt >= retry.retries) {
+          throw error;
+        }
+        const wait = retryDelayMs(error, attempt, retry);
+        if (wait === undefined) {
+          throw error;
+        }
+        attempt += 1;
+        await sleep(wait);
+      }
     }
   }
 
@@ -169,18 +283,7 @@ export class HttpClient {
     path: string,
     queryString: string,
     url: string,
-    options?: {
-      body?: unknown;
-      query?: Record<string, unknown>;
-      signed?: boolean;
-      directoryAuth?: boolean;
-      directoryActor?: string;
-      agentAuth?: boolean;
-      adminAuth?: boolean;
-      headers?: Record<string, string>;
-      responseType?: "json" | "text" | "raw";
-      signBody?: BodySigner;
-    },
+    options?: RequestOptions,
   ): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -228,11 +331,29 @@ export class HttpClient {
       Object.assign(headers, authHeaders);
     }
 
-    const response = await this._fetch(url, {
-      method,
-      headers,
-      body: bodyStr || undefined,
-    });
+    const controller =
+      this.timeoutMs > 0 && typeof AbortController !== "undefined"
+        ? new AbortController()
+        : undefined;
+    const timer =
+      controller !== undefined
+        ? setTimeout(() => controller.abort(), this.timeoutMs)
+        : undefined;
+    let response: Response;
+    try {
+      response = await this._fetch(url, {
+        method,
+        headers,
+        body: bodyStr || undefined,
+        signal: controller?.signal,
+      });
+    } catch (error) {
+      throw asTransportError(error, path, controller?.signal.aborted ?? false);
+    } finally {
+      if (timer !== undefined) {
+        clearTimeout(timer);
+      }
+    }
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
@@ -555,6 +676,88 @@ export class HttpClient {
       signBody,
     });
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Normalize a connection-level failure (network unreachable, DNS, refused
+ * connection, or an abort from the request timeout) into a `TinyPlaceError`
+ * with `status: 0`, so callers see one error type regardless of whether the
+ * backend answered. The original error is preserved as the `cause`.
+ */
+function asTransportError(
+  error: unknown,
+  path: string,
+  timedOut: boolean,
+): TinyPlaceError {
+  if (error instanceof TinyPlaceError) {
+    return error;
+  }
+  const aborted =
+    timedOut ||
+    (typeof error === "object" &&
+      error !== null &&
+      (error as { name?: string }).name === "AbortError");
+  const detail = error instanceof Error ? error.message : String(error);
+  const message = aborted
+    ? `Request to ${path} timed out`
+    : `Request to ${path} failed: ${detail}`;
+  const wrapped = new TinyPlaceError(0, detail, message);
+  (wrapped as { cause?: unknown }).cause = error;
+  return wrapped;
+}
+
+/**
+ * Decide how long to wait before retrying `error`, or `undefined` when it is not
+ * a transient failure. Transport errors (`status: 0`) retry when network retries
+ * are enabled; configured retryable statuses retry and honour a `Retry-After`
+ * header; everything else is non-retryable.
+ */
+function retryDelayMs(
+  error: unknown,
+  attempt: number,
+  retry: ResolvedRetryOptions,
+): number | undefined {
+  const backoff = (): number => {
+    const ceiling = Math.min(
+      retry.maxDelayMs,
+      retry.baseDelayMs * 2 ** attempt,
+    );
+    // Half jitter: a guaranteed floor plus a random spread, to avoid retry
+    // storms when many clients fail at once.
+    return Math.round(ceiling / 2 + Math.random() * (ceiling / 2));
+  };
+
+  if (!(error instanceof TinyPlaceError)) {
+    return retry.retryNetworkErrors ? backoff() : undefined;
+  }
+  if (error.status === 0) {
+    return retry.retryNetworkErrors ? backoff() : undefined;
+  }
+  if (!retry.retryableStatuses.has(error.status)) {
+    return undefined;
+  }
+  const retryAfter = retryAfterMs(error.headers["retry-after"]);
+  return retryAfter ?? backoff();
+}
+
+/** Parse a `Retry-After` header (delta-seconds or HTTP date) into ms. */
+function retryAfterMs(value: string | undefined): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) {
+    return Math.max(0, seconds * 1000);
+  }
+  const date = Date.parse(value);
+  if (Number.isFinite(date)) {
+    return Math.max(0, date - Date.now());
+  }
+  return undefined;
 }
 
 function shouldRetryInvalidSignature(error: unknown): boolean {

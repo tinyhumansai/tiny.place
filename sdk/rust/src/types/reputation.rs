@@ -7,28 +7,38 @@ use serde::{Deserialize, Serialize}; // sibling types share a flat namespace, li
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReputationScore {
+    #[serde(default)]
     pub agent_id: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub username: Option<String>,
+    #[serde(default)]
     pub score: f64,
+    #[serde(default)]
     pub breakdown: HashMap<String, f64>,
+    #[serde(default)]
     pub updated_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReputationReview {
+    #[serde(default)]
     pub review_id: String,
+    #[serde(default)]
     pub reviewer: String,
+    #[serde(default)]
     pub subject: String,
+    #[serde(default)]
     pub rating: f64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub comment: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub context: Option<String>,
+    #[serde(default)]
     pub transaction_ref: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
+    #[serde(default)]
     pub created_at: String,
 }
 
@@ -37,13 +47,17 @@ pub struct ReputationReview {
 pub struct ReputationReviewCreate {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub review_id: Option<String>,
+    #[serde(default)]
     pub reviewer: String,
+    #[serde(default)]
     pub subject: String,
+    #[serde(default)]
     pub rating: f64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub comment: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub context: Option<String>,
+    #[serde(default)]
     pub transaction_ref: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
@@ -56,18 +70,25 @@ pub struct ReputationReviewCreate {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReputationVouch {
+    #[serde(default)]
     pub vouch_id: String,
+    #[serde(default)]
     pub voucher: String,
+    #[serde(default)]
     pub subject: String,
+    #[serde(default)]
     pub weight: f64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub context: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub comment: Option<String>,
+    #[serde(default)]
     pub status: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub expires_at: Option<String>,
@@ -80,8 +101,11 @@ pub struct ReputationVouch {
 pub struct ReputationVouchCreate {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub vouch_id: Option<String>,
+    #[serde(default)]
     pub voucher: String,
+    #[serde(default)]
     pub subject: String,
+    #[serde(default)]
     pub weight: f64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub context: Option<String>,
@@ -99,14 +123,21 @@ pub struct ReputationVouchCreate {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Attestation {
+    #[serde(default)]
     pub attestation_id: String,
+    #[serde(default)]
     pub agent: String,
+    #[serde(default)]
     pub agent_crypto_id: String,
+    #[serde(default)]
     pub platform: String,
+    #[serde(default)]
     pub handle: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub proof_url: Option<String>,
+    #[serde(default)]
     pub verified_at: String,
+    #[serde(default)]
     pub status: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
@@ -117,9 +148,13 @@ pub struct Attestation {
 pub struct AttestationCreate {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub attestation_id: Option<String>,
+    #[serde(default)]
     pub agent: String,
+    #[serde(default)]
     pub agent_crypto_id: String,
+    #[serde(default)]
     pub platform: String,
+    #[serde(default)]
     pub handle: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub proof_url: Option<String>,
@@ -133,6 +168,7 @@ pub struct AttestationCreate {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AttestationVerification {
+    #[serde(default)]
     pub verified: bool,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub status: Option<String>,
@@ -145,7 +181,9 @@ pub struct AttestationVerification {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReputationHistoryPoint {
+    #[serde(default)]
     pub timestamp: String,
+    #[serde(default)]
     pub score: f64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub breakdown: Option<HashMap<String, f64>>,
@@ -155,8 +193,11 @@ pub struct ReputationHistoryPoint {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrustContributor {
+    #[serde(default)]
     pub agent_id: String,
+    #[serde(default)]
     pub weight: f64,
+    #[serde(default)]
     pub contribution: f64,
 }
 
@@ -164,9 +205,13 @@ pub struct TrustContributor {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrustScore {
+    #[serde(default)]
     pub agent_id: String,
+    #[serde(default)]
     pub trust: f64,
+    #[serde(default)]
     pub contributors: Vec<TrustContributor>,
+    #[serde(default)]
     pub updated_at: String,
 }
 
@@ -174,8 +219,11 @@ pub struct TrustScore {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrustGraphNode {
+    #[serde(default)]
     pub agent_id: String,
+    #[serde(default)]
     pub score: f64,
+    #[serde(default)]
     pub trust: f64,
 }
 
@@ -183,9 +231,13 @@ pub struct TrustGraphNode {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrustGraphEdge {
+    #[serde(default)]
     pub vouch_id: String,
+    #[serde(default)]
     pub from: String,
+    #[serde(default)]
     pub to: String,
+    #[serde(default)]
     pub weight: f64,
 }
 
@@ -193,8 +245,11 @@ pub struct TrustGraphEdge {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrustGraph {
+    #[serde(default)]
     pub nodes: Vec<TrustGraphNode>,
+    #[serde(default)]
     pub edges: Vec<TrustGraphEdge>,
+    #[serde(default)]
     pub updated_at: String,
 }
 
@@ -208,6 +263,7 @@ pub struct TrustGraphQueryParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LeaderboardEntry {
+    #[serde(default)]
     pub rank: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub username: Option<String>,
@@ -272,12 +328,15 @@ pub struct LeaderboardEntry {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LeaderboardResponse {
+    #[serde(default)]
     pub leaderboard: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub period: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub sort: Option<String>,
+    #[serde(default)]
     pub entries: Vec<LeaderboardEntry>,
+    #[serde(default)]
     pub updated_at: String,
 }
 

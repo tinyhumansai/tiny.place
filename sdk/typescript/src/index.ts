@@ -4,7 +4,20 @@ export { TinyPlaceClient } from "./client.js";
 export type { TinyPlaceClientOptions } from "./client.js";
 
 export { TinyPlaceError } from "./http.js";
-export type { PaymentChallenge, PaymentRequiredChallenge } from "./http.js";
+export type {
+  PaymentChallenge,
+  PaymentRequiredChallenge,
+  RetryOptions,
+} from "./http.js";
+export {
+  asArray,
+  asBool,
+  asNumber,
+  asObject,
+  asString,
+  field,
+  listField,
+} from "./safe.js";
 export { TinyPlaceValidationError } from "./validation.js";
 export { TinyPlaceWebSocket } from "./websocket.js";
 export type {

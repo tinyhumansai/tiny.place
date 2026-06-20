@@ -11,8 +11,11 @@ pub type IdentityStatus = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PaymentMethod {
+    #[serde(default)]
     pub network: String,
+    #[serde(default)]
     pub address: String,
+    #[serde(default)]
     pub assets: Vec<String>,
 }
 
@@ -20,11 +23,17 @@ pub struct PaymentMethod {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Identity {
+    #[serde(default)]
     pub username: String,
+    #[serde(default)]
     pub crypto_id: String,
+    #[serde(default)]
     pub public_key: String,
+    #[serde(default)]
     pub registered_at: String,
+    #[serde(default)]
     pub expires_at: String,
+    #[serde(default)]
     pub status: IdentityStatus,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub registration_tx: Option<String>,
@@ -42,6 +51,7 @@ pub struct Identity {
     pub payment: Option<std::collections::HashMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub last_renewal_tx: Option<String>,
+    #[serde(default)]
     pub updated_at: String,
 }
 
@@ -49,10 +59,13 @@ pub struct Identity {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Subname {
+    #[serde(default)]
     pub subname: String,
+    #[serde(default)]
     pub target: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub bio: Option<String>,
+    #[serde(default)]
     pub created_at: String,
 }
 
@@ -70,7 +83,9 @@ pub struct RenewalRequest {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentityClaimRequest {
+    #[serde(default)]
     pub crypto_id: String,
+    #[serde(default)]
     pub public_key: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub payment: Option<std::collections::HashMap<String, String>>,
@@ -84,7 +99,9 @@ pub struct IdentityClaimRequest {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentityTransferRequest {
+    #[serde(default)]
     pub crypto_id: String,
+    #[serde(default)]
     pub public_key: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
@@ -94,7 +111,9 @@ pub struct IdentityTransferRequest {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubnameCreateRequest {
+    #[serde(default)]
     pub subname: String,
+    #[serde(default)]
     pub target: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub bio: Option<String>,
@@ -108,7 +127,9 @@ pub struct SubnameCreateRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AvailabilityResponse {
+    #[serde(default)]
     pub available: bool,
+    #[serde(default)]
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub identity: Option<Identity>,
@@ -121,8 +142,11 @@ pub struct AvailabilityResponse {
 #[serde(rename_all = "camelCase")]
 pub struct IdentityExport {
     pub identity: Identity,
+    #[serde(default)]
     pub ledger_transactions: Vec<crate::types::LedgerTransaction>,
+    #[serde(default)]
     pub exported_at: String,
+    #[serde(default)]
     pub verification: std::collections::HashMap<String, String>,
     pub proofs: IdentityExportProofs,
 }
@@ -132,6 +156,7 @@ pub struct IdentityExport {
 #[serde(rename_all = "camelCase")]
 pub struct IdentityExportProofs {
     pub ownership: IdentityOwnershipProof,
+    #[serde(default)]
     pub ledger_references: Vec<IdentityLedgerReferenceProof>,
 }
 
@@ -139,9 +164,13 @@ pub struct IdentityExportProofs {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentityOwnershipProof {
+    #[serde(default)]
     pub algorithm: String,
+    #[serde(default)]
     pub crypto_id: String,
+    #[serde(default)]
     pub public_key: String,
+    #[serde(default)]
     pub public_key_matches_crypto_id: bool,
 }
 
@@ -149,11 +178,15 @@ pub struct IdentityOwnershipProof {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentityLedgerReferenceProof {
+    #[serde(default)]
     pub tx_id: String,
+    #[serde(default)]
     pub on_chain_tx: String,
+    #[serde(default)]
     pub network: String,
+    #[serde(default)]
     pub status: crate::types::LedgerStatus,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default)]
     pub type_: crate::types::LedgerType,
     pub reference: crate::types::LedgerReference,
 }
@@ -162,7 +195,9 @@ pub struct IdentityLedgerReferenceProof {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentityLifecycle {
+    #[serde(default)]
     pub phase: String,
+    #[serde(default)]
     pub annual_fee: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub grace_ends_at: Option<String>,
@@ -180,11 +215,17 @@ pub struct IdentityLifecycle {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProfileVisibility {
+    #[serde(default)]
     pub activity: bool,
+    #[serde(default)]
     pub groups: bool,
+    #[serde(default)]
     pub broadcasts: bool,
+    #[serde(default)]
     pub attestations: bool,
+    #[serde(default)]
     pub agent_card: bool,
+    #[serde(default)]
     pub search_engine_indexing: bool,
 }
 

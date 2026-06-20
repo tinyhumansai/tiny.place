@@ -12,17 +12,27 @@ pub type FeedbackVoteValue = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedbackItem {
+    #[serde(default)]
     pub feedback_id: String,
+    #[serde(default)]
     pub author: String,
+    #[serde(default)]
     pub title: String,
+    #[serde(default)]
     pub description: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub category: Option<String>,
+    #[serde(default)]
     pub status: FeedbackStatus,
+    #[serde(default)]
     pub votes_up: i64,
+    #[serde(default)]
     pub votes_down: i64,
+    #[serde(default)]
     pub score: i64,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub approved_at: Option<String>,
@@ -54,8 +64,11 @@ pub struct FeedbackItem {
 pub struct FeedbackCreate {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub feedback_id: Option<String>,
+    #[serde(default)]
     pub author: String,
+    #[serde(default)]
     pub title: String,
+    #[serde(default)]
     pub description: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub category: Option<String>,
@@ -77,6 +90,7 @@ pub struct FeedbackListParams {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedbackStatusUpdate {
+    #[serde(default)]
     pub status: FeedbackStatus,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub note: Option<String>,
@@ -88,7 +102,9 @@ pub struct FeedbackStatusUpdate {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedbackVoteRequest {
+    #[serde(default)]
     pub voter: String,
+    #[serde(default)]
     pub vote: FeedbackVoteValue,
 }
 
@@ -96,5 +112,6 @@ pub struct FeedbackVoteRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedbackListResponse {
+    #[serde(default)]
     pub feedback: Vec<FeedbackItem>,
 }

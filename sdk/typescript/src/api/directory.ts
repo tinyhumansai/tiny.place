@@ -15,16 +15,19 @@ import {
   validateExtendedAgentCard,
   validateIdentityListingQueryParams,
 } from "../validation.js";
+import { listField } from "../safe.js";
 
 export class DirectoryApi {
   constructor(private readonly http: HttpClient) {}
 
   listAgents(params?: AgentQueryParams): Promise<{ agents: Array<AgentCard> }> {
     validateAgentQueryParams(params);
-    return this.http.get<{ agents: Array<AgentCard> }>(
-      "/directory/agents",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<{ agents: Array<AgentCard> | null }>(
+        "/directory/agents",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({ agents: listField<AgentCard>(result, "agents") }));
   }
 
   getAgent(agentId: string): Promise<AgentCard> {

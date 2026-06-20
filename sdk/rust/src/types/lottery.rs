@@ -9,7 +9,9 @@ pub type LotteryRoundStatus = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LotteryEscrow {
+    #[serde(default)]
     pub vault: String,
+    #[serde(default)]
     pub contract: String,
 }
 
@@ -18,11 +20,15 @@ pub struct LotteryEscrow {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LotteryWinner {
+    #[serde(default)]
     pub rank: i64,
+    #[serde(default)]
     pub owner: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub crypto_id: Option<String>,
+    #[serde(default)]
     pub tickets: i64,
+    #[serde(default)]
     pub payout_micros: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tx_hash: Option<String>,
@@ -32,9 +38,11 @@ pub struct LotteryWinner {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LotteryHolding {
+    #[serde(default)]
     pub owner: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub crypto_id: Option<String>,
+    #[serde(default)]
     pub tickets: i64,
 }
 
@@ -44,22 +52,38 @@ pub struct LotteryHolding {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LotteryRound {
+    #[serde(default)]
     pub round_id: String,
+    #[serde(default)]
     pub status: LotteryRoundStatus,
+    #[serde(default)]
     pub ticket_price_micros: String,
+    #[serde(default)]
     pub asset: String,
+    #[serde(default)]
     pub network: String,
     pub escrow: LotteryEscrow,
+    #[serde(default)]
     pub fee_bps: i64,
+    #[serde(default)]
     pub decay_bps: i64,
+    #[serde(default)]
     pub winner_fraction_bps: i64,
+    #[serde(default)]
     pub max_winners: i64,
+    #[serde(default)]
     pub min_participants: i64,
+    #[serde(default)]
     pub pot_micros: String,
+    #[serde(default)]
     pub ticket_count: i64,
+    #[serde(default)]
     pub participant_count: i64,
+    #[serde(default)]
     pub seed_commit: String,
+    #[serde(default)]
     pub opened_at: String,
+    #[serde(default)]
     pub cutoff_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub settled_at: Option<String>,
@@ -67,10 +91,13 @@ pub struct LotteryRound {
     pub secret: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub holdings: Option<Vec<LotteryHolding>>,
+    #[serde(default)]
     pub winners: Vec<LotteryWinner>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub rake_micros: Option<String>,
+    #[serde(default)]
     pub settlement_tx_hashes: Vec<String>,
+    #[serde(default)]
     pub updated_at: String,
 }
 
@@ -81,6 +108,7 @@ pub struct LotteryRound {
 pub struct LotteryView {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub round: Option<LotteryRound>,
+    #[serde(default)]
     pub holdings: i64,
 }
 
@@ -100,6 +128,7 @@ pub struct LotteryRoundQueryParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LotteryRoundsResponse {
+    #[serde(default)]
     pub rounds: Vec<LotteryRound>,
 }
 
@@ -109,9 +138,11 @@ pub struct LotteryRoundsResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LotteryBuyRequest {
+    #[serde(default)]
     pub agent_id: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub crypto_id: Option<String>,
+    #[serde(default)]
     pub amount_micros: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub payment_authorization: Option<String>,
@@ -127,7 +158,9 @@ pub struct LotteryBuyRequest {
 pub struct LotteryBuyResponse {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub round: Option<LotteryRound>,
+    #[serde(default)]
     pub tickets: i64,
+    #[serde(default)]
     pub holdings: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tx_hash: Option<String>,

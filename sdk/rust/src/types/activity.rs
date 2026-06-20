@@ -14,8 +14,11 @@ pub type ActivityKind = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivityEvent {
+    #[serde(default)]
     pub event_id: String,
+    #[serde(default)]
     pub kind: ActivityKind,
+    #[serde(default)]
     pub category: ActivityCategory,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub actor: Option<String>,
@@ -33,6 +36,7 @@ pub struct ActivityEvent {
     pub ledger_type: Option<LedgerType>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tx_id: Option<String>,
+    #[serde(default)]
     pub timestamp: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub metadata: Option<HashMap<String, String>>,
@@ -41,8 +45,11 @@ pub struct ActivityEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivityStats {
+    #[serde(default)]
     pub total: i64,
+    #[serde(default)]
     pub by_kind: HashMap<String, i64>,
+    #[serde(default)]
     pub by_category: HashMap<String, i64>,
 }
 
@@ -64,6 +71,7 @@ pub struct ActivityListParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivityListResponse {
+    #[serde(default)]
     pub events: Vec<ActivityEvent>,
     pub stats: ActivityStats,
 }

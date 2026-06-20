@@ -6,8 +6,11 @@ use serde::{Deserialize, Serialize}; // sibling types share a flat namespace, li
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SolanaRpcInfo {
+    #[serde(default)]
     pub url: String,
+    #[serde(default)]
     pub rate_limit_per_min: i64,
+    #[serde(default)]
     pub fallbacks: bool,
 }
 
@@ -15,12 +18,19 @@ pub struct SolanaRpcInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SolanaChainInfo {
+    #[serde(default)]
     pub network: String,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub kind: String,
+    #[serde(default)]
     pub native_asset: String,
+    #[serde(default)]
     pub explorer_url: String,
+    #[serde(default)]
     pub confirmations: i64,
+    #[serde(default)]
     pub assets: Vec<SupportedAsset>,
     pub rpc: SolanaRpcInfo,
 }
@@ -33,9 +43,11 @@ pub type SolanaRpcId = serde_json::Value;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SolanaRpcRequest {
+    #[serde(default)]
     pub jsonrpc: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub id: Option<SolanaRpcId>,
+    #[serde(default)]
     pub method: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub params: Option<serde_json::Value>,
@@ -45,7 +57,9 @@ pub struct SolanaRpcRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SolanaRpcError {
+    #[serde(default)]
     pub code: i64,
+    #[serde(default)]
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub data: Option<serde_json::Value>,
@@ -55,12 +69,13 @@ pub struct SolanaRpcError {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SolanaRpcResponse<T = serde_json::Value> {
+    #[serde(default)]
     pub jsonrpc: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub id: Option<SolanaRpcId>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<T>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub error: Option<SolanaRpcError>,
 }
 

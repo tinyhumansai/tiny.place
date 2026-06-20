@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize}; // sibling types share a flat namespace, li
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Artifact {
+    #[serde(default)]
     pub artifact_id: String,
+    #[serde(default)]
     pub owner: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub owner_crypto_id: Option<String>,
@@ -46,7 +48,7 @@ pub struct Artifact {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub updated_at: Option<String>,
     /// Index signature (`[key: string]: unknown`) — any extra fields.
-    #[serde(flatten)]
+    #[serde(flatten, default)]
     pub extra: HashMap<String, serde_json::Value>,
 }
 
@@ -54,13 +56,16 @@ pub struct Artifact {
 #[serde(rename_all = "camelCase")]
 pub struct ArtifactReference {
     /// `"task" | "escrow" | "product" | "message"` or any other string.
+    #[serde(default)]
     pub kind: String,
+    #[serde(default)]
     pub id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArtifactListResult {
+    #[serde(default)]
     pub artifacts: Vec<Artifact>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub cursor: Option<String>,
@@ -115,7 +120,7 @@ pub struct ArtifactCreateRequest {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub metadata: Option<HashMap<String, serde_json::Value>>,
     /// Index signature (`[key: string]: unknown`) — any extra fields.
-    #[serde(flatten)]
+    #[serde(flatten, default)]
     pub extra: HashMap<String, serde_json::Value>,
 }
 
@@ -127,6 +132,6 @@ pub struct ArtifactRecipientUpdate {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub remove: Option<Vec<String>>,
     /// Index signature (`[key: string]: unknown`) — any extra fields.
-    #[serde(flatten)]
+    #[serde(flatten, default)]
     pub extra: HashMap<String, serde_json::Value>,
 }

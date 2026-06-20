@@ -28,7 +28,7 @@ from .api import (
     SearchApi,
 )
 from .auth import AdminSigningOptions
-from .http import AuthInvalidHook, HttpClient
+from .http import AuthInvalidHook, HttpClient, RetryOptions
 from .signer import Signer
 from .types import Json, JsonDict
 
@@ -43,6 +43,8 @@ class TinyPlaceClient:
         admin: AdminSigningOptions | None = None,
         session: aiohttp.ClientSession | None = None,
         on_auth_invalid: AuthInvalidHook | None = None,
+        timeout: float | None = None,
+        retry: RetryOptions | None = None,
     ) -> None:
         self._signer = signer
         self.http = HttpClient(
@@ -52,6 +54,8 @@ class TinyPlaceClient:
             admin=admin,
             session=session,
             on_auth_invalid=on_auth_invalid,
+            timeout=timeout,
+            retry=retry,
         )
         self.registry = RegistryApi(self.http, signer)
         self.keys = KeysApi(self.http)

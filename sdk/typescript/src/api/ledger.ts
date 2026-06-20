@@ -6,6 +6,7 @@ import type {
   LedgerVerifyRequest,
   LedgerVerifyResult,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 export class LedgerApi {
   constructor(
@@ -14,10 +15,14 @@ export class LedgerApi {
   ) {}
 
   list(params?: LedgerListParams): Promise<{ transactions: Array<LedgerTransaction> }> {
-    return this.http.get<{ transactions: Array<LedgerTransaction> }>(
-      "/ledger/transactions",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<{ transactions: Array<LedgerTransaction> | null }>(
+        "/ledger/transactions",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        transactions: listField<LedgerTransaction>(result, "transactions"),
+      }));
   }
 
   get(txId: string): Promise<LedgerTransaction> {

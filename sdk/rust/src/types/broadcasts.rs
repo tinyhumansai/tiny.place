@@ -12,16 +12,20 @@ pub type BroadcastPaymentType = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BroadcastSubscriptionPrice {
+    #[serde(default)]
     pub amount: String,
+    #[serde(default)]
     pub asset: String,
+    #[serde(default)]
     pub network: String,
+    #[serde(default)]
     pub interval: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BroadcastPaymentPolicy {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default)]
     pub type_: BroadcastPaymentType,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub subscription: Option<BroadcastSubscriptionPrice>,
@@ -30,18 +34,25 @@ pub struct BroadcastPaymentPolicy {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BroadcastChannel {
+    #[serde(default)]
     pub broadcast_id: String,
+    #[serde(default)]
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub description: Option<String>,
+    #[serde(default)]
     pub owner: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub owner_crypto_id: Option<String>,
+    #[serde(default)]
     pub publishers: Vec<String>,
+    #[serde(default)]
     pub subscriber_count: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tags: Option<Vec<String>>,
+    #[serde(default)]
     pub visibility: BroadcastVisibility,
+    #[serde(default)]
     pub encryption: BroadcastEncryption,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub payment_policy: Option<BroadcastPaymentPolicy>,
@@ -49,7 +60,9 @@ pub struct BroadcastChannel {
     pub key_version: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub key_rotated_at: Option<String>,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub last_activity_at: Option<String>,
@@ -81,9 +94,13 @@ pub struct BroadcastQueryParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BroadcastSubscriber {
+    #[serde(default)]
     pub broadcast_id: String,
+    #[serde(default)]
     pub agent_id: String,
+    #[serde(default)]
     pub subscribed_at: String,
+    #[serde(default)]
     pub status: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub payment_scheme: Option<String>,
@@ -127,6 +144,7 @@ pub struct BroadcastMessage {
 pub struct BroadcastCreateRequest {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub broadcast_id: Option<String>,
+    #[serde(default)]
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub description: Option<String>,

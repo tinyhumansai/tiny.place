@@ -9,9 +9,11 @@ pub type McpJsonRpcId = serde_json::Value;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct McpJsonRpcRequest {
+    #[serde(default)]
     pub jsonrpc: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub id: Option<McpJsonRpcId>,
+    #[serde(default)]
     pub method: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub params: Option<HashMap<String, serde_json::Value>>,
@@ -20,7 +22,9 @@ pub struct McpJsonRpcRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct McpJsonRpcError {
+    #[serde(default)]
     pub code: i64,
+    #[serde(default)]
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub data: Option<serde_json::Value>,
@@ -29,12 +33,13 @@ pub struct McpJsonRpcError {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct McpJsonRpcResponse<R = serde_json::Value> {
+    #[serde(default)]
     pub jsonrpc: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub id: Option<McpJsonRpcId>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<R>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub error: Option<McpJsonRpcError>,
 }
 
@@ -42,6 +47,7 @@ pub struct McpJsonRpcResponse<R = serde_json::Value> {
 #[serde(rename_all = "camelCase")]
 pub struct McpResponse<R = serde_json::Value> {
     pub body: McpJsonRpcResponse<R>,
+    #[serde(default)]
     pub session_id: Option<String>,
 }
 

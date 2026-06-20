@@ -20,6 +20,7 @@ import type {
   X402VerifyResponse,
   X402VerifyUntilValidOptions,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 const DEFAULT_VERIFY_ATTEMPTS = 10;
 const DEFAULT_VERIFY_INTERVAL_MS = 2000;
@@ -215,9 +216,11 @@ export class PaymentsApi {
   }
 
   supported(): Promise<{ chains: Array<SupportedChain> }> {
-    return this.http.get<{ chains: Array<SupportedChain> }>(
-      "/payments/supported",
-    );
+    return this.http
+      .get<{ chains: Array<SupportedChain> }>("/payments/supported")
+      .then((result) => ({
+        chains: listField<SupportedChain>(result, "chains"),
+      }));
   }
 
   createSubscription(subscription: SubscriptionCreateRequest): Promise<Subscription> {

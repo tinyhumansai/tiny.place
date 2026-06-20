@@ -31,6 +31,7 @@ import type {
   ProductQueryParams,
   ProductReview,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 export interface ProductSolanaPurchaseOptions
   extends Omit<SolanaX402PaymentExecutionOptions, "payment" | "signer"> {
@@ -101,10 +102,12 @@ export class MarketplaceApi {
   listProducts(
     params?: ProductQueryParams,
   ): Promise<{ products: Array<Product> }> {
-    return this.http.get<{ products: Array<Product> }>(
-      "/marketplace/products",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<{ products: Array<Product> | null }>(
+        "/marketplace/products",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({ products: listField<Product>(result, "products") }));
   }
 
   async createProduct(product: ProductCreateRequest): Promise<Product> {
@@ -296,9 +299,11 @@ export class MarketplaceApi {
   listProductReviews(
     productId: string,
   ): Promise<{ reviews: Array<ProductReview> }> {
-    return this.http.get<{ reviews: Array<ProductReview> }>(
-      `/marketplace/products/${encodeURIComponent(productId)}/reviews`,
-    );
+    return this.http
+      .get<{ reviews: Array<ProductReview> | null }>(
+        `/marketplace/products/${encodeURIComponent(productId)}/reviews`,
+      )
+      .then((result) => ({ reviews: listField<ProductReview>(result, "reviews") }));
   }
 
   async createProductReview(
@@ -338,10 +343,14 @@ export class MarketplaceApi {
     limit?: number;
     status?: string;
   }): Promise<{ identities: Array<IdentityListing> }> {
-    return this.http.get<{ identities: Array<IdentityListing> }>(
-      "/marketplace/identities",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<{ identities: Array<IdentityListing> | null }>(
+        "/marketplace/identities",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        identities: listField<IdentityListing>(result, "identities"),
+      }));
   }
 
   async createIdentityListing(
@@ -465,9 +474,11 @@ export class MarketplaceApi {
   }
 
   listBids(listingId: string): Promise<{ bids: Array<IdentityBid> }> {
-    return this.http.get<{ bids: Array<IdentityBid> }>(
-      `/marketplace/identities/${encodeURIComponent(listingId)}/bids`,
-    );
+    return this.http
+      .get<{ bids: Array<IdentityBid> | null }>(
+        `/marketplace/identities/${encodeURIComponent(listingId)}/bids`,
+      )
+      .then((result) => ({ bids: listField<IdentityBid>(result, "bids") }));
   }
 
   async placeBid(
@@ -585,9 +596,11 @@ export class MarketplaceApi {
   identitySaleHistory(
     name: string,
   ): Promise<{ history: Array<IdentitySale> | null }> {
-    return this.http.get<{ history: Array<IdentitySale> | null }>(
-      `/marketplace/identities/history/${encodeURIComponent(name)}`,
-    );
+    return this.http
+      .get<{ history: Array<IdentitySale> | null }>(
+        `/marketplace/identities/history/${encodeURIComponent(name)}`,
+      )
+      .then((result) => ({ history: listField<IdentitySale>(result, "history") }));
   }
 
   identityFloor(length?: number): Promise<IdentityFloor> {
@@ -613,10 +626,12 @@ export class MarketplaceApi {
     limit?: number;
     offset?: number;
   }): Promise<{ offers: Array<IdentityOffer> }> {
-    return this.http.get<{ offers: Array<IdentityOffer> }>(
-      "/marketplace/offers",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<{ offers: Array<IdentityOffer> | null }>(
+        "/marketplace/offers",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({ offers: listField<IdentityOffer>(result, "offers") }));
   }
 
   async createOffer(offer: Partial<IdentityOffer>): Promise<IdentityOffer> {
@@ -739,24 +754,37 @@ export class MarketplaceApi {
   browseMarketplace(
     params?: ProductQueryParams,
   ): Promise<MarketplaceBrowseResponse> {
-    return this.http.get<MarketplaceBrowseResponse>(
-      "/marketplace",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<MarketplaceBrowseResponse>(
+        "/marketplace",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        products: listField<Product>(result, "products"),
+        identities: listField<IdentityListing>(result, "identities"),
+      }));
   }
 
   categories(): Promise<{ categories: Array<MarketplaceCategory> }> {
-    return this.http.get<{ categories: Array<MarketplaceCategory> }>(
-      "/marketplace/categories",
-    );
+    return this.http
+      .get<{ categories: Array<MarketplaceCategory> | null }>(
+        "/marketplace/categories",
+      )
+      .then((result) => ({
+        categories: listField<MarketplaceCategory>(result, "categories"),
+      }));
   }
 
   featured(): Promise<{ items: Array<unknown> }> {
-    return this.http.get<{ items: Array<unknown> }>("/marketplace/featured");
+    return this.http
+      .get<{ items: Array<unknown> | null }>("/marketplace/featured")
+      .then((result) => ({ items: listField<unknown>(result, "items") }));
   }
 
   recent(): Promise<{ sales: Array<IdentitySale> }> {
-    return this.http.get<{ sales: Array<IdentitySale> }>("/marketplace/recent");
+    return this.http
+      .get<{ sales: Array<IdentitySale> | null }>("/marketplace/recent")
+      .then((result) => ({ sales: listField<IdentitySale>(result, "sales") }));
   }
 
   stream(

@@ -8,6 +8,7 @@ import type {
   BountySubmission,
   BountySubmissionCreateRequest,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 // BountiesApi covers the bounty platform: create + fund in one x402 flow (the
 // reward into escrow), browse, submit a URL, comment for free, run the
@@ -18,10 +19,12 @@ export class BountiesApi {
   // --- Bounties ---
 
   list(params?: BountyQueryParams): Promise<{ bounties: Array<Bounty> }> {
-    return this.http.get<{ bounties: Array<Bounty> }>(
-      "/bounties",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<{ bounties: Array<Bounty> | null }>(
+        "/bounties",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({ bounties: listField<Bounty>(result, "bounties") }));
   }
 
   get(bountyId: string): Promise<Bounty> {
@@ -61,10 +64,14 @@ export class BountiesApi {
     bountyId: string,
     params?: { status?: string; submitter?: string; limit?: number },
   ): Promise<{ submissions: Array<BountySubmission> }> {
-    return this.http.get<{ submissions: Array<BountySubmission> }>(
-      `/bounties/${encodeURIComponent(bountyId)}/submissions`,
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<{ submissions: Array<BountySubmission> | null }>(
+        `/bounties/${encodeURIComponent(bountyId)}/submissions`,
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        submissions: listField<BountySubmission>(result, "submissions"),
+      }));
   }
 
   // --- Comments (free) ---
@@ -84,10 +91,14 @@ export class BountiesApi {
     bountyId: string,
     params?: { limit?: number; offset?: number },
   ): Promise<{ comments: Array<BountyComment> }> {
-    return this.http.get<{ comments: Array<BountyComment> }>(
-      `/bounties/${encodeURIComponent(bountyId)}/comments`,
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<{ comments: Array<BountyComment> | null }>(
+        `/bounties/${encodeURIComponent(bountyId)}/comments`,
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        comments: listField<BountyComment>(result, "comments"),
+      }));
   }
 
   // --- Council + approval ---

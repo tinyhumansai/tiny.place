@@ -15,6 +15,7 @@ pub type LedgerStatus = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LedgerReference {
+    #[serde(default)]
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub id: Option<String>,
@@ -27,9 +28,11 @@ pub struct LedgerReference {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LedgerTransaction {
+    #[serde(default)]
     pub tx_id: String,
+    #[serde(default)]
     pub visibility: LedgerVisibility,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default)]
     pub transaction_type: LedgerType,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub from: Option<String>,
@@ -39,11 +42,15 @@ pub struct LedgerTransaction {
     pub amount: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub asset: Option<String>,
+    #[serde(default)]
     pub network: String,
+    #[serde(default)]
     pub timestamp: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub reference: Option<LedgerReference>,
+    #[serde(default)]
     pub on_chain_tx: String,
+    #[serde(default)]
     pub status: LedgerStatus,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub metadata: Option<HashMap<String, String>>,
@@ -81,7 +88,9 @@ pub struct LedgerListParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LedgerVerifyRequest {
+    #[serde(default)]
     pub on_chain_tx: String,
+    #[serde(default)]
     pub network: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub ledger_tx_id: Option<String>,
@@ -98,8 +107,11 @@ pub struct LedgerVerifyRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LedgerVerifyResult {
+    #[serde(default)]
     pub verified: bool,
+    #[serde(default)]
     pub network: String,
+    #[serde(default)]
     pub matches_ledger: bool,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub block_number: Option<i64>,

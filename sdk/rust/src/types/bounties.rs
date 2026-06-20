@@ -24,24 +24,33 @@ pub type BountyFundPayment = HashMap<String, String>;
 pub struct BountyReward {
     /// Base-unit decimal (the asset's smallest unit); format with the asset's
     /// decimals for display.
+    #[serde(default)]
     pub amount: String,
+    #[serde(default)]
     pub asset: String,
+    #[serde(default)]
     pub network: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BountyThumbnail {
+    #[serde(default)]
     pub width: i64,
+    #[serde(default)]
     pub height: i64,
+    #[serde(default)]
     pub mime_type: String,
+    #[serde(default)]
     pub size: i64,
+    #[serde(default)]
     pub updated_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BountyCouncilVote {
+    #[serde(default)]
     pub model: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub winner_submission_id: Option<String>,
@@ -54,6 +63,7 @@ pub struct BountyCouncilVote {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BountyCouncil {
+    #[serde(default)]
     pub status: BountyCouncilStatus,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub ran_at: Option<String>,
@@ -74,13 +84,18 @@ pub struct BountyCouncil {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Bounty {
+    #[serde(default)]
     pub bounty_id: String,
+    #[serde(default)]
     pub creator: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub creator_crypto_id: Option<String>,
+    #[serde(default)]
     pub title: String,
+    #[serde(default)]
     pub description: String,
     pub reward: BountyReward,
+    #[serde(default)]
     pub status: BountyStatus,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub thumbnail: Option<BountyThumbnail>,
@@ -90,7 +105,9 @@ pub struct Bounty {
     pub funding_tx_sig: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub funding_ledger_tx_id: Option<String>,
+    #[serde(default)]
     pub submission_count: i64,
+    #[serde(default)]
     pub comment_count: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub council: Option<BountyCouncil>,
@@ -106,39 +123,55 @@ pub struct Bounty {
     pub payout_tx_sig: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub payout_ledger_tx_id: Option<String>,
+    #[serde(default)]
     pub start_at: String,
+    #[serde(default)]
     pub deadline: String,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BountySubmission {
+    #[serde(default)]
     pub submission_id: String,
+    #[serde(default)]
     pub bounty_id: String,
+    #[serde(default)]
     pub submitter: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub submitter_crypto_id: Option<String>,
+    #[serde(default)]
     pub url: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub note: Option<String>,
+    #[serde(default)]
     pub status: BountySubmissionStatus,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BountyComment {
+    #[serde(default)]
     pub comment_id: String,
+    #[serde(default)]
     pub bounty_id: String,
+    #[serde(default)]
     pub author: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub author_crypto_id: Option<String>,
+    #[serde(default)]
     pub body: String,
+    #[serde(default)]
     pub created_at: String,
 }
 
@@ -149,9 +182,12 @@ pub struct BountyCreateRequest {
     pub creator: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub creator_crypto_id: Option<String>,
+    #[serde(default)]
     pub title: String,
+    #[serde(default)]
     pub description: String,
     /// Human-decimal amount in the asset's units (e.g. "10").
+    #[serde(default)]
     pub amount: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub asset: Option<BountyAsset>,
@@ -173,6 +209,7 @@ pub struct BountySubmissionCreateRequest {
     pub submitter: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub submitter_crypto_id: Option<String>,
+    #[serde(default)]
     pub url: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub title: Option<String>,
@@ -187,6 +224,7 @@ pub struct BountyCommentCreateRequest {
     pub author: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub author_crypto_id: Option<String>,
+    #[serde(default)]
     pub body: String,
 }
 
@@ -226,17 +264,20 @@ pub struct BountyCommentQueryParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BountyListResponse {
+    #[serde(default)]
     pub bounties: Vec<Bounty>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BountySubmissionsResponse {
+    #[serde(default)]
     pub submissions: Vec<BountySubmission>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BountyCommentsResponse {
+    #[serde(default)]
     pub comments: Vec<BountyComment>,
 }

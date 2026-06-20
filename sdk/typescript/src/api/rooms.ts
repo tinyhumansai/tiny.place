@@ -1,5 +1,6 @@
 import type { HttpClient } from "../http.js";
 import type { TinyPlaceWebSocket } from "../websocket.js";
+import { listField } from "../safe.js";
 import type {
   GameActionRequest,
   GameActionResponse,
@@ -37,10 +38,12 @@ export class RoomsApi {
    * @returns The matching rooms.
    */
   list(params?: GameRoomQueryParams): Promise<{ rooms: Array<GameRoom> }> {
-    return this.http.get<{ rooms: Array<GameRoom> }>(
-      "/rooms",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<{ rooms: Array<GameRoom> }>(
+        "/rooms",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({ rooms: listField<GameRoom>(result, "rooms") }));
   }
 
   /**
@@ -224,15 +227,22 @@ export class RoomsApi {
     roomId: string,
     actorId?: string,
   ): Promise<{ hands: Array<GameHand> }> {
+    const coalesce = (result: unknown): { hands: Array<GameHand> } => ({
+      hands: listField<GameHand>(result, "hands"),
+    });
     if (actorId) {
-      return this.http.getDirectoryAuthAs<{ hands: Array<GameHand> }>(
-        `/rooms/${encodeURIComponent(roomId)}/hands`,
-        actorId,
-      );
+      return this.http
+        .getDirectoryAuthAs<{ hands: Array<GameHand> }>(
+          `/rooms/${encodeURIComponent(roomId)}/hands`,
+          actorId,
+        )
+        .then(coalesce);
     }
-    return this.http.get<{ hands: Array<GameHand> }>(
-      `/rooms/${encodeURIComponent(roomId)}/hands`,
-    );
+    return this.http
+      .get<{ hands: Array<GameHand> }>(
+        `/rooms/${encodeURIComponent(roomId)}/hands`,
+      )
+      .then(coalesce);
   }
 
   /**

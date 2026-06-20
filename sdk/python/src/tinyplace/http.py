@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
+import random
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 from urllib.parse import quote, urlencode
@@ -13,6 +15,50 @@ from .signer import Signer
 from .types import Headers, Json, JsonDict, Query
 
 AuthInvalidHook = Callable[[int, Json], None]
+
+#: Default per-request timeout in seconds when none is configured.
+DEFAULT_TIMEOUT = 30.0
+
+
+@dataclass(frozen=True)
+class RetryOptions:
+    """Controls automatic retry-with-backoff for transient failures.
+
+    To avoid silently duplicating a write, only idempotent methods are retried
+    by default.
+    """
+
+    #: Max retry attempts after the first try. ``0`` disables retries.
+    retries: int = 2
+    #: Base backoff delay in seconds (exponential, with jitter).
+    base_delay: float = 0.2
+    #: Upper bound on a single backoff delay in seconds.
+    max_delay: float = 5.0
+    #: HTTP statuses treated as transient.
+    retryable_statuses: frozenset[int] = frozenset({408, 429, 500, 502, 503, 504})
+    #: HTTP methods eligible for retry (idempotent reads only by default).
+    retry_methods: frozenset[str] = frozenset({"GET", "HEAD", "OPTIONS"})
+    #: Retry connection-level failures (timeout, refused, DNS) for eligible methods.
+    retry_network_errors: bool = True
+
+
+def _backoff_delay(retry: RetryOptions, attempt: int) -> float:
+    """Exponential backoff (capped) with half jitter for ``attempt``."""
+    ceiling = min(retry.max_delay, retry.base_delay * (2**attempt))
+    half = ceiling / 2
+    return half + random.random() * half
+
+
+def _retry_after_delay(response: Any) -> float | None:
+    """Parse a ``Retry-After`` header (delta-seconds form) into seconds."""
+    headers = getattr(response, "headers", None) or {}
+    value = headers.get("Retry-After") or headers.get("retry-after")
+    if not value:
+        return None
+    try:
+        return max(0.0, float(str(value).strip()))
+    except ValueError:
+        return None
 
 
 @dataclass(frozen=True)
@@ -62,6 +108,8 @@ class HttpClient:
         admin: AdminSigningOptions | None = None,
         session: aiohttp.ClientSession | None = None,
         on_auth_invalid: AuthInvalidHook | None = None,
+        timeout: float | None = None,
+        retry: RetryOptions | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.signer = signer
@@ -71,6 +119,8 @@ class HttpClient:
         self._session = session
         self._owns_session = session is None
         self._on_auth_invalid = on_auth_invalid
+        self._timeout = DEFAULT_TIMEOUT if timeout is None else timeout
+        self._retry = retry or RetryOptions()
 
     async def close(self) -> None:
         if self._session and self._owns_session:
@@ -203,19 +253,50 @@ class HttpClient:
         request_uri = f"{path}{query_string}"
         url = f"{self.base_url}{request_uri}"
         body_text = "" if body is None else json.dumps(body, separators=(",", ":"))
-        request_headers = {"Content-Type": "application/json", **(headers or {})}
 
-        await self._apply_auth(request_headers, auth, method, request_uri, body_text, actor)
-        session = self._get_session()
-        response = await session.request(
-            method,
-            url,
-            headers=request_headers,
-            data=body_text or None,
-        )
+        retry = self._retry
+        eligible = retry.retries > 0 and method.upper() in retry.retry_methods
+        attempt = 0
+        while True:
+            # Re-sign on every attempt so retries carry a fresh timestamp/nonce
+            # and are never rejected as a replay.
+            request_headers = {"Content-Type": "application/json", **(headers or {})}
+            await self._apply_auth(
+                request_headers, auth, method, request_uri, body_text, actor
+            )
+            session = self._get_session()
+            try:
+                response = await session.request(
+                    method,
+                    url,
+                    headers=request_headers,
+                    data=body_text or None,
+                    **self._timeout_kwargs(),
+                )
+            except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+                # Connection-level failure (timeout, refused, DNS): retry eligible
+                # idempotent methods, otherwise surface a typed error so callers
+                # see one error type whether or not the backend answered.
+                if eligible and attempt < retry.retries and retry.retry_network_errors:
+                    await asyncio.sleep(_backoff_delay(retry, attempt))
+                    attempt += 1
+                    continue
+                raise TinyPlaceError(
+                    0, str(exc), f"Request to {path} failed: {exc}"
+                ) from exc
 
-        if response.status < 200 or response.status >= 300:
-            await self._raise_error(path, response)
+            if response.status < 200 or response.status >= 300:
+                if (
+                    eligible
+                    and attempt < retry.retries
+                    and response.status in retry.retryable_statuses
+                ):
+                    delay = _retry_after_delay(response) or _backoff_delay(retry, attempt)
+                    await asyncio.sleep(delay)
+                    attempt += 1
+                    continue
+                await self._raise_error(path, response)
+            break
 
         if response.status == 204:
             return None
@@ -274,6 +355,12 @@ class HttpClient:
         if self._session is None:
             self._session = aiohttp.ClientSession()
         return self._session
+
+    def _timeout_kwargs(self) -> dict[str, Any]:
+        """Per-request timeout kwargs for ``session.request`` (empty if disabled)."""
+        if self._timeout and self._timeout > 0:
+            return {"timeout": aiohttp.ClientTimeout(total=self._timeout)}
+        return {}
 
 
 def encode(value: str) -> str:

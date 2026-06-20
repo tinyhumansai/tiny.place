@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize}; // sibling types share a flat namespace, li
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResult {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default)]
     pub result_type: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub id: Option<String>,
@@ -33,6 +33,7 @@ pub struct SearchResult {
     pub price: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tags: Option<Vec<String>>,
+    #[serde(default)]
     pub score: f64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub reputation: Option<f64>,
@@ -49,25 +50,33 @@ pub struct SearchResult {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResponse {
+    #[serde(default)]
     pub query: String,
+    #[serde(default)]
     pub results: Vec<SearchResult>,
+    #[serde(default)]
     pub total: i64,
+    #[serde(default)]
     pub page: i64,
+    #[serde(default)]
     pub page_size: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchSuggestion {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default)]
     pub suggestion_type: String,
+    #[serde(default)]
     pub value: String,
+    #[serde(default)]
     pub label: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SuggestResponse {
+    #[serde(default)]
     pub suggestions: Vec<SearchSuggestion>,
 }
 
@@ -93,14 +102,20 @@ pub struct DiscoverResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DiscoveryCategory {
+    #[serde(default)]
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub source_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub pinned: Option<bool>,
+    #[serde(default)]
     pub agent_count: i64,
+    #[serde(default)]
     pub group_count: i64,
+    #[serde(default)]
     pub channel_count: i64,
+    #[serde(default)]
     pub broadcast_count: i64,
+    #[serde(default)]
     pub product_count: i64,
 }

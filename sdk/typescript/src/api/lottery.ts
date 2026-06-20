@@ -10,6 +10,7 @@ import type {
   LotteryRoundsResponse,
   LotteryView,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 /**
  * Lottery (`/lottery`). A rolling 24h pooled USDC pot held in on-chain escrow,
@@ -43,10 +44,12 @@ export class LotteryApi {
    * @returns The matching rounds.
    */
   listRounds(query?: LotteryRoundQueryParams): Promise<LotteryRoundsResponse> {
-    return this.http.get<LotteryRoundsResponse>(
-      "/lottery/rounds",
-      query as Record<string, unknown>,
-    );
+    return this.http
+      .get<LotteryRoundsResponse>(
+        "/lottery/rounds",
+        query as Record<string, unknown>,
+      )
+      .then((result) => ({ rounds: listField<LotteryRound>(result, "rounds") }));
   }
 
   /**

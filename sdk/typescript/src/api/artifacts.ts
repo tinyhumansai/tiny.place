@@ -6,6 +6,7 @@ import type {
   ArtifactQueryParams,
   ArtifactRecipientUpdate,
 } from "../types/index.js";
+import { asString, listField } from "../safe.js";
 
 export class ArtifactsApi {
   constructor(private readonly http: HttpClient) {}
@@ -14,17 +15,20 @@ export class ArtifactsApi {
     params?: ArtifactQueryParams,
     actorId?: string,
   ): Promise<ArtifactListResult> {
-    if (actorId) {
-      return this.http.getDirectoryAuthAs<ArtifactListResult>(
-        "/artifacts",
-        actorId,
-        params as Record<string, unknown>,
-      );
-    }
-    return this.http.getDirectoryAuth<ArtifactListResult>(
-      "/artifacts",
-      params as Record<string, unknown>,
-    );
+    const request = actorId
+      ? this.http.getDirectoryAuthAs<ArtifactListResult>(
+          "/artifacts",
+          actorId,
+          params as Record<string, unknown>,
+        )
+      : this.http.getDirectoryAuth<ArtifactListResult>(
+          "/artifacts",
+          params as Record<string, unknown>,
+        );
+    return request.then((result) => ({
+      artifacts: listField<Artifact>(result, "artifacts"),
+      cursor: asString((result as { cursor?: unknown })?.cursor) || undefined,
+    }));
   }
 
   create(request: ArtifactCreateRequest, ownerId?: string): Promise<Artifact> {

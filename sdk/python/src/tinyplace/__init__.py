@@ -18,7 +18,8 @@ from .crypto import (
     public_key_to_solana_address,
     sha256_hex,
 )
-from .http import PaymentChallenge, PaymentRequiredChallenge, TinyPlaceError
+from .http import PaymentChallenge, PaymentRequiredChallenge, RetryOptions, TinyPlaceError
+from .safe import as_bool, as_dict, as_int, as_list, as_str, field, list_field
 from .signer import LocalSigner, Signer
 from .solana import (
     SOLANA_MAINNET_NETWORK,
@@ -49,6 +50,7 @@ __all__ = [
     "LocalSigner",
     "PaymentChallenge",
     "PaymentRequiredChallenge",
+    "RetryOptions",
     "SOLANA_MAINNET_NETWORK",
     "SOLANA_NATIVE_ASSET",
     "SOLANA_USDC_MINT",
@@ -57,6 +59,13 @@ __all__ = [
     "Signer",
     "TinyPlaceClient",
     "TinyPlaceError",
+    "as_bool",
+    "as_dict",
+    "as_int",
+    "as_list",
+    "as_str",
+    "field",
+    "list_field",
     "build_canonical_message",
     "build_auth_header",
     "build_x402_payment_authorization",

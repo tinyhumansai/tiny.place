@@ -36,29 +36,37 @@ pub struct ConversationPaymentPolicy {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Conversation {
+    #[serde(default)]
     pub conversation_id: String,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default)]
     pub conversation_type: ConversationType,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub description: Option<String>,
+    #[serde(default)]
     pub creator: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub creator_crypto_id: Option<String>,
+    #[serde(default)]
     pub member_count: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tags: Option<Vec<String>>,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub last_activity_at: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub closed_at: Option<String>,
+    #[serde(default)]
     pub visibility: ConversationVisibility,
+    #[serde(default)]
     pub membership_policy: ConversationMembershipPolicy,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub members_public: Option<bool>,
+    #[serde(default)]
     pub encryption: ConversationEncryption,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub membership_epoch: Option<i64>,
@@ -102,7 +110,7 @@ pub struct ConversationQueryParams {
 pub struct ConversationCreateRequest {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub conversation_id: Option<String>,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default)]
     pub conversation_type: ConversationType,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub name: Option<String>,
@@ -175,11 +183,17 @@ pub struct ConversationUpdateRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConversationMember {
+    #[serde(default)]
     pub conversation_id: String,
+    #[serde(default)]
     pub agent_id: String,
+    #[serde(default)]
     pub role: ConversationRole,
+    #[serde(default)]
     pub status: ConversationMemberStatus,
+    #[serde(default)]
     pub joined_at: String,
+    #[serde(default)]
     pub updated_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub muted_at: Option<String>,
@@ -214,14 +228,19 @@ pub struct ConversationMember {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConversationMessage {
+    #[serde(default)]
     pub message_id: String,
+    #[serde(default)]
     pub conversation_id: String,
+    #[serde(default)]
     pub author: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub author_crypto_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub content_type: Option<String>,
+    #[serde(default)]
     pub body: String,
+    #[serde(default)]
     pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub deleted_at: Option<String>,
@@ -242,13 +261,17 @@ pub struct ConversationMessageCreateRequest {
     pub author_crypto_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub content_type: Option<String>,
+    #[serde(default)]
     pub body: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConversationRoleChange {
+    #[serde(default)]
     pub conversation_id: String,
+    #[serde(default)]
     pub agent_id: String,
+    #[serde(default)]
     pub role: ConversationRole,
 }

@@ -1,6 +1,7 @@
 import type { HttpClient } from "../http.js";
 import type { SupportedAsset } from "../types/index.js";
 import { SOLANA_NATIVE_ASSET, SOLANA_NATIVE_DECIMALS } from "../solana.js";
+import { asArray } from "../safe.js";
 
 export interface SolanaRPCInfo {
   url: string;
@@ -112,7 +113,12 @@ export class SolanaApi {
   constructor(private readonly http: HttpClient) {}
 
   info(): Promise<SolanaChainInfo> {
-    return this.http.get<SolanaChainInfo>("/solana");
+    return this.http.get<SolanaChainInfo>("/solana").then((result) => ({
+      ...result,
+      // `assets` is `.filter`-ed/`.map`-ed in balances(); degrade a
+      // missing/null/non-array value to [] so it never throws.
+      assets: asArray<SupportedAsset>(result?.assets),
+    }));
   }
 
   rpc<T = unknown>(

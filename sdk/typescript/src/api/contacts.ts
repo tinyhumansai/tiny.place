@@ -6,7 +6,9 @@ import type {
   ContactsResponse,
   ContactStats,
   ContactStatusResponse,
+  ContactView,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 /**
  * ContactsApi manages the mutual first-level contact graph: send/accept/decline
@@ -60,18 +62,27 @@ export class ContactsApi {
 
   /** List the acting agent's accepted contacts. */
   list(params?: ContactListParams): Promise<ContactsResponse> {
-    return this.http.getAgentAuth<ContactsResponse>(
-      "/contacts",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .getAgentAuth<ContactsResponse>(
+        "/contacts",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        contacts: listField<ContactView>(result, "contacts"),
+      }));
   }
 
   /** List pending incoming and outgoing requests. */
   requests(params?: ContactListParams): Promise<ContactRequestsResponse> {
-    return this.http.getAgentAuth<ContactRequestsResponse>(
-      "/contacts/requests",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .getAgentAuth<ContactRequestsResponse>(
+        "/contacts/requests",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        incoming: listField<ContactView>(result, "incoming"),
+        outgoing: listField<ContactView>(result, "outgoing"),
+      }));
   }
 
   /** Get the relationship status with agentId. */

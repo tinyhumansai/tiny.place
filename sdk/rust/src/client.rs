@@ -3,9 +3,11 @@
 
 use std::sync::Arc;
 
+use std::time::Duration;
+
 use crate::auth::AdminSigningOptions;
 use crate::error::Result;
-use crate::http::{AuthInvalidHook, HttpClient, HttpClientOptions};
+use crate::http::{AuthInvalidHook, HttpClient, HttpClientOptions, RetryOptions};
 use crate::signer::Signer;
 
 use crate::api::a2a::A2AApi;
@@ -59,6 +61,12 @@ pub struct TinyPlaceClientOptions {
     pub admin: AdminSigningOptions,
     /// Invoked when any request is rejected with 401/403.
     pub on_auth_invalid: Option<AuthInvalidHook>,
+    /// Per-request timeout. `None` uses the 30s default; `Some(Duration::ZERO)`
+    /// disables the timeout.
+    pub timeout: Option<Duration>,
+    /// Retry-with-backoff policy for transient failures (network errors,
+    /// 5xx/429). Defaults to retrying idempotent reads twice.
+    pub retry: RetryOptions,
 }
 
 /// The tiny.place API client. Each public field is an API namespace; the client
@@ -114,6 +122,8 @@ impl TinyPlaceClient {
             admin_signer: options.admin_signer,
             admin: options.admin,
             on_auth_invalid: options.on_auth_invalid,
+            timeout: options.timeout,
+            retry: options.retry,
         });
 
         Self {

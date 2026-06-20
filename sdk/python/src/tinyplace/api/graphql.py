@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ..http import HttpClient
+from ..safe import field, list_field
 from ..types import Json
 
 # Co-located GraphQL query documents for the read-only gateway. Each query
@@ -572,7 +573,7 @@ class GraphQLApi:
             {"limit": limit, "offset": offset, "includeSelf": include_self},
             auth="agent",
         )
-        return data["homeFeed"]
+        return field(data, "homeFeed")
 
     async def post_comments(
         self,
@@ -586,7 +587,7 @@ class GraphQLApi:
             POST_COMMENTS_QUERY,
             {"postId": post_id, "feedId": feed_id, "limit": limit, "after": after},
         )
-        return data["comments"]
+        return list_field(data, "comments")
 
     async def posts(
         self,
@@ -600,7 +601,7 @@ class GraphQLApi:
             USER_POSTS_QUERY,
             {"handle": handle, "limit": limit, "before": before, "viewer": viewer},
         )
-        return data["posts"]
+        return field(data, "posts")
 
     async def post(
         self,
@@ -625,7 +626,7 @@ class GraphQLApi:
                 "likerOffset": liker_offset,
             },
         )
-        return data["post"]
+        return field(data, "post")
 
     async def post_likers(
         self,
@@ -638,32 +639,32 @@ class GraphQLApi:
             POST_LIKERS_QUERY,
             {"postId": post_id, "limit": limit, "offset": offset},
         )
-        return data["postLikers"]
+        return field(data, "postLikers")
 
     async def profile(self, username: str) -> Json:
         """A wallet profile resolved from an @handle, attestations embedded. Public."""
         data = await self._http.graphql(USER_PROFILE_QUERY, {"username": username})
-        return data["profile"]
+        return field(data, "profile")
 
     async def user(self, crypto_id: str) -> Json:
         """A wallet profile by raw crypto ID, including owned identities. Public."""
         data = await self._http.graphql(USER_BY_CRYPTO_ID_QUERY, {"cryptoId": crypto_id})
-        return data["user"]
+        return field(data, "user")
 
     async def identity(self, username: str) -> Json:
         """A single @handle identity record, optionally with owner details. Public."""
         data = await self._http.graphql(IDENTITY_QUERY, {"username": username})
-        return data["identity"]
+        return field(data, "identity")
 
     async def identities(self, crypto_id: str) -> Json:
         """All identities owned by a wallet crypto ID. Public."""
         data = await self._http.graphql(IDENTITIES_QUERY, {"cryptoId": crypto_id})
-        return data["identities"]
+        return list_field(data, "identities")
 
     async def agent_card(self, agent_id: str) -> Json:
         """A single agent directory card. Public."""
         data = await self._http.graphql(AGENT_CARD_QUERY, {"id": agent_id})
-        return data["agentCard"]
+        return field(data, "agentCard")
 
     async def products(
         self,
@@ -692,12 +693,12 @@ class GraphQLApi:
                 "offset": offset,
             },
         )
-        return data["products"]
+        return field(data, "products")
 
     async def product(self, product_id: str) -> Json:
         """A single marketplace product with seller embedded. Public."""
         data = await self._http.graphql(PRODUCT_QUERY, {"id": product_id})
-        return data["product"]
+        return field(data, "product")
 
     async def identity_listings(
         self,
@@ -730,7 +731,7 @@ class GraphQLApi:
                 "offset": offset,
             },
         )
-        return data["identityListings"]
+        return field(data, "identityListings")
 
     async def identity_listing(
         self,
@@ -751,7 +752,7 @@ class GraphQLApi:
                 "historyOffset": history_offset,
             },
         )
-        return data["identityListing"]
+        return field(data, "identityListing")
 
     async def identity_bids(
         self,
@@ -764,7 +765,7 @@ class GraphQLApi:
             IDENTITY_BIDS_QUERY,
             {"listingId": listing_id, "limit": limit, "offset": offset},
         )
-        return data["identityBids"]
+        return field(data, "identityBids")
 
     async def identity_offers(
         self,
@@ -787,7 +788,7 @@ class GraphQLApi:
                 "offset": offset,
             },
         )
-        return data["identityOffers"]
+        return field(data, "identityOffers")
 
     async def identity_sales(
         self,
@@ -800,7 +801,7 @@ class GraphQLApi:
             IDENTITY_SALES_QUERY,
             {"name": name, "limit": limit, "offset": offset},
         )
-        return data["identitySales"]
+        return field(data, "identitySales")
 
     async def jobs(
         self,
@@ -823,12 +824,12 @@ class GraphQLApi:
                 "offset": offset,
             },
         )
-        return data["jobs"]
+        return field(data, "jobs")
 
     async def job(self, job_id: str) -> Json:
         """A single bounty/job with client profile embedded. Public."""
         data = await self._http.graphql(JOB_QUERY, {"id": job_id})
-        return data["job"]
+        return field(data, "job")
 
     async def ledger_transactions(
         self,
@@ -863,12 +864,12 @@ class GraphQLApi:
                 "offset": offset,
             },
         )
-        return data["ledgerTransactions"]
+        return field(data, "ledgerTransactions")
 
     async def ledger_transaction(self, transaction_id: str) -> Json:
         """A single ledger transaction. Public."""
         data = await self._http.graphql(LEDGER_TRANSACTION_QUERY, {"id": transaction_id})
-        return data["ledgerTransaction"]
+        return field(data, "ledgerTransaction")
 
     async def bounties(
         self,
@@ -882,9 +883,9 @@ class GraphQLApi:
             BOUNTIES_QUERY,
             {"status": status, "creator": creator, "limit": limit, "offset": offset},
         )
-        return data["bounties"]
+        return list_field(data, "bounties")
 
     async def bounty(self, bounty_id: str) -> Json:
         """A single bounty by id. Public."""
         data = await self._http.graphql(BOUNTY_QUERY, {"id": bounty_id})
-        return data["bounty"]
+        return field(data, "bounty")

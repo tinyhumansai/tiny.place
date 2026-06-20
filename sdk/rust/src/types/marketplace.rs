@@ -23,8 +23,11 @@ pub type IdentityListingType = String;
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MarketplacePrice {
+    #[serde(default)]
     pub amount: String,
+    #[serde(default)]
     pub asset: String,
+    #[serde(default)]
     pub network: String,
 }
 
@@ -32,24 +35,37 @@ pub struct MarketplacePrice {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Product {
+    #[serde(default)]
     pub product_id: String,
+    #[serde(default)]
     pub seller: String,
+    #[serde(default)]
     pub seller_crypto_id: String,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub description: String,
+    #[serde(default)]
     pub category: ProductCategory,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tags: Option<Vec<String>>,
+    #[serde(default)]
     pub price: MarketplacePrice,
+    #[serde(default)]
     pub delivery_method: DeliveryMethod,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub delivery_details: Option<HashMap<String, serde_json::Value>>,
+    #[serde(default)]
     pub status: ProductStatus,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub stock: Option<i64>,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
+    #[serde(default)]
     pub sales_count: i64,
+    #[serde(default)]
     pub rating: f64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
@@ -69,12 +85,17 @@ pub struct ProductCreateRequest {
     pub seller: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub seller_crypto_id: Option<String>,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub description: String,
+    #[serde(default)]
     pub category: ProductCategory,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tags: Option<Vec<String>>,
+    #[serde(default)]
     pub price: MarketplacePrice,
+    #[serde(default)]
     pub delivery_method: DeliveryMethod,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub delivery_details: Option<HashMap<String, serde_json::Value>>,
@@ -117,7 +138,9 @@ pub struct ProductQueryParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MarketplaceBrowseResponse {
+    #[serde(default)]
     pub products: Vec<Product>,
+    #[serde(default)]
     pub identities: Vec<IdentityListing>,
 }
 
@@ -125,12 +148,17 @@ pub struct MarketplaceBrowseResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductPurchase {
+    #[serde(default)]
     pub purchase_id: String,
+    #[serde(default)]
     pub product_id: String,
+    #[serde(default)]
     pub buyer: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub buyer_crypto_id: Option<String>,
+    #[serde(default)]
     pub seller: String,
+    #[serde(default)]
     pub price: MarketplacePrice,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub payment: Option<HashMap<String, String>>,
@@ -138,6 +166,7 @@ pub struct ProductPurchase {
     pub ledger_tx_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub delivery: Option<HashMap<String, serde_json::Value>>,
+    #[serde(default)]
     pub created_at: String,
 }
 
@@ -187,7 +216,9 @@ pub struct ProductReview {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentityBuyRequest {
+    #[serde(default)]
     pub buyer: String,
+    #[serde(default)]
     pub buyer_crypto_id: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub buyer_public_key: Option<String>,
@@ -201,6 +232,7 @@ pub struct IdentityBuyRequest {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentityOfferAcceptRequest {
+    #[serde(default)]
     pub seller: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
@@ -323,21 +355,27 @@ pub struct IdentityOffer {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentitySale {
+    #[serde(default)]
     pub sale_id: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub listing_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub offer_id: Option<String>,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub seller: String,
+    #[serde(default)]
     pub buyer: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub buyer_crypto_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub buyer_public_key: Option<String>,
+    #[serde(default)]
     pub price: MarketplacePrice,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub ledger_tx_id: Option<String>,
+    #[serde(default)]
     pub created_at: String,
 }
 
@@ -345,7 +383,9 @@ pub struct IdentitySale {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MarketplaceCategory {
+    #[serde(default)]
     pub category: String,
+    #[serde(default)]
     pub count: i64,
 }
 
@@ -353,6 +393,7 @@ pub struct MarketplaceCategory {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentityFloor {
+    #[serde(default)]
     pub length: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub price: Option<MarketplacePrice>,

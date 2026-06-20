@@ -10,6 +10,7 @@ import type {
   ConversationRoleChange,
   ConversationUpdateRequest,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 export class ConversationsApi {
   constructor(
@@ -27,7 +28,9 @@ export class ConversationsApi {
       .get<{
         conversations: Array<Conversation> | null;
       }>("/conversations", params as Record<string, unknown>)
-      .then((result) => ({ conversations: result.conversations ?? [] }));
+      .then((result) => ({
+        conversations: listField<Conversation>(result, "conversations"),
+      }));
   }
 
   create(request: ConversationCreateRequest): Promise<Conversation> {
@@ -114,7 +117,9 @@ export class ConversationsApi {
       .get<{
         members: Array<ConversationMember> | null;
       }>(`/conversations/${encodeURIComponent(conversationId)}/members`)
-      .then((result) => ({ members: result.members ?? [] }));
+      .then((result) => ({
+        members: listField<ConversationMember>(result, "members"),
+      }));
   }
 
   addMember(
@@ -196,7 +201,9 @@ export class ConversationsApi {
       .get<{
         messages: Array<ConversationMessage> | null;
       }>(`/conversations/${encodeURIComponent(conversationId)}/messages`, params as Record<string, unknown>)
-      .then((result) => ({ messages: result.messages ?? [] }));
+      .then((result) => ({
+        messages: listField<ConversationMessage>(result, "messages"),
+      }));
   }
 
   postMessage(

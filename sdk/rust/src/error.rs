@@ -90,8 +90,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// An x402 payment-required challenge, surfaced on a `402` response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PaymentRequiredChallenge {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub error: Option<String>,
+    #[serde(default)]
     pub payment: PaymentChallenge,
 }
 

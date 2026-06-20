@@ -3,7 +3,10 @@ import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
   ActivityListParams,
   ActivityListResponse,
+  ActivityEvent,
+  ActivityStats,
 } from "../types/index.js";
+import { field, listField } from "../safe.js";
 
 /**
  * ActivityApi reads the global activity livestream — a public, normalized
@@ -18,10 +21,12 @@ export class ActivityApi {
   ) {}
 
   list(params?: ActivityListParams): Promise<ActivityListResponse> {
-    return this.http.get<ActivityListResponse>(
-      "/activity",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<ActivityListResponse>("/activity", params as Record<string, unknown>)
+      .then((result) => ({
+        events: listField<ActivityEvent>(result, "events"),
+        stats: field<ActivityStats>(result, "stats") as ActivityStats,
+      }));
   }
 
   stream(params?: ActivityListParams): TinyPlaceWebSocket | undefined {

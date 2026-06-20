@@ -16,6 +16,7 @@ import type {
   GroupSubscriptionEnforceResponse,
   GroupSubscriptionRenewRequest,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 export class GroupsApi {
   constructor(private readonly http: HttpClient) {}
@@ -53,9 +54,13 @@ export class GroupsApi {
   }
 
   members(groupId: string): Promise<{ members: Array<GroupMember> }> {
-    return this.http.get<{ members: Array<GroupMember> }>(
-      `/directory/groups/${encodeURIComponent(groupId)}/members`,
-    );
+    return this.http
+      .get<{ members: Array<GroupMember> | null }>(
+        `/directory/groups/${encodeURIComponent(groupId)}/members`,
+      )
+      .then((result) => ({
+        members: listField<GroupMember>(result, "members"),
+      }));
   }
 
   addMember(

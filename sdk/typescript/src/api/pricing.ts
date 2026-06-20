@@ -1,11 +1,13 @@
 import type { HttpClient } from "../http.js";
 import type {
   GasEstimate,
+  PriceCandle,
   PriceHistory,
   PriceQuote,
   SupportedChain,
   TradePair,
 } from "../types/index.js";
+import { asString, listField } from "../safe.js";
 
 export class PricingApi {
   constructor(
@@ -32,28 +34,47 @@ export class PricingApi {
     from?: string;
     to?: string;
   }): Promise<PriceHistory> {
-    return this.http.get<PriceHistory>(
-      "/pricing/history",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<PriceHistory>(
+        "/pricing/history",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        base: asString((result as PriceHistory | undefined)?.base),
+        quote: asString((result as PriceHistory | undefined)?.quote),
+        interval: asString((result as PriceHistory | undefined)?.interval),
+        candles: listField<PriceCandle>(result, "candles"),
+      }));
   }
 
   assets(): Promise<{
     assets: Array<{ symbol: string; address?: string; decimals: number }>;
   }> {
-    return this.http.get<{
-      assets: Array<{ symbol: string; address?: string; decimals: number }>;
-    }>("/pricing/assets");
+    return this.http
+      .get<{
+        assets: Array<{ symbol: string; address?: string; decimals: number }>;
+      }>("/pricing/assets")
+      .then((result) => ({
+        assets: listField<{
+          symbol: string;
+          address?: string;
+          decimals: number;
+        }>(result, "assets"),
+      }));
   }
 
   pairs(): Promise<{ pairs: Array<TradePair> }> {
-    return this.http.get<{ pairs: Array<TradePair> }>("/pricing/pairs");
+    return this.http
+      .get<{ pairs: Array<TradePair> }>("/pricing/pairs")
+      .then((result) => ({ pairs: listField<TradePair>(result, "pairs") }));
   }
 
   networks(): Promise<{ networks: Array<SupportedChain> }> {
-    return this.http.get<{ networks: Array<SupportedChain> }>(
-      "/pricing/networks",
-    );
+    return this.http
+      .get<{ networks: Array<SupportedChain> }>("/pricing/networks")
+      .then((result) => ({
+        networks: listField<SupportedChain>(result, "networks"),
+      }));
   }
 
   gas(network: string): Promise<GasEstimate> {

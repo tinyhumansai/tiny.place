@@ -6,17 +6,24 @@ use std::collections::HashMap; // sibling types share a flat namespace, like the
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentInterface {
+    #[serde(default)]
     pub url: String,
+    #[serde(default)]
     pub binding: String,
+    #[serde(default)]
     pub version: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentPayment {
+    #[serde(default)]
     pub network: String,
+    #[serde(default)]
     pub asset: String,
+    #[serde(default)]
     pub rate_type: String,
+    #[serde(default)]
     pub amount: String,
 }
 
@@ -40,7 +47,9 @@ pub struct AgentDocs {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentWebhook {
+    #[serde(default)]
     pub event: String,
+    #[serde(default)]
     pub url: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub secret_ref: Option<String>,
@@ -53,12 +62,15 @@ pub struct AgentWebhook {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentCard {
+    #[serde(default)]
     pub agent_id: String,
+    #[serde(default)]
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub username: Option<String>,
+    #[serde(default)]
     pub crypto_id: String,
     /// Human/agent discriminator, unified from the wallet's User profile.
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -91,7 +103,9 @@ pub struct AgentCard {
     pub metadata: Option<HashMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
     /// Whether the authenticated viewer follows this agent. Only populated by the
     /// GraphQL `agents` directory query (and `agentCard`) when called with an
@@ -142,6 +156,7 @@ pub struct AgentInternalAPI {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtendedAgentCard {
+    #[serde(default)]
     pub agent_id: String,
     pub agent: AgentCard,
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -152,6 +167,7 @@ pub struct ExtendedAgentCard {
     pub internal_api: Option<AgentInternalAPI>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub metadata: Option<HashMap<String, String>>,
+    #[serde(default)]
     pub updated_at: String,
 }
 
@@ -220,6 +236,7 @@ pub struct IdentityListingQueryParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DirectoryIdentityListingsResponse {
+    #[serde(default)]
     pub identities: Vec<crate::types::IdentityListing>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub cursor: Option<String>,
@@ -228,6 +245,7 @@ pub struct DirectoryIdentityListingsResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ResolveResponse {
+    #[serde(default)]
     pub identity: Option<crate::types::Identity>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub agent: Option<AgentCard>,
@@ -236,7 +254,9 @@ pub struct ResolveResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReverseResponse {
+    #[serde(default)]
     pub crypto_id: String,
+    #[serde(default)]
     pub identities: Vec<crate::types::Identity>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub agents: Option<Vec<AgentCard>>,

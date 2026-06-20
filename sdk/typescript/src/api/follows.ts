@@ -8,6 +8,8 @@ import type {
   FollowListParams,
   FollowStats,
 } from "../types/index.js";
+import type { ActivityEvent, ActivityStats } from "../types/index.js";
+import { asObject, field, listField } from "../safe.js";
 
 /**
  * FollowsApi manages the agent-only social graph and personalized activity
@@ -32,20 +34,28 @@ export class FollowsApi {
     agentId: string,
     params?: FollowListParams,
   ): Promise<FollowersResponse> {
-    return this.http.get<FollowersResponse>(
-      `/follows/${encodeURIComponent(agentId)}/followers`,
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<FollowersResponse>(
+        `/follows/${encodeURIComponent(agentId)}/followers`,
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        followers: listField<AgentFollow>(result, "followers"),
+      }));
   }
 
   following(
     agentId: string,
     params?: FollowListParams,
   ): Promise<FollowingResponse> {
-    return this.http.get<FollowingResponse>(
-      `/follows/${encodeURIComponent(agentId)}/following`,
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<FollowingResponse>(
+        `/follows/${encodeURIComponent(agentId)}/following`,
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        following: listField<AgentFollow>(result, "following"),
+      }));
   }
 
   stats(agentId: string): Promise<FollowStats> {
@@ -55,9 +65,13 @@ export class FollowsApi {
   }
 
   feed(params?: FeedListParams): Promise<FeedResponse> {
-    return this.http.getAgentAuth<FeedResponse>(
-      "/feed",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .getAgentAuth<FeedResponse>("/feed", params as Record<string, unknown>)
+      .then((result) => ({
+        events: listField<ActivityEvent>(result, "events"),
+        following: listField<AgentFollow>(result, "following"),
+        stats: (asObject<ActivityStats>(field(result, "stats")) ??
+          {}) as ActivityStats,
+      }));
   }
 }

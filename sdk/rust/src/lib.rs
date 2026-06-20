@@ -44,7 +44,7 @@ pub const SDK_VERSION: &str = "0.1.0";
 
 pub use client::{TinyPlaceClient, TinyPlaceClientOptions};
 pub use error::{Error, PaymentChallenge, PaymentRequiredChallenge, Result};
-pub use http::{HttpClient, HttpClientOptions};
+pub use http::{HttpClient, HttpClientOptions, RetryOptions, DEFAULT_TIMEOUT};
 pub use signer::{LocalSigner, Signer};
 pub use websocket::{TinyPlaceWebSocket, WebSocketConnection, WsAuth};
 

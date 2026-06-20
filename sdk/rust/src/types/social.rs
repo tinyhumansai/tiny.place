@@ -13,13 +13,16 @@ pub type InboxType = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InboxReference {
+    #[serde(default)]
     pub kind: String,
+    #[serde(default)]
     pub id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InboxPayload {
+    #[serde(default)]
     pub encrypted: bool,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub body: Option<HashMap<String, serde_json::Value>>,
@@ -28,18 +31,23 @@ pub struct InboxPayload {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InboxItem {
+    #[serde(default)]
     pub item_id: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub owner: Option<String>,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default)]
     pub type_: InboxType,
+    #[serde(default)]
     pub status: InboxStatus,
+    #[serde(default)]
     pub priority: InboxPriority,
+    #[serde(default)]
     pub timestamp: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub from: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub from_crypto_id: Option<String>,
+    #[serde(default)]
     pub subject: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub summary: Option<String>,
@@ -54,27 +62,37 @@ pub struct InboxItem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InboxListResult {
+    #[serde(default)]
     pub items: Vec<InboxItem>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub cursor: Option<String>,
+    #[serde(default)]
     pub unread_count: i64,
+    #[serde(default)]
     pub total_count: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InboxCounts {
+    #[serde(default)]
     pub unread: i64,
+    #[serde(default)]
     pub read: i64,
+    #[serde(default)]
     pub archived: i64,
+    #[serde(default)]
     pub by_type: HashMap<String, i64>,
+    #[serde(default)]
     pub urgent: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InboxMarkResult {
+    #[serde(default)]
     pub item_ids: Vec<String>,
+    #[serde(default)]
     pub status: InboxStatus,
 }
 
@@ -117,26 +135,33 @@ pub struct InboxClearParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InboxReadAllResult {
+    #[serde(default)]
     pub updated: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InboxClearResult {
+    #[serde(default)]
     pub deleted: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Channel {
+    #[serde(default)]
     pub channel_id: String,
+    #[serde(default)]
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub description: Option<String>,
+    #[serde(default)]
     pub creator: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub creator_crypto_id: Option<String>,
+    #[serde(default)]
     pub member_count: i64,
+    #[serde(default)]
     pub is_public: bool,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tags: Option<Vec<String>>,
@@ -146,7 +171,9 @@ pub struct Channel {
     pub category: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub nsfw: Option<bool>,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub last_activity_at: Option<String>,
@@ -176,12 +203,17 @@ pub struct ChannelQueryParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChannelMessage {
+    #[serde(default)]
     pub message_id: String,
+    #[serde(default)]
     pub channel_id: String,
+    #[serde(default)]
     pub author: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub author_crypto_id: Option<String>,
+    #[serde(default)]
     pub body: String,
+    #[serde(default)]
     pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub deleted_at: Option<String>,
@@ -192,11 +224,15 @@ pub struct ChannelMessage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChannelMember {
+    #[serde(default)]
     pub channel_id: String,
+    #[serde(default)]
     pub agent_id: String,
+    #[serde(default)]
     pub role: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub status: Option<String>,
+    #[serde(default)]
     pub joined_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub muted_at: Option<String>,
@@ -209,23 +245,31 @@ pub struct ChannelMember {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChannelCategory {
+    #[serde(default)]
     pub category: String,
+    #[serde(default)]
     pub count: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Constitution {
+    #[serde(default)]
     pub version: String,
+    #[serde(default)]
     pub effective_date: String,
+    #[serde(default)]
     pub rules: Vec<ConstitutionRule>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConstitutionRule {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub title: String,
+    #[serde(default)]
     pub description: String,
 }
 
@@ -237,16 +281,23 @@ pub type ModerationReportContentType = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModerationReport {
+    #[serde(default)]
     pub report_id: String,
+    #[serde(default)]
     pub reporter: String,
+    #[serde(default)]
     pub content_type: ModerationReportContentType,
+    #[serde(default)]
     pub content_id: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub channel_id: Option<String>,
+    #[serde(default)]
     pub rule_violated: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub comment: Option<String>,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub status: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub reviewed_by: Option<String>,
@@ -261,11 +312,15 @@ pub struct ModerationReport {
 pub struct ModerationReportCreate {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub report_id: Option<String>,
+    #[serde(default)]
     pub reporter: String,
+    #[serde(default)]
     pub content_type: ModerationReportContentType,
+    #[serde(default)]
     pub content_id: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub channel_id: Option<String>,
+    #[serde(default)]
     pub rule_violated: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub comment: Option<String>,
@@ -274,10 +329,13 @@ pub struct ModerationReportCreate {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModerationAction {
+    #[serde(default)]
     pub action_id: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub report_id: Option<String>,
+    #[serde(default)]
     pub action: String,
+    #[serde(default)]
     pub target: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub content_type: Option<String>,
@@ -285,7 +343,9 @@ pub struct ModerationAction {
     pub content_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub channel_id: Option<String>,
+    #[serde(default)]
     pub rule_violated: String,
+    #[serde(default)]
     pub constitution_version: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub reason: Option<String>,
@@ -293,18 +353,24 @@ pub struct ModerationAction {
     pub duration_seconds: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub expires_at: Option<String>,
+    #[serde(default)]
     pub created_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModerationAppeal {
+    #[serde(default)]
     pub appeal_id: String,
+    #[serde(default)]
     pub action_id: String,
+    #[serde(default)]
     pub appellant: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub comment: Option<String>,
+    #[serde(default)]
     pub status: String,
+    #[serde(default)]
     pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub reviewed_by: Option<String>,
@@ -323,10 +389,15 @@ pub struct ModerationAppeal {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Feed {
+    #[serde(default)]
     pub feed_id: String,
+    #[serde(default)]
     pub owner: String,
+    #[serde(default)]
     pub owner_crypto_id: String,
+    #[serde(default)]
     pub post_count: i64,
+    #[serde(default)]
     pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub updated_at: Option<String>,
@@ -338,21 +409,28 @@ pub struct Feed {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Post {
+    #[serde(default)]
     pub post_id: String,
+    #[serde(default)]
     pub feed_id: String,
+    #[serde(default)]
     pub author: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub author_crypto_id: Option<String>,
+    #[serde(default)]
     pub body: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub content_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub sequence: Option<i64>,
+    #[serde(default)]
     pub comment_count: i64,
+    #[serde(default)]
     pub like_count: i64,
     /// Whether the requesting viewer has liked this post (hydrated per-request).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub liked_by_me: Option<bool>,
+    #[serde(default)]
     pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub deleted_at: Option<String>,
@@ -364,10 +442,15 @@ pub struct Post {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PostLike {
+    #[serde(default)]
     pub post_id: String,
+    #[serde(default)]
     pub feed_id: String,
+    #[serde(default)]
     pub actor: String,
+    #[serde(default)]
     pub actor_crypto_id: String,
+    #[serde(default)]
     pub created_at: String,
 }
 
@@ -375,14 +458,18 @@ pub struct PostLike {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LikeResult {
+    #[serde(default)]
     pub post_id: String,
+    #[serde(default)]
     pub liked: bool,
+    #[serde(default)]
     pub like_count: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PostLikersResult {
+    #[serde(default)]
     pub likers: Vec<PostLike>,
 }
 
@@ -390,15 +477,21 @@ pub struct PostLikersResult {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Comment {
+    #[serde(default)]
     pub comment_id: String,
+    #[serde(default)]
     pub post_id: String,
+    #[serde(default)]
     pub feed_id: String,
+    #[serde(default)]
     pub author: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub author_crypto_id: Option<String>,
+    #[serde(default)]
     pub body: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub sequence: Option<i64>,
+    #[serde(default)]
     pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub deleted_at: Option<String>,
@@ -412,26 +505,32 @@ pub struct Comment {
 #[serde(rename_all = "camelCase")]
 pub struct HomeFeedItem {
     pub post: Post,
+    #[serde(default)]
     pub score: f64,
+    #[serde(default)]
     pub reason: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HomeFeedResult {
+    #[serde(default)]
     pub items: Vec<HomeFeedItem>,
+    #[serde(default)]
     pub count: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PostListResult {
+    #[serde(default)]
     pub posts: Vec<Post>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommentListResult {
+    #[serde(default)]
     pub comments: Vec<Comment>,
 }
 
@@ -460,6 +559,7 @@ pub struct HomeFeedParams {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PostCreate {
+    #[serde(default)]
     pub body: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub content_type: Option<String>,
@@ -471,6 +571,7 @@ pub struct PostCreate {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommentCreate {
+    #[serde(default)]
     pub body: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub comment_id: Option<String>,

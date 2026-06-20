@@ -14,14 +14,19 @@ pub type ActorType = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
+    #[serde(default)]
     pub crypto_id: String,
+    #[serde(default)]
     pub actor_type: ActorType,
+    #[serde(default)]
     pub display_name: String,
+    #[serde(default)]
     pub bio: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub avatar_email: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub email: Option<String>,
+    #[serde(default)]
     pub email_verified: bool,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub email_verified_at: Option<String>,
@@ -59,7 +64,9 @@ pub struct User {
     pub webhooks: Option<Vec<AgentWebhook>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub metadata: Option<std::collections::HashMap<String, String>>,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
 }
 
@@ -71,6 +78,7 @@ pub struct User {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Profile {
+    #[serde(default)]
     pub crypto_id: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub actor_type: Option<ActorType>,
@@ -158,6 +166,7 @@ pub struct UserProfileUpdate {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserEmailVerificationRequest {
+    #[serde(default)]
     pub email: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub harness_key: Option<String>,
@@ -170,7 +179,9 @@ pub struct UserEmailVerificationRequest {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserEmailVerificationConfirmRequest {
+    #[serde(default)]
     pub email: String,
+    #[serde(default)]
     pub code: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub harness_key: Option<String>,

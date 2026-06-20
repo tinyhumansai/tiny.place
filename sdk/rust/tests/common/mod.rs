@@ -28,6 +28,7 @@ pub fn client_for(server: &MockServer) -> TinyPlaceClient {
         admin_signer: Some(signer),
         admin: Default::default(),
         on_auth_invalid: None,
+        ..Default::default()
     })
 }
 

@@ -9,22 +9,37 @@ pub type PaymentIntentStatus = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PaymentIntent {
+    #[serde(default)]
     pub intent_id: String,
+    #[serde(default)]
     pub verified_id: String,
+    #[serde(default)]
     pub nonce_key: String,
+    #[serde(default)]
     pub payment_hash: String,
+    #[serde(default)]
     pub network: String,
+    #[serde(default)]
     pub asset: String,
+    #[serde(default)]
     pub amount: String,
+    #[serde(default)]
     pub from: String,
+    #[serde(default)]
     pub to: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub fee_id: Option<String>,
+    #[serde(default)]
     pub fee_rate: String,
+    #[serde(default)]
     pub fee_amount: String,
+    #[serde(default)]
     pub net_amount: String,
+    #[serde(default)]
     pub status: PaymentIntentStatus,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub expires_at: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub settled_at: Option<String>,
@@ -36,18 +51,27 @@ pub struct PaymentIntent {
 #[serde(rename_all = "camelCase")]
 pub struct X402VerifyRequest {
     /// `"exact" | "upto" | "batch-settlement"`.
+    #[serde(default)]
     pub scheme: String,
+    #[serde(default)]
     pub network: String,
+    #[serde(default)]
     pub asset: String,
+    #[serde(default)]
     pub amount: String,
+    #[serde(default)]
     pub from: String,
+    #[serde(default)]
     pub to: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub payer: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub payee: Option<String>,
+    #[serde(default)]
     pub nonce: String,
+    #[serde(default)]
     pub expires_at: String,
+    #[serde(default)]
     pub signature: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub metadata: Option<HashMap<String, String>>,
@@ -56,6 +80,7 @@ pub struct X402VerifyRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct X402VerifyResponse {
+    #[serde(default)]
     pub valid: bool,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub intent_id: Option<String>,
@@ -126,7 +151,7 @@ pub struct X402SettleResponse {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub error: Option<String>,
     /// Additional fields (`[key: string]: unknown`).
-    #[serde(flatten)]
+    #[serde(flatten, default)]
     pub extra: HashMap<String, serde_json::Value>,
 }
 
@@ -143,9 +168,13 @@ pub type PaymentBatchFlushStatus = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PaymentBatchFlush {
+    #[serde(default)]
     pub flush_id: String,
+    #[serde(default)]
     pub batch_id: String,
+    #[serde(default)]
     pub status: PaymentBatchFlushStatus,
+    #[serde(default)]
     pub item_count: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub item_ids: Option<Vec<String>>,
@@ -186,23 +215,31 @@ pub struct PaymentBatchFlushResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SupportedChain {
+    #[serde(default)]
     pub network: String,
+    #[serde(default)]
     pub name: String,
     /// `"evm" | "solana"`.
+    #[serde(default)]
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub chain_id: Option<i64>,
+    #[serde(default)]
     pub native_asset: String,
+    #[serde(default)]
     pub explorer_url: String,
+    #[serde(default)]
     pub assets: Vec<SupportedAsset>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SupportedAsset {
+    #[serde(default)]
     pub symbol: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub address: Option<String>,
+    #[serde(default)]
     pub decimals: i64,
 }
 
@@ -212,16 +249,22 @@ pub type SubscriptionStatus = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscriptionPlan {
+    #[serde(default)]
     pub amount: String,
+    #[serde(default)]
     pub asset: String,
+    #[serde(default)]
     pub network: String,
+    #[serde(default)]
     pub interval: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscriptionAuthorization {
+    #[serde(default)]
     pub scheme: String,
+    #[serde(default)]
     pub signature: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub verified_id: Option<String>,
@@ -230,16 +273,24 @@ pub struct SubscriptionAuthorization {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Subscription {
+    #[serde(default)]
     pub subscription_id: String,
+    #[serde(default)]
     pub subscriber: String,
+    #[serde(default)]
     pub provider: String,
     pub plan: SubscriptionPlan,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub authorization: Option<SubscriptionAuthorization>,
+    #[serde(default)]
     pub status: SubscriptionStatus,
+    #[serde(default)]
     pub current_period_end: String,
+    #[serde(default)]
     pub auto_renew: bool,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
 }
 
@@ -248,7 +299,9 @@ pub struct Subscription {
 pub struct SubscriptionCreateRequest {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub subscription_id: Option<String>,
+    #[serde(default)]
     pub subscriber: String,
+    #[serde(default)]
     pub provider: String,
     pub plan: SubscriptionPlan,
     /// `Partial<SubscriptionAuthorization>`.
@@ -277,6 +330,7 @@ pub struct SubscriptionAuthorizationPartial {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscriptionRenewRequest {
+    #[serde(default)]
     pub payment_authorization: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub settled_amount: Option<String>,
@@ -286,14 +340,18 @@ pub struct SubscriptionRenewRequest {
 #[serde(rename_all = "camelCase")]
 pub struct SubscriptionRenewResponse {
     pub subscription: Subscription,
+    #[serde(default)]
     pub settlement: X402SettleResponse,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DueRenewalResult {
+    #[serde(default)]
     pub renewed: i64,
+    #[serde(default)]
     pub failed: i64,
+    #[serde(default)]
     pub suspended: i64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub errors: Option<Vec<String>>,

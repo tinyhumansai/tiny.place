@@ -2,12 +2,14 @@ import type { HttpClient } from "../http.js";
 import type { SigningKey } from "../auth.js";
 import { signCanonicalPayload } from "../auth.js";
 import { canonicalPayload } from "../crypto.js";
+import { asString, listField } from "../safe.js";
 import type {
   Attestation,
   AttestationCreate,
   GameLeaderboardQueryParams,
   GroupLeaderboardQueryParams,
   LeaderboardCategory,
+  LeaderboardEntry,
   LeaderboardQueryParams,
   LeaderboardResponse,
   ReputationHistoryPoint,
@@ -19,6 +21,8 @@ import type {
   ReputationVouchCreate,
   SellerLeaderboardQueryParams,
   TrustGraph,
+  TrustGraphEdge,
+  TrustGraphNode,
   TrustGraphQueryParams,
   TrustScore,
   TwitterChallengeRequest,
@@ -41,23 +45,35 @@ export class ReputationApi {
   getHistory(
     agentId: string,
   ): Promise<{ history: Array<ReputationHistoryPoint> }> {
-    return this.http.get<{ history: Array<ReputationHistoryPoint> }>(
-      `/reputation/${encodeURIComponent(agentId)}/history`,
-    );
+    return this.http
+      .get<{ history: Array<ReputationHistoryPoint> }>(
+        `/reputation/${encodeURIComponent(agentId)}/history`,
+      )
+      .then((result) => ({
+        history: listField<ReputationHistoryPoint>(result, "history"),
+      }));
   }
 
   getReviews(agentId: string): Promise<{ reviews: Array<ReputationReview> }> {
-    return this.http.get<{ reviews: Array<ReputationReview> }>(
-      `/reputation/${encodeURIComponent(agentId)}/reviews`,
-    );
+    return this.http
+      .get<{ reviews: Array<ReputationReview> }>(
+        `/reputation/${encodeURIComponent(agentId)}/reviews`,
+      )
+      .then((result) => ({
+        reviews: listField<ReputationReview>(result, "reviews"),
+      }));
   }
 
   getAttestations(
     agentId: string,
   ): Promise<{ attestations: Array<Attestation> }> {
-    return this.http.get<{ attestations: Array<Attestation> }>(
-      `/reputation/${encodeURIComponent(agentId)}/attestations`,
-    );
+    return this.http
+      .get<{ attestations: Array<Attestation> }>(
+        `/reputation/${encodeURIComponent(agentId)}/attestations`,
+      )
+      .then((result) => ({
+        attestations: listField<Attestation>(result, "attestations"),
+      }));
   }
 
   async createReview(
@@ -170,10 +186,16 @@ export class ReputationApi {
   }
 
   trustGraph(params?: TrustGraphQueryParams): Promise<TrustGraph> {
-    return this.http.get<TrustGraph>(
-      "/reputation/trust/graph",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<TrustGraph>(
+        "/reputation/trust/graph",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        nodes: listField<TrustGraphNode>(result, "nodes"),
+        edges: listField<TrustGraphEdge>(result, "edges"),
+        updatedAt: asString((result as TrustGraph | undefined)?.updatedAt),
+      }));
   }
 
   getTrust(agentId: string): Promise<TrustScore> {
@@ -183,17 +205,25 @@ export class ReputationApi {
   }
 
   getVouches(agentId: string): Promise<{ vouches: Array<ReputationVouch> }> {
-    return this.http.get<{ vouches: Array<ReputationVouch> }>(
-      `/reputation/${encodeURIComponent(agentId)}/vouches`,
-    );
+    return this.http
+      .get<{ vouches: Array<ReputationVouch> }>(
+        `/reputation/${encodeURIComponent(agentId)}/vouches`,
+      )
+      .then((result) => ({
+        vouches: listField<ReputationVouch>(result, "vouches"),
+      }));
   }
 
   getGivenVouches(
     agentId: string,
   ): Promise<{ vouches: Array<ReputationVouch> }> {
-    return this.http.get<{ vouches: Array<ReputationVouch> }>(
-      `/reputation/${encodeURIComponent(agentId)}/vouches/given`,
-    );
+    return this.http
+      .get<{ vouches: Array<ReputationVouch> }>(
+        `/reputation/${encodeURIComponent(agentId)}/vouches/given`,
+      )
+      .then((result) => ({
+        vouches: listField<ReputationVouch>(result, "vouches"),
+      }));
   }
 
   async createVouch(vouch: ReputationVouchCreate): Promise<ReputationVouch> {
@@ -237,76 +267,103 @@ export class ReputationApi {
       | GameLeaderboardQueryParams
       | LeaderboardQueryParams,
   ): Promise<LeaderboardResponse> {
-    return this.http.get<LeaderboardResponse>(
-      category
-        ? `/leaderboards/${encodeURIComponent(category)}`
-        : "/leaderboards/reputation",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<LeaderboardResponse>(
+        category
+          ? `/leaderboards/${encodeURIComponent(category)}`
+          : "/leaderboards/reputation",
+        params as Record<string, unknown>,
+      )
+      .then(coalesceLeaderboardResponse);
   }
 
   reputationLeaderboard(
     params?: ReputationLeaderboardQueryParams,
   ): Promise<LeaderboardResponse> {
-    return this.http.get<LeaderboardResponse>(
-      "/reputation/leaderboard",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<LeaderboardResponse>(
+        "/reputation/leaderboard",
+        params as Record<string, unknown>,
+      )
+      .then(coalesceLeaderboardResponse);
   }
 
   risingLeaderboard(
     params?: LeaderboardQueryParams,
   ): Promise<LeaderboardResponse> {
-    return this.http.get<LeaderboardResponse>(
-      "/leaderboards/rising",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<LeaderboardResponse>(
+        "/leaderboards/rising",
+        params as Record<string, unknown>,
+      )
+      .then(coalesceLeaderboardResponse);
   }
 
   sellersLeaderboard(
     params?: SellerLeaderboardQueryParams,
   ): Promise<LeaderboardResponse> {
-    return this.http.get<LeaderboardResponse>(
-      "/leaderboards/sellers",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<LeaderboardResponse>(
+        "/leaderboards/sellers",
+        params as Record<string, unknown>,
+      )
+      .then(coalesceLeaderboardResponse);
   }
 
   gamesLeaderboard(
     params?: GameLeaderboardQueryParams,
   ): Promise<LeaderboardResponse> {
-    return this.http.get<LeaderboardResponse>(
-      "/leaderboards/games",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<LeaderboardResponse>(
+        "/leaderboards/games",
+        params as Record<string, unknown>,
+      )
+      .then(coalesceLeaderboardResponse);
   }
 
   groupsLeaderboard(
     params?: GroupLeaderboardQueryParams,
   ): Promise<LeaderboardResponse> {
-    return this.http.get<LeaderboardResponse>(
-      "/leaderboards/groups",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<LeaderboardResponse>(
+        "/leaderboards/groups",
+        params as Record<string, unknown>,
+      )
+      .then(coalesceLeaderboardResponse);
   }
 
   messagesLeaderboard(
     params?: LeaderboardQueryParams,
   ): Promise<LeaderboardResponse> {
-    return this.http.get<LeaderboardResponse>(
-      "/leaderboards/messages",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<LeaderboardResponse>(
+        "/leaderboards/messages",
+        params as Record<string, unknown>,
+      )
+      .then(coalesceLeaderboardResponse);
   }
 
   volumeLeaderboard(
     params?: LeaderboardQueryParams,
   ): Promise<LeaderboardResponse> {
-    return this.http.get<LeaderboardResponse>(
-      "/leaderboards/volume",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<LeaderboardResponse>(
+        "/leaderboards/volume",
+        params as Record<string, unknown>,
+      )
+      .then(coalesceLeaderboardResponse);
   }
+}
+
+function coalesceLeaderboardResponse(result: unknown): LeaderboardResponse {
+  const source = result as LeaderboardResponse | undefined;
+  return {
+    leaderboard: asString(source?.leaderboard),
+    period: source?.period,
+    sort: source?.sort,
+    entries: listField<LeaderboardEntry>(result, "entries"),
+    updatedAt: asString(source?.updatedAt),
+  };
 }
 
 function reputationReviewSignaturePayload(
