@@ -194,9 +194,23 @@ function readPackageJsonVersion(path) {
 }
 
 function writePackageJsonVersion(path, version) {
-  const json = JSON.parse(readFileSync(path, "utf8"));
-  json.version = version;
-  writeFileSync(path, `${JSON.stringify(json, null, 2)}\n`);
+  // Replace the top-level "version" field in place rather than reserialising the
+  // whole file, so existing indentation/formatting (tabs vs spaces, key order)
+  // is preserved and the diff stays to a single line. package.json only carries
+  // a literal `"version":` at the top level (dependency entries are name:range),
+  // so the first match is the package version.
+  const text = readFileSync(path, "utf8");
+  let replaced = false;
+  const updated = text.replace(/("version"\s*:\s*)"[^"]+"/, (match, prefix) => {
+    replaced = true;
+    return `${prefix}"${version}"`;
+  });
+
+  if (!replaced) {
+    throw new Error(`Missing top-level "version" field in ${path}`);
+  }
+
+  writeFileSync(path, updated);
 }
 
 function sectionPattern(sectionName) {
