@@ -5,10 +5,10 @@ type AuthState = {
 	agentId: string | undefined;
 	clearSession: () => void;
 	/**
-	 * The signer whose public key base58-derives to {@link agentId}. For a hot
-	 * session wallet this is the underlying wallet (grantor), NOT the session
-	 * key. Use it for acts the backend cannot accept under delegation — notably
-	 * identity registration, which binds the cryptoId to the public key.
+	 * The signer whose public key base58-derives to {@link agentId}. Defaults to
+	 * {@link signer} (for a direct wallet the signing key already IS the identity
+	 * key). Used for acts that bind the cryptoId to the public key — notably
+	 * identity registration.
 	 */
 	identitySigner: Signer | undefined;
 	setSigner: (signer: Signer, agentId: string, identitySigner?: Signer) => void;

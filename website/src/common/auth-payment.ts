@@ -16,7 +16,6 @@ import {
 	X402_DELEGATED_TX_METADATA_KEY,
 } from "@src/common/delegated-payment";
 import { primarySolanaRpcUrl } from "@src/common/solana-rpc";
-import { SessionWalletSigner } from "@src/common/session-wallet";
 import { SiwsProofSigner } from "@src/common/siws-auth";
 import { WalletSigner } from "@src/common/wallet-signer";
 import {
@@ -49,7 +48,7 @@ export type X402PaymentSigningOptions = {
 
 const DEFAULT_PAYMENT_EXPIRY_MS = 5 * 60 * 1000;
 
-export { SessionWalletSigner, SiwsProofSigner, WalletSigner };
+export { SiwsProofSigner, WalletSigner };
 
 export function currentAuthSession(): AuthSession | undefined {
 	const { agentId, identitySigner, signer } = useAuthStore.getState();
@@ -140,8 +139,7 @@ export async function signX402ChallengePaymentMap(
 		asset &&
 		payee &&
 		payer &&
-		(signer instanceof SessionWalletSigner ||
-			signer instanceof WalletSigner ||
+		(signer instanceof WalletSigner ||
 			signer instanceof SiwsProofSigner) &&
 		signer.walletSignTransaction
 	) {

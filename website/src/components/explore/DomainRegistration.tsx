@@ -66,12 +66,10 @@ type DomainRegistrationProperties = {
 export const DomainRegistration = ({
 	isDark,
 }: DomainRegistrationProperties): FunctionComponent => {
-	// Sign with the hot SESSION signer, like every other authenticated action —
-	// the wallet only ever signs the one-time session grant. The handle still
-	// binds to the WALLET key (see `publicKey` below), and the backend authorizes
-	// the session key as the wallet's approved delegate (`verifyOwnershipOrDelegate`).
-	// `agentId` is the wallet cryptoId either way (the session reports it as its
-	// agentId), so the identity is owned by the wallet, not the ephemeral key.
+	// Sign with the connected wallet / SIWS signer, like every other
+	// authenticated action. The handle binds to the wallet key (see `publicKey`
+	// below) and `agentId` is the wallet cryptoId, so the identity is owned by
+	// the wallet.
 	const signer = useAuthStore((state) => state.signer);
 	const agentId = useAuthStore((state) => state.agentId);
 	const client = useMemo(() => createClient(signer), [signer]);

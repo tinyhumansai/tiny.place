@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { SessionWalletSigner } from "@src/common/auth-payment";
 import type { FunctionComponent } from "@src/common/types";
 import { useTinyplaceWallet } from "@src/common/tinyplace-wallet";
 import { useAppStore } from "@src/store/app";
@@ -21,20 +19,6 @@ function serverHost(url: string): string {
 function truncateId(value: string, head = 6, tail = 4): string {
 	if (value.length <= head + tail + 1) return value;
 	return `${value.slice(0, head)}…${value.slice(-tail)}`;
-}
-
-/** Formats the time until `expiresAt` as a compact `23h 40m` / `expired`. */
-function formatExpiry(expiresAt: string, nowMs: number): string {
-	const remaining = Date.parse(expiresAt) - nowMs;
-	if (Number.isNaN(remaining)) return "—";
-	if (remaining <= 0) return "expired";
-	const totalMinutes = Math.floor(remaining / 60_000);
-	const days = Math.floor(totalMinutes / (60 * 24));
-	const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
-	const minutes = totalMinutes % 60;
-	if (days > 0) return `${days}d ${hours}h`;
-	if (hours > 0) return `${hours}h ${minutes}m`;
-	return `${minutes}m`;
 }
 
 type StatProps = {
@@ -66,9 +50,8 @@ const Divider = ({ isDark }: { isDark: boolean }): FunctionComponent => (
 
 /**
  * A thin fixed status bar pinned to the bottom of every page, surfacing live
- * connection state: whether a session is active, which backend it targets, and
- * the active agent / session-key / grant-expiry. A plain wallet fallback (no hot
- * session) shows "wallet only" with no session id or expiry.
+ * connection state: whether the wallet is connected, which backend it targets,
+ * and the active agent.
  */
 export const ConnectionFooter = (): FunctionComponent => {
 	const { t } = useTranslation();
@@ -77,30 +60,12 @@ export const ConnectionFooter = (): FunctionComponent => {
 	const agentId = useAuthStore((state) => state.agentId);
 	const isDark = useAppStore((state) => state.theme) === "dark";
 
-	// A 30s tick keeps the expiry countdown roughly live without churn.
-	const [nowMs, setNowMs] = useState(() => Date.now());
-	useEffect(() => {
-		const interval = setInterval(() => {
-			setNowMs(Date.now());
-		}, 30_000);
-		return (): void => {
-			clearInterval(interval);
-		};
-	}, []);
-
-	const session = signer instanceof SessionWalletSigner ? signer : undefined;
 	const authenticated = Boolean(signer);
 
-	const statusLabel = !connected
-		? t("connection.disconnected")
-		: session
-			? t("connection.connected")
-			: t("connection.walletOnly");
-	const statusColor = !connected
-		? "bg-red-400"
-		: session
-			? "bg-emerald-400"
-			: "bg-amber-400";
+	const statusLabel = connected
+		? t("connection.connected")
+		: t("connection.disconnected");
+	const statusColor = connected ? "bg-emerald-400" : "bg-red-400";
 
 	return (
 		<footer
@@ -132,24 +97,6 @@ export const ConnectionFooter = (): FunctionComponent => {
 						label={t("connection.agent")}
 						title={agentId}
 						value={truncateId(agentId)}
-					/>
-				</>
-			) : null}
-			{session ? (
-				<>
-					<Divider isDark={isDark} />
-					<Stat
-						isDark={isDark}
-						label={t("connection.session")}
-						title={session.sessionKey}
-						value={truncateId(session.sessionKey)}
-					/>
-					<Divider isDark={isDark} />
-					<Stat
-						isDark={isDark}
-						label={t("connection.expires")}
-						title={session.expiresAt}
-						value={formatExpiry(session.expiresAt, nowMs)}
 					/>
 				</>
 			) : null}
