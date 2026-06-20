@@ -13,6 +13,8 @@ export enum TileCode {
 	Floor = 1,
 	Wall = 2,
 	Dais = 3,
+	/** A short interior divider (cubicle wall) — blocks, but waist-high. */
+	Partition = 4,
 }
 
 export type Facing = "left" | "right";

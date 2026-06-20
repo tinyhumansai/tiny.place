@@ -239,7 +239,7 @@ function officeDefinition(): RoomDefinition {
 		[8, 7],
 	];
 	for (const [column, row] of partitions) {
-		putTile(matrix, column, row, TileCode.Wall);
+		putTile(matrix, column, row, TileCode.Partition);
 	}
 	const furniture: Array<FurnitureConfig> = [
 		// Top row of cubicles.

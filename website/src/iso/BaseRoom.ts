@@ -33,6 +33,7 @@ import {
 } from "./types";
 
 const WALL_HEIGHT = 78;
+const PARTITION_HEIGHT = 34;
 const NEIGHBOR_STEPS: ReadonlyArray<readonly [number, number]> = [
 	[0, -1],
 	[1, 0],
@@ -104,6 +105,12 @@ export abstract class BaseRoom {
 					this.placeWall(factory, palette, column, row);
 					continue;
 				}
+				if (code === TileCode.Partition) {
+					// A divider stands on visible floor but is not walkable.
+					this.placeFloor(floor, palette, column, row, 0);
+					this.placePartition(factory, palette, column, row);
+					continue;
+				}
 				const level = code === TileCode.Dais ? 1 : 0;
 				if (level === 1) {
 					this.placeDaisRiser(factory, palette, column, row);
@@ -165,6 +172,29 @@ export abstract class BaseRoom {
 		sprite.tint = palette.wall;
 		sprite.zIndex = depthAt(column, row, 0, LAYER_WALL);
 		this.view.addChild(sprite);
+	}
+
+	private placePartition(
+		factory: TextureFactory,
+		palette: RoomPalette,
+		column: number,
+		row: number
+	): void {
+		const partition = factory.wallBlock(PARTITION_HEIGHT);
+		const sprite = new Sprite(partition.texture);
+		sprite.pivot.set(partition.anchorX, partition.anchorY);
+		const screen = tileToScreen(column, row, 0);
+		sprite.position.set(screen.x, screen.y);
+		sprite.tint = palette.wall;
+		sprite.zIndex = depthAt(column, row, 0, LAYER_WALL);
+		this.view.addChild(sprite);
+		this.obstacles.push({
+			minX: column,
+			maxX: column,
+			minY: row,
+			maxY: row,
+			zIndex: sprite.zIndex,
+		});
 	}
 
 	private buildFurniture(

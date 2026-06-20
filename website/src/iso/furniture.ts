@@ -107,6 +107,61 @@ function buildingBlueprint(options: {
 	};
 }
 
+/** A proper table: a thin overhanging top on four legs, open underneath. */
+function tableBlueprint(options: {
+	footprintWidth: number;
+	footprintHeight: number;
+	height: number;
+	bodyTint: number;
+	topTint: number;
+	extraParts?: Array<FurniturePart>;
+}): FurnitureBlueprint {
+	const width = options.footprintWidth;
+	const depth = options.footprintHeight;
+	const legHeight = Math.max(4, options.height - 5);
+	const leg = (offsetTileX: number, offsetTileY: number): FurniturePart => ({
+		shape: "cuboid",
+		footprintWidth: 0.13,
+		footprintHeight: 0.13,
+		height: legHeight,
+		offsetTileX,
+		offsetTileY,
+	});
+	const parts: Array<FurniturePart> = [
+		leg(0.07, 0.07),
+		leg(width - 0.2, 0.07),
+		leg(0.07, depth - 0.2),
+		leg(width - 0.2, depth - 0.2),
+		// Tabletop slab overhanging the legs...
+		{
+			shape: "cuboid",
+			footprintWidth: width,
+			footprintHeight: depth,
+			height: 5,
+			lift: legHeight,
+		},
+		// ...with a lighter surface.
+		{
+			shape: "decal",
+			footprintWidth: width - 0.1,
+			footprintHeight: depth - 0.1,
+			offsetTileX: 0.05,
+			offsetTileY: 0.05,
+			lift: legHeight + 5,
+			tint: options.topTint,
+		},
+		...(options.extraParts ?? []),
+	];
+	return {
+		footprintWidth: width,
+		footprintHeight: depth,
+		solid: true,
+		baseTint: options.bodyTint,
+		parts,
+		interactionPoints: [],
+	};
+}
+
 export const FURNITURE_BLUEPRINTS: Record<string, FurnitureBlueprint> = {
 	pokerTable: {
 		footprintWidth: 3,
@@ -127,25 +182,13 @@ export const FURNITURE_BLUEPRINTS: Record<string, FurnitureBlueprint> = {
 		],
 		interactionPoints: [],
 	},
-	courtTable: {
+	courtTable: tableBlueprint({
 		footprintWidth: 2,
 		footprintHeight: 1,
-		solid: true,
-		baseTint: WOOD_MID,
-		parts: [
-			{ shape: "cuboid", footprintWidth: 2, footprintHeight: 1, height: 18 },
-			{
-				shape: "decal",
-				footprintWidth: 1.8,
-				footprintHeight: 0.8,
-				offsetTileX: 0.1,
-				offsetTileY: 0.1,
-				lift: 18,
-				tint: 0xb98a5e,
-			},
-		],
-		interactionPoints: [],
-	},
+		height: 18,
+		bodyTint: WOOD_MID,
+		topTint: 0xb98a5e,
+	}),
 	judgeBench: {
 		footprintWidth: 2,
 		footprintHeight: 1,
@@ -175,22 +218,13 @@ export const FURNITURE_BLUEPRINTS: Record<string, FurnitureBlueprint> = {
 		],
 		interactionPoints: [],
 	},
-	desk: {
+	desk: tableBlueprint({
 		footprintWidth: 2,
 		footprintHeight: 1,
-		solid: true,
-		baseTint: 0x9a7350,
-		parts: [
-			{ shape: "cuboid", footprintWidth: 2, footprintHeight: 1, height: 18 },
-			{
-				shape: "decal",
-				footprintWidth: 1.8,
-				footprintHeight: 0.8,
-				offsetTileX: 0.1,
-				offsetTileY: 0.1,
-				lift: 18,
-				tint: 0xc9a878,
-			},
+		height: 18,
+		bodyTint: 0x8a6a45,
+		topTint: 0xc9a878,
+		extraParts: [
 			// A little dark monitor on the desk's far edge.
 			{
 				shape: "cuboid",
@@ -203,8 +237,7 @@ export const FURNITURE_BLUEPRINTS: Record<string, FurnitureBlueprint> = {
 				tint: 0x20242e,
 			},
 		],
-		interactionPoints: [],
-	},
+	}),
 	whiteboard: {
 		footprintWidth: 1,
 		footprintHeight: 1,
@@ -257,25 +290,13 @@ export const FURNITURE_BLUEPRINTS: Record<string, FurnitureBlueprint> = {
 		],
 		interactionPoints: [sit(0, 0, "right", 4), sit(1, 0, "left", 4)],
 	},
-	coffeeTable: {
+	coffeeTable: tableBlueprint({
 		footprintWidth: 1,
 		footprintHeight: 1,
-		solid: true,
-		baseTint: 0x7a5a3c,
-		parts: [
-			{ shape: "cuboid", footprintWidth: 1, footprintHeight: 1, height: 10 },
-			{
-				shape: "decal",
-				footprintWidth: 0.8,
-				footprintHeight: 0.8,
-				offsetTileX: 0.1,
-				offsetTileY: 0.1,
-				lift: 10,
-				tint: 0x9c7a52,
-			},
-		],
-		interactionPoints: [],
-	},
+		height: 11,
+		bodyTint: 0x7a5a3c,
+		topTint: 0x9c7a52,
+	}),
 	tvStand: {
 		footprintWidth: 2,
 		footprintHeight: 1,
