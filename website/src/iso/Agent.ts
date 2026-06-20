@@ -26,6 +26,8 @@ interface AgentOptions {
 	body: BakedTexture;
 	face: BakedTexture;
 	shadow: BakedTexture;
+	accessory: BakedTexture;
+	accessoryTint: number;
 	fontName: string;
 	tint: number;
 	label: string;
@@ -38,6 +40,7 @@ export class Agent extends Container {
 	private readonly figure = new Container();
 	private readonly body: Sprite;
 	private readonly face: Sprite;
+	private readonly accessory: Sprite;
 	private readonly shadow: Sprite;
 	private readonly nameplate: BitmapText;
 
@@ -85,8 +88,17 @@ export class Agent extends Container {
 		this.face.pivot.set(options.face.anchorX, options.face.anchorY);
 		this.face.position.set(0, -27);
 
-		// Body + face live in one figure so facing flips them together.
-		this.figure.addChild(this.body, this.face);
+		// A head accessory (hat, glasses, antenna, ...) attached at the head top.
+		this.accessory = new Sprite(options.accessory.texture);
+		this.accessory.pivot.set(
+			options.accessory.anchorX,
+			options.accessory.anchorY
+		);
+		this.accessory.position.set(0, -38);
+		this.accessory.tint = options.accessoryTint;
+
+		// Body + face + accessory live in one figure so facing flips them together.
+		this.figure.addChild(this.body, this.face, this.accessory);
 
 		this.nameplate = new BitmapText({
 			text: options.label,

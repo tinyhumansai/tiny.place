@@ -23,6 +23,7 @@ import {
 import { Agent } from "./Agent";
 import type { BaseRoom } from "./BaseRoom";
 import { ChatBubble } from "./ChatBubble";
+import type { FurnitureStation } from "./furniture";
 import {
 	LAYER_DECAL,
 	NATIVE_RESOLUTION,
@@ -51,6 +52,24 @@ const PAN_LIMIT = 360;
 const AGENT_TINTS = [
 	0xf2a154, 0x5aa9e6, 0x7fc8a9, 0xe88ec2, 0xc3a6ff, 0xffd166, 0x9ad0ec,
 	0xf28482, 0x84dcc6, 0xbdb2ff,
+];
+// "antenna" is weighted heavier so it stays the common plain look.
+const ACCESSORY_KINDS = [
+	"antenna",
+	"antenna",
+	"antenna",
+	"cap",
+	"beanie",
+	"party",
+	"bow",
+	"crown",
+	"glasses",
+	"headphones",
+	"flower",
+];
+const ACCESSORY_TINTABLE = new Set(["cap", "beanie", "party", "bow"]);
+const ACCESSORY_COLORS = [
+	0xff6b6b, 0x4ecdc4, 0xffd166, 0xa78bfa, 0xff8fab, 0x6bcb77, 0x5aa9e6,
 ];
 const AGENT_NAMES = [
 	"Atlas",
@@ -462,11 +481,18 @@ export class GameWorld {
 		spawn: WalkNode
 	): Agent {
 		const factory = this.factory!;
+		const accessoryKind =
+			ACCESSORY_KINDS[this.hash(id) % ACCESSORY_KINDS.length]!;
+		const accessoryTint = ACCESSORY_TINTABLE.has(accessoryKind)
+			? ACCESSORY_COLORS[this.hash(`${id}:acc`) % ACCESSORY_COLORS.length]!
+			: 0xffffff;
 		const agent = new Agent({
 			id,
 			body: factory.agentBody(),
 			face: factory.agentFace(),
 			shadow: factory.agentShadow(),
+			accessory: factory.accessory(accessoryKind),
+			accessoryTint,
 			fontName: NAMEPLATE_FONT,
 			tint,
 			label,
@@ -604,13 +630,47 @@ export class GameWorld {
 		const tile = screenToTile(local.x, local.y);
 		const tileX = Math.floor(tile.x);
 		const tileY = Math.floor(tile.y);
-		if (!room.isWalkable(tileX, tileY)) {
-			return;
-		}
 		const agent = this.selectedId
 			? this.agents.get(this.selectedId)
 			: undefined;
 		if (!agent) {
+			return;
+		}
+		// Walkable floor → walk there. Otherwise, if an interactable furniture
+		// piece was tapped, send the agent to one of its free stations.
+		if (room.isWalkable(tileX, tileY)) {
+			this.routeAgentToTile(agent, tileX, tileY, "idle", null, 0);
+			return;
+		}
+		const stations = room.pieceStationsAt(tileX, tileY);
+		if (stations.length === 0) {
+			return;
+		}
+		const station =
+			stations.find(
+				(candidate) => !this.tileOccupied(candidate.tileX, candidate.tileY)
+			) ?? stations[0]!;
+		const isSit = station.point.action === "sit";
+		this.routeAgentToTile(
+			agent,
+			station.tileX,
+			station.tileY,
+			isSit ? "sitting" : "inspecting",
+			station.point.facing ?? null,
+			isSit ? (station.point.seatDropY ?? 6) : 0
+		);
+	}
+
+	private routeAgentToTile(
+		agent: Agent,
+		tileX: number,
+		tileY: number,
+		arrivalAction: Parameters<Agent["walkPath"]>[1],
+		facing: FurnitureStation["point"]["facing"] | null,
+		seatDropY: number
+	): void {
+		const room = this.room;
+		if (!room) {
 			return;
 		}
 		const start = agent.currentTile;
@@ -621,7 +681,7 @@ export class GameWorld {
 			tileY
 		);
 		if (path) {
-			agent.walkPath(path, "idle", null, 0);
+			agent.walkPath(path, arrivalAction, facing ?? null, seatDropY);
 		}
 	}
 
@@ -687,12 +747,16 @@ export class GameWorld {
 		return pool[index];
 	}
 
-	private pickTint(seed: string): number {
-		let hash = 0;
+	private hash(seed: string): number {
+		let value = 0;
 		for (let index = 0; index < seed.length; index++) {
-			hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
+			value = (value * 31 + seed.charCodeAt(index)) >>> 0;
 		}
-		return AGENT_TINTS[hash % AGENT_TINTS.length]!;
+		return value;
+	}
+
+	private pickTint(seed: string): number {
+		return AGENT_TINTS[this.hash(seed) % AGENT_TINTS.length]!;
 	}
 
 	private pickName(): string {

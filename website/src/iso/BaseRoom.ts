@@ -32,7 +32,7 @@ import {
 	type WalkNode,
 } from "./types";
 
-const WALL_HEIGHT = 42;
+const WALL_HEIGHT = 78;
 const NEIGHBOR_STEPS: ReadonlyArray<readonly [number, number]> = [
 	[0, -1],
 	[1, 0],
@@ -56,7 +56,9 @@ export abstract class BaseRoom {
 	private readonly rows: number;
 	private readonly levelGrid: Array<Array<number>> = [];
 	private readonly walkable = new Set<string>();
+	private readonly seats = new Set<string>();
 	private readonly stationsByTile = new Map<string, FurnitureStation>();
+	private readonly pieceByTile = new Map<string, FurnitureSprite>();
 	private readonly center: ScreenPoint;
 	private readonly size: { width: number; height: number };
 
@@ -145,7 +147,7 @@ export abstract class BaseRoom {
 		column: number,
 		row: number
 	): void {
-		const wall = factory.cuboid(1, 1, WALL_HEIGHT, "wall");
+		const wall = factory.wallBlock(WALL_HEIGHT);
 		const sprite = new Sprite(wall.texture);
 		sprite.pivot.set(wall.anchorX, wall.anchorY);
 		const screen = tileToScreen(column, row, 0);
@@ -162,8 +164,16 @@ export abstract class BaseRoom {
 		for (const config of definition.furniture) {
 			const piece = new FurnitureSprite(config, factory);
 			this.view.addChild(piece);
+			for (const tile of piece.footprintTiles()) {
+				this.pieceByTile.set(tileKey(tile.x, tile.y), piece);
+			}
+			// Solid tiles leave the transit graph entirely...
 			for (const tile of piece.solidTiles()) {
 				this.walkable.delete(tileKey(tile.x, tile.y));
+			}
+			// ...but seat tiles remain reachable as a terminal sit step.
+			for (const tile of piece.seatTiles()) {
+				this.seats.add(tileKey(tile.x, tile.y));
 			}
 			for (const station of piece.stations()) {
 				this.stationsByTile.set(tileKey(station.tileX, station.tileY), station);
@@ -228,6 +238,19 @@ export abstract class BaseRoom {
 		return this.walkable.has(tileKey(tileX, tileY));
 	}
 
+	/** A seat tile is occupiable only as the final step of a sit. */
+	public isSeat(tileX: number, tileY: number): boolean {
+		return this.seats.has(tileKey(tileX, tileY));
+	}
+
+	/** Interaction stations of the furniture occupying a tile, if any. */
+	public pieceStationsAt(
+		tileX: number,
+		tileY: number
+	): Array<FurnitureStation> {
+		return this.pieceByTile.get(tileKey(tileX, tileY))?.stations() ?? [];
+	}
+
 	public node(tileX: number, tileY: number): WalkNode {
 		return { x: tileX, y: tileY, level: this.levelAt(tileX, tileY) };
 	}
@@ -270,7 +293,9 @@ export abstract class BaseRoom {
 		endY: number,
 		blocked?: Set<string>
 	): Array<WalkNode> | null {
-		if (!this.isWalkable(startX, startY) || !this.isWalkable(endX, endY)) {
+		const canStand = (x: number, y: number): boolean =>
+			this.isWalkable(x, y) || this.isSeat(x, y);
+		if (!canStand(startX, startY) || !canStand(endX, endY)) {
 			return null;
 		}
 		if (startX === endX && startY === endY) {
@@ -288,13 +313,23 @@ export abstract class BaseRoom {
 				const nextX = current.x + stepX;
 				const nextY = current.y + stepY;
 				const key = tileKey(nextX, nextY);
-				if (visited.has(key) || !this.isWalkable(nextX, nextY)) {
+				if (visited.has(key)) {
 					continue;
 				}
-				if (blocked?.has(key) && !(nextX === endX && nextY === endY)) {
+				const terminal = nextX === endX && nextY === endY;
+				// Seats may only be entered as the destination; otherwise the tile
+				// must be normal walkable floor.
+				if (this.isSeat(nextX, nextY)) {
+					if (!terminal) {
+						continue;
+					}
+				} else if (!this.isWalkable(nextX, nextY)) {
 					continue;
 				}
-				// Disallow diagonal corner-cutting through solid tiles.
+				if (blocked?.has(key) && !terminal) {
+					continue;
+				}
+				// Disallow diagonal corner-cutting past blocking tiles.
 				if (stepX !== 0 && stepY !== 0) {
 					if (
 						!this.isWalkable(current.x + stepX, current.y) ||
@@ -312,7 +347,7 @@ export abstract class BaseRoom {
 				}
 				const next = this.node(nextX, nextY);
 				const path = [...current.path, next];
-				if (nextX === endX && nextY === endY) {
+				if (terminal) {
 					return path;
 				}
 				visited.add(key);
