@@ -211,9 +211,9 @@ export class GameWorld {
 
 		this.installFonts();
 
-		this.world.sortableChildren = true;
 		this.selectionRing.visible = false;
-		this.world.addChild(this.selectionRing);
+		// The selection ring and agents are parented into the active room's
+		// structure layer (see setRoom) so they depth-sort with walls/furniture.
 		this.camera.addChild(this.glow, this.world, this.bubbleLayer);
 		this.viewport.addChild(this.camera);
 		app.stage.addChild(this.viewport);
@@ -298,12 +298,15 @@ export class GameWorld {
 		}
 		this.clearAgents();
 		if (this.room) {
+			// Detach the persistent selection ring before the old layer is freed.
+			this.selectionRing.removeFromParent();
 			this.world.removeChild(this.room.view);
 			this.room.view.destroy({ children: true });
 		}
 		this.roomKey = key;
 		this.room = entry.create(factory);
 		this.world.addChild(this.room.view);
+		this.room.entityLayer.addChild(this.selectionRing);
 
 		const palette = this.room.definition.palette;
 		app.renderer.background.color = palette.background;
@@ -440,7 +443,6 @@ export class GameWorld {
 			return;
 		}
 		this.bubbles.get(agentId)?.dismiss();
-		this.world.removeChild(agent);
 		agent.destroy({ children: true });
 		this.agents.delete(agentId);
 		this.wanderTimers.delete(agentId);
@@ -453,7 +455,6 @@ export class GameWorld {
 
 	public clearAgents(): void {
 		for (const agent of this.agents.values()) {
-			this.world.removeChild(agent);
 			agent.destroy({ children: true });
 		}
 		this.agents.clear();
@@ -541,7 +542,9 @@ export class GameWorld {
 			label,
 			spawn,
 		});
-		this.world.addChild(agent);
+		// Agents live in the room's structure layer so they sort against walls
+		// and furniture; they always render above the ground layer.
+		(this.room?.entityLayer ?? this.world).addChild(agent);
 		this.agents.set(id, agent);
 		this.wanderTimers.set(id, this.randomWanderDelay());
 		this.notifyChange();

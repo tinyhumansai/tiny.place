@@ -62,6 +62,13 @@ export abstract class BaseRoom {
 	public readonly view: Container = new Container();
 	public readonly definition: RoomDefinition;
 
+	// Two depth-sorted layers. The ground layer (floors, dais risers, rugs) is
+	// always drawn beneath the structure layer (walls, furniture, agents), so a
+	// floor tile can never render on top of a building, and agents interleave
+	// correctly with the things they walk among.
+	private readonly groundLayer = new Container();
+	private readonly structureLayer = new Container();
+
 	private readonly columns: number;
 	private readonly rows: number;
 	private readonly levelGrid: Array<Array<number>> = [];
@@ -75,7 +82,9 @@ export abstract class BaseRoom {
 
 	protected constructor(definition: RoomDefinition, factory: TextureFactory) {
 		this.definition = definition;
-		this.view.sortableChildren = true;
+		this.groundLayer.sortableChildren = true;
+		this.structureLayer.sortableChildren = true;
+		this.view.addChild(this.groundLayer, this.structureLayer);
 		this.rows = definition.matrix.length;
 		this.columns = definition.matrix.reduce(
 			(widest, row) => Math.max(widest, row.length),
@@ -139,7 +148,7 @@ export abstract class BaseRoom {
 			? shadeColor(palette.floorTop, 0.93)
 			: palette.floorTop;
 		sprite.zIndex = depthAt(column, row, level, LAYER_FLOOR);
-		this.view.addChild(sprite);
+		this.groundLayer.addChild(sprite);
 	}
 
 	private placeDaisRiser(
@@ -155,7 +164,7 @@ export abstract class BaseRoom {
 		sprite.position.set(screen.x, screen.y);
 		sprite.tint = palette.dais;
 		sprite.zIndex = depthAt(column, row, 0, LAYER_DECAL);
-		this.view.addChild(sprite);
+		this.groundLayer.addChild(sprite);
 	}
 
 	private placeWall(
@@ -171,7 +180,14 @@ export abstract class BaseRoom {
 		sprite.position.set(screen.x, screen.y);
 		sprite.tint = palette.wall;
 		sprite.zIndex = depthAt(column, row, 0, LAYER_WALL);
-		this.view.addChild(sprite);
+		this.structureLayer.addChild(sprite);
+		this.obstacles.push({
+			minX: column,
+			maxX: column,
+			minY: row,
+			maxY: row,
+			zIndex: sprite.zIndex,
+		});
 	}
 
 	private placePartition(
@@ -187,7 +203,7 @@ export abstract class BaseRoom {
 		sprite.position.set(screen.x, screen.y);
 		sprite.tint = palette.wall;
 		sprite.zIndex = depthAt(column, row, 0, LAYER_WALL);
-		this.view.addChild(sprite);
+		this.structureLayer.addChild(sprite);
 		this.obstacles.push({
 			minX: column,
 			maxX: column,
@@ -197,13 +213,20 @@ export abstract class BaseRoom {
 		});
 	}
 
+	/** The depth-sorted layer agents live in, alongside walls and furniture. */
+	public get entityLayer(): Container {
+		return this.structureLayer;
+	}
+
 	private buildFurniture(
 		factory: TextureFactory,
 		definition: RoomDefinition
 	): void {
 		for (const config of definition.furniture) {
 			const piece = new FurnitureSprite(config, factory);
-			this.view.addChild(piece);
+			// Flat decals (rugs) belong to the ground; everything else stands up
+			// in the structure layer.
+			(piece.flat ? this.groundLayer : this.structureLayer).addChild(piece);
 			for (const tile of piece.footprintTiles()) {
 				this.pieceByTile.set(tileKey(tile.x, tile.y), piece);
 			}

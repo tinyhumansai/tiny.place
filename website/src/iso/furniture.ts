@@ -708,6 +708,8 @@ export class FurnitureSprite extends Container {
 	public readonly footprintHeight: number;
 	public readonly level: number;
 	public readonly solid: boolean;
+	/** Ground-hugging decal (rug) that should render in the ground layer. */
+	public readonly flat: boolean;
 	private readonly stationPoints: Array<InteractionPoint>;
 
 	public constructor(config: FurnitureConfig, factory: TextureFactory) {
@@ -723,6 +725,7 @@ export class FurnitureSprite extends Container {
 		this.footprintWidth = config.footprintWidth ?? blueprint.footprintWidth;
 		this.footprintHeight = config.footprintHeight ?? blueprint.footprintHeight;
 		this.solid = config.solid ?? blueprint.solid;
+		this.flat = blueprint.flat ?? false;
 		this.stationPoints =
 			config.interactionPoints ?? blueprint.interactionPoints;
 
