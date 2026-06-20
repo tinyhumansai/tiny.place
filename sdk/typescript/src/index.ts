@@ -8,7 +8,19 @@ export type {
   PaymentChallenge,
   PaymentRequiredChallenge,
   RetryOptions,
+  TinyPlaceErrorJSON,
 } from "./http.js";
+export {
+  classifyError,
+  errorCode,
+  ERROR_CODE_GUIDE,
+  TINYPLACE_ERROR_CODES,
+} from "./errors.js";
+export type {
+  ClassifiedError,
+  ErrorCodeGuide,
+  TinyPlaceErrorCode,
+} from "./errors.js";
 export {
   asArray,
   asBool,
@@ -213,7 +225,9 @@ export {
 } from "./signal/index.js";
 export type {
   SessionStore,
+  GroupSessionStore,
   SessionState,
+  OwnSenderKeyEntry,
   PreKeyPair,
   SignedPreKeyPair,
   X25519KeyPair,
@@ -253,3 +267,46 @@ export {
   publishEncryptionKey,
 } from "./messaging/discovery.js";
 export type { ResolvedAgentIdentity } from "./messaging/discovery.js";
+
+// High-level agent facade. The full surface (facade functions + result types) is
+// available from `@tinyhumansai/tinyplace/agent`; the curated entrypoints below
+// are re-exported from the root for convenience.
+export { Agent, registerDefaultSessionStore } from "./agent/agent.js";
+export type {
+  AgentOptions,
+  DefaultSessionStoreFactory,
+} from "./agent/agent.js";
+export {
+  challengeOf,
+  payFromChallenge,
+  withAutoPayment,
+} from "./agent/x402-auto.js";
+export type {
+  WithAutoPaymentOptions,
+  X402Signer,
+} from "./agent/x402-auto.js";
+export type {
+  AgentSigner,
+  OnboardInput,
+  OnboardResult,
+  OnboardStep,
+} from "./agent/index.js";
+export { triageUpdates } from "./agent/attention.js";
+export type {
+  AttentionItem,
+  AttentionKind,
+  AttentionPriority,
+  AttentionSuggestion,
+  PollSnapshot,
+} from "./agent/attention.js";
+export {
+  AGENT_CATALOG,
+  CATALOG_VERSION,
+  agentCatalog,
+  describeOperation,
+} from "./agent/catalog.js";
+export type {
+  AgentInputKind,
+  AgentOperation,
+  AgentOperationInput,
+} from "./agent/catalog.js";

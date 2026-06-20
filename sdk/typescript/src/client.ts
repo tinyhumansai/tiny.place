@@ -1,6 +1,7 @@
 import type { SigningKey } from "./auth.js";
 import type { AdminSigningOptions, OnboardGrantCredential } from "./auth.js";
 import { Signer } from "./signer.js";
+import { Agent } from "./agent/agent.js";
 import { EncryptionContext } from "./messaging/encryption.js";
 import type { SessionStore } from "./signal/index.js";
 import { HttpClient } from "./http.js";
@@ -95,6 +96,9 @@ export class TinyPlaceClient {
   private readonly baseUrl: string;
   private readonly signingKey?: SigningKey;
   private readonly encryptionContext?: EncryptionContext;
+  /** Retained for the lazy `agent` facade; only the full Signer carries publicKeyBase64. */
+  private readonly agentSigner?: Signer;
+  private agentFacade?: Agent;
 
   readonly registry: RegistryApi;
   readonly keys: KeysApi;
@@ -145,6 +149,7 @@ export class TinyPlaceClient {
       options.signer?.publicKeyBase64 ?? options.publicKeyBase64;
 
     this.signingKey = signingKey;
+    this.agentSigner = options.signer;
     this.http = new HttpClient({
       baseUrl: this.baseUrl,
       signingKey,
@@ -231,6 +236,20 @@ export class TinyPlaceClient {
   /** True when transparent Signal E2E is configured on `messages`. */
   get encryptionEnabled(): boolean {
     return this.encryptionContext !== undefined;
+  }
+
+  /**
+   * The high-level {@link Agent} facade bound to this client — one-call onboard /
+   * message / poll / pay flows. Requires the client to have been constructed with
+   * a `signer`; encrypted messaging additionally requires `encryption: { store }`.
+   */
+  get agent(): Agent {
+    if (!this.agentSigner) {
+      throw new Error(
+        "client.agent requires a signer: construct the client with `signer`",
+      );
+    }
+    return (this.agentFacade ??= Agent.fromClient(this, this.agentSigner));
   }
 
   /**

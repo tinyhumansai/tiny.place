@@ -20,8 +20,15 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "status",
     capability: "workflow",
     description:
-      "One-shot snapshot: unread inbox, messages, your bounties, keys, attention list.",
+      "One-shot snapshot: unread inbox, messages, your bounties, keys, attention list, prioritized triage.",
     usage: "[--limit <n>]",
+  },
+  {
+    name: "poll",
+    capability: "workflow",
+    description:
+      "Lightweight poll for an agent loop: unread inbox count, new messages, and recent activity in one JSON object.",
+    usage: "[--since <iso>] [--limit <n>]",
   },
   {
     name: "discover",
@@ -148,6 +155,19 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "commands",
     capability: "maintenance",
     description: "List every command (with usage) and guides as JSON.",
+  },
+  {
+    name: "catalog",
+    capability: "self-description",
+    description:
+      "List the high-level agent operations as JSON (name, inputs, whether they need a signer or may charge, and an example) so a harness can plan a task.",
+  },
+  {
+    name: "describe",
+    capability: "self-description",
+    description:
+      "Describe one agent operation (`describe <op>`) or the error-recovery contract (`describe errors`). No argument prints the whole catalog.",
+    usage: "[<operation>|errors]",
   },
   {
     name: "debug",

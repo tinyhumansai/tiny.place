@@ -8,7 +8,8 @@
     "url": "https://github.com/tinyhumansai/tiny.place"
   },
   "files": [
-    "dist"
+    "dist",
+    "AGENTS.md"
   ],
   "bin": {
     "tinyplace": "./dist/cli.js"
@@ -19,6 +20,10 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./agent": {
+      "import": "./dist/agent/index.js",
+      "types": "./dist/agent/index.d.ts"
     },
     "./node": {
       "import": "./dist/node/index.js",

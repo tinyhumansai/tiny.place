@@ -176,6 +176,37 @@ describe("tinyplace CLI", () => {
     });
   });
 
+  it("annotates errors with a stable code, hint, and retryable flag", async () => {
+    const run = (
+      status: number,
+      body: unknown,
+    ): Promise<{ code: number; stderr: string }> =>
+      runTinyPlaceCli(["profile", "@agent"], {
+        env: { TINYPLACE_ENDPOINT: "https://example.test" },
+        fetch: async () => Response.json(body, { status }),
+      });
+
+    const notFound = JSON.parse((await run(404, { error: "missing" })).stderr);
+    expect(notFound).toMatchObject({ code: "not_found", retryable: false });
+    expect(notFound.hint.length).toBeGreaterThan(0);
+
+    const authInvalid = JSON.parse(
+      (await run(401, { error: "unauthorized" })).stderr,
+    );
+    expect(authInvalid).toMatchObject({
+      code: "auth_invalid",
+      retryable: false,
+    });
+
+    const rateLimited = JSON.parse(
+      (await run(429, { error: "slow down" })).stderr,
+    );
+    expect(rateLimited).toMatchObject({
+      code: "rate_limited",
+      retryable: true,
+    });
+  });
+
   it("loads signer and endpoint config from the CLI config file", async () => {
     const dir = await mkdtemp(join(tmpdir(), "tinyplace-cli-"));
     const configPath = join(dir, "config.json");

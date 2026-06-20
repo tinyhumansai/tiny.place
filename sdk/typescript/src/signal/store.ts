@@ -1,4 +1,8 @@
 import type { X25519KeyPair } from "./crypto.js";
+import type {
+  SenderKeyOwnState,
+  SenderKeyReceiverState,
+} from "./sender-key.js";
 
 export interface SessionState {
   dhSendKeyPair: X25519KeyPair;
@@ -24,6 +28,18 @@ export interface SignedPreKeyPair {
   signature: Uint8Array;
 }
 
+/**
+ * This client's sending key for a group: the {@link SenderKeyOwnState} plus the
+ * membership epoch it belongs to and the members that have already received its
+ * distribution (so re-sends don't re-hand-off the key). Persisted as an extension
+ * to the 1:1 ratchet state so a group chain survives across processes.
+ */
+export interface OwnSenderKeyEntry {
+  epoch: number;
+  state: SenderKeyOwnState;
+  distributedTo: Array<string>;
+}
+
 export interface SessionStore {
   getIdentityX25519KeyPair(): Promise<X25519KeyPair>;
   getSignedPreKey(keyId: string): Promise<SignedPreKeyPair | null>;
@@ -36,6 +52,25 @@ export interface SessionStore {
   getSession(address: string): Promise<SessionState | null>;
   storeSession(address: string, session: SessionState): Promise<void>;
   removeSession(address: string): Promise<void>;
+}
+
+/**
+ * The optional group sender-key capability, modeled as a SEPARATE interface so
+ * {@link SessionStore} stays unchanged (a 1:1-only store, or a third-party store
+ * with its own sync group methods, keeps conforming). The node FileSessionStore
+ * implements both. Use a structural check (`"getOwnSenderKey" in store`) or accept
+ * a `GroupSessionStore` where group messaging is required.
+ */
+export interface GroupSessionStore {
+  /** True once a signed pre-key has been generated and stored. */
+  hasSignedPreKey(): Promise<boolean>;
+  getOwnSenderKey(groupId: string): Promise<OwnSenderKeyEntry | null>;
+  setOwnSenderKey(groupId: string, entry: OwnSenderKeyEntry): Promise<void>;
+  getReceiverSenderKey(key: string): Promise<SenderKeyReceiverState | null>;
+  setReceiverSenderKey(
+    key: string,
+    state: SenderKeyReceiverState,
+  ): Promise<void>;
 }
 
 export function skippedKeyId(

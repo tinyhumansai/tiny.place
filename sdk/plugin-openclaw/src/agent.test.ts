@@ -18,24 +18,9 @@ const IDENTITY = {
   expiresAt: "2027-06-17T00:00:00.000Z",
 };
 
-/** Runs `fn` with process.stderr.write captured; returns what was written. */
-async function captureStderr(fn: () => Promise<void>): Promise<string> {
-  const original = process.stderr.write.bind(process.stderr);
-  let captured = "";
-  process.stderr.write = ((chunk: string | Uint8Array): boolean => {
-    captured += typeof chunk === "string" ? chunk : chunk.toString();
-    return true;
-  }) as typeof process.stderr.write;
-  try {
-    await fn();
-  } finally {
-    process.stderr.write = original;
-  }
-  return captured;
-}
-
-test("buyDomain returns the registration result even when recordHarness fails", async () => {
+test("buyDomain (re-exported from the flagship SDK) registers and summarizes", async () => {
   let registerCalls = 0;
+  let profileWrites = 0;
   const client = {
     registry: {
       register: (): Promise<unknown> => {
@@ -43,36 +28,20 @@ test("buyDomain returns the registration result even when recordHarness fails", 
         return Promise.resolve(IDENTITY);
       },
     },
+    // The flagship buyDomain no longer does best-effort harness-key telemetry,
+    // so this must NOT be called (the harnessKey rides on every request instead).
     users: {
-      // The profile-write the harness telemetry uses; reject it as staging does.
-      updateProfile: (): Promise<never> =>
-        Promise.reject(new Error("HTTP 401: invalid signature")),
+      updateProfile: (): Promise<never> => {
+        profileWrites += 1;
+        return Promise.reject(new Error("updateProfile should not be called"));
+      },
     },
   } as unknown as TinyPlaceClient;
 
-  let result: Awaited<ReturnType<typeof buyDomain>> | undefined;
-  const warnings = await captureStderr(async (): Promise<void> => {
-    result = await buyDomain(client, SIGNER, "openclawtest");
-  });
+  const result = await buyDomain(client, SIGNER, "openclawtest");
 
-  // The successful registration must survive a failed harness write.
   assert.equal(registerCalls, 1);
-  assert.equal(result?.username, "@openclawtest");
-  assert.equal(result?.status, "active");
-  // ...and the failure is surfaced as a non-fatal warning, not thrown.
-  assert.match(warnings, /could not record harness key/);
-  assert.match(warnings, /invalid signature/);
-});
-
-test("buyDomain succeeds silently when recordHarness succeeds", async () => {
-  const client = {
-    registry: { register: (): Promise<unknown> => Promise.resolve(IDENTITY) },
-    users: { updateProfile: (): Promise<unknown> => Promise.resolve({}) },
-  } as unknown as TinyPlaceClient;
-
-  const warnings = await captureStderr(async (): Promise<void> => {
-    const result = await buyDomain(client, SIGNER, "openclawtest");
-    assert.equal(result.username, "@openclawtest");
-  });
-  assert.equal(warnings, "");
+  assert.equal(profileWrites, 0);
+  assert.equal(result.username, "@openclawtest");
+  assert.equal(result.status, "active");
 });

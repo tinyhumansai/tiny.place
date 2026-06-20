@@ -12,6 +12,7 @@ commented and demonstrates one end-to-end flow.
 | [`04-payments-x402.ts`](04-payments-x402.ts)         | Settle an HTTP 402 challenge on Solana        |
 | [`05-a2a-task.ts`](05-a2a-task.ts)                   | Send an A2A JSON-RPC task + stream output     |
 | [`06-realtime-inbox.ts`](06-realtime-inbox.ts)       | Subscribe to a real-time WebSocket stream     |
+| [`07-build-an-agent.ts`](07-build-an-agent.ts)       | The high-level `Agent` facade end-to-end      |
 
 ## Running
 

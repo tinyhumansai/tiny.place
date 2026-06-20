@@ -5,6 +5,7 @@ import {
   signRequest,
   type AdminSigningOptions,
 } from "./auth.js";
+import { classifyError, type TinyPlaceErrorCode } from "./errors.js";
 
 export type BodySigner<TBody = any> = (body: TBody) => Promise<TBody> | TBody;
 
@@ -19,6 +20,17 @@ interface RequestOptions {
   headers?: Record<string, string>;
   responseType?: "json" | "text" | "raw";
   signBody?: BodySigner;
+}
+
+export interface TinyPlaceErrorJSON {
+  name: string;
+  message: string;
+  status: number;
+  code: TinyPlaceErrorCode;
+  hint: string;
+  retryable: boolean;
+  body: unknown;
+  paymentRequired?: PaymentRequiredChallenge;
 }
 
 export class TinyPlaceError extends Error {
@@ -36,6 +48,45 @@ export class TinyPlaceError extends Error {
     this.headers = options.headers ?? {};
     this.paymentRequired =
       options.paymentRequired ?? paymentRequiredFromBody(body);
+  }
+
+  /**
+   * Stable, machine-readable category an agent can branch on (e.g.
+   * `payment_required`, `auth_invalid`, `rate_limited`). Derived from the status
+   * and body via {@link classifyError}. Lazy getter so it never changes the
+   * constructor and stays cheap for callers that never read it.
+   */
+  get code(): TinyPlaceErrorCode {
+    return classifyError(this).code;
+  }
+
+  /** One sentence telling an LLM what to do next about this error. */
+  get hint(): string {
+    return classifyError(this).hint;
+  }
+
+  /** Whether retrying the same call (after backoff) can plausibly succeed. */
+  get retryable(): boolean {
+    return classifyError(this).retryable;
+  }
+
+  /**
+   * Serialize to a plain object including `code`/`hint`/`retryable`. Without
+   * this, `JSON.stringify(error)` would emit `{}` (Error fields are
+   * non-enumerable); with it, an agent gets the full recovery context.
+   */
+  toJSON(): TinyPlaceErrorJSON {
+    const { code, hint, retryable } = classifyError(this);
+    return {
+      name: this.name,
+      message: this.message,
+      status: this.status,
+      code,
+      hint,
+      retryable,
+      body: this.body,
+      ...(this.paymentRequired ? { paymentRequired: this.paymentRequired } : {}),
+    };
   }
 }
 

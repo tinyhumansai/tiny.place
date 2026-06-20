@@ -1,4 +1,10 @@
-import { boolFlag, parseArgs } from "./args.js";
+import {
+  agentCatalog,
+  describeErrors,
+  describeOperation,
+} from "../agent/catalog.js";
+import { classifyError } from "../errors.js";
+import { boolFlag, numberFlag, parseArgs, stringFlag } from "./args.js";
 import {
   CLI_GUIDES,
   HARNESS_CLI_COMMANDS,
@@ -104,12 +110,19 @@ export async function runTinyPlaceCli(
       body?: unknown;
       paymentRequired?: unknown;
     };
+    // Stable, machine-readable recovery contract: `code` is what an agent should
+    // branch on; `hint` is the one-line next step; `retryable` says whether
+    // re-running as-is can succeed. `error` text stays human-facing and may change.
+    const classified = classifyError(error);
     return {
       code: 1,
       stdout: "",
       stderr: `${JSON.stringify(
         redactSecrets({
           error: error instanceof Error ? error.message : String(error),
+          code: classified.code,
+          hint: classified.hint,
+          retryable: classified.retryable,
           ...(detail.status ? { status: detail.status } : {}),
           ...(detail.body !== undefined ? { body: detail.body } : {}),
           ...(detail.paymentRequired
@@ -141,6 +154,15 @@ async function dispatchTop(
       return initFlow(ctx, flags);
     case "status":
       return statusFlow(ctx, flags);
+    // Lightweight poll via the Agent facade: inbox + new messages + activity.
+    case "poll": {
+      const since = stringFlag(flags, "since");
+      const activityLimit = numberFlag(flags, "limit");
+      return ctx.client.agent.checkUpdates({
+        ...(since ? { since } : {}),
+        ...(activityLimit !== undefined ? { activityLimit } : {}),
+      });
+    }
     case "balance":
       return balanceFlow(ctx, flags);
     case "discover":
@@ -192,6 +214,25 @@ async function dispatchTop(
       return debugInfo(ctx);
     case "commands":
       return { commands: HARNESS_CLI_COMMANDS, guides: CLI_GUIDES };
+    // Self-description: let a harness fetch the agent operations + error contract.
+    case "catalog":
+      return agentCatalog();
+    case "describe": {
+      const [topic] = parsed.positionals;
+      if (!topic) {
+        return agentCatalog();
+      }
+      if (topic === "errors") {
+        return { errors: describeErrors() };
+      }
+      const operation = describeOperation(topic);
+      if (!operation) {
+        throw new Error(
+          `unknown operation: ${topic} (try \`tinyplace catalog\` for the list)`,
+        );
+      }
+      return operation;
+    }
     // Back-compat: a bare granular command behaves like `raw <command>`.
     default:
       return dispatchRaw(ctx, parsed);
