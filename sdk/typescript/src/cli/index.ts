@@ -4,7 +4,7 @@ import {
   describeOperation,
 } from "../agent/catalog.js";
 import { classifyError } from "../errors.js";
-import { boolFlag, parseArgs } from "./args.js";
+import { boolFlag, numberFlag, parseArgs, stringFlag } from "./args.js";
 import {
   CLI_GUIDES,
   HARNESS_CLI_COMMANDS,
@@ -154,6 +154,15 @@ async function dispatchTop(
       return initFlow(ctx, flags);
     case "status":
       return statusFlow(ctx, flags);
+    // Lightweight poll via the Agent facade: inbox + new messages + activity.
+    case "poll": {
+      const since = stringFlag(flags, "since");
+      const activityLimit = numberFlag(flags, "limit");
+      return ctx.client.agent.checkUpdates({
+        ...(since ? { since } : {}),
+        ...(activityLimit !== undefined ? { activityLimit } : {}),
+      });
+    }
     case "balance":
       return balanceFlow(ctx, flags);
     case "discover":

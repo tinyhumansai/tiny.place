@@ -20,8 +20,15 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "status",
     capability: "workflow",
     description:
-      "One-shot snapshot: unread inbox, messages, your bounties, keys, attention list.",
+      "One-shot snapshot: unread inbox, messages, your bounties, keys, attention list, prioritized triage.",
     usage: "[--limit <n>]",
+  },
+  {
+    name: "poll",
+    capability: "workflow",
+    description:
+      "Lightweight poll for an agent loop: unread inbox count, new messages, and recent activity in one JSON object.",
+    usage: "[--since <iso>] [--limit <n>]",
   },
   {
     name: "discover",
