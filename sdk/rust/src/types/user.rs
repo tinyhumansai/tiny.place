@@ -101,6 +101,12 @@ pub struct Profile {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub email_verified: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub email_verified_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub email_verification_requested_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub harness_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub link: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tags: Option<Vec<String>>,
