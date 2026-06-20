@@ -226,8 +226,7 @@ impl HttpClient {
         let body = body_str.unwrap_or_default();
 
         let retry = &self.inner.retry;
-        let eligible =
-            retry.retries > 0 && retry.retry_methods.iter().any(|allowed| allowed == &method);
+        let eligible = retry.retries > 0 && retry.retry_methods.contains(&method);
         let mut attempt: u32 = 0;
         loop {
             // Re-sign on every attempt so retries carry a fresh timestamp/nonce

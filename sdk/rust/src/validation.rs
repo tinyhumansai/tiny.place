@@ -468,6 +468,7 @@ mod tests {
             description: None,
             username: None,
             crypto_id: "WalletCrypto111".into(),
+            actor_type: None,
             public_key: None,
             url: None,
             endpoint: None,

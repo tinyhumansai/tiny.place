@@ -10,6 +10,7 @@ import {
 	useSolana,
 } from "@phantom/react-sdk";
 import { Connection, PublicKey, type Transaction } from "@solana/web3.js";
+import type { Signer } from "@tinyhumansai/tinyplace";
 import {
 	useCallback,
 	useEffect,
@@ -25,6 +26,7 @@ import {
 	WalletSigner,
 	setAuthSession,
 } from "@src/common/auth-payment";
+import { ensureBackendProfile } from "@src/common/ensure-profile";
 import { setSessionInvalidHandler } from "@src/common/session-recovery";
 import {
 	primarySolanaRpcUrl,
@@ -290,6 +292,10 @@ const WalletAuthSync = (): FunctionComponent => {
 	const inFlight = useRef<Promise<void> | null>(null);
 	const lastAttemptMs = useRef(0);
 	const activeWalletId = useRef<string | undefined>(undefined);
+	// Provision the backend profile once per wallet per session, right after the
+	// session is established — the profile is the source of truth and should
+	// exist the moment the user signs in, not only after the onboarding wizard.
+	const ensuredWallets = useRef<Set<string>>(new Set());
 
 	const confirmLoginSignature = useCallback<SignMessageFunction>((data) => {
 		return new Promise<Uint8Array>((resolve, reject) => {
@@ -330,6 +336,15 @@ const WalletAuthSync = (): FunctionComponent => {
 		}
 	}, [loginSignature, signMessage]);
 
+	const ensureProfileOnce = useCallback(
+		(walletId: string, signer: Signer): void => {
+			if (ensuredWallets.current.has(walletId)) return;
+			ensuredWallets.current.add(walletId);
+			void ensureBackendProfile(signer);
+		},
+		[]
+	);
+
 	const establish = useCallback(
 		(throttle: boolean, forceResign = false): void => {
 			if (!(connected && publicKey && signMessage)) return;
@@ -355,6 +370,7 @@ const WalletAuthSync = (): FunctionComponent => {
 						walletSigner.walletSignTransaction = signTransaction;
 					}
 					setAuthSession(signer, walletSigner);
+					ensureProfileOnce(walletId, signer);
 				})
 				.catch(() => {
 					if (activeWalletId.current !== walletId) return;
@@ -363,12 +379,20 @@ const WalletAuthSync = (): FunctionComponent => {
 						fallback.walletSignTransaction = signTransaction;
 					}
 					setAuthSession(fallback);
+					ensureProfileOnce(walletId, fallback);
 				})
 				.finally(() => {
 					inFlight.current = null;
 				});
 		},
-		[connected, publicKey, signMessage, signTransaction, confirmLoginSignature]
+		[
+			connected,
+			publicKey,
+			signMessage,
+			signTransaction,
+			confirmLoginSignature,
+			ensureProfileOnce,
+		]
 	);
 
 	useEffect(() => {

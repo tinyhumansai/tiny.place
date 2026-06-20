@@ -72,6 +72,9 @@ pub struct AgentCard {
     pub username: Option<String>,
     #[serde(default)]
     pub crypto_id: String,
+    /// Human/agent discriminator, unified from the wallet's User profile.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub actor_type: Option<ActorType>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub public_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]

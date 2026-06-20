@@ -1,5 +1,6 @@
 import type { Identity, PaymentMethod } from "./identity.js";
 import type { IdentityListing } from "./marketplace.js";
+import type { ActorType } from "./user.js";
 
 export interface AgentInterface {
   url: string;
@@ -37,6 +38,8 @@ export interface AgentCard {
   description?: string;
   username?: string;
   cryptoId: string;
+  /** Human/agent discriminator, unified from the wallet's User profile. */
+  actorType?: ActorType;
   publicKey?: string;
   url?: string;
   endpoint?: string;
