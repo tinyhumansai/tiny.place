@@ -12,6 +12,7 @@ import type {
   EventVisibility,
 } from "../types/index.js";
 import type { X402PaymentMap } from "../x402.js";
+import { listField } from "../safe.js";
 
 export interface EventRsvpRequest {
   agentId?: string;
@@ -30,10 +31,12 @@ export class EventsApi {
   ) {}
 
   list(params?: EventQueryParams): Promise<{ events: Array<Event> }> {
-    return this.http.get<{ events: Array<Event> }>(
-      "/events",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<{ events: Array<Event> | null }>(
+        "/events",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({ events: listField<Event>(result, "events") }));
   }
 
   create(event: Partial<Event>, hostId = event.host): Promise<Event> {
@@ -122,14 +125,22 @@ export class EventsApi {
     actorId?: string,
   ): Promise<{ attendees: Array<EventAttendee> }> {
     if (actorId) {
-      return this.http.getDirectoryAuthAs<{ attendees: Array<EventAttendee> }>(
-        `/events/${encodeURIComponent(eventId)}/attendees`,
-        actorId,
-      );
+      return this.http
+        .getDirectoryAuthAs<{ attendees: Array<EventAttendee> | null }>(
+          `/events/${encodeURIComponent(eventId)}/attendees`,
+          actorId,
+        )
+        .then((result) => ({
+          attendees: listField<EventAttendee>(result, "attendees"),
+        }));
     }
-    return this.http.getDirectoryAuth<{ attendees: Array<EventAttendee> }>(
-      `/events/${encodeURIComponent(eventId)}/attendees`,
-    );
+    return this.http
+      .getDirectoryAuth<{ attendees: Array<EventAttendee> | null }>(
+        `/events/${encodeURIComponent(eventId)}/attendees`,
+      )
+      .then((result) => ({
+        attendees: listField<EventAttendee>(result, "attendees"),
+      }));
   }
 
   removeAttendee(
@@ -197,9 +208,13 @@ export class EventsApi {
   }
 
   getStage(eventId: string): Promise<{ messages: Array<EventStageMessage> }> {
-    return this.http.get<{ messages: Array<EventStageMessage> }>(
-      `/events/${encodeURIComponent(eventId)}/stage`,
-    );
+    return this.http
+      .get<{ messages: Array<EventStageMessage> | null }>(
+        `/events/${encodeURIComponent(eventId)}/stage`,
+      )
+      .then((result) => ({
+        messages: listField<EventStageMessage>(result, "messages"),
+      }));
   }
 
   postToStage(
@@ -364,9 +379,13 @@ export class EventsApi {
   }
 
   questions(eventId: string): Promise<{ questions: Array<EventQuestion> }> {
-    return this.http.get<{ questions: Array<EventQuestion> }>(
-      `/events/${encodeURIComponent(eventId)}/questions`,
-    );
+    return this.http
+      .get<{ questions: Array<EventQuestion> | null }>(
+        `/events/${encodeURIComponent(eventId)}/questions`,
+      )
+      .then((result) => ({
+        questions: listField<EventQuestion>(result, "questions"),
+      }));
   }
 
   postQuestion(
@@ -464,9 +483,11 @@ export class EventsApi {
   }
 
   polls(eventId: string): Promise<{ polls: Array<EventPoll> }> {
-    return this.http.get<{ polls: Array<EventPoll> }>(
-      `/events/${encodeURIComponent(eventId)}/polls`,
-    );
+    return this.http
+      .get<{ polls: Array<EventPoll> | null }>(
+        `/events/${encodeURIComponent(eventId)}/polls`,
+      )
+      .then((result) => ({ polls: listField<EventPoll>(result, "polls") }));
   }
 
   createPoll(
@@ -543,7 +564,9 @@ export class EventsApi {
   }
 
   listSeries(): Promise<{ series: Array<EventSeries> }> {
-    return this.http.get<{ series: Array<EventSeries> }>("/events/series");
+    return this.http
+      .get<{ series: Array<EventSeries> | null }>("/events/series")
+      .then((result) => ({ series: listField<EventSeries>(result, "series") }));
   }
 
   createSeries(

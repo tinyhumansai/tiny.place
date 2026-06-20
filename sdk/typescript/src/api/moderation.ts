@@ -6,6 +6,7 @@ import type {
   ModerationReport,
   ModerationReportCreate,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 export class ModerationApi {
   constructor(private readonly http: HttpClient) {}
@@ -47,10 +48,14 @@ export class ModerationApi {
     limit?: number;
     offset?: number;
   }): Promise<{ actions: Array<ModerationAction> }> {
-    return this.http.get<{ actions: Array<ModerationAction> }>(
-      "/moderation/actions",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<{ actions: Array<ModerationAction> | null }>(
+        "/moderation/actions",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        actions: listField<ModerationAction>(result, "actions"),
+      }));
   }
 
   createAction(action: Partial<ModerationAction>): Promise<ModerationAction> {

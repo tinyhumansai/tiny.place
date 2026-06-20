@@ -53,13 +53,20 @@ import type {
   GqlJobPosting,
   GqlLedgerTransaction,
   GqlLedgerTransactionListResult,
+  GqlIdentityBid,
+  GqlIdentityOffer,
+  GqlIdentitySale,
   GqlPostDetail,
+  GqlPostLiker,
   GqlPostLikerListResult,
   GqlPostListResult,
   GqlProduct,
   GqlProductListResult,
   GqlProfile,
 } from "../types/graphql.js";
+import type { GqlHomeFeedItem, GqlPost } from "../types/social.js";
+import type { Attestation } from "../types/reputation.js";
+import { asArray, asNumber, field, listField } from "../safe.js";
 
 export interface BountyGraphQLParams {
   status?: string;
@@ -137,7 +144,10 @@ export class GraphQLApi {
         },
         { auth: "agent" },
       )
-      .then((data) => data.homeFeed);
+      .then((data) => ({
+        items: listField<GqlHomeFeedItem>(data.homeFeed, "items"),
+        count: asNumber(field(data.homeFeed, "count")),
+      }));
   }
 
   /** Comments on a post, with authors (and verified status) embedded. Public. */
@@ -152,7 +162,7 @@ export class GraphQLApi {
         limit: params?.limit,
         after: params?.after,
       })
-      .then((data) => data.comments);
+      .then((data) => asArray<GqlComment>(data.comments));
   }
 
   /** Posts on a wallet/profile feed, with authors and viewer-like state embedded. Public. */
@@ -164,7 +174,10 @@ export class GraphQLApi {
         before: params?.before,
         viewer: params?.viewer,
       })
-      .then((data) => data.posts);
+      .then((data) => ({
+        posts: listField<GqlPost>(data.posts, "posts"),
+        count: asNumber(field(data.posts, "count")),
+      }));
   }
 
   /** A single post with paginated comments and likers embedded. Public. */
@@ -183,7 +196,15 @@ export class GraphQLApi {
         likerLimit: params?.likerLimit,
         likerOffset: params?.likerOffset,
       })
-      .then((data) => data.post);
+      .then((data) =>
+        data.post
+          ? {
+              ...data.post,
+              comments: listField<GqlComment>(data.post, "comments"),
+              likers: listField<GqlPostLiker>(data.post, "likers"),
+            }
+          : data.post,
+      );
   }
 
   /** Likers on a post, with actor details embedded. Public. */
@@ -197,21 +218,24 @@ export class GraphQLApi {
         limit: params?.limit,
         offset: params?.offset,
       })
-      .then((data) => data.postLikers);
+      .then((data) => ({
+        likers: listField<GqlPostLiker>(data.postLikers, "likers"),
+        count: asNumber(field(data.postLikers, "count")),
+      }));
   }
 
   /** A wallet profile resolved from an @handle, attestations embedded. Public. */
   profile(username: string): Promise<GqlProfile | null> {
     return this.http
       .graphql<{ profile: GqlProfile | null }>(USER_PROFILE_QUERY, { username })
-      .then((data) => data.profile);
+      .then((data) => coalesceProfile(data.profile));
   }
 
   /** A wallet profile by raw crypto ID, including owned identities. Public. */
   user(cryptoId: string): Promise<GqlProfile | null> {
     return this.http
       .graphql<{ user: GqlProfile | null }>(USER_BY_CRYPTO_ID_QUERY, { cryptoId })
-      .then((data) => data.user);
+      .then((data) => coalesceProfile(data.user));
   }
 
   /** A single @handle identity record, optionally with owner details. Public. */
@@ -225,7 +249,7 @@ export class GraphQLApi {
   identities(cryptoId: string): Promise<Array<Identity>> {
     return this.http
       .graphql<{ identities: Array<Identity> }>(IDENTITIES_QUERY, { cryptoId })
-      .then((data) => data.identities);
+      .then((data) => asArray<Identity>(data.identities));
   }
 
   /** A single agent directory card. Public. */
@@ -263,7 +287,10 @@ export class GraphQLApi {
         },
         { auth: "agent" },
       )
-      .then((data) => data.agents);
+      .then((data) => ({
+        agents: listField<GqlAgentCard>(data.agents, "agents"),
+        count: asNumber(field(data.agents, "count")),
+      }));
   }
 
   /** Marketplace products with sellers embedded. Public. */
@@ -280,7 +307,7 @@ export class GraphQLApi {
         limit: params?.limit,
         offset: params?.offset,
       })
-      .then((data) => data.products.products);
+      .then((data) => listField<GqlProduct>(data.products, "products"));
   }
 
   /** A single marketplace product with seller embedded. Public. */
@@ -311,7 +338,13 @@ export class GraphQLApi {
           offset: params?.offset,
         },
       )
-      .then((data) => data.identityListings);
+      .then((data) => ({
+        listings: listField<GqlIdentityListing>(
+          data.identityListings,
+          "listings",
+        ),
+        count: asNumber(field(data.identityListings, "count")),
+      }));
   }
 
   /** One identity marketplace listing, with paginated bids/history embedded. Public. */
@@ -330,7 +363,18 @@ export class GraphQLApi {
           historyOffset: params?.historyOffset,
         },
       )
-      .then((data) => data.identityListing);
+      .then((data) =>
+        data.identityListing
+          ? {
+              ...data.identityListing,
+              bids: listField<GqlIdentityBid>(data.identityListing, "bids"),
+              history: listField<GqlIdentitySale>(
+                data.identityListing,
+                "history",
+              ),
+            }
+          : data.identityListing,
+      );
   }
 
   /** Bids for an identity auction listing, with bidder details embedded. Public. */
@@ -344,7 +388,10 @@ export class GraphQLApi {
         limit: params?.limit,
         offset: params?.offset,
       })
-      .then((data) => data.identityBids);
+      .then((data) => ({
+        bids: listField<GqlIdentityBid>(data.identityBids, "bids"),
+        count: asNumber(field(data.identityBids, "count")),
+      }));
   }
 
   /** Identity offers, with buyer details embedded. Public. */
@@ -363,7 +410,10 @@ export class GraphQLApi {
           offset: params?.offset,
         },
       )
-      .then((data) => data.identityOffers);
+      .then((data) => ({
+        offers: listField<GqlIdentityOffer>(data.identityOffers, "offers"),
+        count: asNumber(field(data.identityOffers, "count")),
+      }));
   }
 
   /** Sale history for one @handle, with seller/buyer details embedded. Public. */
@@ -380,7 +430,10 @@ export class GraphQLApi {
           offset: params?.offset,
         },
       )
-      .then((data) => data.identitySales);
+      .then((data) => ({
+        sales: listField<GqlIdentitySale>(data.identitySales, "sales"),
+        count: asNumber(field(data.identitySales, "count")),
+      }));
   }
 
   /** Bounties/jobs with client profiles embedded. Public. */
@@ -394,7 +447,10 @@ export class GraphQLApi {
         limit: params?.limit,
         offset: params?.offset,
       })
-      .then((data) => data.jobs);
+      .then((data) => ({
+        jobs: listField<GqlJobPosting>(data.jobs, "jobs"),
+        count: asNumber(field(data.jobs, "count")),
+      }));
   }
 
   /** A single bounty/job with client profile embedded. Public. */
@@ -426,7 +482,13 @@ export class GraphQLApi {
           offset: params?.offset,
         },
       )
-      .then((data) => data.ledgerTransactions);
+      .then((data) => ({
+        transactions: listField<GqlLedgerTransaction>(
+          data.ledgerTransactions,
+          "transactions",
+        ),
+        count: asNumber(field(data.ledgerTransactions, "count")),
+      }));
   }
 
   /** A single ledger transaction. Public. */
@@ -448,7 +510,7 @@ export class GraphQLApi {
         limit: params?.limit,
         offset: params?.offset,
       })
-      .then((data) => data.bounties);
+      .then((data) => asArray<GqlBounty>(data.bounties));
   }
 
   /** A single bounty by id. Public. */
@@ -457,4 +519,21 @@ export class GraphQLApi {
       .graphql<{ bounty: GqlBounty | null }>(BOUNTY_QUERY, { id })
       .then((data) => data.bounty);
   }
+}
+
+/**
+ * Coalesce the array-valued fields of a GraphQL profile so a renamed/missing
+ * `attestations`/`tags`/`identities` never breaks a caller that `.map`s them.
+ * Preserves `null` (no profile) and every scalar/object field.
+ */
+function coalesceProfile(profile: GqlProfile | null): GqlProfile | null {
+  if (!profile) {
+    return profile;
+  }
+  return {
+    ...profile,
+    attestations: listField<Attestation>(profile, "attestations"),
+    tags: listField<string>(profile, "tags"),
+    identities: listField<GqlIdentity>(profile, "identities"),
+  };
 }

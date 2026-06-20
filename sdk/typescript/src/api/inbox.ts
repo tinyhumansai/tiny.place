@@ -10,6 +10,7 @@ import type {
   InboxQueryParams,
   InboxReadAllResult,
 } from "../types/index.js";
+import { asNumber, asString, field, listField } from "../safe.js";
 
 export class InboxApi {
   constructor(
@@ -19,16 +20,17 @@ export class InboxApi {
 
   list(params?: InboxQueryParams, owner?: string): Promise<InboxListResult> {
     if (owner) {
-      return this.http.getDirectoryAuthAs<InboxListResult>(
-        "/inbox",
-        owner,
-        params as Record<string, unknown>,
-      );
+      return this.http
+        .getDirectoryAuthAs<InboxListResult>(
+          "/inbox",
+          owner,
+          params as Record<string, unknown>,
+        )
+        .then(coalesceInboxList);
     }
-    return this.http.getAgentAuth<InboxListResult>(
-      "/inbox",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .getAgentAuth<InboxListResult>("/inbox", params as Record<string, unknown>)
+      .then(coalesceInboxList);
   }
 
   get(itemId: string, owner?: string): Promise<InboxItem> {
@@ -45,15 +47,19 @@ export class InboxApi {
 
   search(query: string, owner?: string): Promise<{ items: Array<InboxItem> }> {
     if (owner) {
-      return this.http.getDirectoryAuthAs<{ items: Array<InboxItem> }>(
-        "/inbox/search",
-        owner,
-        { q: query },
-      );
+      return this.http
+        .getDirectoryAuthAs<{ items: Array<InboxItem> | null }>(
+          "/inbox/search",
+          owner,
+          { q: query },
+        )
+        .then((result) => ({ items: listField<InboxItem>(result, "items") }));
     }
-    return this.http.getAgentAuth<{ items: Array<InboxItem> }>("/inbox/search", {
-      q: query,
-    });
+    return this.http
+      .getAgentAuth<{ items: Array<InboxItem> | null }>("/inbox/search", {
+        q: query,
+      })
+      .then((result) => ({ items: listField<InboxItem>(result, "items") }));
   }
 
   counts(owner?: string): Promise<InboxCounts> {
@@ -190,4 +196,14 @@ export class InboxApi {
   stream(): TinyPlaceWebSocket | undefined {
     return this.wsFactory?.("/inbox/stream");
   }
+}
+
+function coalesceInboxList(result: InboxListResult): InboxListResult {
+  const cursor = field(result, "cursor");
+  return {
+    items: listField<InboxItem>(result, "items"),
+    ...(typeof cursor === "string" ? { cursor: asString(cursor) } : {}),
+    unreadCount: asNumber(field(result, "unreadCount")),
+    totalCount: asNumber(field(result, "totalCount")),
+  };
 }

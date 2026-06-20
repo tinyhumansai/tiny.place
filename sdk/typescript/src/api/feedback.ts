@@ -6,6 +6,7 @@ import type {
   FeedbackStatusUpdate,
   FeedbackVoteRequest,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 export class FeedbackApi {
   constructor(private readonly http: HttpClient) {}
@@ -13,19 +14,27 @@ export class FeedbackApi {
   list(
     params?: FeedbackListParams,
   ): Promise<{ feedback: Array<FeedbackItem> }> {
-    return this.http.get<{ feedback: Array<FeedbackItem> }>(
-      "/feedback",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<{ feedback: Array<FeedbackItem> | null }>(
+        "/feedback",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        feedback: listField<FeedbackItem>(result, "feedback"),
+      }));
   }
 
   listAdmin(
     params?: FeedbackListParams,
   ): Promise<{ feedback: Array<FeedbackItem> }> {
-    return this.http.getAdmin<{ feedback: Array<FeedbackItem> }>(
-      "/feedback",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .getAdmin<{ feedback: Array<FeedbackItem> | null }>(
+        "/feedback",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        feedback: listField<FeedbackItem>(result, "feedback"),
+      }));
   }
 
   get(feedbackId: string): Promise<FeedbackItem> {

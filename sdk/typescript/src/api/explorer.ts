@@ -6,7 +6,9 @@ import type {
   ExplorerTransactionDetail,
   ExplorerTransactionListResponse,
   ExplorerVerification,
+  ExplorerTransactionSummary,
 } from "../types/index.js";
+import { asObject, asNumber, field, listField } from "../safe.js";
 
 export class ExplorerApi {
   constructor(
@@ -15,11 +17,15 @@ export class ExplorerApi {
   ) {}
 
   root(): Promise<ExplorerOverview> {
-    return this.http.get<ExplorerOverview>("/explorer");
+    return this.http
+      .get<ExplorerOverview>("/explorer")
+      .then(coalesceOverview);
   }
 
   overview(): Promise<ExplorerOverview> {
-    return this.http.get<ExplorerOverview>("/explorer/overview");
+    return this.http
+      .get<ExplorerOverview>("/explorer/overview")
+      .then(coalesceOverview);
   }
 
   listTransactions(params?: {
@@ -29,10 +35,22 @@ export class ExplorerApi {
     status?: string;
     type?: string;
   }): Promise<ExplorerTransactionListResponse> {
-    return this.http.get<ExplorerTransactionListResponse>(
-      "/explorer/transactions",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<ExplorerTransactionListResponse>(
+        "/explorer/transactions",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        ...(asObject<ExplorerTransactionListResponse>(result) ??
+          ({} as ExplorerTransactionListResponse)),
+        transactions: listField<ExplorerTransactionSummary>(
+          result,
+          "transactions",
+        ),
+        total: asNumber(field(result, "total")),
+        page: asNumber(field(result, "page")),
+        pageSize: asNumber(field(result, "pageSize")),
+      }));
   }
 
   getTransaction(txId: string): Promise<ExplorerTransactionDetail> {
@@ -48,12 +66,31 @@ export class ExplorerApi {
   }
 
   getAgent(agentId: string): Promise<ExplorerAgentResponse> {
-    return this.http.get<ExplorerAgentResponse>(
-      `/explorer/agents/${encodeURIComponent(agentId)}`,
-    );
+    return this.http
+      .get<ExplorerAgentResponse>(
+        `/explorer/agents/${encodeURIComponent(agentId)}`,
+      )
+      .then((result) => ({
+        ...(asObject<ExplorerAgentResponse>(result) ??
+          ({} as ExplorerAgentResponse)),
+        recentTransactions: listField<ExplorerTransactionSummary>(
+          result,
+          "recentTransactions",
+        ),
+      }));
   }
 
   live(): TinyPlaceWebSocket | undefined {
     return this.wsFactory?.("/explorer/live");
   }
+}
+
+function coalesceOverview(result: ExplorerOverview): ExplorerOverview {
+  return {
+    ...(asObject<ExplorerOverview>(result) ?? ({} as ExplorerOverview)),
+    recentTransactions: listField<ExplorerTransactionSummary>(
+      result,
+      "recentTransactions",
+    ),
+  };
 }

@@ -8,6 +8,7 @@ import type {
   EscrowMilestone,
   EscrowQueryParams,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 export class EscrowApi {
   constructor(
@@ -21,10 +22,12 @@ export class EscrowApi {
   list(params?: EscrowQueryParams): Promise<{ escrows: Array<Escrow> }> {
     // Escrow reads expose private bilateral contracts; the backend requires the
     // freshness-bound (directory) signature and scopes results to the caller.
-    return this.http.getDirectoryAuth<{ escrows: Array<Escrow> }>(
-      "/escrow",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .getDirectoryAuth<{ escrows: Array<Escrow> | null }>(
+        "/escrow",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({ escrows: listField<Escrow>(result, "escrows") }));
   }
 
   create(request: EscrowCreateRequest): Promise<Escrow> {

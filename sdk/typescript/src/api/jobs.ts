@@ -7,6 +7,7 @@ import type {
   ProposalCreateRequest,
   SelectCandidateResult,
 } from "../types/index.js";
+import { listField } from "../safe.js";
 
 // Backend POST /jobs requires an RFC3339 timestamp; a bare `YYYY-MM-DD` date
 // (e.g. from an `<input type="date">`) must be expanded or it fails with
@@ -23,10 +24,12 @@ export class JobsApi {
   // --- Postings ---
 
   list(params?: JobQueryParams): Promise<{ jobs: Array<JobPosting> }> {
-    return this.http.get<{ jobs: Array<JobPosting> }>(
-      "/jobs",
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .get<{ jobs: Array<JobPosting> | null }>(
+        "/jobs",
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({ jobs: listField<JobPosting>(result, "jobs") }));
   }
 
   get(jobId: string): Promise<JobPosting> {
@@ -71,11 +74,15 @@ export class JobsApi {
     client: string,
     params?: { status?: string; limit?: number; offset?: number },
   ): Promise<{ proposals: Array<Proposal> }> {
-    return this.http.getDirectoryAuthAs<{ proposals: Array<Proposal> }>(
-      `/jobs/${encodeURIComponent(jobId)}/proposals`,
-      client,
-      params as Record<string, unknown>,
-    );
+    return this.http
+      .getDirectoryAuthAs<{ proposals: Array<Proposal> | null }>(
+        `/jobs/${encodeURIComponent(jobId)}/proposals`,
+        client,
+        params as Record<string, unknown>,
+      )
+      .then((result) => ({
+        proposals: listField<Proposal>(result, "proposals"),
+      }));
   }
 
   getProposal(
