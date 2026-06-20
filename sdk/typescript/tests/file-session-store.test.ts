@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -79,5 +79,78 @@ describe("FileSessionStore", () => {
     const store = new FileSessionStore(await tempFile(), identity);
     expect(await store.getSession("nobody")).toBeNull();
     expect(await store.getAllPreKeys()).toEqual([]);
+  });
+
+  it("persists group sender keys across instances", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(11));
+    const identity = await signer.getX25519KeyPair();
+    const path = await tempFile();
+
+    const writer = new FileSessionStore(path, identity);
+    expect(await writer.hasSignedPreKey()).toBe(false);
+    await writer.setOwnSenderKey("group-1", {
+      epoch: 3,
+      state: {
+        chainKey: "ck",
+        iteration: 5,
+        signaturePrivateKey: "sk",
+        signaturePublicKey: "pk",
+      },
+      distributedTo: ["@alice", "@bob"],
+    });
+    await writer.setReceiverSenderKey("group-1|@alice|3", {
+      chainKey: "rck",
+      iteration: 2,
+      signaturePublicKey: "pk",
+      skipped: { 1: "s1" },
+    });
+
+    const reader = new FileSessionStore(path, identity);
+    const own = await reader.getOwnSenderKey("group-1");
+    expect(own?.epoch).toBe(3);
+    expect(own?.distributedTo).toEqual(["@alice", "@bob"]);
+    expect(own?.state.iteration).toBe(5);
+
+    const received = await reader.getReceiverSenderKey("group-1|@alice|3");
+    expect(received?.iteration).toBe(2);
+    expect(received?.skipped[1]).toBe("s1");
+
+    expect(await reader.getOwnSenderKey("missing")).toBeNull();
+  });
+
+  it("tolerantly loads a legacy file lacking version/group fields", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(12));
+    const identity = await signer.getX25519KeyPair();
+    const path = await tempFile();
+
+    // An older build wrote only the four core fields, with no `version`.
+    await writeFile(
+      path,
+      JSON.stringify({
+        signedPreKeys: {},
+        activeSignedPreKeyId: null,
+        preKeys: {},
+        sessions: {},
+      }),
+      "utf8",
+    );
+
+    const store = new FileSessionStore(path, identity);
+    // Reads degrade gracefully rather than throwing on the missing fields...
+    expect(await store.getOwnSenderKey("group-1")).toBeNull();
+    expect(await store.getAllPreKeys()).toEqual([]);
+    // ...and a subsequent write upgrades the file in place (group key survives).
+    await store.setOwnSenderKey("group-1", {
+      epoch: 1,
+      state: {
+        chainKey: "ck",
+        iteration: 0,
+        signaturePrivateKey: "sk",
+        signaturePublicKey: "pk",
+      },
+      distributedTo: [],
+    });
+    const reopened = new FileSessionStore(path, identity);
+    expect((await reopened.getOwnSenderKey("group-1"))?.epoch).toBe(1);
   });
 });

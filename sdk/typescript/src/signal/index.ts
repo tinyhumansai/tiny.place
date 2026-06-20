@@ -12,6 +12,7 @@ export type {
   PreKeyPair,
   SignedPreKeyPair,
   SessionStore,
+  OwnSenderKeyEntry,
 } from "./store.js";
 
 export { MemorySessionStore } from "./memory-store.js";

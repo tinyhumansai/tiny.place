@@ -226,6 +226,7 @@ export {
 export type {
   SessionStore,
   SessionState,
+  OwnSenderKeyEntry,
   PreKeyPair,
   SignedPreKeyPair,
   X25519KeyPair,

@@ -1,4 +1,8 @@
 import type { X25519KeyPair } from "./crypto.js";
+import type {
+  SenderKeyOwnState,
+  SenderKeyReceiverState,
+} from "./sender-key.js";
 
 export interface SessionState {
   dhSendKeyPair: X25519KeyPair;
@@ -24,6 +28,18 @@ export interface SignedPreKeyPair {
   signature: Uint8Array;
 }
 
+/**
+ * This client's sending key for a group: the {@link SenderKeyOwnState} plus the
+ * membership epoch it belongs to and the members that have already received its
+ * distribution (so re-sends don't re-hand-off the key). Persisted as an extension
+ * to the 1:1 ratchet state so a group chain survives across processes.
+ */
+export interface OwnSenderKeyEntry {
+  epoch: number;
+  state: SenderKeyOwnState;
+  distributedTo: Array<string>;
+}
+
 export interface SessionStore {
   getIdentityX25519KeyPair(): Promise<X25519KeyPair>;
   getSignedPreKey(keyId: string): Promise<SignedPreKeyPair | null>;
@@ -36,6 +52,18 @@ export interface SessionStore {
   getSession(address: string): Promise<SessionState | null>;
   storeSession(address: string, session: SessionState): Promise<void>;
   removeSession(address: string): Promise<void>;
+
+  // Optional group sender-key persistence. Implemented by stores that back group
+  // messaging (e.g. the node FileSessionStore); omitted by stores that only need
+  // 1:1 sessions, so existing implementations stay valid.
+  hasSignedPreKey?(): Promise<boolean>;
+  getOwnSenderKey?(groupId: string): Promise<OwnSenderKeyEntry | null>;
+  setOwnSenderKey?(groupId: string, entry: OwnSenderKeyEntry): Promise<void>;
+  getReceiverSenderKey?(key: string): Promise<SenderKeyReceiverState | null>;
+  setReceiverSenderKey?(
+    key: string,
+    state: SenderKeyReceiverState,
+  ): Promise<void>;
 }
 
 export function skippedKeyId(

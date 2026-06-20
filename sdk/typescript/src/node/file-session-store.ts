@@ -3,7 +3,9 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fromBase64, toBase64 } from "../signal/index.js";
 import type {
+  OwnSenderKeyEntry,
   PreKeyPair,
+  SenderKeyReceiverState,
   SessionState,
   SessionStore,
   SignedPreKeyPair,
@@ -33,14 +35,20 @@ interface SerializedSession {
   skippedKeys: Array<[string, string]>;
 }
 interface PersistShape {
+  version: 1;
   signedPreKeys: Record<string, SerializedPreKey>;
   activeSignedPreKeyId: string | null;
   preKeys: Record<string, SerializedPreKey>;
   sessions: Record<string, SerializedSession>;
+  /** Own group sending keys, keyed by groupId. */
+  senderKeysOwn?: Record<string, OwnSenderKeyEntry>;
+  /** Received group sender keys, keyed by `${groupId}|${sender}|${epoch}`. */
+  senderKeyReceivers?: Record<string, SenderKeyReceiverState>;
 }
 
 function emptyState(): PersistShape {
   return {
+    version: 1,
     signedPreKeys: {},
     activeSignedPreKeyId: null,
     preKeys: {},
@@ -204,12 +212,69 @@ export class FileSessionStore implements SessionStore {
     await this.flush();
   }
 
+  /** True once a signed pre-key has been generated and stored (keys published). */
+  async hasSignedPreKey(): Promise<boolean> {
+    const state = await this.load();
+    return state.activeSignedPreKeyId !== null;
+  }
+
+  // Group sender keys — pure persistence of the already-serialized state objects.
+  // Callers (the group messaging layer) own the GroupSenderKey crypto; this just
+  // keeps the chain durable across processes. Each setter auto-flushes like the
+  // 1:1 methods, so the chain is on disk before a send/ack proceeds.
+
+  /** This client's sending key for a group, or null if none stored yet. */
+  async getOwnSenderKey(groupId: string): Promise<OwnSenderKeyEntry | null> {
+    const state = await this.load();
+    return state.senderKeysOwn?.[groupId] ?? null;
+  }
+
+  /** Stores (or replaces) this client's sending key for a group. */
+  async setOwnSenderKey(
+    groupId: string,
+    entry: OwnSenderKeyEntry,
+  ): Promise<void> {
+    const state = await this.load();
+    (state.senderKeysOwn ??= {})[groupId] = entry;
+    await this.flush();
+  }
+
+  /** A received sender key for a `${groupId}|${sender}|${epoch}`, or null. */
+  async getReceiverSenderKey(
+    key: string,
+  ): Promise<SenderKeyReceiverState | null> {
+    const state = await this.load();
+    return state.senderKeyReceivers?.[key] ?? null;
+  }
+
+  /** Stores (or replaces) a received sender key. */
+  async setReceiverSenderKey(
+    key: string,
+    receiverState: SenderKeyReceiverState,
+  ): Promise<void> {
+    const state = await this.load();
+    (state.senderKeyReceivers ??= {})[key] = receiverState;
+    await this.flush();
+  }
+
+  /**
+   * No-op compatibility hook. Every mutation auto-flushes, so there is nothing to
+   * flush on demand; provided so callers written against the OpenClaw store's
+   * explicit `persist()` keep working unchanged.
+   */
+  persist(): void {
+    /* state is already durable after each mutation */
+  }
+
   private async load(): Promise<PersistShape> {
     if (!this.cache) {
       try {
-        this.cache = JSON.parse(
+        const parsed = JSON.parse(
           await readFile(this.filePath, "utf8"),
-        ) as PersistShape;
+        ) as Partial<PersistShape>;
+        // Version-tolerant: merge over defaults so a file written by an older
+        // build (no group fields / no version) loads without wiping live state.
+        this.cache = { ...emptyState(), ...parsed, version: 1 };
       } catch (error) {
         if ((error as { code?: string }).code === "ENOENT") {
           this.cache = emptyState();
