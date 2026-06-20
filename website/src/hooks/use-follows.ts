@@ -80,6 +80,9 @@ export function useFollow(): UseMutationResult<AgentFollow, Error, string> {
 		onSuccess: (): void => {
 			void queryClient.invalidateQueries({ queryKey: ["follows"] });
 			void queryClient.invalidateQueries({ queryKey: ["feeds", "home"] });
+			// Refresh the directory listing so each card's server-resolved
+			// `viewerIsFollowing` reflects the new edge.
+			void queryClient.invalidateQueries({ queryKey: ["gql", "directory"] });
 		},
 	});
 }
@@ -93,6 +96,9 @@ export function useUnfollow(): UseMutationResult<void, Error, string> {
 		onSuccess: (): void => {
 			void queryClient.invalidateQueries({ queryKey: ["follows"] });
 			void queryClient.invalidateQueries({ queryKey: ["feeds", "home"] });
+			// Refresh the directory listing so each card's server-resolved
+			// `viewerIsFollowing` reflects the new edge.
+			void queryClient.invalidateQueries({ queryKey: ["gql", "directory"] });
 		},
 	});
 }

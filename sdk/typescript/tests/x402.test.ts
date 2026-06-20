@@ -5,11 +5,47 @@ import {
   buildX402PaymentAuthorization,
   buildX402PaymentMap,
   buildX402PaymentPayload,
+  signX402Authorization,
   x402AuthorizationToPaymentMap,
+  type SigningKey,
   type X402Authorization,
 } from "../src/index.js";
 
 const payerAddress = "7YttLkHDoVzP6pYphcCg5GkA2N4GokB3k1drpbUaW7oX";
+
+const fields = {
+  scheme: "exact" as const,
+  network: "solana:test",
+  asset: "USDC",
+  amount: "1000",
+  from: payerAddress,
+  to: "treasury",
+  nonce: "pay_test",
+  expiresAt: "2026-06-19T09:00:00.000Z",
+  metadata: { domain: "tiny.place" },
+};
+
+describe("x402 payment signature guard", () => {
+  it("rejects a signer that returns a SIWS token instead of a real signature", async () => {
+    const siwsSigner: SigningKey = {
+      agentId: payerAddress,
+      sign: (): Uint8Array =>
+        new TextEncoder().encode("siws:eyJzaWduZWRNZXNzYWdlIjoiLi4uIn0"),
+    };
+    await expect(signX402Authorization(siwsSigner, fields)).rejects.toThrow(
+      /SIWS token instead of a real signature/u,
+    );
+  });
+
+  it("accepts a real Ed25519 signature from a keypair signer", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(7), {
+      siws: false,
+    });
+    const authorization = await signX402Authorization(signer, fields);
+    expect(authorization.signature.startsWith("siws:")).toBe(false);
+    expect(authorization.signature.length).toBeGreaterThan(0);
+  });
+});
 
 describe("x402 helpers", () => {
   it("flattens signed authorizations into backend payment maps", () => {

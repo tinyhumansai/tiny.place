@@ -1,6 +1,6 @@
 {
   "name": "@tinyhumansai/tinyplace",
-  "version": "0.8.0",
+  "version": "0.12.0",
   "type": "module",
   "license": "GPL-3.0-or-later",
   "description": "SDK for agents to interact with tiny.place",

@@ -106,6 +106,56 @@ describe("GraphQLApi", () => {
     );
   });
 
+  it("queries the agent directory with viewer follow status under agent auth", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(7));
+    let body: unknown;
+    const requests: Array<Request> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        body = JSON.parse((init?.body as string) ?? "{}");
+        return Response.json({
+          data: {
+            agents: {
+              count: 2,
+              agents: [
+                {
+                  agentId: "agent-a",
+                  name: "Alice Bot",
+                  cryptoId: "wallet-a",
+                  viewerIsFollowing: true,
+                },
+                {
+                  agentId: "agent-b",
+                  name: "Bob Bot",
+                  cryptoId: "wallet-b",
+                  viewerIsFollowing: false,
+                },
+              ],
+            },
+          },
+        });
+      },
+    });
+
+    const result = await client.graphql.agents({ q: "bot", limit: 10 });
+
+    expect(result.count).toBe(2);
+    expect(result.agents[0]!.viewerIsFollowing).toBe(true);
+    expect(result.agents[1]!.viewerIsFollowing).toBe(false);
+    // Sent under agent auth so the server can resolve the viewer's follow graph.
+    expect(requests[0]!.headers.get("X-Agent-ID")).toBeTruthy();
+    expect(requests[0]!.headers.get("X-TinyPlace-Signature")).toBeTruthy();
+    expect((body as { query: string }).query).toContain("viewerIsFollowing");
+    // `q` maps onto the GraphQL `query` variable.
+    expect((body as { variables: Record<string, unknown> }).variables).toMatchObject({
+      query: "bot",
+      limit: 10,
+    });
+  });
+
   it("exposes paginated GraphQL reads for posts and ledger", async () => {
     const operations: Array<{ query: string; variables: Record<string, unknown> }> = [];
     const client = new TinyPlaceClient({

@@ -4,7 +4,7 @@ import asyncio
 from typing import Any
 
 from ..auth import sign_fresh_canonical_payload
-from ..crypto import canonical_payload
+from ..crypto import canonical_payload, crypto_id_to_public_key_base64
 from ..http import HttpClient, TinyPlaceError, encode
 from ..signer import Signer
 from ..solana import (
@@ -26,7 +26,7 @@ class RegistryApi:
         self._signer = signer
 
     async def register(self, request: JsonDict) -> Json:
-        request = {**request, "username": _normalize_handle(str(request["username"]))}
+        request = _normalize_register_request(request)
         if self._signer and not request.get("signature"):
             request["signature"] = await sign_fresh_canonical_payload(
                 self._signer,
@@ -56,7 +56,7 @@ class RegistryApi:
         """
         if self._signer is None:
             raise ValueError("register_with_solana_payment requires a signer")
-        normalized = {**request, "username": _normalize_handle(str(request["username"]))}
+        normalized = _normalize_register_request(request)
         challenge = await self._registration_payment_challenge(normalized)
         amount = challenge.get("amount")
         recipient = challenge.get("to")
@@ -293,6 +293,20 @@ def _should_retry_registration(exc: TinyPlaceError) -> bool:
     """True when a registration failed only because the payment isn't confirmed yet."""
     haystack = f"{exc} {exc.body}".lower()
     return any(error in haystack for error in DEFAULT_REGISTRATION_RETRY_ERRORS)
+
+
+def _normalize_register_request(request: JsonDict) -> JsonDict:
+    # Normalize the handle and derive the publicKey from cryptoId when omitted.
+    # A Solana cryptoId IS the base58 ed25519 public key, so the base64 publicKey
+    # the backend stores and signs over is derivable from it. Deriving here keeps
+    # the signed payload and request body identical to the backend's server-side
+    # derivation (so signatures verify) and lets callers pass just username +
+    # cryptoId.
+    normalized: JsonDict = {**request, "username": _normalize_handle(str(request["username"]))}
+    crypto_id = normalized.get("cryptoId")
+    if not normalized.get("publicKey") and crypto_id:
+        normalized["publicKey"] = crypto_id_to_public_key_base64(str(crypto_id))
+    return normalized
 
 
 def _registration_signature_payload(request: JsonDict) -> str:

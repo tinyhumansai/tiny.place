@@ -32,6 +32,87 @@ export const SOLANA_COMPUTE_BUDGET_PROGRAM_ID =
 export const SOLANA_NATIVE_ASSET = "SOL";
 /** Decimals of native SOL (1 SOL = 1e9 lamports). */
 export const SOLANA_NATIVE_DECIMALS = 9;
+/** Mainnet wrapped-SOL (WSOL) SPL mint. */
+export const SOLANA_WSOL_MINT =
+  "So11111111111111111111111111111111111111112";
+
+/**
+ * A Solana settlement asset: its display symbol, on-chain SPL mint (empty for
+ * native SOL or an unconfigured CASH mint), and decimals.
+ */
+export interface SolanaAssetInfo {
+  symbol: string;
+  mint: string;
+  decimals: number;
+  native: boolean;
+}
+
+// Hardcoded asset table. The x402 challenge now advertises the on-chain SPL
+// *mint address* in `asset` (per the exact-scheme spec), not a symbol like
+// "USDC", so clients must map between the mint they echo back to the server and
+// the symbol they show to users. A `/solana`-backed resolver can replace this
+// table later; these mints are stable. CASH has no fixed mainnet mint baked in
+// (resolved per environment), so its mint is left empty here.
+const SOLANA_ASSETS: ReadonlyArray<SolanaAssetInfo> = [
+  { symbol: "SOL", mint: "", decimals: SOLANA_NATIVE_DECIMALS, native: true },
+  { symbol: "USDC", mint: SOLANA_USDC_MINT, decimals: 6, native: false },
+  {
+    symbol: "WSOL",
+    mint: SOLANA_WSOL_MINT,
+    decimals: SOLANA_NATIVE_DECIMALS,
+    native: false,
+  },
+  {
+    symbol: "CASH",
+    mint: SOLANA_CASH_MINT,
+    decimals: SOLANA_CASH_DECIMALS,
+    native: false,
+  },
+];
+
+const BASE58_MINT_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+/** True when the value looks like a base58 SPL mint address (not a symbol). */
+export function isLikelyMintAddress(value: string): boolean {
+  return BASE58_MINT_PATTERN.test(value.trim());
+}
+
+/**
+ * Resolves an x402 `asset` value — either a symbol ("USDC") or an on-chain SPL
+ * mint address (what the 402 challenge now advertises) — to its asset info,
+ * case-insensitively. An unknown but base58-shaped value is treated as a bare
+ * mint (decimals default to 6) so a payment can still settle. Returns undefined
+ * for an empty value or an unknown non-address symbol.
+ */
+export function resolveSolanaAsset(
+  value: string | undefined,
+): SolanaAssetInfo | undefined {
+  const raw = (value ?? "").trim();
+  if (raw === "") {
+    return undefined;
+  }
+  const upper = raw.toUpperCase();
+  for (const asset of SOLANA_ASSETS) {
+    if (asset.symbol === upper) {
+      return asset;
+    }
+    if (asset.mint && asset.mint.toLowerCase() === raw.toLowerCase()) {
+      return asset;
+    }
+  }
+  if (isLikelyMintAddress(raw)) {
+    return { symbol: raw, mint: raw, decimals: 6, native: false };
+  }
+  return undefined;
+}
+
+/**
+ * Friendly display symbol for an x402 `asset` (symbol or mint address). Echoes
+ * the trimmed input back when it matches no known asset.
+ */
+export function solanaAssetSymbol(value: string | undefined): string {
+  return resolveSolanaAsset(value)?.symbol ?? (value ?? "").trim();
+}
 
 export interface SolanaPaymentExecutionOptions {
   rpcUrl: string;
@@ -141,8 +222,15 @@ export async function executeSolanaPayment(
   }
 
   const nativeAsset = (options.nativeAsset ?? SOLANA_NATIVE_ASSET).toUpperCase();
-  const isNative = (options.payment.asset ?? "").toUpperCase() === nativeAsset;
-  if (!isNative && options.payment.asset !== "USDC" && !options.mint) {
+  const assetValue = (options.payment.asset ?? "").trim();
+  const isNative = assetValue.toUpperCase() === nativeAsset;
+  // Resolve the SPL mint + decimals from the challenge asset, which now carries
+  // the mint address directly. An explicit `mint`/`decimals` option still wins
+  // (e.g. a devnet override). Native SOL needs no mint.
+  const resolved = isNative ? undefined : resolveSolanaAsset(assetValue);
+  const mint = options.mint ?? resolved?.mint ?? "";
+  const decimals = options.decimals ?? resolved?.decimals ?? 6;
+  if (!isNative && !mint) {
     throw new Error(
       `Unsupported Solana asset: ${options.payment.asset} (provide a mint, or use the native "${nativeAsset}" asset)`,
     );
@@ -196,8 +284,8 @@ export async function executeSolanaPayment(
   }
 
   // SPL token transfer (e.g. USDC) via transferChecked. Token-account lookups
-  // happen before fetching the blockhash to match the historical RPC order.
-  const mint = options.mint ?? SOLANA_USDC_MINT;
+  // happen before fetching the blockhash to match the historical RPC order. The
+  // mint + decimals were resolved from the challenge asset above.
   const sourceTokenAccount =
     options.sourceTokenAccount ??
     (await findTokenAccount({
@@ -228,7 +316,7 @@ export async function executeSolanaPayment(
     destinationTokenAccount,
     mint,
     amount,
-    decimals: options.decimals ?? 6,
+    decimals,
     recentBlockhash: latest.value.blockhash,
   });
   const txSignature = await sendSignedMessage(

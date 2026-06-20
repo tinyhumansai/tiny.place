@@ -141,7 +141,8 @@ export async function dispatchRaw(
         required(selfId, "group-redeem requires a signer"),
       );
     case "feed":
-      return client.feeds.getFeed(required(first, "feed <handle>"));
+    case "profile-feed":
+      return client.feeds.getFeed(required(first, "profile-feed <handle>"));
     case "feed-posts":
       // Read posts through the batched GraphQL gateway: one request hydrates each
       // post's author + viewer-like state instead of fanning out per-author REST.
@@ -337,6 +338,75 @@ export async function dispatchRaw(
       return client.inbox.archive(
         required(first, "inbox-archive <itemId>"),
         stringFlag(flags, "owner") ?? selfId,
+      );
+    // Bounties (contest-style work).
+    case "bounties":
+      // Browse bounties through the batched GraphQL gateway: one request hydrates
+      // each bounty's creator profile instead of per-creator REST fan-out.
+      return client.graphql.bounties({
+        ...(stringFlag(flags, "status")
+          ? { status: stringFlag(flags, "status") as never }
+          : {}),
+        ...(stringFlag(flags, "creator")
+          ? { creator: stringFlag(flags, "creator") }
+          : {}),
+        ...(numberFlag(flags, "limit") !== undefined
+          ? { limit: numberFlag(flags, "limit") }
+          : {}),
+        ...(numberFlag(flags, "offset") !== undefined
+          ? { offset: numberFlag(flags, "offset") }
+          : {}),
+      });
+    case "bounty":
+      // Single bounty with creator profile embedded, via the GraphQL gateway.
+      return client.graphql.bounty(required(first, "bounty <bountyId>"));
+    case "bounty-create":
+      // Reward escrows via x402: without a signed `payment` map in --data this
+      // answers 402; use the `post-bounty` workflow to fund + create in one step.
+      return client.bounties.create({
+        creator: required(selfId, "bounty-create requires a signer"),
+        ...(selfId ? { creatorCryptoId: selfId } : {}),
+        ...bodyFlag(flags),
+      } as never);
+    case "bounty-cancel":
+      return client.bounties.cancel(
+        required(first, "bounty-cancel <bountyId>"),
+        required(selfId, "bounty-cancel requires a signer"),
+      );
+    case "bounty-submit":
+      return client.bounties.submit(required(first, "bounty-submit <bountyId>"), {
+        submitter: selfId,
+        ...(selfId ? { submitterCryptoId: selfId } : {}),
+        ...bodyFlag(flags),
+      } as never);
+    case "bounty-submissions":
+      return client.bounties.listSubmissions(
+        required(first, "bounty-submissions <bountyId>"),
+        queryFlags(flags, ["status", "submitter", "limit"]),
+      );
+    case "bounty-comment":
+      return client.bounties.comment(
+        required(first, "bounty-comment <bountyId>"),
+        {
+          author: selfId,
+          ...(selfId ? { authorCryptoId: selfId } : {}),
+          ...bodyFlag(flags),
+        } as never,
+      );
+    case "bounty-comments":
+      return client.bounties.listComments(
+        required(first, "bounty-comments <bountyId>"),
+        queryFlags(flags, ["limit", "offset"]),
+      );
+    case "bounty-council":
+      return client.bounties.runCouncil(
+        required(first, "bounty-council <bountyId>"),
+        required(selfId, "bounty-council requires a signer"),
+      );
+    case "bounty-approve":
+      return client.bounties.approve(
+        required(first, "bounty-approve <bountyId>"),
+        stringFlag(flags, "submission"),
       );
     // Social graph (follows).
     case "follow":

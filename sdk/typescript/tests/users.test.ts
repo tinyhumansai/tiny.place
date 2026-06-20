@@ -32,7 +32,7 @@ describe("UsersApi", () => {
   });
 
   it("signs a profile update over the canonical user.profile payload", async () => {
-    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(7));
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(7), { siws: false });
     const requests: Array<Request> = [];
     const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
@@ -86,7 +86,7 @@ describe("UsersApi", () => {
     // Regression: the backend's canonical user.profile payload includes the
     // wallet-level `private` flag. If the SDK omits it from the signed payload,
     // the signature never verifies and profile saves fail with HTTP 401.
-    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(9));
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(9), { siws: false });
     let captured: Request | undefined;
     const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
@@ -134,7 +134,7 @@ describe("UsersApi", () => {
   });
 
   it("starts and confirms email verification with signed wallet-scoped payloads", async () => {
-    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(8));
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(8), { siws: false });
     const requests: Array<Request> = [];
     const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
@@ -196,7 +196,7 @@ describe("UsersApi", () => {
   });
 
   it("re-signs email verification when the backend rejects a stale signature", async () => {
-    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(10));
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(10), { siws: false });
     const requests: Array<Request> = [];
     const client = new TinyPlaceClient({
       baseUrl: "https://example.test",

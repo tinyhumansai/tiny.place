@@ -96,7 +96,32 @@ export async function signX402Authorization(
   const message = buildCanonicalMessage(fields);
   const messageBytes = new TextEncoder().encode(message);
   const signature = await key.sign(messageBytes);
+  assertNotSiwsToken(signature);
   return { ...fields, signature: toBase64(signature) };
+}
+
+/**
+ * Guards every x402 payment against a signer whose `sign()` returns a reusable
+ * SIWS proof token instead of a real signature over the payload. Request auth
+ * uses the SIWS token (via `siwsSignature()`); a payment must carry a real
+ * Ed25519 signature, or the facilitator rejects it with an opaque
+ * "invalid signature". A SIWS-mode signer must delegate `sign()` to its wallet
+ * (e.g. the website's SiwsProofSigner) so payments are signed for real.
+ */
+function assertNotSiwsToken(signature: Uint8Array): void {
+  // A raw Ed25519 signature is exactly 64 bytes; a SIWS token is the UTF-8 of a
+  // "siws:" string, which is both longer and starts with that prefix.
+  if (signature.length === 64) {
+    return;
+  }
+  const prefix = new TextDecoder().decode(signature.subarray(0, 5));
+  if (prefix === "siws:") {
+    throw new Error(
+      "x402 payment signer returned a SIWS token instead of a real signature. " +
+        "Payments must be signed with the wallet/session key — a SIWS-mode signer " +
+        "must delegate sign() to its wallet; the SIWS token is for request auth only.",
+    );
+  }
 }
 
 export async function buildX402PaymentAuthorization(

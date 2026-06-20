@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
-	identityPublicKey,
 	TinyPlaceError,
 	type X402AuthorizationFields,
 } from "@tinyhumansai/tinyplace";
@@ -109,14 +108,13 @@ export const DomainRegistration = ({
 
 			// A handle is just a pointer now. Profile details live on the wallet's
 			// User profile and are edited from the profile page.
+			// A Solana cryptoId IS the wallet's ed25519 public key, so the SDK
+			// derives publicKey from cryptoId — no need to pass it. The handle binds
+			// to the WALLET key (which derives agentId), not the ephemeral session
+			// key that signs the request.
 			const request = {
 				username: selectedName,
 				cryptoId: agentId,
-				// The handle binds to the WALLET key (which derives agentId), not the
-				// ephemeral session key that signs the request. identityPublicKey()
-				// returns the wallet key for a session signer, the signer's own key
-				// otherwise.
-				publicKey: identityPublicKey(signer) ?? signer.publicKeyBase64,
 				primary,
 				actorType: "human" as const,
 			};

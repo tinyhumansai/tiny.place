@@ -21,9 +21,32 @@ function recordingFetch(): {
       requests.push(request);
       if (new URL(request.url).pathname === "/graphql") {
         const query = ((init?.body as string) ?? "").toString();
-        const data: Record<string, unknown> = query.includes("jobs")
-          ? { jobs: { jobs: [], count: 0 } }
-          : {};
+        let data: Record<string, unknown> = {};
+        if (query.includes("bounties")) {
+          data = { bounties: [] };
+        } else if (query.includes("homeFeed")) {
+          data = {
+            homeFeed: {
+              count: 1,
+              items: [
+                {
+                  score: 1,
+                  reason: "following",
+                  post: {
+                    postId: "pst_1",
+                    feedId: "fd_1",
+                    body: "gm",
+                    commentCount: 0,
+                    likeCount: 0,
+                    viewerHasLiked: false,
+                    createdAt: "2026-01-01T00:00:00Z",
+                    author: { handle: "@peer", cryptoId: "peerId", displayName: "Peer", verified: false },
+                  },
+                },
+              ],
+            },
+          };
+        }
         return Response.json({ data });
       }
       return Response.json({ id: "spawned_1", ok: true });
@@ -136,18 +159,31 @@ describe("agent flows CLI", () => {
     expect(names).toEqual(
       expect.arrayContaining([
         "register",
+        "post-bounty",
+        "find-work",
+        "submit",
+        "submissions",
         "join",
         "create-group",
         "follow",
         "unfollow",
       ]),
     );
+    // The job/marketplace workflows were removed in favour of bounties.
+    expect(names).not.toContain("post-job");
+    expect(names).not.toContain("hire");
+    expect(names).not.toContain("buy-domain");
   });
 
-  it("registers granular groups/social raw commands", () => {
+  it("registers granular bounties/groups/social raw commands", () => {
     const names = HARNESS_CLI_COMMANDS.map((command) => command.name);
     expect(names).toEqual(
       expect.arrayContaining([
+        "bounty-create",
+        "bounty-submit",
+        "bounty-submissions",
+        "bounty-council",
+        "bounty-approve",
         "group-create",
         "group-join",
         "group-members",
@@ -156,6 +192,57 @@ describe("agent flows CLI", () => {
         "social-feed",
       ]),
     );
+    // The jobs/escrow/marketplace raw commands were removed.
+    expect(names).not.toContain("job-create");
+    expect(names).not.toContain("escrows");
+    expect(names).not.toContain("products");
+  });
+
+  it("post-bounty previews and performs nothing without --execute", async () => {
+    const { requests, fetch } = recordingFetch();
+    const result = await runTinyPlaceCli(
+      ["post-bounty", "--title", "Best logo", "--amount", "10", "--asset", "USDC"],
+      { env: ENV, fetch },
+    );
+
+    expect(result.code).toBe(0);
+    const body = JSON.parse(result.stdout);
+    expect(body.status).toBe("needs-confirmation");
+    expect(body.preview.reward).toEqual({ amount: "10", asset: "USDC" });
+    expect(body.suggestions[0].run).toBe(
+      'tinyplace post-bounty --title "Best logo" --amount 10 --asset USDC --execute',
+    );
+    expect(requests).toHaveLength(0);
+  });
+
+  it("post-bounty --execute creates the bounty when no funding is required", async () => {
+    const { requests, fetch } = recordingFetch();
+    const result = await runTinyPlaceCli(
+      ["post-bounty", "--title", "Best logo", "--amount", "10", "--asset", "USDC", "--execute"],
+      { env: ENV, fetch },
+    );
+
+    expect(result.code).toBe(0);
+    const body = JSON.parse(result.stdout);
+    expect(body.status).toBe("done");
+    expect(body.suggestions[0].run).toContain("tinyplace submissions");
+    expect(requests.map((request) => [request.method, new URL(request.url).pathname])).toEqual([
+      ["POST", "/bounties"],
+    ]);
+  });
+
+  it("submit posts a submission to the bounty", async () => {
+    const { requests, fetch } = recordingFetch();
+    const result = await runTinyPlaceCli(
+      ["submit", "bnt_42", "--url", "https://example.test/work", "--note", "done"],
+      { env: ENV, fetch },
+    );
+
+    expect(result.code).toBe(0);
+    expect([requests[0].method, new URL(requests[0].url).pathname]).toEqual([
+      "POST",
+      "/bounties/bnt_42/submissions",
+    ]);
   });
 
   it("join hits the group join route", async () => {
@@ -176,6 +263,58 @@ describe("agent flows CLI", () => {
       "POST",
       "/follows/agentXYZ",
     ]);
+  });
+
+  it("find-work lists open bounties via the GraphQL gateway with the right variables", async () => {
+    const { requests, fetch } = recordingFetch();
+    const result = await runTinyPlaceCli(["find-work"], {
+      env: ENV,
+      fetch,
+    });
+
+    expect(result.code).toBe(0);
+    // The open-bounties read goes through the batched GraphQL gateway.
+    expect([requests[0].method, new URL(requests[0].url).pathname]).toEqual([
+      "POST",
+      "/graphql",
+    ]);
+    const body = (await requests[0].clone().json()) as {
+      query: string;
+      variables: { status?: string; limit?: number };
+    };
+    expect(body.query).toContain("bounties");
+    expect(body.variables.status).toBe("open");
+    expect(body.variables.limit).toBe(10);
+  });
+
+  it("feed reads the ranked home feed via the GraphQL gateway with like/comment suggestions", async () => {
+    const { requests, fetch } = recordingFetch();
+    const result = await runTinyPlaceCli(["feed"], { env: ENV, fetch });
+
+    expect(result.code).toBe(0);
+    // The home feed read goes through the batched GraphQL gateway (signed).
+    expect([requests[0].method, new URL(requests[0].url).pathname]).toEqual([
+      "POST",
+      "/graphql",
+    ]);
+    const sent = (await requests[0].clone().json()) as { query: string };
+    expect(sent.query).toContain("homeFeed");
+
+    const body = JSON.parse(result.stdout);
+    expect(body.count).toBe(1);
+    expect(body.items).toHaveLength(1);
+    const runs = body.suggestions.map((suggestion: { run: string }) => suggestion.run);
+    expect(runs).toContain("tinyplace raw feed-like @peer pst_1");
+    expect(runs).toContain('tinyplace raw feed-comment @peer pst_1 --data \'{"body":"..."}\'');
+  });
+
+  it("registers the feed workflow and renames the raw profile feed", () => {
+    const workflows = HARNESS_CLI_COMMANDS.filter(
+      (command) => command.capability === "workflow",
+    ).map((command) => command.name);
+    expect(workflows).toContain("feed");
+    const names = HARNESS_CLI_COMMANDS.map((command) => command.name);
+    expect(names).toContain("profile-feed");
   });
 
   it("register previews the on-chain fee and settles nothing without --execute", async () => {

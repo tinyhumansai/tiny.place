@@ -2,7 +2,9 @@ import {
   bodyFlag,
   hexToBytes,
   listFlag,
+  numberFlag,
   required,
+  requiredFlag,
   stringFlag,
 } from "./args.js";
 import {
@@ -13,9 +15,10 @@ import {
   type Suggestion,
 } from "./suggest.js";
 import type { CliContext, Flags, JsonObject } from "./types.js";
-import { idOf, resolveAgentId } from "./workflows.js";
+import { idOf, resolveAgentId, settle, summarize } from "./workflows.js";
 import type { PaymentChallenge } from "../http.js";
-import type { Identity } from "../types/index.js";
+import { buildDelegatedX402PaymentMap } from "../solana.js";
+import type { BountyCreateRequest, Identity } from "../types/index.js";
 import type { RegisterRequest } from "../api/registry.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -166,7 +169,7 @@ async function performPaidRegistration(
     ctx.secretKey,
     "registration payment requires the wallet secret (managed CLI key or TINYPLACE_SECRET_KEY)",
   );
-  const asset = await resolveRegistrationAsset(ctx, opts.challenge?.asset);
+  const asset = await resolveSplAsset(ctx, opts.challenge?.asset);
 
   try {
     if (opts.existingTx) {
@@ -184,7 +187,12 @@ async function performPaidRegistration(
       return { identity: result.identity, onChainTx: result.onChainTx };
     }
 
-    const shortfall = await paymentShortfall(ctx, request.cryptoId, opts.challenge);
+    const shortfall = await paymentShortfall(
+      ctx,
+      request.cryptoId,
+      opts.challenge,
+      asset?.symbol,
+    );
     if (shortfall) {
       return shortfall;
     }
@@ -230,14 +238,18 @@ async function paymentShortfall(
   ctx: CliContext,
   address: string,
   challenge: PaymentChallenge | undefined,
+  assetSymbol: string | undefined,
 ): Promise<JsonObject | undefined> {
   if (!challenge?.amount) {
     return undefined;
   }
+  // The challenge advertises the SPL mint address in `asset`; use the symbol
+  // resolved from `/solana` so it matches the wallet balance entries (keyed by
+  // symbol) and so the guidance shown to the user reads "USDC", not the mint.
+  const symbol = (assetSymbol ?? challenge.asset ?? "USDC").toUpperCase();
   let held: bigint | undefined;
   try {
     const balances = await ctx.client.solana.balances(address);
-    const symbol = (challenge.asset ?? "USDC").toUpperCase();
     const match = balances.balances.find(
       (entry) => entry.symbol.toUpperCase() === symbol,
     );
@@ -248,42 +260,245 @@ async function paymentShortfall(
   if (held >= BigInt(challenge.amount)) {
     return undefined;
   }
-  const fundFlags = challenge.asset ? ` --asset ${challenge.asset}` : "";
   return {
     status: "payment-required",
     payment: {
-      ...(challenge.asset ? { asset: challenge.asset } : {}),
+      asset: symbol,
       ...(challenge.amount ? { amount: challenge.amount } : {}),
     },
-    note: `Wallet holds ${held} but registration needs ${challenge.amount} ${challenge.asset ?? ""}. Fund, then retry.`,
+    note: `Wallet holds ${held} but registration needs ${challenge.amount} ${symbol}. Fund, then retry.`,
     suggestions: [
-      suggest("Fund your wallet", `tinyplace fund${fundFlags}`),
+      suggest("Fund your wallet", `tinyplace fund --asset ${symbol}`),
       suggest("Then claim the handle", "tinyplace status"),
     ],
   };
 }
 
-/** Resolves the SPL mint + decimals for the registration asset from `/solana`. */
-async function resolveRegistrationAsset(
+/**
+ * Resolves an x402 `asset` from `/solana` to its symbol + SPL mint + decimals.
+ * The value may be a symbol ("USDC") or — as the 402 challenge now advertises —
+ * the on-chain mint address, so it is matched against both fields.
+ */
+async function resolveSplAsset(
   ctx: CliContext,
-  assetSymbol: string | undefined,
-): Promise<{ mint?: string; decimals?: number } | undefined> {
+  asset: string | undefined,
+): Promise<{ symbol?: string; mint?: string; decimals?: number } | undefined> {
   try {
     const info = await ctx.client.solana.info();
-    const symbol = (assetSymbol ?? "USDC").toUpperCase();
-    const asset = info.assets.find(
-      (entry) => entry.symbol.toUpperCase() === symbol,
+    const value = (asset ?? "USDC").trim();
+    const upper = value.toUpperCase();
+    const match = info.assets.find(
+      (entry) =>
+        entry.symbol.toUpperCase() === upper ||
+        (entry.address ? entry.address.toLowerCase() === value.toLowerCase() : false),
     );
-    if (!asset) {
+    if (!match) {
       return undefined;
     }
     return {
-      ...(asset.address ? { mint: asset.address } : {}),
-      decimals: asset.decimals,
+      symbol: match.symbol,
+      ...(match.address ? { mint: match.address } : {}),
+      decimals: match.decimals,
     };
   } catch {
     return undefined;
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bounties — creating side: fund + post a bounty, review its submissions.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Create + fund a bounty in one x402 flow. The reward (`--amount` + `--asset`)
+ * is escrowed into the custodial bounty wallet at creation, so it is
+ * confirm-gated: a bare run previews the reward + deadline; `--execute` settles
+ * the SPL reward through the facilitator (the wallet co-signs a delegated
+ * transfer) and creates the bounty already open for submissions. SPL assets only
+ * (USDC/CASH) — the facilitator cannot settle native SOL.
+ */
+export async function postBountyFlow(
+  ctx: CliContext,
+  flags: Flags,
+): Promise<unknown> {
+  const creator = required(
+    ctx.signer?.agentId,
+    "post-bounty requires a wallet (re-run; the key auto-generates)",
+  );
+  const title = requiredFlag(flags, "title");
+  const description =
+    stringFlag(flags, "description") ?? stringFlag(flags, "bio") ?? "";
+  const amount = requiredFlag(flags, "amount");
+  const asset = stringFlag(flags, "asset") ?? "USDC";
+  const deadline = stringFlag(flags, "deadline");
+  const durationDays = numberFlag(flags, "days");
+  const rpcUrl =
+    stringFlag(flags, "rpc-url") ??
+    `${ctx.baseUrl.replace(/\/+$/, "")}/solana/rpc`;
+  const command = `tinyplace post-bounty --title ${JSON.stringify(title)} --amount ${amount} --asset ${asset}`;
+
+  const request: BountyCreateRequest = {
+    creator,
+    creatorCryptoId: creator,
+    title,
+    description,
+    amount,
+    asset,
+    ...(deadline ? { deadline } : {}),
+    ...(durationDays !== undefined ? { durationDays } : {}),
+    ...bodyFlag(flags),
+  };
+
+  return runPaidAction({
+    flags,
+    action: `Create the bounty "${title}"`,
+    command,
+    details: {
+      title,
+      reward: { amount, asset },
+      ...(deadline
+        ? { deadline }
+        : durationDays !== undefined
+          ? { durationDays }
+          : {}),
+      settlement:
+        "On --execute, escrows the reward via the x402 facilitator (SPL only), then opens the bounty for submissions.",
+    },
+    run: () => createAndFundBounty(ctx, request, { rpcUrl, creator }),
+    onSuccess: (result) => {
+      const bountyId = idOf(result);
+      return bountyId
+        ? [
+            suggest("Watch submissions arrive", `tinyplace submissions ${bountyId}`),
+            suggest("Check the bounty's status", `tinyplace raw bounty ${bountyId}`),
+          ]
+        : [];
+    },
+  });
+}
+
+/**
+ * Creates a bounty, settling its reward through the x402 facilitator. The first
+ * create surfaces the 402 funding challenge (no bounty exists until it is
+ * funded); we sign a delegated SPL transfer against the facilitator's fee payer
+ * and resubmit with the payment map so the bounty opens already funded.
+ */
+async function createAndFundBounty(
+  ctx: CliContext,
+  request: BountyCreateRequest,
+  opts: { rpcUrl: string; creator: string },
+): Promise<unknown> {
+  try {
+    return await ctx.client.bounties.create(request);
+  } catch (error) {
+    const challenge = paymentChallenge(error);
+    if (!challenge) {
+      throw error;
+    }
+    const payment = challenge.payment ?? {};
+    const feePayer = payment.metadata?.feePayer;
+    if (!feePayer) {
+      throw new Error(
+        "bounty funding challenge is missing the facilitator fee payer (metadata.feePayer)",
+      );
+    }
+    const secretHex = required(
+      ctx.secretKey,
+      "bounty funding requires the wallet secret (managed CLI key or TINYPLACE_SECRET_KEY)",
+    );
+    const signer = required(ctx.signer, "bounty funding requires a wallet signer");
+    const asset = await resolveSplAsset(ctx, payment.asset);
+    if (!asset?.mint || asset.decimals === undefined) {
+      throw new Error(
+        `could not resolve the SPL mint for ${payment.asset ?? "the reward asset"} (the facilitator cannot settle native SOL)`,
+      );
+    }
+    const paymentMap = await buildDelegatedX402PaymentMap({
+      signer,
+      secretKey: hexToBytes(secretHex),
+      rpcUrl: opts.rpcUrl,
+      feePayer,
+      mint: asset.mint,
+      decimals: asset.decimals,
+      from: opts.creator,
+      payment: {
+        network: payment.network ?? "",
+        asset: payment.asset ?? "",
+        amount: payment.amount ?? "",
+        to: payment.to ?? "",
+        ...(payment.metadata ? { metadata: payment.metadata } : {}),
+      },
+    });
+    return ctx.client.bounties.create({ ...request, payment: paymentMap });
+  }
+}
+
+/** List submissions on a bounty you created, with a council command. */
+export async function submissionsFlow(
+  ctx: CliContext,
+  positionals: Array<string>,
+  flags: Flags,
+): Promise<unknown> {
+  required(
+    ctx.signer?.agentId,
+    "submissions requires a wallet (re-run; the key auto-generates)",
+  );
+  const bountyId = required(positionals[0], "submissions <bountyId>");
+  const limit = numberFlag(flags, "limit") ?? 20;
+
+  const submissions = await settle(() =>
+    ctx.client.bounties.listSubmissions(bountyId, { limit }),
+  );
+  const summary = summarize(submissions, limit);
+  return {
+    bountyId,
+    submissions: summary,
+    suggestions: [
+      suggest(
+        "Run the judging council now (creator/admin)",
+        `tinyplace raw bounty-council ${bountyId}`,
+      ),
+    ],
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bounties — winning side: submit your work to a bounty.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Submit your work (a URL) to a bounty. Submitting is free. */
+export async function submitFlow(
+  ctx: CliContext,
+  positionals: Array<string>,
+  flags: Flags,
+): Promise<unknown> {
+  const submitter = required(
+    ctx.signer?.agentId,
+    "submit requires a wallet (re-run; the key auto-generates)",
+  );
+  const bountyId = required(positionals[0], "submit <bountyId> --url <url>");
+  const url = requiredFlag(flags, "url");
+  const command = `tinyplace submit ${bountyId} --url ${url}`;
+
+  return runFlow({
+    action: `Submit work to bounty ${bountyId}`,
+    command,
+    run: () =>
+      ctx.client.bounties.submit(bountyId, {
+        submitter,
+        url,
+        ...(stringFlag(flags, "title") ? { title: stringFlag(flags, "title") } : {}),
+        ...(stringFlag(flags, "note") ? { note: stringFlag(flags, "note") } : {}),
+        ...bodyFlag(flags),
+      } as never),
+    onSuccess: () => [
+      suggest("Track the bounty's status in your loop", "tinyplace status"),
+      suggest(
+        `Watch ${bountyId} for the council's decision`,
+        `tinyplace raw bounty ${bountyId}`,
+      ),
+    ],
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -404,3 +619,38 @@ export async function unfollowFlow(
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Discovery — find open bounties to win.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Browse open bounties you could win, each with a ready-to-run submit command. */
+export async function findWorkFlow(
+  ctx: CliContext,
+  flags: Flags,
+): Promise<unknown> {
+  const limit = numberFlag(flags, "limit") ?? 10;
+  // Browse open bounties through the batched GraphQL gateway: one request
+  // resolves every creator's profile, avoiding the per-creator REST fan-out.
+  const bounties = await settle(() =>
+    ctx.client.graphql.bounties({
+      status: "open" as never,
+      limit,
+    } as never),
+  );
+  const summary = summarize(bounties, limit);
+  const suggestions: Array<Suggestion> = [];
+  if (!("error" in summary)) {
+    for (const bounty of summary.items) {
+      const bountyId = idOf(bounty);
+      if (bountyId) {
+        suggestions.push(
+          suggest(
+            `Submit work to bounty ${bountyId}`,
+            `tinyplace submit ${bountyId} --url <url>`,
+          ),
+        );
+      }
+    }
+  }
+  return { bounties: summary, suggestions };
+}

@@ -9,9 +9,13 @@ import { makeContext } from "./context.js";
 import { formatResult, redactSecrets, resolveFormat } from "./format.js";
 import {
   createGroupFlow,
+  findWorkFlow,
   followFlow,
   joinGroupFlow,
+  postBountyFlow,
   registerFlow,
+  submissionsFlow,
+  submitFlow,
   unfollowFlow,
 } from "./flows.js";
 import { runKeygen } from "./keygen.js";
@@ -31,6 +35,7 @@ import type {
 import {
   balanceFlow,
   discoverFlow,
+  feedFlow,
   fundInfo,
   initFlow,
   messageFlow,
@@ -135,13 +140,24 @@ async function dispatchTop(
       return balanceFlow(ctx, flags);
     case "discover":
       return discoverFlow(ctx, flags);
+    case "feed":
+      return feedFlow(ctx, flags);
     case "whoami":
       return whoami(ctx);
     case "fund":
       return fundInfo(ctx, flags);
+    case "find-work":
+      return findWorkFlow(ctx, flags);
     // Identity (confirm-gated paid claim).
     case "register":
       return registerFlow(ctx, parsed.positionals, flags);
+    // Bounties — creating side (confirm-gated x402 funding) + winning side.
+    case "post-bounty":
+      return postBountyFlow(ctx, flags);
+    case "submissions":
+      return submissionsFlow(ctx, parsed.positionals, flags);
+    case "submit":
+      return submitFlow(ctx, parsed.positionals, flags);
     // Groups & social graph.
     case "join":
       return joinGroupFlow(ctx, parsed.positionals);

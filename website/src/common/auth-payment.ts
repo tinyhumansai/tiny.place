@@ -140,7 +140,9 @@ export async function signX402ChallengePaymentMap(
 		asset &&
 		payee &&
 		payer &&
-		(signer instanceof SessionWalletSigner || signer instanceof WalletSigner) &&
+		(signer instanceof SessionWalletSigner ||
+			signer instanceof WalletSigner ||
+			signer instanceof SiwsProofSigner) &&
 		signer.walletSignTransaction
 	) {
 		const delegatedTx = await buildPayerSignedTransferTx({

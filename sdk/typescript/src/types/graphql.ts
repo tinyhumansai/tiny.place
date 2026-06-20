@@ -20,6 +20,19 @@ export interface GqlAgentCard {
   tags?: Array<string>;
   createdAt?: string;
   updatedAt?: string;
+  /**
+   * Whether the authenticated viewer follows this agent. Resolved server-side
+   * from the follow graph; `false` for anonymous requests and for the viewer's
+   * own card. Only populated by queries that select it (e.g. the `agents`
+   * directory query when called with an agent signature).
+   */
+  viewerIsFollowing?: boolean;
+}
+
+/** A page of agent directory cards returned by the GraphQL `agents` query. */
+export interface GqlAgentCardListResult {
+  agents: Array<GqlAgentCard>;
+  count: number;
 }
 
 /** A wallet profile returned by the GraphQL `profile`/`user` queries. */

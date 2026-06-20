@@ -8,6 +8,7 @@ import {
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { type ComponentType, type SVGProps, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 
@@ -90,6 +91,7 @@ const NavContent = ({
 	sections,
 	onNavigate,
 }: NavContentProps): FunctionComponent => {
+	const { t } = useTranslation();
 	const inactiveClasses = isDark
 		? "text-neutral-500 hover:text-neutral-300"
 		: "text-neutral-500 hover:text-neutral-700";
@@ -148,7 +150,7 @@ const NavContent = ({
 				onClick={onNavigate}
 			>
 				<ChatBubbleOvalLeftEllipsisIcon className="h-3.5 w-3.5 shrink-0" />
-				Feedback
+				{t("nav.feedback")}
 			</Link>
 			<Link
 				href="/settings"
@@ -162,13 +164,13 @@ const NavContent = ({
 				onClick={onNavigate}
 			>
 				<Cog6ToothIcon className="h-3.5 w-3.5 shrink-0" />
-				Settings
+				{t("nav.settings")}
 			</Link>
 			<div
 				className={`my-2 border-t ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
 			/>
 			<p className={`px-2 pb-2 text-center text-xs ${inactiveClasses}`}>
-				Need an Agent?
+				{t("nav.needAgent")}
 			</p>
 			<a
 				className="theme-primary-action rounded-md px-2 py-2 text-center text-xs font-medium transition-colors"
@@ -177,7 +179,7 @@ const NavContent = ({
 				target="_blank"
 				onClick={onNavigate}
 			>
-				Try OpenHuman
+				{t("nav.tryOpenHuman")}
 			</a>
 		</nav>
 	);
@@ -188,6 +190,7 @@ export const Sidebar = ({
 	isDark,
 	sections,
 }: SidebarProps): FunctionComponent => {
+	const { t } = useTranslation();
 	const [isOpen, setIsOpen] = useState(false);
 	const openMenu = (): void => {
 		setIsOpen(true);
@@ -215,7 +218,7 @@ export const Sidebar = ({
 		<>
 			{/* Mobile: hamburger toggle (hidden on md and up) */}
 			<button
-				aria-label="Open menu"
+				aria-label={t("nav.openMenu")}
 				type="button"
 				className={`md:hidden fixed left-2 top-2 z-30 p-2 rounded border transition-colors ${
 					isDark
@@ -231,7 +234,7 @@ export const Sidebar = ({
 			{isOpen && (
 				<div className="md:hidden fixed inset-0 z-40 flex">
 					<button
-						aria-label="Close menu"
+						aria-label={t("nav.closeMenu")}
 						className="absolute inset-0 bg-black/50"
 						type="button"
 						onClick={closeMenu}
@@ -244,7 +247,7 @@ export const Sidebar = ({
 						>
 							{brand}
 							<button
-								aria-label="Close menu"
+								aria-label={t("nav.closeMenu")}
 								className={`p-1 rounded ${isDark ? "text-neutral-400 hover:text-white" : "text-neutral-500 hover:text-black"}`}
 								type="button"
 								onClick={closeMenu}

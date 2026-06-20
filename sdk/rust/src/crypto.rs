@@ -95,3 +95,20 @@ fn sort_value(value: &serde_json::Value) -> serde_json::Value {
 pub fn decode_base58(value: &str) -> Result<Vec<u8>, bs58::decode::Error> {
     bs58::decode(value).into_vec()
 }
+
+/// Derive the base64 Ed25519 public key from a Solana `cryptoId` (base58
+/// address). A Solana address IS the base58 encoding of the 32-byte ed25519
+/// public key, so the stored/signed `publicKey` is just that same key re-encoded
+/// as base64. Mirrors the TS `cryptoIdToPublicKeyBase64`.
+pub fn crypto_id_to_public_key_base64(crypto_id: &str) -> crate::error::Result<String> {
+    let bytes = decode_base58(crypto_id).map_err(|err| {
+        crate::error::Error::InvalidArgument(format!("cryptoId is not valid base58: {err}"))
+    })?;
+    if bytes.len() != 32 {
+        return Err(crate::error::Error::InvalidArgument(format!(
+            "cryptoId does not decode to a 32-byte Ed25519 public key (got {} bytes)",
+            bytes.len()
+        )));
+    }
+    Ok(public_key_to_base64(&bytes))
+}

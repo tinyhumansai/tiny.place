@@ -1,7 +1,10 @@
 // @vitest-environment node
 import { Keypair, PublicKey, Transaction } from "@solana/web3.js";
-import { SOLANA_TOKEN_PROGRAM_ID } from "@tinyhumansai/tinyplace";
-import { describe, expect, it, vi } from "vitest";
+import {
+	SOLANA_TOKEN_PROGRAM_ID,
+	SOLANA_USDC_MINT,
+} from "@tinyhumansai/tinyplace";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 // Stub the RPC so the builder stays a pure assembly test (no network).
 vi.mock("./solana-rpc", () => ({
@@ -16,7 +19,10 @@ vi.mock("./solana-rpc", () => ({
 	primarySolanaRpcUrl: (): string => "http://localhost:8899",
 }));
 
-import { buildPayerSignedTransferTx } from "./delegated-payment";
+import {
+	buildPayerSignedTransferTx,
+	resolveSplAsset,
+} from "./delegated-payment";
 
 const address = (): string => Keypair.generate().publicKey.toBase58();
 // Explicit mint keeps the test independent of NEXT_PUBLIC_SOLANA_USDC_MINT.
@@ -70,5 +76,43 @@ describe("buildPayerSignedTransferTx", () => {
 		const authority = transfer?.keys[(transfer?.keys.length ?? 0) - 1];
 		expect(authority?.pubkey.toBase58()).toBe(payer);
 		expect(authority?.isSigner).toBe(true);
+	});
+});
+
+describe("resolveSplAsset", () => {
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
+	it("resolves the USDC symbol to the mainnet mint", () => {
+		expect(resolveSplAsset("USDC")).toEqual({
+			mint: SOLANA_USDC_MINT,
+			decimals: 6,
+		});
+	});
+
+	it("resolves a USDC mint address (the x402 spec advertises the mint, not the symbol)", () => {
+		// Regression: the backend now advertises the SPL mint in the challenge, so
+		// the asset echoed into the payment map is the mint. It must still resolve,
+		// otherwise the delegated transfer is silently skipped.
+		expect(resolveSplAsset(SOLANA_USDC_MINT)).toEqual({
+			mint: SOLANA_USDC_MINT,
+			decimals: 6,
+		});
+	});
+
+	it("returns undefined for native SOL (not SPL-settleable)", () => {
+		expect(resolveSplAsset("SOL")).toBeUndefined();
+	});
+
+	it("returns undefined for CASH when no mint is configured", () => {
+		expect(resolveSplAsset("CASH")).toBeUndefined();
+	});
+
+	it("resolves CASH by symbol and by mint address when configured", () => {
+		const cashMint = Keypair.generate().publicKey.toBase58();
+		vi.stubEnv("NEXT_PUBLIC_SOLANA_CASH_MINT", cashMint);
+		expect(resolveSplAsset("CASH")).toEqual({ mint: cashMint, decimals: 6 });
+		expect(resolveSplAsset(cashMint)).toEqual({ mint: cashMint, decimals: 6 });
 	});
 });

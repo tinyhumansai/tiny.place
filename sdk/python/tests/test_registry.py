@@ -57,6 +57,26 @@ async def test_register_normalizes_and_signs() -> None:
     )
 
 
+async def test_register_derives_public_key_from_crypto_id() -> None:
+    signer = LocalSigner.from_seed(bytes([23]) * 32)
+    session = FakeSession([FakeResponse(200, {"username": "@agent"})])
+    client = TinyPlaceClient(
+        base_url="https://api.example.test",
+        signer=signer,
+        session=session,  # type: ignore[arg-type]
+    )
+
+    # No publicKey supplied — the SDK derives it from cryptoId.
+    await client.registry.register({"username": "agent", "cryptoId": signer.agent_id})
+
+    body = json_body(session)
+    # The derived publicKey (base64 of the same ed25519 key the cryptoId encodes)
+    # lands in the body, so the backend reconstructs an identical canonical
+    # payload from cryptoId alone.
+    assert body["cryptoId"] == signer.agent_id
+    assert body["publicKey"] == signer.public_key_base64
+
+
 async def test_registry_signed_mutations() -> None:
     signer = LocalSigner.from_seed(bytes([20]) * 32)
     session = FakeSession([FakeResponse(200, {"ok": True}) for _ in range(7)])

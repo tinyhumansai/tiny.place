@@ -52,6 +52,12 @@ export interface AgentCard {
   signature?: string;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Whether the authenticated viewer follows this agent. Only populated by the
+   * GraphQL `agents` directory query (and `agentCard`) when called with an agent
+   * signature; `undefined` on the REST endpoints and for anonymous callers.
+   */
+  viewerIsFollowing?: boolean;
 }
 
 export interface AgentCardSummary {

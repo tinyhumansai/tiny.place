@@ -28,6 +28,7 @@ describe("tinyplace CLI", () => {
       "broadcasts",
       "messaging",
       "inbox",
+      "bounties",
       "reputation",
       "pricing",
       "signers",
@@ -39,6 +40,10 @@ describe("tinyplace CLI", () => {
         0,
       );
     }
+    // Jobs/escrow/marketplace capabilities were removed in favour of bounties.
+    expect(byCapability.has("jobs")).toBe(false);
+    expect(byCapability.has("escrow")).toBe(false);
+    expect(byCapability.has("marketplace")).toBe(false);
 
     expect(HARNESS_CLI_COMMANDS.map((command) => command.name)).toEqual(
       expect.arrayContaining([
@@ -48,6 +53,7 @@ describe("tinyplace CLI", () => {
         "broadcasts",
         "send",
         "inbox",
+        "bounties",
         "reputation",
         "pricing-quote",
         "signer-create",
@@ -396,7 +402,10 @@ describe("tinyplace CLI", () => {
     const commands = JSON.parse(list.stdout).commands as Array<{
       name: string;
     }>;
-    expect(commands.find((command) => command.name === "feed")).toBeTruthy();
+    // `profile-feed` is a raw command; bare `feed` is now a workflow, so it (like
+    // `status`) is excluded from the raw-only listing.
+    expect(commands.find((command) => command.name === "profile-feed")).toBeTruthy();
+    expect(commands.find((command) => command.name === "feed")).toBeFalsy();
     expect(commands.find((command) => command.name === "status")).toBeFalsy();
   });
 
@@ -412,6 +421,9 @@ describe("tinyplace CLI", () => {
         if (url.includes("/inbox/counts")) return Response.json({ unread: 2 });
         if (url.includes("/inbox"))
           return Response.json({ items: [{ id: "i1" }] });
+        // Your bounties are read through the batched GraphQL gateway.
+        if (url.includes("/graphql"))
+          return Response.json({ data: { bounties: [{ bountyId: "b1" }] } });
         if (url.includes("/keys/"))
           return Response.json({ lowOneTimePreKeys: true });
         return Response.json({ messages: [{ id: "m1" }] });
@@ -420,6 +432,7 @@ describe("tinyplace CLI", () => {
     expect(result.code).toBe(0);
     const snapshot = JSON.parse(result.stdout);
     expect(snapshot.counts.unread).toBe(2);
+    expect(snapshot.bounties.count).toBe(1);
     expect(snapshot.attention).toEqual(
       expect.arrayContaining([expect.stringContaining("unread")]),
     );
@@ -554,6 +567,33 @@ describe("tinyplace CLI", () => {
     expect(JSON.parse(result.stdout).wallet.vanity).toBeUndefined();
   });
 
+  it("gates post-bounty behind --execute and funds nothing without it", async () => {
+    const requests: Array<Request> = [];
+    const result = await runTinyPlaceCli(
+      ["post-bounty", "--title", "Logo", "--amount", "10", "--asset", "USDC"],
+      {
+        env: {
+          TINYPLACE_ENDPOINT: "https://example.test",
+          TINYPLACE_SECRET_KEY: "01".repeat(32),
+        },
+        fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+          requests.push(new Request(input, init));
+          return Response.json({ ok: true });
+        },
+      },
+    );
+
+    expect(result.code).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.status).toBe("needs-confirmation");
+    expect(parsed.preview.reward).toEqual({ amount: "10", asset: "USDC" });
+    expect(parsed.suggestions[0].run).toBe(
+      'tinyplace post-bounty --title "Logo" --amount 10 --asset USDC --execute',
+    );
+    // Nothing is created or funded until --execute.
+    expect(requests).toHaveLength(0);
+  });
+
   it("resolves a @handle, encrypts, and sends a message (ciphertext on the wire)", async () => {
     // Real recipient identity + published bundle so transparent E2E can run X3DH.
     const peer = await LocalSigner.fromSeed(new Uint8Array(32).fill(2));
@@ -624,6 +664,8 @@ describe("tinyplace CLI", () => {
         const url = String(input instanceof Request ? input.url : input);
         if (url.includes("/inbox/counts")) return Response.json({ unread: 1 });
         if (url.includes("/inbox")) return Response.json({ items: [{ id: "i1" }] });
+        if (url.includes("/graphql"))
+          return Response.json({ data: { bounties: [{ bountyId: "b1" }] } });
         if (url.includes("/keys/")) return Response.json({ lowOneTimePreKeys: false });
         return Response.json({ messages: [{ id: "m1" }] });
       },
@@ -637,6 +679,7 @@ describe("tinyplace CLI", () => {
       expect.arrayContaining([
         "tinyplace raw inbox-read i1",
         "tinyplace read",
+        "tinyplace submissions b1",
       ]),
     );
   });
@@ -657,13 +700,8 @@ describe("tinyplace CLI", () => {
           // `{ data }` envelope so the typed gateway methods unwrap.
           const query = ((init?.body as string) ?? "").toString();
           const data: Record<string, unknown> = {};
-          if (query.includes("jobs(")) data["jobs"] = { jobs: [], count: 0 };
-          if (query.includes("job(")) data["job"] = null;
-          if (query.includes("products("))
-            data["products"] = { products: [], count: 0 };
-          if (query.includes("product(")) data["product"] = null;
-          if (query.includes("identityListings("))
-            data["identityListings"] = { listings: [], count: 0 };
+          if (query.includes("bounties(")) data["bounties"] = [];
+          if (query.includes("bounty(")) data["bounty"] = null;
           if (query.includes("agentCard(")) data["agentCard"] = null;
           if (query.includes("ledgerTransactions("))
             data["ledgerTransactions"] = { transactions: [], count: 0 };
@@ -679,11 +717,8 @@ describe("tinyplace CLI", () => {
     };
 
     const cases: Array<{ args: Array<string>; query: string }> = [
-      { args: ["raw", "jobs", "--status", "open"], query: "jobs(" },
-      { args: ["raw", "job", "job_1"], query: "job(" },
-      { args: ["raw", "products", "--q", "ai"], query: "products(" },
-      { args: ["raw", "product", "prod_1"], query: "product(" },
-      { args: ["raw", "usernames"], query: "identityListings(" },
+      { args: ["raw", "bounties", "--status", "open"], query: "bounties(" },
+      { args: ["raw", "bounty", "bnt_1"], query: "bounty(" },
       { args: ["raw", "card", "agent_1"], query: "agentCard(" },
       { args: ["raw", "ledger", "--recent"], query: "ledgerTransactions(" },
       { args: ["raw", "ledger-tx", "tx_1"], query: "ledgerTransaction(" },
@@ -704,13 +739,13 @@ describe("tinyplace CLI", () => {
     }
   });
 
-  it("passes the jobs status filter as a GraphQL variable", async () => {
+  it("passes the bounties status filter as a GraphQL variable", async () => {
     const requests: Array<Request> = [];
-    const result = await runTinyPlaceCli(["raw", "jobs", "--status", "open"], {
+    const result = await runTinyPlaceCli(["raw", "bounties", "--status", "open"], {
       env: { TINYPLACE_ENDPOINT: "https://example.test" },
       fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
         requests.push(new Request(input, init));
-        return Response.json({ data: { jobs: { jobs: [], count: 0 } } });
+        return Response.json({ data: { bounties: [] } });
       },
     });
     expect(result.code).toBe(0);

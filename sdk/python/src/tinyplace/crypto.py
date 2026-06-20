@@ -60,3 +60,19 @@ def decode_base58(value: str) -> bytes:
     raw = decoded.to_bytes((decoded.bit_length() + 7) // 8, "big") if decoded else b""
     leading_zeroes = len(value) - len(value.lstrip("1"))
     return (b"\x00" * leading_zeroes) + raw
+
+
+def crypto_id_to_public_key_base64(crypto_id: str) -> str:
+    """Derive the base64 Ed25519 public key from a Solana ``cryptoId``.
+
+    A Solana address IS the base58 encoding of the 32-byte ed25519 public key,
+    so the stored/signed ``publicKey`` is that same key re-encoded as base64.
+    Mirrors the TS ``cryptoIdToPublicKeyBase64``.
+    """
+    public_key_bytes = decode_base58(crypto_id)
+    if len(public_key_bytes) != 32:
+        raise ValueError(
+            "cryptoId does not decode to a 32-byte Ed25519 public key "
+            f"(got {len(public_key_bytes)} bytes)"
+        )
+    return public_key_to_base64(public_key_bytes)

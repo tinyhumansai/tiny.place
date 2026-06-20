@@ -100,7 +100,11 @@ export async function mintOnboardGrant(
     scope,
     wallet,
   });
-  const signature = await signFreshCanonicalPayload(key, payload);
+  // The grant's signature must bind to THIS canonical payload — the server
+  // reconstructs and verifies it. Use the v1-only signer so a SIWS-mode key
+  // does not substitute its reusable sign-in token (which signs a different
+  // message and the verifier rejects as "invalid signature").
+  const signature = await signV1FreshCanonicalPayload(key, payload);
   const grant = `${ONBOARD_TOKEN_PREFIX}${toBase64Url(JSON.stringify(claims))}.${signature}`;
   return onboardCredential(wallet, grant, ownerPublicKeyBase64);
 }
@@ -286,6 +290,22 @@ export async function signFreshCanonicalPayload(
   if (siws) {
     return siws;
   }
+  return signV1FreshCanonicalPayload(key, payload);
+}
+
+/**
+ * Always produces a real `v1:<ts>:<nonce>:<sig>` freshness signature over the
+ * canonical payload, signed with the key itself. Unlike
+ * {@link signFreshCanonicalPayload} it never substitutes a reusable SIWS
+ * sign-in token: callers whose verifier reconstructs and checks the exact
+ * canonical payload (e.g. onboarding-grant minting) must bind the signature to
+ * that payload, and a SIWS proof signs a different "sign in" message that the
+ * verifier would reject as an invalid signature.
+ */
+async function signV1FreshCanonicalPayload(
+  key: SigningKey,
+  payload: string,
+): Promise<string> {
   const timestamp = new Date().toISOString();
   const nonce = generateNonce();
   const payloadBytes = new TextEncoder().encode(

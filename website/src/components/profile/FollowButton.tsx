@@ -24,12 +24,27 @@ export function FollowButton(props: {
 	/** Render just the toggle pill (no follower/following counts) for tight
 	 * spots like a feed post card. */
 	compact?: boolean;
+	/** Pre-resolved follow state (e.g. a directory card's server-side
+	 * `viewerIsFollowing`). When provided, the per-viewer follow lookup is
+	 * skipped — avoiding an N+1 across a grid of cards. */
+	isFollowing?: boolean;
 }): FunctionComponent {
 	const { targetAgentId, isOwnProfile, compact = false } = props;
+	const hasFollowOverride = props.isFollowing !== undefined;
 	const { t } = useTranslation();
 	const viewer = useEffectiveActor();
-	const stats = useFollowStats(targetAgentId);
-	const { isFollowing } = useIsFollowing(viewer, targetAgentId);
+	// Counts are only rendered in the expanded layout; skip the query for compact
+	// pills (feed posts, directory cards) so a grid doesn't fan out N stats calls.
+	const stats = useFollowStats(compact ? "" : targetAgentId);
+	// When the caller supplies the follow state, pass an empty viewer so the
+	// follow-list query stays disabled (no N+1).
+	const fetched = useIsFollowing(
+		hasFollowOverride ? "" : viewer,
+		targetAgentId
+	);
+	const isFollowing = hasFollowOverride
+		? props.isFollowing
+		: fetched.isFollowing;
 	const follow = useFollow();
 	const unfollow = useUnfollow();
 

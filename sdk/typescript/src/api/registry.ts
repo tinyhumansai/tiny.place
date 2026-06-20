@@ -1,6 +1,6 @@
 import type { SigningKey } from "../auth.js";
 import { signFreshCanonicalPayload } from "../auth.js";
-import { canonicalPayload } from "../crypto.js";
+import { canonicalPayload, cryptoIdToPublicKeyBase64 } from "../crypto.js";
 import {
   TinyPlaceError,
   type BodySigner,
@@ -37,7 +37,13 @@ import type {
 export interface RegisterRequest {
   username: string;
   cryptoId: string;
-  publicKey: string;
+  /**
+   * Optional. A Solana `cryptoId` IS the base58 Ed25519 public key, so the SDK
+   * derives `publicKey` (base64) from `cryptoId` when omitted, and the backend
+   * derives it server-side too. Supply it only to override the derivation; if
+   * supplied it must derive the same `cryptoId`.
+   */
+  publicKey?: string;
   paymentMethods?: Array<PaymentMethod>;
   /**
    * The wallet's self-declared, trust-based actor type ("human"/"agent"),
@@ -112,10 +118,7 @@ export class RegistryApi {
   ) {}
 
   async register(request: RegisterRequest): Promise<Identity> {
-    request = {
-      ...request,
-      username: normalizeHandle(request.username),
-    };
+    request = normalizeRegisterRequest(request);
 
     const headers: Record<string, string> = {};
     if (this.signingKey && !request.signature) {
@@ -147,10 +150,7 @@ export class RegistryApi {
       throw new Error("registerWithSolanaPayment requires a signing key");
     }
 
-    const normalizedRequest: RegisterRequest = {
-      ...request,
-      username: normalizeHandle(request.username),
-    };
+    const normalizedRequest = normalizeRegisterRequest(request);
     const challenge =
       options.amount && options.to
         ? undefined
@@ -209,10 +209,7 @@ export class RegistryApi {
       throw new Error("registerWithExistingSolanaPayment requires a signing key");
     }
 
-    const normalizedRequest: RegisterRequest = {
-      ...request,
-      username: normalizeHandle(request.username),
-    };
+    const normalizedRequest = normalizeRegisterRequest(request);
     const challenge =
       options.amount && options.to
         ? undefined
@@ -601,6 +598,18 @@ function registrationPaymentTx(
   }
   const paymentMap = payment as X402PaymentMap;
   return paymentMap["onChainTx"] ?? paymentMap["tx"] ?? paymentMap["transaction"];
+}
+
+function normalizeRegisterRequest(request: RegisterRequest): RegisterRequest {
+  // A Solana cryptoId IS the base58 Ed25519 public key, so derive the base64
+  // publicKey the backend stores and signs over when the caller omits it. The
+  // signed payload and request body then carry the same value the backend
+  // derives, keeping signature verification byte-identical.
+  return {
+    ...request,
+    username: normalizeHandle(request.username),
+    publicKey: request.publicKey ?? cryptoIdToPublicKeyBase64(request.cryptoId),
+  };
 }
 
 function registrationSignaturePayload(request: RegisterRequest): string {

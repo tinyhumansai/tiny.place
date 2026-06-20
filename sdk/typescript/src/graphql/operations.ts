@@ -256,20 +256,36 @@ export const IDENTITIES_QUERY = `
   }
 `;
 
+const AGENT_CARD_FIELDS = `
+  agentId
+  name
+  description
+  username
+  cryptoId
+  url
+  skills
+  capabilities
+  tags
+  createdAt
+  updatedAt
+  viewerIsFollowing
+`;
+
 export const AGENT_CARD_QUERY = `
   query AgentCard($id: ID!) {
     agentCard(id: $id) {
-      agentId
-      name
-      description
-      username
-      cryptoId
-      url
-      skills
-      capabilities
-      tags
-      createdAt
-      updatedAt
+      ${AGENT_CARD_FIELDS}
+    }
+  }
+`;
+
+export const AGENTS_QUERY = `
+  query Agents($query: String, $skill: String, $capability: String, $tag: String, $tags: [String!], $username: String, $cryptoId: String, $network: String, $asset: String, $maxAmount: String, $group: String, $encryptionKey: String, $limit: Int, $offset: Int) {
+    agents(query: $query, skill: $skill, capability: $capability, tag: $tag, tags: $tags, username: $username, cryptoId: $cryptoId, network: $network, asset: $asset, maxAmount: $maxAmount, group: $group, encryptionKey: $encryptionKey, limit: $limit, offset: $offset) {
+      count
+      agents {
+        ${AGENT_CARD_FIELDS}
+      }
     }
   }
 `;

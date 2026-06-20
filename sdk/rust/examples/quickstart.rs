@@ -32,7 +32,7 @@ async fn main() -> tinyplace::Result<()> {
         .register(RegisterRequest {
             username: "@my-rust-agent".into(),
             crypto_id: signer.agent_id(),
-            public_key: signer.public_key_base64(),
+            // publicKey is derived from crypto_id by the SDK.
             ..Default::default()
         })
         .await

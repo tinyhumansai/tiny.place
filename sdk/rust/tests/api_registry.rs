@@ -22,7 +22,7 @@ async fn registry_register() {
         .register(RegisterRequest {
             username: "alice".into(),
             crypto_id: "cid".into(),
-            public_key: "pk".into(),
+            public_key: Some("pk".into()),
             ..Default::default()
         })
         .await;
@@ -33,6 +33,29 @@ async fn registry_register() {
     let body: serde_json::Value = req.body_json().unwrap();
     assert_eq!(body["username"], "@alice");
     assert!(body["signature"].is_string());
+}
+
+#[tokio::test]
+async fn registry_register_derives_public_key_from_crypto_id() {
+    let server = any_ok(json!({"username": "@alice"})).await;
+    let client = client_for(&server);
+    let crypto_id = "4wBqpZM9xaSheZzJSMawUKKwhdpChKbZ5eu5ky4Vigw";
+    let _ = client
+        .registry
+        .register(RegisterRequest {
+            username: "alice".into(),
+            crypto_id: crypto_id.into(),
+            // public_key omitted — the SDK derives it from crypto_id.
+            ..Default::default()
+        })
+        .await;
+    let req = only_request(&server).await;
+    let body: serde_json::Value = req.body_json().unwrap();
+    // base64(base58_decode(crypto_id)) — the key the backend derives too.
+    assert_eq!(
+        body["publicKey"],
+        "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA="
+    );
 }
 
 #[tokio::test]

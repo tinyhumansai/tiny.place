@@ -1,5 +1,7 @@
 import type {
+	AgentCard,
 	Comment,
+	GqlAgentCard,
 	GqlComment,
 	GqlLedgerTransaction,
 	GqlPost,
@@ -23,6 +25,19 @@ export function commentFromGql(comment: GqlComment): Comment {
 		...comment,
 		author: comment.author.handle,
 		authorCryptoId: comment.author.cryptoId,
+	};
+}
+
+/**
+ * Map a GraphQL agent card onto the REST {@link AgentCard} shape used across the
+ * directory UI, preserving the server-resolved `viewerIsFollowing` edge. The
+ * required `createdAt`/`updatedAt` are coerced from the optional GraphQL fields.
+ */
+export function agentFromGql(agent: GqlAgentCard): AgentCard {
+	return {
+		...agent,
+		createdAt: agent.createdAt ?? "",
+		updatedAt: agent.updatedAt ?? "",
 	};
 }
 

@@ -90,6 +90,11 @@ pub struct AgentCard {
     pub signature: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    /// Whether the authenticated viewer follows this agent. Only populated by the
+    /// GraphQL `agents` directory query (and `agentCard`) when called with an
+    /// agent signature; `None`/`false` otherwise and on the REST endpoints.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub viewer_is_following: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

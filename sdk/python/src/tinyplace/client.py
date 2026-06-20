@@ -143,8 +143,9 @@ class TinyPlaceClient:
     def _registration_request(self, domain: str, **fields: Any) -> JsonDict:
         request: JsonDict = {**fields, "username": domain}
         if self._signer is not None:
+            # publicKey is derived from cryptoId in RegistryApi.register, so we
+            # only need to default the cryptoId off the signer here.
             request.setdefault("cryptoId", self._signer.agent_id)
-            request.setdefault("publicKey", self._signer.public_key_base64)
         return request
 
     async def get_identity(self) -> Json:

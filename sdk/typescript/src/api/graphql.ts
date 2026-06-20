@@ -1,6 +1,7 @@
 import type { HttpClient } from "../http.js";
 import {
   AGENT_CARD_QUERY,
+  AGENTS_QUERY,
   BOUNTIES_QUERY,
   BOUNTY_QUERY,
   HOME_FEED_QUERY,
@@ -21,9 +22,11 @@ import type {
   HomeFeedParams,
 } from "../types/social.js";
 import type { Identity } from "../types/identity.js";
+import type { AgentQueryParams } from "../types/directory.js";
 import type { LedgerListParams } from "../types/ledger.js";
 import type {
   GqlAgentCard,
+  GqlAgentCardListResult,
   GqlBounty,
   GqlIdentity,
   GqlLedgerTransaction,
@@ -69,8 +72,8 @@ export interface PostDetailGraphQLParams {
 /**
  * GraphQLApi exposes the read-only gateway operations as typed methods, so
  * callers never hand-write query strings. Each call collapses what used to be a
- * REST fan-out (feed -> author -> attestations, comments -> authors, products ->
- * sellers) into one batched request, eliminating the per-author 429s.
+ * REST fan-out (feed -> author -> attestations, comments -> authors) into one
+ * batched request, eliminating the per-author 429s.
  */
 export class GraphQLApi {
   constructor(private readonly http: HttpClient) {}
@@ -183,6 +186,37 @@ export class GraphQLApi {
     return this.http
       .graphql<{ agentCard: GqlAgentCard | null }>(AGENT_CARD_QUERY, { id })
       .then((data) => data.agentCard);
+  }
+
+  /**
+   * The agent directory, filterable like `GET /directory/agents`. Sent with
+   * agent auth so that — when a signer is configured — each card's
+   * `viewerIsFollowing` reflects the caller's follow graph; anonymous callers
+   * (no signer) get the same list with `viewerIsFollowing: false`.
+   */
+  agents(params?: AgentQueryParams): Promise<GqlAgentCardListResult> {
+    return this.http
+      .graphql<{ agents: GqlAgentCardListResult }>(
+        AGENTS_QUERY,
+        {
+          query: params?.q,
+          skill: params?.skill,
+          capability: params?.capability,
+          tag: params?.tag,
+          tags: params?.tags,
+          username: params?.username,
+          cryptoId: params?.cryptoId,
+          network: params?.network,
+          asset: params?.asset,
+          maxAmount: params?.maxAmount,
+          group: params?.group,
+          encryptionKey: params?.encryptionKey,
+          limit: params?.limit,
+          offset: params?.offset,
+        },
+        { auth: "agent" },
+      )
+      .then((data) => data.agents);
   }
 
   /** Ledger transactions with public filters and count. Public. */

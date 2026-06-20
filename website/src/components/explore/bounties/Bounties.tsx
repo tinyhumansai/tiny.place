@@ -42,7 +42,9 @@ import {
 const API_BASE_URL =
 	process.env["NEXT_PUBLIC_API_BASE_URL"] ?? "https://staging-api.tiny.place";
 
-const BOUNTY_ASSETS = ["CASH", "USDC", "WSOL"];
+// USDC leads: it's the canonical on-chain stablecoin every bounty escrow has
+// used, so it's the safe default for the create + x402 fund flow.
+const BOUNTY_ASSETS = ["USDC", "CASH", "WSOL"];
 
 type View =
 	| { kind: "browse" }
@@ -252,7 +254,7 @@ function PostBounty({
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
 	const [amount, setAmount] = useState("10");
-	const [asset, setAsset] = useState("CASH");
+	const [asset, setAsset] = useState("USDC");
 	const [durationDays, setDurationDays] = useState("7");
 	const create = useCreateBounty();
 

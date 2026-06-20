@@ -101,7 +101,7 @@ describe("ReputationApi", () => {
   });
 
   it("signs review, vouch, and attestation create requests", async () => {
-    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(14));
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(14), { siws: false });
     const requests: Array<Request> = [];
     const client = new TinyPlaceClient({
       baseUrl: "https://example.test",
@@ -205,7 +205,7 @@ describe("ReputationApi", () => {
   });
 
   it("signs vouch and attestation revocations in the query string", async () => {
-    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(15));
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(15), { siws: false });
     const requests: Array<Request> = [];
     const client = new TinyPlaceClient({
       baseUrl: "https://example.test",

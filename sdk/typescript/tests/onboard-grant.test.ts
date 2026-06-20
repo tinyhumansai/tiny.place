@@ -1,3 +1,4 @@
+import { webcrypto } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   canonicalPayload,
@@ -6,6 +7,11 @@ import {
   parseOnboardGrant,
   TinyPlaceClient,
 } from "../src/index.js";
+
+function base64UrlToBytes(value: string): Uint8Array {
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(Buffer.from(base64, "base64"));
+}
 
 describe("onboarding bearer grant", () => {
   // Pins the exact bytes the wallet signs. The matching assertion lives in
@@ -46,6 +52,73 @@ describe("onboarding bearer grant", () => {
     // The public key is recovered from the token claims so the web flow can
     // publish a discovery card without holding the private key.
     expect(parsed?.ownerPublicKey).toBe(signer.publicKeyBase64);
+  });
+
+  it("signs the grant with a v1 freshness signature even for a SIWS-mode key", async () => {
+    // LocalSigner defaults to SIWS auth. The grant signature must still be a real
+    // v1 signature bound to the canonical onboard.grant payload — NOT the reusable
+    // SIWS sign-in token, which signs a different message the backend rejects as
+    // "invalid signature" (backend/internal/onboardgrant/onboardgrant.go).
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(11));
+    // SIWS is active on this signer (the precondition the fix must survive).
+    expect(signer.siwsSignature().startsWith("siws:")).toBe(true);
+
+    const credential = await mintOnboardGrant(
+      signer,
+      signer.publicKeyBase64,
+      ["user.profile"],
+      15 * 60 * 1000,
+    );
+
+    // Token shape: og1.<b64url(claims)>.<signature>
+    const rest = credential.grant.slice("og1.".length);
+    const dot = rest.indexOf(".");
+    const claimsBase64Url = rest.slice(0, dot);
+    const signature = rest.slice(dot + 1);
+    expect(signature.startsWith("v1:")).toBe(true);
+    expect(signature.startsWith("siws:")).toBe(false);
+
+    // The v1 signature must verify against the canonical payload the server
+    // reconstructs from the claims, with the freshness ts/nonce appended.
+    const claims = JSON.parse(
+      Buffer.from(claimsBase64Url, "base64url").toString("utf8"),
+    ) as {
+      wallet: string;
+      ownerPublicKey: string;
+      scope: Array<string>;
+      expiresAt: string;
+    };
+    const payload = canonicalPayload("onboard.grant", {
+      expiresAt: claims.expiresAt,
+      ownerPublicKey: claims.ownerPublicKey,
+      scope: claims.scope,
+      wallet: claims.wallet,
+    });
+    const [, timestampBase64Url, nonceBase64Url, signatureBase64] =
+      signature.split(":");
+    const timestamp = Buffer.from(
+      base64UrlToBytes(timestampBase64Url!),
+    ).toString("utf8");
+    const nonce = Buffer.from(base64UrlToBytes(nonceBase64Url!)).toString(
+      "utf8",
+    );
+    const signedBytes = new TextEncoder().encode(
+      `${payload}\n${timestamp}\n${nonce}`,
+    );
+    const publicKey = await webcrypto.subtle.importKey(
+      "raw",
+      signer.publicKey,
+      { name: "Ed25519" },
+      false,
+      ["verify"],
+    );
+    const valid = await webcrypto.subtle.verify(
+      "Ed25519",
+      publicKey,
+      Uint8Array.from(Buffer.from(signatureBase64!, "base64")),
+      signedBytes,
+    );
+    expect(valid).toBe(true);
   });
 
   it("attaches the bearer header and omits the body signature on onboarding writes", async () => {

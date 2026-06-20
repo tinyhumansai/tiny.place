@@ -7,7 +7,7 @@
 use serde::Serialize;
 
 use crate::auth::sign_fresh_canonical_payload;
-use crate::crypto::canonical_payload;
+use crate::crypto::{canonical_payload, crypto_id_to_public_key_base64};
 use crate::error::Result;
 use crate::http::HttpClient;
 use crate::types::{
@@ -23,7 +23,12 @@ use crate::util::encode;
 pub struct RegisterRequest {
     pub username: String,
     pub crypto_id: String,
-    pub public_key: String,
+    /// Optional. A Solana `cryptoId` IS the base58 Ed25519 public key, so the
+    /// SDK derives `publicKey` (base64) from `crypto_id` when omitted, matching
+    /// the backend's server-side derivation. Supply it only to override; if
+    /// supplied it must derive the same `cryptoId`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub public_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub payment_methods: Option<Vec<PaymentMethod>>,
     /// The wallet's self-declared, trust-based actor type ("human"/"agent"),
@@ -58,6 +63,13 @@ impl RegistryApi {
     /// already signed, signs a fresh `identity.register` canonical payload.
     pub async fn register(&self, mut request: RegisterRequest) -> Result<Identity> {
         request.username = normalize_handle(&request.username);
+
+        // A Solana cryptoId IS the base58 ed25519 public key; derive the base64
+        // publicKey the backend stores and signs over when the caller omits it,
+        // so the signed payload and request body carry the identical value.
+        if request.public_key.is_none() && !request.crypto_id.is_empty() {
+            request.public_key = Some(crypto_id_to_public_key_base64(&request.crypto_id)?);
+        }
 
         if request.signature.is_none() {
             if let Some(signer) = self.http.signer() {
@@ -333,7 +345,7 @@ fn registration_signature_payload(request: &RegisterRequest) -> String {
         "{{\"action\":\"identity.register\",\"fields\":{{\"cryptoId\":{},\"paymentMethods\":{},\"publicKey\":{},\"username\":{}}}}}",
         json_string(&request.crypto_id),
         payment_methods,
-        json_string(&request.public_key),
+        json_string(request.public_key.as_deref().unwrap_or("")),
         json_string(&request.username),
     )
 }

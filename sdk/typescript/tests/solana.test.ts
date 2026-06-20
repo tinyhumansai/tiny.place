@@ -3,8 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   LocalSigner,
   SOLANA_MAINNET_NETWORK,
+  SOLANA_USDC_MINT,
   executeSolanaPayment,
   executeSolanaX402Payment,
+  resolveSolanaAsset,
+  solanaAssetSymbol,
 } from "../src/index.js";
 
 describe("Solana payment execution", () => {
@@ -129,6 +132,66 @@ describe("Solana payment execution", () => {
       "sendTransaction",
       "getSignatureStatuses",
     ]);
+  });
+
+  it("settles an SPL transfer when the challenge advertises the mint address", async () => {
+    // The x402 challenge now carries the SPL mint in `asset` (not the "USDC"
+    // symbol). The mint must be echoed/used directly without an explicit mint.
+    const { secretKey, signer } = await createSigner();
+    const calls: Array<{ method: string; params: Array<unknown> }> = [];
+
+    const result = await executeSolanaPayment({
+      rpcUrl: "https://solana.example.test",
+      secretKey,
+      payment: {
+        network: SOLANA_MAINNET_NETWORK,
+        asset: SOLANA_USDC_MINT,
+        amount: "1",
+        to: "F8zMkwbG3hp1k2t3eQWQh9bsh8qrK8CtqfZ2dBrrW3Ee",
+      },
+      fetch: createMockFetch(calls),
+    });
+
+    expect(result.mint).toBe(SOLANA_USDC_MINT);
+    expect(result.from).toBe(signer.agentId);
+    // Followed the SPL path (token-account lookups), not native SOL.
+    expect(calls.map((call) => call.method)).toEqual([
+      "getTokenAccountsByOwner",
+      "getTokenAccountsByOwner",
+      "getLatestBlockhash",
+      "sendTransaction",
+      "getSignatureStatuses",
+    ]);
+  });
+
+  it("rejects an unknown non-address asset with no mint", async () => {
+    const { secretKey } = await createSigner();
+    await expect(
+      executeSolanaPayment({
+        rpcUrl: "https://solana.example.test",
+        secretKey,
+        payment: {
+          network: SOLANA_MAINNET_NETWORK,
+          asset: "WAT",
+          amount: "1",
+          to: "F8zMkwbG3hp1k2t3eQWQh9bsh8qrK8CtqfZ2dBrrW3Ee",
+        },
+      }),
+    ).rejects.toThrow("Unsupported Solana asset");
+  });
+
+  it("resolves assets by symbol and by mint address", () => {
+    expect(resolveSolanaAsset("USDC")?.mint).toBe(SOLANA_USDC_MINT);
+    expect(resolveSolanaAsset(SOLANA_USDC_MINT)?.symbol).toBe("USDC");
+    expect(solanaAssetSymbol(SOLANA_USDC_MINT)).toBe("USDC");
+    expect(solanaAssetSymbol("usdc")).toBe("USDC");
+    // Native SOL has no SPL mint.
+    expect(resolveSolanaAsset("SOL")?.native).toBe(true);
+    // An unknown but base58-shaped value is treated as a bare mint.
+    const bare = resolveSolanaAsset("So11111111111111111111111111111111111111112");
+    expect(bare?.symbol).toBe("WSOL");
+    // A short unknown symbol resolves to nothing.
+    expect(resolveSolanaAsset("WAT")).toBeUndefined();
   });
 
   it("signs x402 metadata after the Solana transaction signature is known", async () => {

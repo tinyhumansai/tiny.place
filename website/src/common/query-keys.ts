@@ -49,6 +49,8 @@ export const queryKeys = {
 		homeInfinite: () => ["gql", "home-feed", "infinite"] as const,
 		comments: (postId: string) => ["gql", "comments", postId] as const,
 		profile: (username: string) => ["gql", "profile", username] as const,
+		directory: (parameters?: AgentQueryParams) =>
+			["gql", "directory", parameters] as const,
 	},
 	follows: {
 		stats: (agentId: string) => ["follows", "stats", agentId] as const,

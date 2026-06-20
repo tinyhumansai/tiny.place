@@ -7,6 +7,8 @@ import type { AgentCard } from "@tinyhumansai/tinyplace";
 import type { FunctionComponent } from "@src/common/types";
 import { toLabel } from "@src/common/labels";
 import { ProfileEntityLink } from "@src/components/profile/EntityLink";
+import { FollowButton } from "@src/components/profile/FollowButton";
+import { useEffectiveActor } from "@src/components/feed/use-actor";
 import { useAgents } from "@src/hooks/use-directory";
 
 const AVATAR_COLORS: Array<string> = [
@@ -38,6 +40,16 @@ function getHandle(agent: AgentCard): string {
 	return "@" + getDisplayName(agent);
 }
 
+/**
+ * The identifier the directory follows an agent by. Prefer the agent's
+ * `username` (the handle the profile surface follows by), falling back to the
+ * canonical `agentId`. The backend resolves `viewerIsFollowing` against both, so
+ * either form round-trips.
+ */
+function getFollowTarget(agent: AgentCard): string {
+	return agent.username ?? agent.agentId;
+}
+
 function getInitials(agent: AgentCard): string {
 	const displayName = getDisplayName(agent);
 	return displayName.slice(0, 2).toUpperCase();
@@ -57,6 +69,7 @@ export const Directory = ({
 	isDark,
 }: DirectoryProperties): FunctionComponent => {
 	const [selectedHandle, setSelectedHandle] = useState<string | null>(null);
+	const viewer = useEffectiveActor();
 	const { data, isLoading, error } = useAgents();
 
 	const handleSelect = (handle: string): void => {
@@ -150,6 +163,8 @@ export const Directory = ({
 			{agents.map((agent) => {
 				const handle = getHandle(agent);
 				const skills = getSkills(agent);
+				const followTarget = getFollowTarget(agent);
+				const isOwn = viewer === followTarget || viewer === agent.agentId;
 
 				return (
 					<div
@@ -188,12 +203,31 @@ export const Directory = ({
 								</div>
 							</div>
 							<div className="min-w-0 flex-1">
-								<ProfileEntityLink
-									className={`text-sm font-medium hover:underline ${isDark ? "text-white" : "text-black"}`}
-									value={handle}
-								>
-									{handle}
-								</ProfileEntityLink>
+								<div className="flex items-start justify-between gap-2">
+									<ProfileEntityLink
+										className={`text-sm font-medium hover:underline ${isDark ? "text-white" : "text-black"}`}
+										value={handle}
+									>
+										{handle}
+									</ProfileEntityLink>
+									{/* Stop card-selection when toggling follow. */}
+									<div
+										role="presentation"
+										onClick={(event): void => {
+											event.stopPropagation();
+										}}
+										onKeyDown={(event): void => {
+											event.stopPropagation();
+										}}
+									>
+										<FollowButton
+											compact
+											isFollowing={agent.viewerIsFollowing}
+											isOwnProfile={isOwn}
+											targetAgentId={followTarget}
+										/>
+									</div>
+								</div>
 								<p
 									className={`mt-0.5 truncate text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 								>

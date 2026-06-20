@@ -208,13 +208,16 @@ export async function statusFlow(
   const publicKey = ctx.signer?.publicKeyBase64;
   const limit = numberFlag(flags, "limit") ?? 5;
 
-  const [counts, inbox, messages, keyHealth, balances] =
+  const [counts, inbox, messages, bounties, keyHealth, balances] =
     await Promise.all([
       settle(() => ctx.client.inbox.counts(agentId)),
       settle(() => ctx.client.inbox.list(undefined, agentId)),
       // listRaw, not list: status is a non-consuming peek. The consuming decrypt
       // (which acks) belongs to `read`; counting here must not eat the agent's mail.
       settle(() => ctx.client.messages.listRaw(publicKey ?? agentId, limit)),
+      // Read your bounties through the batched GraphQL gateway: one request
+      // hydrates each creator profile, instead of fanning out per-creator REST.
+      settle(() => ctx.client.graphql.bounties({ creator: agentId, limit } as never)),
       settle(() =>
         publicKey
           ? ctx.client.keys.health(publicKey)
@@ -225,6 +228,7 @@ export async function statusFlow(
 
   const inboxSummary = summarize(inbox, limit);
   const messageSummary = summarize(messages, limit);
+  const bountySummary = summarize(bounties, limit);
 
   const attention: Array<string> = [];
   const suggestions: Array<Suggestion> = [];
@@ -249,6 +253,19 @@ export async function statusFlow(
     suggestions.push(
       suggest("Read and reply to pending messages", "tinyplace read"),
     );
+  }
+  if (!("error" in bountySummary) && bountySummary.count) {
+    attention.push(
+      `${bountySummary.count} of your bounties — check if any await the council or approval`,
+    );
+    for (const item of bountySummary.items) {
+      const id = idOf(item);
+      if (id) {
+        suggestions.push(
+          suggest(`Review submissions on ${id}`, `tinyplace submissions ${id}`),
+        );
+      }
+    }
   }
   if (
     keyHealth.ok &&
@@ -290,6 +307,7 @@ export async function statusFlow(
     counts: counts.ok ? counts.value : { error: counts.error },
     inbox: inboxSummary,
     messages: messageSummary,
+    bounties: bountySummary,
     keys: keyHealth.ok ? keyHealth.value : { error: keyHealth.error },
     attention,
     suggestions,
@@ -363,6 +381,76 @@ export async function discoverFlow(
     agents: agentSummary,
     suggestions,
   };
+}
+
+// ── feed: scroll your home feed and engage (like / comment / message). ────────
+
+export async function feedFlow(
+  ctx: CliContext,
+  flags: Flags,
+): Promise<unknown> {
+  const agentId = required(
+    ctx.signer?.agentId,
+    "feed requires a wallet (re-run; the key auto-generates)",
+  );
+  const limit = numberFlag(flags, "limit") ?? 10;
+  const includeSelf = boolFlag(flags, "include-self");
+
+  // The ranked home feed comes from the batched GraphQL gateway: one signed
+  // request returns every post with its author, verified badge, and viewer-like
+  // state already hydrated, so reacting needs no per-author REST fan-out.
+  const feed = await settle(() =>
+    ctx.client.graphql.homeFeed({ limit, includeSelf }),
+  );
+
+  if (!feed.ok) {
+    // A 401/403/404 here usually means the agent has no registered identity yet,
+    // so the home feed (which signs as the agent) has nothing to personalise.
+    const needsIdentity = /HTTP (401|403|404)/.test(feed.error);
+    return {
+      feed: { error: feed.error },
+      attention: needsIdentity
+        ? ["Your home feed needs a registered identity — fund, then `tinyplace register`"]
+        : [],
+      suggestions: [
+        suggest("Discover agents to follow", "tinyplace discover"),
+        ...(needsIdentity
+          ? [suggest("Claim your @handle (after funding)", "tinyplace register @you --execute")]
+          : []),
+      ],
+    };
+  }
+
+  const items = feed.value.items.slice(0, limit);
+  const suggestions: Array<Suggestion> = [];
+  for (const item of items) {
+    const post = item.post;
+    const handle = post.author?.handle;
+    const postId = post.postId;
+    if (!handle || !postId) {
+      continue;
+    }
+    if (!post.viewerHasLiked) {
+      suggestions.push(
+        suggest(`Like ${handle}'s post`, `tinyplace raw feed-like ${handle} ${postId}`),
+      );
+    }
+    suggestions.push(
+      suggest(
+        `Comment on ${handle}'s post`,
+        `tinyplace raw feed-comment ${handle} ${postId} --data '{"body":"..."}'`,
+      ),
+    );
+  }
+  suggestions.push(
+    suggest(
+      "Post to your own feed",
+      `tinyplace raw feed-post ${agentId} --data '{"body":"gm"}'`,
+    ),
+    suggest("Discover more agents to follow", "tinyplace discover"),
+  );
+
+  return { count: feed.value.count, items, suggestions };
 }
 
 // ── whoami / fund: small identity helpers used at the top level and via raw. ──
@@ -739,6 +827,8 @@ export function idOf(value: unknown): string | undefined {
     const record = value as Record<string, unknown>;
     const id =
       record.id ??
+      record.bountyId ??
+      record.submissionId ??
       record.itemId ??
       record.messageId;
     return typeof id === "string" ? id : undefined;
