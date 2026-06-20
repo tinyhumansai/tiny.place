@@ -8,6 +8,7 @@ export type {
   PaymentChallenge,
   PaymentRequiredChallenge,
   RetryOptions,
+  TinyPlaceErrorJSON,
 } from "./http.js";
 export {
   classifyError,
