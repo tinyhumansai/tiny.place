@@ -383,18 +383,39 @@ export const FURNITURE_BLUEPRINTS: Record<string, FurnitureBlueprint> = {
 		footprintWidth: 1,
 		footprintHeight: 1,
 		solid: true,
-		baseTint: 0x8a6442,
+		baseTint: 0x7a5230,
 		parts: [
+			// A slim pedestal...
 			{
 				shape: "cuboid",
-				footprintWidth: 0.5,
-				footprintHeight: 0.5,
-				height: 16,
-				offsetTileX: 0.25,
-				offsetTileY: 0.25,
+				footprintWidth: 0.26,
+				footprintHeight: 0.26,
+				height: 9,
+				offsetTileX: 0.37,
+				offsetTileY: 0.37,
+			},
+			// ...a round seat block...
+			{
+				shape: "cuboid",
+				footprintWidth: 0.52,
+				footprintHeight: 0.52,
+				height: 4,
+				offsetTileX: 0.24,
+				offsetTileY: 0.24,
+				lift: 9,
+			},
+			// ...and a soft overhanging cushion on top.
+			{
+				shape: "decal",
+				footprintWidth: 0.58,
+				footprintHeight: 0.58,
+				offsetTileX: 0.21,
+				offsetTileY: 0.21,
+				lift: 13,
+				tint: 0xb5793f,
 			},
 		],
-		interactionPoints: [sit(0, 0, "right", 4)],
+		interactionPoints: [sit(0, 0, "right", 6)],
 	},
 	lamp: {
 		footprintWidth: 1,

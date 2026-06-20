@@ -153,11 +153,11 @@ function pokerDefinition(): RoomDefinition {
 		chair(4, 5, "right"),
 		chair(8, 4, "left"),
 		chair(8, 5, "left"),
-		// A little bar with stools along the front-left.
-		{ kind: "barCounter", tileX: 2, tileY: 9 },
-		{ kind: "stool", tileX: 2, tileY: 8 },
-		{ kind: "stool", tileX: 3, tileY: 8 },
-		{ kind: "stool", tileX: 4, tileY: 8 },
+		// A little bar with stools in front of the counter.
+		{ kind: "barCounter", tileX: 2, tileY: 8 },
+		{ kind: "stool", tileX: 2, tileY: 9 },
+		{ kind: "stool", tileX: 3, tileY: 9 },
+		{ kind: "stool", tileX: 4, tileY: 9 },
 		{ kind: "lamp", tileX: 1, tileY: 1 },
 		{ kind: "fern", tileX: 10, tileY: 1 },
 		{ kind: "trophy", tileX: 1, tileY: 9 },
