@@ -1,3 +1,4 @@
+import { classifyError } from "../errors.js";
 import { boolFlag, parseArgs } from "./args.js";
 import {
   CLI_GUIDES,
@@ -104,12 +105,19 @@ export async function runTinyPlaceCli(
       body?: unknown;
       paymentRequired?: unknown;
     };
+    // Stable, machine-readable recovery contract: `code` is what an agent should
+    // branch on; `hint` is the one-line next step; `retryable` says whether
+    // re-running as-is can succeed. `error` text stays human-facing and may change.
+    const classified = classifyError(error);
     return {
       code: 1,
       stdout: "",
       stderr: `${JSON.stringify(
         redactSecrets({
           error: error instanceof Error ? error.message : String(error),
+          code: classified.code,
+          hint: classified.hint,
+          retryable: classified.retryable,
           ...(detail.status ? { status: detail.status } : {}),
           ...(detail.body !== undefined ? { body: detail.body } : {}),
           ...(detail.paymentRequired

@@ -1,4 +1,5 @@
 import { mintOnboardGrant } from "../auth.js";
+import { errorCode, type TinyPlaceErrorCode } from "../errors.js";
 import {
   bodyFlag,
   boolFlag,
@@ -330,12 +331,12 @@ function summarizeBalances(
   return { network: onChain.network, assets };
 }
 
-/** True when a settled call failed with a 401/403/404 — the not-onboarded shape. */
-function notRegistered(settled: { ok: boolean; error?: string }): boolean {
-  if (settled.ok || !settled.error) {
+/** True when a settled call failed as auth_invalid/not_found — the not-onboarded shape. */
+function notRegistered(settled: Settled<unknown>): boolean {
+  if (settled.ok) {
     return false;
   }
-  return /HTTP (401|403|404)/.test(settled.error);
+  return settled.code === "auth_invalid" || settled.code === "not_found";
 }
 
 // ── discover: where can this agent participate right now? ─────────────────────
@@ -404,9 +405,10 @@ export async function feedFlow(
   );
 
   if (!feed.ok) {
-    // A 401/403/404 here usually means the agent has no registered identity yet,
-    // so the home feed (which signs as the agent) has nothing to personalise.
-    const needsIdentity = /HTTP (401|403|404)/.test(feed.error);
+    // auth_invalid/not_found here usually means the agent has no registered
+    // identity yet, so the home feed (which signs as the agent) can't personalise.
+    const needsIdentity =
+      feed.code === "auth_invalid" || feed.code === "not_found";
     return {
       feed: { error: feed.error },
       attention: needsIdentity
@@ -758,6 +760,7 @@ async function runStep(
       step,
       status: "failed",
       error: error instanceof Error ? error.message : String(error),
+      code: errorCode(error),
       ...(detail.status ? { status: detail.status } : {}),
       ...(detail.paymentRequired
         ? { paymentRequired: detail.paymentRequired }
@@ -799,7 +802,9 @@ export function buildOnboardUrl(
 
 // ── Internal helpers. ─────────────────────────────────────────────────────────
 
-type Settled<T> = { ok: true; value: T } | { ok: false; error: string };
+type Settled<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: string; code: TinyPlaceErrorCode };
 
 export async function settle<T>(action: () => Promise<T>): Promise<Settled<T>> {
   try {
@@ -808,6 +813,7 @@ export async function settle<T>(action: () => Promise<T>): Promise<Settled<T>> {
     return {
       ok: false,
       error: error instanceof Error ? error.message : String(error),
+      code: errorCode(error),
     };
   }
 }
