@@ -2,12 +2,19 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import {
 	LocalSigner,
 	mintOnboardGrant,
+	type Identity,
 	type TinyPlaceClient,
 	type User,
 } from "@tinyhumansai/tinyplace";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OnboardWizard, WebOnboardWizard } from "./OnboardWizard";
+
+const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
+vi.mock("next/navigation", () => ({
+	useRouter: (): unknown => ({ push: routerPush }),
+	useSearchParams: (): unknown => new URLSearchParams(),
+}));
 
 // Isolate the reusable TwitterVerificationCard from the API/query providers — we
 // only care that the wizard reaches and renders the step, not the network flow.
@@ -20,6 +27,7 @@ vi.mock("@src/hooks/use-reputation", () => ({
 
 afterEach(() => {
 	window.location.hash = "";
+	routerPush.mockClear();
 });
 
 describe("OnboardWizard", () => {
@@ -64,8 +72,8 @@ describe("WebOnboardWizard", () => {
 			/>
 		);
 
-		// The stepper advertises the optional X step.
-		expect(screen.getByText("Verify X")).toBeTruthy();
+		// The stepper advertises the optional X step (one-word title).
+		expect(screen.getByText("X")).toBeTruthy();
 		// Start on the handle step, then defer it to advance to the X step.
 		expect(screen.getByText(/Claim your handle/i)).toBeTruthy();
 		fireEvent.click(screen.getByText(/I.ll do this later/i));
@@ -73,5 +81,22 @@ describe("WebOnboardWizard", () => {
 		// The reusable verification card is now mounted in the wizard.
 		expect(screen.getByText(/Verify Twitter \/ X/i)).toBeTruthy();
 		expect(screen.getByText(/Skip for now/i)).toBeTruthy();
+	});
+
+	it("finalizes from the All set step via the Complete button", () => {
+		// A fully set-up user (email + profile + active handle) lands on the done
+		// step, where Complete returns them into the app.
+		render(
+			<WebOnboardWizard
+				activeIdentities={[{ status: "active", username: "ada" } as Identity]}
+				client={stubClient}
+				user={{ emailVerified: true, displayName: "Ada" } as User}
+				wallet="F8zMkwbG3hp1k2t3eQWQh9bsh8qrK8CtqfZ2dBrrW3Ee"
+			/>
+		);
+
+		expect(screen.getByText(/You.re all set/i)).toBeTruthy();
+		fireEvent.click(screen.getByText("Complete"));
+		expect(routerPush).toHaveBeenCalledWith("/");
 	});
 });

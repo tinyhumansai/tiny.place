@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactElement } from "react";
 import {
 	parseOnboardGrant,
@@ -22,20 +23,20 @@ type Step = { key: StepKey; title: string };
 // a Twitter/X attestation needs a wallet signature the bearer grant cannot
 // produce. Wallet-connected web onboarding (WEB_STEPS) includes it.
 const STEPS: Array<Step> = [
-	{ key: "email", title: "Verify email" },
-	{ key: "profile", title: "Your profile" },
-	{ key: "handle", title: "Claim handle" },
-	{ key: "fund", title: "Fund wallet" },
-	{ key: "done", title: "All set" },
+	{ key: "email", title: "Email" },
+	{ key: "profile", title: "Profile" },
+	{ key: "handle", title: "Handle" },
+	{ key: "fund", title: "Wallet" },
+	{ key: "done", title: "Done" },
 ];
 
 const WEB_STEPS: Array<Step> = [
-	{ key: "email", title: "Verify email" },
-	{ key: "profile", title: "Your profile" },
-	{ key: "handle", title: "Claim handle" },
-	{ key: "twitter", title: "Verify X" },
-	{ key: "fund", title: "Fund wallet" },
-	{ key: "done", title: "All set" },
+	{ key: "email", title: "Email" },
+	{ key: "profile", title: "Profile" },
+	{ key: "handle", title: "Handle" },
+	{ key: "twitter", title: "X" },
+	{ key: "fund", title: "Wallet" },
+	{ key: "done", title: "Done" },
 ];
 
 const fieldClass =
@@ -486,12 +487,15 @@ function DoneStep({
 	handleDone,
 	profileDone,
 	twitterDone,
+	onComplete,
 }: {
 	emailDone: boolean;
 	handleDone: boolean;
 	profileDone: boolean;
 	/** Omitted by the CLI wizard (no X step); set by the web wizard. */
 	twitterDone?: boolean;
+	/** Finalizes onboarding and drops the user back into tiny.place. */
+	onComplete: () => void;
 }): ReactElement {
 	return (
 		<section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
@@ -505,9 +509,16 @@ function DoneStep({
 				) : null}
 			</ul>
 			<p className="text-xs text-muted">
-				You can return to tiny.place now. If you skipped a handle, claim one
-				from Identities before posting, messaging, or listing work.
+				If you skipped a handle, claim one from Identities before posting,
+				messaging, or listing work.
 			</p>
+			<button
+				className={primaryButtonClass}
+				type="button"
+				onClick={onComplete}
+			>
+				Complete
+			</button>
 		</section>
 	);
 }
@@ -526,6 +537,7 @@ export function OnboardWizard(): FunctionComponent {
 		() => (grant ? createOnboardClient(grant) : undefined),
 		[grant]
 	);
+	const router = useRouter();
 	const [step, setStep] = useState<StepKey>("email");
 	const [emailDone, setEmailDone] = useState(false);
 	const [profileDone, setProfileDone] = useState(false);
@@ -614,6 +626,9 @@ export function OnboardWizard(): FunctionComponent {
 					emailDone={emailDone}
 					handleDone={handleDone}
 					profileDone={profileDone}
+					onComplete={() => {
+						router.push("/");
+					}}
 				/>
 			) : null}
 		</main>
@@ -661,6 +676,13 @@ export function WebOnboardWizard({
 	user,
 	wallet,
 }: WebOnboardWizardProperties): FunctionComponent {
+	const router = useRouter();
+	const searchParameters = useSearchParams();
+	// Where the onboarding gate sent the user from; return there on completion,
+	// guarding against bouncing back into onboarding. Falls back to the home feed.
+	const returnTo = searchParameters.get("returnTo");
+	const completeHref =
+		returnTo && !returnTo.startsWith("/onboard") ? returnTo : "/";
 	const [step, setStep] = useState<StepKey>(() =>
 		firstIncompleteStep({ activeIdentities, user })
 	);
@@ -774,6 +796,9 @@ export function WebOnboardWizard({
 					handleDone={handleDone}
 					profileDone={profileDone}
 					twitterDone={twitterDone}
+					onComplete={() => {
+						router.push(completeHref);
+					}}
 				/>
 			) : null}
 		</main>
