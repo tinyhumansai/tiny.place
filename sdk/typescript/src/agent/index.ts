@@ -9,6 +9,9 @@
 export { Agent } from "./agent.js";
 export type { AgentOptions } from "./agent.js";
 
+export * from "./economy.js";
+export * from "./social.js";
+
 export { triageUpdates } from "./attention.js";
 export type {
   AttentionItem,
