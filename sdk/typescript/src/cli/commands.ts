@@ -617,30 +617,6 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     usage: "--network <net>",
   },
   {
-    name: "signer-create",
-    capability: "signers",
-    description: "Create an approved signer.",
-    usage: "--data '<json>'",
-  },
-  {
-    name: "signers",
-    capability: "signers",
-    description: "List approved signers.",
-    usage: "[--grantor <id>]",
-  },
-  {
-    name: "signer",
-    capability: "signers",
-    description: "Get approved signer details.",
-    usage: "<signerKey> [--grantor <id>]",
-  },
-  {
-    name: "signer-revoke",
-    capability: "signers",
-    description: "Revoke an approved signer.",
-    usage: "<signerKey> [--grantor <id>]",
-  },
-  {
     name: "pay",
     capability: "payments",
     description: "Settle an x402 payment.",

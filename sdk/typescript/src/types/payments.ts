@@ -64,10 +64,10 @@ export interface X402SettleRequest {
   reference?: Record<string, unknown>;
   shielded?: boolean;
   /**
-   * Base64 legacy Solana transaction built and session-signed by the client
-   * (delegate authority), with the fee-payer slot left for the facilitator. When
-   * present the backend validates it, adds the fee-payer signature, and submits
-   * it so the payer's own funds move via the session-wallet delegate.
+   * Base64 legacy Solana transaction built and payer-signed by the client, with
+   * the fee-payer slot left for the facilitator. When present the backend
+   * validates it, adds the facilitator's fee-payer signature, and submits it so
+   * the payer's own funds move while the facilitator pays the network fee.
    */
   delegatedTx?: string;
 }
@@ -187,24 +187,4 @@ export interface DueRenewalResult {
   failed: number;
   suspended: number;
   errors?: Array<string>;
-}
-
-export type SignerApprovalStatus =
-  | "active"
-  | "revoked"
-  | "expired"
-  | "exhausted";
-
-export interface SignerApproval {
-  signerKey: string;
-  grantor: string;
-  network: string;
-  asset: string;
-  budget: string;
-  spent: string;
-  remaining: string;
-  expiresAt: string;
-  nonce: string;
-  status: SignerApprovalStatus;
-  createdAt: string;
 }

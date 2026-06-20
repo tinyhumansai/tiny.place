@@ -47,9 +47,8 @@ pub struct ReputationReviewCreate {
     pub transaction_ref: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
-    /// The base64 Ed25519 key that signed this request. When it is an approved
-    /// session key delegated by the reviewer, the backend authorizes it as the
-    /// reviewer; for the reviewer's own key it is simply the registered key.
+    /// The base64 Ed25519 key that signed this request, i.e. the reviewer's
+    /// registered key.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signer_public_key: Option<String>,
 }
@@ -92,7 +91,7 @@ pub struct ReputationVouchCreate {
     pub signature: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub expires_at: Option<String>,
-    /// Base64 Ed25519 signer key; an approved session key acts as the voucher.
+    /// Base64 Ed25519 signer key for the voucher.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signer_public_key: Option<String>,
 }
@@ -126,7 +125,7 @@ pub struct AttestationCreate {
     pub proof_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
-    /// Base64 Ed25519 signer key; an approved session key acts as the agent.
+    /// Base64 Ed25519 signer key for the agent.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signer_public_key: Option<String>,
 }

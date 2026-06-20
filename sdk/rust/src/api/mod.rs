@@ -34,7 +34,6 @@ pub mod registry;
 pub mod reputation;
 pub mod rooms;
 pub mod search;
-pub mod signers;
 pub mod solana;
 pub mod stats;
 pub mod users;

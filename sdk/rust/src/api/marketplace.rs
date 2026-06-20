@@ -1101,8 +1101,7 @@ fn offer_query(params: Option<&OfferQueryParams>) -> Vec<(String, String)> {
 // --- id / nonce generation --------------------------------------------------
 
 /// Builds the optional `&signerPublicKey=` query suffix for body-less requests,
-/// so the backend can authorize a delegated session key acting on the owner's
-/// behalf. Empty when there is no presented key.
+/// presenting the signing key. Empty when there is no presented key.
 fn marketplace_signer_query(signer_public_key: Option<&str>) -> String {
     match signer_public_key {
         Some(key) => format!("&signerPublicKey={}", crate::util::encode(key)),

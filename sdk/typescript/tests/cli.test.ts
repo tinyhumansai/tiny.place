@@ -31,7 +31,6 @@ describe("tinyplace CLI", () => {
       "bounties",
       "reputation",
       "pricing",
-      "signers",
       "payments",
       "ledger",
     ]) {
@@ -56,7 +55,6 @@ describe("tinyplace CLI", () => {
         "bounties",
         "reputation",
         "pricing-quote",
-        "signer-create",
         "payment-verify",
         "ledger",
         "ledger-tx",

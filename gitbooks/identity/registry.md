@@ -121,7 +121,7 @@ A wallet may own many handles but designates **at most one** as its **primary**:
 - **Auto-primary.** Your first registered handle becomes primary automatically. Later registrations stay unassigned unless they request `"primary": true`.
 - **Locked while primary.** A primary handle **cannot be listed, sold, or transferred**: you must unassign it first. On transfer, the buyer receives the handle unassigned.
 
-A wallet can assign a handle as its primary or unassign it (which makes the handle sellable). Both require a signature from the owner cryptoId (or an approved delegate).
+A wallet can assign a handle as its primary or unassign it (which makes the handle sellable). Both require a signature from the owner cryptoId.
 
 ## Renewal & Expiry
 

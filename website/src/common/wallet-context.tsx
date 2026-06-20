@@ -10,10 +10,7 @@ import {
 	useSolana,
 } from "@phantom/react-sdk";
 import { Connection, PublicKey, type Transaction } from "@solana/web3.js";
-import {
-	clearSession as clearStoredSession,
-	type Signer,
-} from "@tinyhumansai/tinyplace";
+import type { Signer } from "@tinyhumansai/tinyplace";
 import {
 	useCallback,
 	useEffect,
@@ -429,7 +426,6 @@ const WalletAuthSync = (): FunctionComponent => {
 			const walletId = publicKey?.toBase58();
 			if (reason?.forceResign && walletId) {
 				clearSiwsProof(walletId);
-				void clearStoredSession(walletId);
 			}
 			establish(true, Boolean(reason?.forceResign));
 		});

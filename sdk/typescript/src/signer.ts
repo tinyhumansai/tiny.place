@@ -55,8 +55,8 @@ function publicKeyBase64FromSigner(signer: SigningKey): string | undefined {
 
 /**
  * Metadata that lets the backend verify an x402 signature against the key that
- * actually signed it. Direct wallet signers contribute `{ publicKey }`; hot
- * session signers can contribute `{ publicKey, parentNonce }`.
+ * actually signed it. Wallet signers contribute `{ publicKey }`; signers that
+ * implement {@link X402MetadataSigner} can contribute additional fields.
  */
 export function signerPaymentMetadata(
   signer: SigningKey,
@@ -69,9 +69,9 @@ export function signerPaymentMetadata(
 }
 
 /**
- * Returns the registered wallet/grantor public key for identity-bound request
- * fields. For a delegated session signer this differs from the session key
- * that signs requests.
+ * Returns the registered wallet public key for identity-bound request fields.
+ * Signers implementing {@link IdentityPublicKeySigner} can expose an identity
+ * key distinct from the key that signs requests.
  */
 export function identityPublicKey(signer: SigningKey): string | undefined {
   if (hasIdentityPublicKey(signer)) {

@@ -65,8 +65,8 @@ export interface HttpClientOptions {
   fetch?: typeof globalThis.fetch;
   /**
    * Invoked when a request is rejected with 401/403, just before the error is
-   * thrown. Lets the caller react to an invalidated session (e.g. a revoked or
-   * expired approved-signer grant) by re-authenticating. Must not throw.
+   * thrown. Lets the caller react to an invalidated session by
+   * re-authenticating. Must not throw.
    */
   onAuthInvalid?: (status: number, body: unknown) => Promise<void> | void;
 }
@@ -115,7 +115,7 @@ export class HttpClient {
    * The base64 Ed25519 public key presented for signed requests (the signing
    * key's public key), if any. Used by callers that attach their own auth
    * headers (e.g. a DELETE with the signature in X-TinyPlace-Signature) and
-   * need to also present the signing key for approved-signer delegation.
+   * need to also present the signing key's public key.
    */
   signingPublicKey(): string | undefined {
     return this.publicKeyBase64;

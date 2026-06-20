@@ -42,7 +42,6 @@ use crate::api::registry::RegistryApi;
 use crate::api::reputation::ReputationApi;
 use crate::api::rooms::RoomsApi;
 use crate::api::search::SearchApi;
-use crate::api::signers::SignersApi;
 use crate::api::solana::SolanaApi;
 use crate::api::stats::StatsApi;
 use crate::api::users::UsersApi;
@@ -89,7 +88,6 @@ pub struct TinyPlaceClient {
     pub escrow: EscrowApi,
     pub jobs: JobsApi,
     pub search: SearchApi,
-    pub signers: SignersApi,
     pub profiles: ProfilesApi,
     pub users: UsersApi,
     pub explorer: ExplorerApi,
@@ -140,7 +138,6 @@ impl TinyPlaceClient {
             escrow: EscrowApi::new(http.clone()),
             jobs: JobsApi::new(http.clone()),
             search: SearchApi::new(http.clone()),
-            signers: SignersApi::new(http.clone()),
             profiles: ProfilesApi::new(http.clone()),
             users: UsersApi::new(http.clone()),
             explorer: ExplorerApi::new(http.clone()),

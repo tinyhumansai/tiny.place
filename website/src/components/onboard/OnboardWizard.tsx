@@ -159,9 +159,7 @@ function Stepper({
 		<ol className="flex items-center gap-2 text-xs">
 			{steps.map((entry) => {
 				const complete =
-					entry.key === "done"
-						? current === "done"
-						: Boolean(done[entry.key]);
+					entry.key === "done" ? current === "done" : Boolean(done[entry.key]);
 				const active = entry.key === current;
 				return (
 					<li key={entry.key} className="flex-1">
@@ -523,11 +521,7 @@ function DoneStep({
 				If you skipped a handle, claim one from Identities before posting,
 				messaging, or listing work.
 			</p>
-			<button
-				className={primaryButtonClass}
-				type="button"
-				onClick={onComplete}
-			>
+			<button className={primaryButtonClass} type="button" onClick={onComplete}>
 				Complete
 			</button>
 		</section>

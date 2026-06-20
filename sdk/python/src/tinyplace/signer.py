@@ -36,7 +36,7 @@ class LocalSigner(Signer):
     By default the signer mints a reusable SIWS ownership proof and authenticates
     requests with it (the preferred scheme). Pass ``siws=False`` to fall back to
     per-request freshness-bound Ed25519 signatures, which are still required for
-    delegated session keys, x402, and admin auth.
+    x402 and admin auth.
     """
 
     def __init__(

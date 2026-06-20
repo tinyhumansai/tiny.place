@@ -1,7 +1,7 @@
 import type { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import { createContext, useContext } from "react";
 
-import type { WalletSignTransaction } from "@src/common/session-wallet";
+import type { WalletSignTransaction } from "@src/common/wallet-signer";
 
 export type SignMessageFunction = (message: Uint8Array) => Promise<Uint8Array>;
 
