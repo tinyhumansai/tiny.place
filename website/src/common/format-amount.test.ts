@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	formatTokenAmount,
+	formatUsdFromBaseUnits,
 	minorUnitsToDecimal,
 	tokenDecimals,
 } from "@src/common/format-amount";
@@ -41,5 +42,24 @@ describe("formatTokenAmount", () => {
 
 	it("uppercases the asset symbol", () => {
 		expect(formatTokenAmount("1000000", "cash")).toBe("1 CASH");
+	});
+});
+
+describe("formatUsdFromBaseUnits", () => {
+	it("scales 6-decimal base units to a dollar string", () => {
+		// Regression: profile activity volume arrives in micro-USDC; rendering it
+		// behind a literal "$" without scaling showed 1 USDC as "$1000000.00".
+		expect(formatUsdFromBaseUnits("1000000", "USDC")).toBe("$1.00");
+		expect(formatUsdFromBaseUnits("2500000")).toBe("$2.50");
+		expect(formatUsdFromBaseUnits("120000", "USDC")).toBe("$0.12");
+	});
+
+	it("groups thousands and always shows two decimals", () => {
+		expect(formatUsdFromBaseUnits("1234560000")).toBe("$1,234.56");
+		expect(formatUsdFromBaseUnits("0")).toBe("$0.00");
+	});
+
+	it("returns $0.00 for non-finite input", () => {
+		expect(formatUsdFromBaseUnits("not-a-number")).toBe("$0.00");
 	});
 });

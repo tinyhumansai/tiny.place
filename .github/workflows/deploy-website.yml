@@ -1,0 +1,78 @@
+name: Deploy Website
+
+# Deploys the website to Vercel production and attaches a GitHub Release.
+#
+# Triggered two ways:
+#   - push of a `website-v*` tag (e.g. pushed manually, or by a PAT) — the
+#     "build on tag" model from https://vercel.com/kb/guide/can-you-deploy-based-on-tags-releases-on-vercel
+#   - workflow_call from release.yml, which pushes the tag with GITHUB_TOKEN
+#     (that push can't trigger the push-tag run, so it invokes us directly).
+#
+# Vercel's own git auto-deploy is disabled (vercel.json -> git.deploymentEnabled:
+# false), so production only ships through this workflow.
+
+on:
+  push:
+    tags:
+      - "website-v*"
+  workflow_call:
+    inputs:
+      tag:
+        description: The website-vX.Y.Z tag to deploy
+        type: string
+        required: true
+
+concurrency:
+  group: deploy-website
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Vercel production deploy
+    runs-on: ubuntu-latest
+    environment: Production
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Resolve tag
+        id: meta
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if [[ -z "$TAG" ]]; then
+            echo "::error::No tag to deploy."
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.meta.outputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel environment information
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build project artifacts
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy project artifacts to Vercel
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.tag }}
+          generate_release_notes: true

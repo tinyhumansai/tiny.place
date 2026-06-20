@@ -28,19 +28,62 @@ const PACKAGES = [
       writeCargoLockVersion(resolvePath("rust/Cargo.lock"), "tinyplace", version);
     },
   },
+  {
+    name: "website",
+    path: "../website/package.json",
+    readVersion: readPackageJsonVersion,
+    writeVersion: writePackageJsonVersion,
+  },
 ];
+
+// The SDKs that are bumped when no explicit --only selection is given. The
+// website is bumpable too, but only when named explicitly (it is released on
+// its own cadence via the website-v* tag, not alongside an "all SDKs" bump).
+const DEFAULT_TARGETS = ["typescript", "python", "rust"];
 
 function usage(exitCode = 0) {
   const stream = exitCode === 0 ? process.stdout : process.stderr;
-  stream.write(`Usage: node sdk/bump-versions.mjs <patch|minor|major> [--sync] [--dry-run]\n\n`);
-  stream.write("Bumps SDK package versions in one shot:\n");
-  stream.write("  - sdk/typescript/package.json\n");
-  stream.write("  - sdk/python/pyproject.toml\n");
-  stream.write("  - sdk/rust/Cargo.toml and sdk/rust/Cargo.lock\n\n");
-  stream.write("By default, each package is bumped from its own current version.\n");
-  stream.write("With --sync, all packages are set to the same next version, based on the highest current SDK version.\n");
+  stream.write(`Usage: node sdk/bump-versions.mjs <patch|minor|major> [--only <list>] [--sync] [--dry-run]\n\n`);
+  stream.write("Bumps package versions in one shot:\n");
+  stream.write("  - sdk/typescript/package.json   (target: typescript)\n");
+  stream.write("  - sdk/python/pyproject.toml     (target: python)\n");
+  stream.write("  - sdk/rust/Cargo.toml + Cargo.lock (target: rust)\n");
+  stream.write("  - website/package.json          (target: website)\n\n");
+  stream.write("By default the three SDKs are bumped, each from its own current version.\n");
+  stream.write("With --only typescript,website (comma/space separated), only the named targets are bumped.\n");
+  stream.write("With --sync, the selected targets are set to the same next version, based on their highest current version.\n");
   stream.write("With --dry-run, planned changes are printed without writing files.\n");
   process.exit(exitCode);
+}
+
+// Parse the value(s) for --only. Accepts comma- or space-separated names and
+// validates them against the known package names.
+function parseOnly(args) {
+  const index = args.indexOf("--only");
+  if (index === -1) {
+    return null;
+  }
+
+  const raw = args[index + 1];
+  if (!raw || raw.startsWith("-")) {
+    process.stderr.write("--only requires a comma-separated list of targets\n");
+    usage(1);
+  }
+
+  const known = new Set(PACKAGES.map((pkg) => pkg.name));
+  const selected = raw
+    .split(/[\s,]+/)
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+  const unknown = selected.filter((name) => !known.has(name));
+  if (selected.length === 0 || unknown.length > 0) {
+    process.stderr.write(`unknown --only target(s): ${unknown.join(", ") || "(none given)"}\n`);
+    process.stderr.write(`valid targets: ${[...known].join(", ")}\n`);
+    usage(1);
+  }
+
+  return selected;
 }
 
 function main() {
@@ -49,16 +92,33 @@ function main() {
     usage(0);
   }
 
-  const bump = args.find((arg) => !arg.startsWith("-"));
+  const only = parseOnly(args);
+
+  // Drop --only and its value before scanning for the positional bump arg so
+  // the comma-separated target list isn't mistaken for the bump.
+  const onlyIndex = args.indexOf("--only");
+  const positional = args.filter((arg, index) => {
+    if (onlyIndex !== -1 && (index === onlyIndex || index === onlyIndex + 1)) {
+      return false;
+    }
+    return !arg.startsWith("-");
+  });
+
+  const bump = positional[0];
   const sync = args.includes("--sync");
   const dryRun = args.includes("--dry-run");
-  const unknown = args.filter((arg) => arg.startsWith("-") && !["--sync", "--dry-run"].includes(arg));
+  const unknown = args.filter(
+    (arg) => arg.startsWith("-") && !["--sync", "--dry-run", "--only"].includes(arg),
+  );
 
   if (!["patch", "minor", "major"].includes(bump) || unknown.length > 0) {
     usage(1);
   }
 
-  const current = PACKAGES.map((pkg) => {
+  const targets = only ?? DEFAULT_TARGETS;
+  const selectedPackages = PACKAGES.filter((pkg) => targets.includes(pkg.name));
+
+  const current = selectedPackages.map((pkg) => {
     const absolutePath = resolvePath(pkg.path);
     return {
       ...pkg,
@@ -134,9 +194,23 @@ function readPackageJsonVersion(path) {
 }
 
 function writePackageJsonVersion(path, version) {
-  const json = JSON.parse(readFileSync(path, "utf8"));
-  json.version = version;
-  writeFileSync(path, `${JSON.stringify(json, null, 2)}\n`);
+  // Replace the top-level "version" field in place rather than reserialising the
+  // whole file, so existing indentation/formatting (tabs vs spaces, key order)
+  // is preserved and the diff stays to a single line. package.json only carries
+  // a literal `"version":` at the top level (dependency entries are name:range),
+  // so the first match is the package version.
+  const text = readFileSync(path, "utf8");
+  let replaced = false;
+  const updated = text.replace(/("version"\s*:\s*)"[^"]+"/, (match, prefix) => {
+    replaced = true;
+    return `${prefix}"${version}"`;
+  });
+
+  if (!replaced) {
+    throw new Error(`Missing top-level "version" field in ${path}`);
+  }
+
+  writeFileSync(path, updated);
 }
 
 function sectionPattern(sectionName) {

@@ -46,3 +46,20 @@ export function formatTokenAmount(baseUnits: string, asset?: string): string {
 		maximumFractionDigits: decimals,
 	})} ${symbol}`;
 }
+
+/**
+ * Formats a base-unit amount of a USD-pegged asset (USDC/CASH) as a dollar
+ * string, e.g. ("1000000", "USDC") => "$1.00". The backend reports activity
+ * volume in 6-decimal base units, so rendering it behind a literal "$" without
+ * scaling overstates the figure by 10^decimals (1 USDC shows as "$1000000.00").
+ */
+export function formatUsdFromBaseUnits(
+	baseUnits: string,
+	asset?: string
+): string {
+	const dollars = Number(minorUnitsToDecimal(baseUnits, tokenDecimals(asset)));
+	return `$${dollars.toLocaleString(undefined, {
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2,
+	})}`;
+}

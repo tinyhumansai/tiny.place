@@ -1,0 +1,222 @@
+name: Release
+
+# Manual release dispatcher. Tick the targets you want to ship and pick the
+# version bump; the prepare job bumps + commits + pushes the selected versions,
+# then each selected SDK is published to its registry and — if the website is
+# selected — a `website-vX.Y.Z` tag is pushed which deploys it to Vercel and
+# attaches a GitHub Release (see deploy-website.yml).
+
+on:
+  workflow_dispatch:
+    inputs:
+      typescript:
+        description: Publish TypeScript SDK to npm
+        type: boolean
+        default: false
+      python:
+        description: Publish Python SDK to PyPI
+        type: boolean
+        default: false
+      rust:
+        description: Publish Rust SDK to crates.io
+        type: boolean
+        default: false
+      website:
+        description: Release the website (GitHub Release + Vercel deploy)
+        type: boolean
+        default: false
+      bump:
+        description: Version bump to apply to the selected targets
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    name: Prepare release commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      sha: ${{ steps.release.outputs.sha }}
+      website_tag: ${{ steps.release.outputs.website_tag }}
+      targets: ${{ steps.release.outputs.targets }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Configure git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Build target list
+        id: targets
+        env:
+          TYPESCRIPT: ${{ inputs.typescript }}
+          PYTHON: ${{ inputs.python }}
+          RUST: ${{ inputs.rust }}
+          WEBSITE: ${{ inputs.website }}
+        run: |
+          list=()
+          if [[ "$TYPESCRIPT" == "true" ]]; then list+=(typescript); fi
+          if [[ "$PYTHON" == "true" ]]; then list+=(python); fi
+          if [[ "$RUST" == "true" ]]; then list+=(rust); fi
+          if [[ "$WEBSITE" == "true" ]]; then list+=(website); fi
+          if [[ ${#list[@]} -eq 0 ]]; then
+            echo "::error::Select at least one target to release."
+            exit 1
+          fi
+          echo "targets=${list[*]}" >> "$GITHUB_OUTPUT"
+
+      - name: Bump, commit, and tag
+        id: release
+        env:
+          BUMP: ${{ inputs.bump }}
+          TARGETS: ${{ steps.targets.outputs.targets }}
+        run: scripts/release.sh --bump "$BUMP" --targets "$TARGETS"
+
+      - name: Push release commit and tag
+        env:
+          WEBSITE_TAG: ${{ steps.release.outputs.website_tag }}
+        run: |
+          git push origin HEAD:main
+          if [[ -n "$WEBSITE_TAG" ]]; then
+            git push origin "$WEBSITE_TAG"
+          fi
+
+  publish-typescript:
+    name: Publish TypeScript SDK
+    needs: prepare
+    if: ${{ inputs.typescript }}
+    runs-on: ubuntu-latest
+    environment: Production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package
+        run: pnpm build
+        working-directory: sdk/typescript
+
+      - name: Run tests
+        run: pnpm test
+        working-directory: sdk/typescript
+
+      - name: Publish to npm
+        run: npm publish --access public --provenance
+        working-directory: sdk/typescript
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-python:
+    name: Publish Python SDK
+    needs: prepare
+    if: ${{ inputs.python }}
+    runs-on: ubuntu-latest
+    environment: Production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.11"
+
+      - name: Build package
+        run: uv build
+        working-directory: sdk/python
+
+      - name: Publish to PyPI
+        run: uv publish
+        working-directory: sdk/python
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+
+  publish-rust:
+    name: Publish Rust SDK
+    needs: prepare
+    if: ${{ inputs.rust }}
+    runs-on: ubuntu-latest
+    environment: Production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: sdk/rust
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+        working-directory: sdk/rust
+
+      - name: Run clippy
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: sdk/rust
+
+      - name: Run tests
+        run: cargo test
+        working-directory: sdk/rust
+
+      - name: Publish to crates.io
+        run: cargo publish
+        working-directory: sdk/rust
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  deploy-website:
+    name: Deploy website
+    needs: prepare
+    if: ${{ inputs.website }}
+    # GITHUB_TOKEN-pushed tags don't trigger the push-tag workflow, so invoke
+    # the deploy workflow directly with the tag the prepare job created.
+    uses: ./.github/workflows/deploy-website.yml
+    with:
+      tag: ${{ needs.prepare.outputs.website_tag }}
+    secrets: inherit

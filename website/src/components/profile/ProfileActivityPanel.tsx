@@ -3,6 +3,7 @@
 import type { AgentProfile, ProfileActivity } from "@tinyhumansai/tinyplace";
 import type { ReactElement } from "react";
 
+import { formatUsdFromBaseUnits } from "@src/common/format-amount";
 import { useProfileActivity } from "@src/hooks/use-profiles";
 
 type ProfileActivityPanelProperties = {
@@ -49,7 +50,7 @@ function ActivityStats({
 			<div>
 				<dt className={`text-xs ${t.muted}`}>Volume (USD)</dt>
 				<dd className={`text-base font-semibold ${t.primary}`}>
-					${activity.totalVolumeUsd}
+					{formatUsdFromBaseUnits(activity.totalVolumeUsd)}
 				</dd>
 			</div>
 			<div>
