@@ -319,21 +319,38 @@ function failedStep(step: string, error: unknown): OnboardStep {
 }
 
 /**
- * Resolve a default session store for the runtime. On Node, lazily import the
- * filesystem store (kept out of the core/browser bundle via dynamic import);
- * elsewhere fall back to an in-memory store.
+ * A factory that builds the default session store for {@link Agent.create} when
+ * no `store` is passed — registered by `@tinyhumansai/tinyplace/node` so Node
+ * agents persist to disk.
+ */
+export type DefaultSessionStoreFactory = (
+  signer: Signer,
+) => Promise<SessionStore>;
+
+let defaultStoreFactory: DefaultSessionStoreFactory | undefined;
+
+/**
+ * Register the factory {@link Agent.create} uses when no `store` is given.
+ * Importing `@tinyhumansai/tinyplace/node` calls this (a side effect) so Node
+ * agents get a filesystem store automatically; the core never references the
+ * Node store, keeping browser bundles free of `node:fs`. Unset, the default is
+ * an in-memory store.
+ */
+export function registerDefaultSessionStore(
+  factory: DefaultSessionStoreFactory,
+): void {
+  defaultStoreFactory = factory;
+}
+
+/**
+ * Resolve a default session store. Uses the registered factory (filesystem on
+ * Node, via the `/node` entry) when present; otherwise an in-memory store, which
+ * keeps the core isomorphic — browser callers pass a `/browser` store or accept
+ * non-persistent sessions.
  */
 async function defaultStore(signer: Signer): Promise<SessionStore> {
-  const identityKeyPair = await signer.getX25519KeyPair();
-  if (
-    typeof process !== "undefined" &&
-    Boolean((process as { versions?: { node?: string } }).versions?.node)
-  ) {
-    const { FileSessionStore } = await import("../node/file-session-store.js");
-    return new FileSessionStore(
-      FileSessionStore.defaultPath(signer.publicKeyBase64),
-      identityKeyPair,
-    );
+  if (defaultStoreFactory) {
+    return defaultStoreFactory(signer);
   }
-  return new MemorySessionStore(identityKeyPair);
+  return new MemorySessionStore(await signer.getX25519KeyPair());
 }

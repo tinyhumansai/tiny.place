@@ -6,8 +6,8 @@
  * Importable as `@tinyhumansai/tinyplace/agent` or, for the curated entrypoints,
  * from the package root.
  */
-export { Agent } from "./agent.js";
-export type { AgentOptions } from "./agent.js";
+export { Agent, registerDefaultSessionStore } from "./agent.js";
+export type { AgentOptions, DefaultSessionStoreFactory } from "./agent.js";
 
 export * from "./economy.js";
 export * from "./social.js";

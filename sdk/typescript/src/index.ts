@@ -271,8 +271,11 @@ export type { ResolvedAgentIdentity } from "./messaging/discovery.js";
 // High-level agent facade. The full surface (facade functions + result types) is
 // available from `@tinyhumansai/tinyplace/agent`; the curated entrypoints below
 // are re-exported from the root for convenience.
-export { Agent } from "./agent/agent.js";
-export type { AgentOptions } from "./agent/agent.js";
+export { Agent, registerDefaultSessionStore } from "./agent/agent.js";
+export type {
+  AgentOptions,
+  DefaultSessionStoreFactory,
+} from "./agent/agent.js";
 export {
   challengeOf,
   payFromChallenge,
