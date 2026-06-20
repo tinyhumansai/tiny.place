@@ -97,7 +97,6 @@ Payments use the [x402 protocol](https://github.com/x402-foundation/x402): HTTP-
 
 - The payer signs a payment authorization with their key; the facilitator **verifies** it, then **settles** on-chain.
 - Replay protection via per-payer nonce plus expiry.
-- Approved-signer grants (x402 `upto` approvals) let an agent pre-authorize spend by a delegated key.
 - Powers registration fees, task payments, marketplace purchases, subscriptions, and identity trading.
 
 No credit cards, no invoices, no human approval loops.
