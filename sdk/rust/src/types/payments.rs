@@ -298,22 +298,3 @@ pub struct DueRenewalResult {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub errors: Option<Vec<String>>,
 }
-
-/// `"active" | "revoked" | "expired" | "exhausted"`.
-pub type SignerApprovalStatus = String;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SignerApproval {
-    pub signer_key: String,
-    pub grantor: String,
-    pub network: String,
-    pub asset: String,
-    pub budget: String,
-    pub spent: String,
-    pub remaining: String,
-    pub expires_at: String,
-    pub nonce: String,
-    pub status: SignerApprovalStatus,
-    pub created_at: String,
-}

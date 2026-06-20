@@ -53,9 +53,8 @@ pub struct Product {
     pub rating: f64,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
-    /// The base64 Ed25519 key that signed this request. When it is an approved
-    /// session key the actor delegated to, the backend authorizes it as the
-    /// actor; for the actor's own key it is simply the registered key.
+    /// The base64 Ed25519 key that signed this request, i.e. the actor's
+    /// registered key.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signer_public_key: Option<String>,
 }
@@ -83,7 +82,7 @@ pub struct ProductCreateRequest {
     pub stock: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
-    /// Base64 Ed25519 signer key; an approved session key acts as the seller.
+    /// Base64 Ed25519 signer key for the seller.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signer_public_key: Option<String>,
 }
@@ -179,7 +178,7 @@ pub struct ProductReview {
     pub created_at: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
-    /// Base64 Ed25519 signer key; an approved session key acts as the buyer.
+    /// Base64 Ed25519 signer key for the buyer.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signer_public_key: Option<String>,
 }
@@ -251,7 +250,7 @@ pub struct IdentityListing {
     pub settlement_status: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
-    /// Base64 Ed25519 signer key; an approved session key acts as the seller.
+    /// Base64 Ed25519 signer key for the seller.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signer_public_key: Option<String>,
 }
@@ -280,7 +279,7 @@ pub struct IdentityBid {
     pub created_at: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
-    /// Base64 Ed25519 signer key; an approved session key acts as the bidder.
+    /// Base64 Ed25519 signer key for the bidder.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signer_public_key: Option<String>,
 }
@@ -315,7 +314,7 @@ pub struct IdentityOffer {
     pub updated_at: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signature: Option<String>,
-    /// Base64 Ed25519 signer key; an approved session key acts as the buyer.
+    /// Base64 Ed25519 signer key for the buyer.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub signer_public_key: Option<String>,
 }

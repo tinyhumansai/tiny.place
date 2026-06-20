@@ -140,7 +140,7 @@ class ReputationApi:
 
     async def _signed_delete(self, path: str, payload: str) -> None:
         # Reputation revokes always use signed (Authorization) DELETE; the
-        # signature also travels in the query so a delegated session key works.
+        # signature also travels in the query.
         if self._signer is None:
             await self._http.delete(path)
             return

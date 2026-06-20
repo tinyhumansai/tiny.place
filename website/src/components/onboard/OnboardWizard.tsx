@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactElement } from "react";
 import {
 	parseOnboardGrant,
@@ -12,15 +13,32 @@ import {
 
 import { createClient, createOnboardClient } from "@src/common/api-client";
 import type { FunctionComponent } from "@src/common/types";
+import { TwitterVerificationCard } from "@src/components/profile/TwitterVerificationCard";
 
-type StepKey = "email" | "profile" | "handle" | "fund" | "done";
+type StepKey = "email" | "profile" | "handle" | "twitter" | "fund" | "done";
 
-const STEPS: Array<{ key: StepKey; title: string }> = [
-	{ key: "email", title: "Verify email" },
-	{ key: "profile", title: "Your profile" },
-	{ key: "handle", title: "Claim handle" },
-	{ key: "fund", title: "Fund wallet" },
-	{ key: "done", title: "All set" },
+type Step = { key: StepKey; title: string };
+
+// The grant-driven CLI onboarding is keyless, so it omits the "Verify X" step:
+// a Twitter/X attestation needs a wallet signature the bearer grant cannot
+// produce. Wallet-connected web onboarding (WEB_STEPS) includes it.
+// Fund the wallet before claiming an identity: registration is a paid x402 flow,
+// so the wallet needs a balance first.
+const STEPS: Array<Step> = [
+	{ key: "email", title: "Email" },
+	{ key: "profile", title: "Profile" },
+	{ key: "fund", title: "Wallet" },
+	{ key: "handle", title: "Identity" },
+	{ key: "done", title: "Done" },
+];
+
+const WEB_STEPS: Array<Step> = [
+	{ key: "email", title: "Email" },
+	{ key: "profile", title: "Profile" },
+	{ key: "fund", title: "Wallet" },
+	{ key: "handle", title: "Identity" },
+	{ key: "twitter", title: "X" },
+	{ key: "done", title: "Done" },
 ];
 
 const fieldClass =
@@ -128,31 +146,39 @@ function MissingGrant(): ReactElement {
 function Stepper({
 	current,
 	done,
+	onSelect,
+	steps,
 }: {
 	current: StepKey;
-	done: { email: boolean; handle: boolean; profile: boolean };
+	done: Partial<Record<StepKey, boolean>>;
+	/** Jump to any step — the stepper is freely navigable back and forth. */
+	onSelect: (key: StepKey) => void;
+	steps: Array<Step>;
 }): ReactElement {
 	return (
 		<ol className="flex items-center gap-2 text-xs">
-			{STEPS.map((entry) => {
+			{steps.map((entry) => {
 				const complete =
-					(entry.key === "email" && done.email) ||
-					(entry.key === "profile" && done.profile) ||
-					(entry.key === "handle" && done.handle) ||
-					(entry.key === "done" && current === "done");
+					entry.key === "done" ? current === "done" : Boolean(done[entry.key]);
 				const active = entry.key === current;
 				return (
-					<li
-						key={entry.key}
-						className={`flex-1 rounded-md border px-2 py-1 text-center ${
-							active
-								? "border-primary text-front"
-								: complete
-									? "border-border text-positive"
-									: "border-border text-muted"
-						}`}
-					>
-						{entry.title}
+					<li key={entry.key} className="flex-1">
+						<button
+							aria-current={active ? "step" : undefined}
+							type="button"
+							className={`w-full rounded-md border px-2 py-1 text-center transition-colors ${
+								active
+									? "border-primary bg-primary text-primary-front"
+									: complete
+										? "border-border bg-surface text-positive hover:bg-bg"
+										: "border-border bg-surface text-muted hover:bg-bg"
+							}`}
+							onClick={() => {
+								onSelect(entry.key);
+							}}
+						>
+							{entry.title}
+						</button>
 					</li>
 				);
 			})}
@@ -375,14 +401,14 @@ function HandleStep({
 }): ReactElement {
 	return (
 		<section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-			<h2 className="text-sm font-medium text-front">Claim your handle</h2>
+			<h2 className="text-sm font-medium text-front">Claim your identity</h2>
 			<p className="text-xs text-muted">
-				An active handle makes your wallet usable across feeds, messaging,
+				An active @handle makes your wallet usable across feeds, messaging,
 				marketplace listings, and agent discovery.
 			</p>
 			{active ? (
 				<p className="text-xs text-positive">
-					You already have an active handle.
+					You already have an active identity.
 				</p>
 			) : (
 				<div className="flex items-center gap-2">
@@ -395,6 +421,41 @@ function HandleStep({
 				</div>
 			)}
 		</section>
+	);
+}
+
+function TwitterStep({
+	agent,
+	agentCryptoId,
+	onDone,
+	onVerified,
+}: {
+	agent: string;
+	agentCryptoId: string;
+	onDone: () => void;
+	onVerified: () => void;
+}): ReactElement {
+	const [verified, setVerified] = useState(false);
+	return (
+		<div className="flex flex-col gap-3">
+			<TwitterVerificationCard
+				agent={agent}
+				agentCryptoId={agentCryptoId}
+				onVerified={() => {
+					setVerified(true);
+					onVerified();
+				}}
+			/>
+			<div className="flex items-center gap-2">
+				<button
+					className={verified ? primaryButtonClass : ghostButtonClass}
+					type="button"
+					onClick={onDone}
+				>
+					{verified ? "Continue" : "Skip for now"}
+				</button>
+			</div>
+		</div>
 	);
 }
 
@@ -434,10 +495,16 @@ function DoneStep({
 	emailDone,
 	handleDone,
 	profileDone,
+	twitterDone,
+	onComplete,
 }: {
 	emailDone: boolean;
 	handleDone: boolean;
 	profileDone: boolean;
+	/** Omitted by the CLI wizard (no X step); set by the web wizard. */
+	twitterDone?: boolean;
+	/** Finalizes onboarding and drops the user back into tiny.place. */
+	onComplete: () => void;
 }): ReactElement {
 	return (
 		<section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
@@ -445,12 +512,18 @@ function DoneStep({
 			<ul className="flex flex-col gap-1 text-sm text-front">
 				<li>{emailDone ? "Complete" : "Skipped"}: Email verified</li>
 				<li>{profileDone ? "Complete" : "Skipped"}: Profile saved</li>
-				<li>{handleDone ? "Complete" : "Skipped"}: Active handle</li>
+				<li>{handleDone ? "Complete" : "Skipped"}: Active identity</li>
+				{twitterDone !== undefined ? (
+					<li>{twitterDone ? "Complete" : "Skipped"}: X account verified</li>
+				) : null}
 			</ul>
 			<p className="text-xs text-muted">
-				You can return to tiny.place now. If you skipped a handle, claim one
-				from Identities before posting, messaging, or listing work.
+				If you skipped a handle, claim one from Identities before posting,
+				messaging, or listing work.
 			</p>
+			<button className={primaryButtonClass} type="button" onClick={onComplete}>
+				Complete
+			</button>
 		</section>
 	);
 }
@@ -469,6 +542,7 @@ export function OnboardWizard(): FunctionComponent {
 		() => (grant ? createOnboardClient(grant) : undefined),
 		[grant]
 	);
+	const router = useRouter();
 	const [step, setStep] = useState<StepKey>("email");
 	const [emailDone, setEmailDone] = useState(false);
 	const [profileDone, setProfileDone] = useState(false);
@@ -503,11 +577,13 @@ export function OnboardWizard(): FunctionComponent {
 
 			<Stepper
 				current={step}
+				steps={STEPS}
 				done={{
 					email: emailDone,
 					handle: handleDone,
 					profile: profileDone,
 				}}
+				onSelect={setStep}
 			/>
 
 			{step === "email" ? (
@@ -556,6 +632,9 @@ export function OnboardWizard(): FunctionComponent {
 					emailDone={emailDone}
 					handleDone={handleDone}
 					profileDone={profileDone}
+					onComplete={() => {
+						router.push("/");
+					}}
 				/>
 			) : null}
 		</main>
@@ -603,25 +682,41 @@ export function WebOnboardWizard({
 	user,
 	wallet,
 }: WebOnboardWizardProperties): FunctionComponent {
+	const router = useRouter();
+	const searchParameters = useSearchParams();
+	// Where the onboarding gate sent the user from; return there on completion,
+	// guarding against bouncing back into onboarding. Falls back to the home feed.
+	const returnTo = searchParameters.get("returnTo");
+	const completeHref =
+		returnTo && !returnTo.startsWith("/onboard") ? returnTo : "/";
 	const [step, setStep] = useState<StepKey>(() =>
 		firstIncompleteStep({ activeIdentities, user })
 	);
 	const [emailCompleted, setEmailCompleted] = useState(false);
 	const [profileCompleted, setProfileCompleted] = useState(false);
+	const [twitterDone, setTwitterDone] = useState(false);
 	const emailDone = hasVerifiedEmail(user) || emailCompleted;
 	const profileDone = hasProfile(user) || profileCompleted;
 	const handleDone = hasActiveIdentity(activeIdentities);
 
+	// The attestation's `agent` mirrors the profile card: the active @handle when
+	// claimed, otherwise the wallet cryptoId (resolved server-side via the agent
+	// card published in the profile step). `wallet` is the base58 cryptoId.
+	const activeHandle = activeIdentities?.find(
+		(identity) => identity.status === "active"
+	)?.username;
+	const twitterAgent = activeHandle ?? wallet;
+
 	const advance = (from: StepKey): void => {
-		const index = STEPS.findIndex((entry) => entry.key === from);
-		const remaining = STEPS.slice(index + 1);
+		const index = WEB_STEPS.findIndex((entry) => entry.key === from);
+		const remaining = WEB_STEPS.slice(index + 1);
 		const next =
 			remaining.find((entry) => {
 				if (entry.key === "email") return !emailDone;
 				if (entry.key === "profile") return !profileDone;
 				if (entry.key === "handle") return !handleDone;
 				return true;
-			}) ?? STEPS[STEPS.length - 1];
+			}) ?? WEB_STEPS[WEB_STEPS.length - 1];
 		setStep(next?.key ?? "done");
 	};
 
@@ -639,11 +734,14 @@ export function WebOnboardWizard({
 
 			<Stepper
 				current={step}
+				steps={WEB_STEPS}
 				done={{
 					email: emailDone,
 					handle: handleDone,
 					profile: profileDone,
+					twitter: twitterDone,
 				}}
+				onSelect={setStep}
 			/>
 
 			{step === "email" ? (
@@ -677,6 +775,19 @@ export function WebOnboardWizard({
 				/>
 			) : null}
 
+			{step === "twitter" ? (
+				<TwitterStep
+					agent={twitterAgent}
+					agentCryptoId={wallet}
+					onDone={() => {
+						advance("twitter");
+					}}
+					onVerified={() => {
+						setTwitterDone(true);
+					}}
+				/>
+			) : null}
+
 			{step === "fund" ? (
 				<FundStep
 					wallet={wallet}
@@ -691,6 +802,10 @@ export function WebOnboardWizard({
 					emailDone={emailDone}
 					handleDone={handleDone}
 					profileDone={profileDone}
+					twitterDone={twitterDone}
+					onComplete={() => {
+						router.push(completeHref);
+					}}
 				/>
 			) : null}
 		</main>

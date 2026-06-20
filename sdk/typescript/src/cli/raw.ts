@@ -463,21 +463,6 @@ export async function dispatchRaw(
       return client.pricing.networks();
     case "pricing-gas":
       return client.pricing.gas(requiredFlag(flags, "network"));
-    // Signers.
-    case "signer-create":
-      return client.signers.approve(typedBody(flags));
-    case "signers":
-      return client.signers.list(stringFlag(flags, "grantor") ?? selfId);
-    case "signer":
-      return client.signers.get(
-        required(first, "signer <signerKey>"),
-        stringFlag(flags, "grantor") ?? selfId,
-      );
-    case "signer-revoke":
-      return client.signers.revoke(
-        required(first, "signer-revoke <signerKey>"),
-        stringFlag(flags, "grantor") ?? selfId,
-      );
     // Payments.
     case "pay":
       return client.payments.settle(typedBody(flags));

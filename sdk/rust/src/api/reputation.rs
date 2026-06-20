@@ -387,8 +387,7 @@ fn attestation_revoke_signature_payload(attestation_id: &str) -> String {
 }
 
 // Builds the optional &signerPublicKey= query suffix for body-less revoke
-// requests, so the backend can authorize a delegated session key revoking on
-// the owner's behalf. Empty when there is no presented key.
+// requests, presenting the signing key. Empty when there is no presented key.
 fn signer_public_key_query(signer_public_key: Option<String>) -> String {
     match signer_public_key {
         Some(key) => format!("&signerPublicKey={}", encode(&key)),

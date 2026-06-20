@@ -5,8 +5,8 @@
  * backend :8083 → local validator), so they only run when E2E_LIVE=1 and the
  * provisioned facilitator/mint are present. Node-side helpers register handles
  * and seed listings via the SDK (custodial settlement) so each browser test can
- * focus on the button under test; the browser signs in through the session-mode
- * E2E auth bridge.
+ * focus on the button under test; the browser signs in through the E2E auth
+ * bridge.
  */
 import { execSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -160,8 +160,8 @@ export async function seedListing(
 }
 
 /**
- * Signs the browser in as the seed wallet using the session-mode E2E bridge,
- * then loads the identities page. Must run before any app navigation.
+ * Signs the browser in as the seed wallet using the E2E bridge, then loads the
+ * identities page. Must run before any app navigation.
  */
 export async function signInSession(
 	page: Page,
@@ -187,13 +187,10 @@ export async function signInSession(
 			await (
 				window as unknown as {
 					__tinyplaceE2E: {
-						signIn: (
-							seedHex: string,
-							options?: { session?: boolean }
-						) => Promise<{ agentId: string }>;
+						signIn: (seedHex: string) => Promise<{ agentId: string }>;
 					};
 				}
-			).__tinyplaceE2E.signIn(seed, { session: true });
+			).__tinyplaceE2E.signIn(seed);
 		},
 		seedHex
 	);

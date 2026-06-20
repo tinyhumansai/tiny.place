@@ -30,8 +30,8 @@ impl UsersApi {
     }
 
     /// Update the signed-in wallet's profile. Signs the canonical `user.profile`
-    /// payload and presents the signing key so the backend can authorize either
-    /// the wallet itself or an approved hot session key (delegate).
+    /// payload and presents the signing key so the backend can authorize the
+    /// wallet.
     pub async fn update_profile(&self, crypto_id: &str, update: UserProfileUpdate) -> Result<User> {
         let mut update = update;
         if update.signature.is_none() {

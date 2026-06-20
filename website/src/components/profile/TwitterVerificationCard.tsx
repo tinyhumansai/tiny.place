@@ -1,7 +1,7 @@
 "use client";
 
 import type { TwitterChallengeResult } from "@tinyhumansai/tinyplace";
-import { useState, type ReactElement } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 
 import {
 	useRequestTwitterChallenge,
@@ -14,6 +14,9 @@ type TwitterVerificationCardProperties = {
 	agent: string;
 	/** The owner's cryptoId (the reputation `agentCryptoId`). */
 	agentCryptoId: string;
+	/** Fired once when the attestation reaches the verified state (e.g. so the
+	 * onboarding wizard can mark the step complete). */
+	onVerified?: () => void;
 };
 
 const inputClass =
@@ -30,6 +33,7 @@ const buttonClass =
 export function TwitterVerificationCard({
 	agent,
 	agentCryptoId,
+	onVerified,
 }: TwitterVerificationCardProperties): ReactElement {
 	const [handle, setHandle] = useState("");
 	const [challenge, setChallenge] = useState<TwitterChallengeResult | null>(
@@ -49,6 +53,16 @@ export function TwitterVerificationCard({
 
 	const normalizedHandle = handle.trim().replace(/^@/, "");
 	const status = statusQuery.data?.status;
+
+	// Notify the parent once when verification lands (idempotent across the
+	// status query's polling refetches).
+	const notifiedRef = useRef(false);
+	useEffect(() => {
+		if (status === "verified" && !notifiedRef.current) {
+			notifiedRef.current = true;
+			onVerified?.();
+		}
+	}, [status, onVerified]);
 
 	function requestChallenge(): void {
 		challengeMutation.mutate(

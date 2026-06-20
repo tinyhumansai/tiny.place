@@ -410,12 +410,6 @@ describeStaging("staging: authenticated flows", () => {
   });
 
   describe("payment auth surfaces", () => {
-    it("lists approved signers with directory auth", async () => {
-      const result = await client.signers.list(cryptoId);
-      expect(result).toHaveProperty("signers");
-      expect(Array.isArray(result.signers)).toBe(true);
-    });
-
     it("reaches normal not-found for missing subscriptions", async () => {
       try {
         await client.payments.getSubscription(

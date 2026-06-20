@@ -1,4 +1,4 @@
-//! Endpoint tests for `RegistryApi` and `SignersApi`. Each test points the
+//! Endpoint tests for `RegistryApi`. Each test points the
 //! client at a catch-all mock, invokes a method, and asserts the request method
 //! and path. Response bodies are permissive — the goal is to exercise request
 //! construction, auth signing, and the response pipeline.
@@ -169,19 +169,4 @@ async fn registry_delete_subname() {
     let req = only_request(&server).await;
     assert_eq!(req.method.as_str(), "DELETE");
     assert!(req.url.path().contains("subnames"));
-}
-
-// --- SignersApi ---
-
-#[tokio::test]
-async fn signers_list_get_revoke() {
-    let server = any_ok(json!({"signers": []})).await;
-    let client = client_for(&server);
-    let _ = client.signers.list(None).await;
-    let _ = client.signers.get("key1", None).await;
-    let _ = client.signers.revoke("key1", None).await;
-    let reqs = all_requests(&server).await;
-    assert_eq!(reqs.len(), 3);
-    assert_eq!(reqs[0].method.as_str(), "GET");
-    assert_eq!(reqs[2].method.as_str(), "DELETE");
 }

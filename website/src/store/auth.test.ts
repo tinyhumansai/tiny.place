@@ -5,10 +5,9 @@ import { useAuthStore } from "./auth";
 
 /**
  * Guards the contract the domain-registration fix depends on: the auth store
- * must expose an `identitySigner` whose key derives the cryptoId. For a hot
- * session wallet that is the underlying wallet (grantor), not the session key —
- * otherwise registration signs with a key that does not match the cryptoId and
- * the backend rejects it with "publicKey does not derive cryptoId".
+ * must expose an `identitySigner` whose key derives the cryptoId. It defaults to
+ * the active signer, but an explicit identity signer can be supplied so identity
+ * registration signs with the key that derives the cryptoId.
  */
 function fakeSigner(id: string): Signer {
 	return { agentId: id, publicKeyBase64: `pk-${id}` } as unknown as Signer;
@@ -29,21 +28,21 @@ describe("auth store identitySigner", () => {
 		expect(state.agentId).toBe("wallet");
 	});
 
-	it("keeps the wallet as identitySigner when a session key signs (hot session wallet)", () => {
+	it("keeps an explicit identitySigner distinct from the active signer", () => {
 		const wallet = fakeSigner("wallet");
-		// The session signer reports the WALLET's agentId but its OWN public key.
-		const session = {
+		// A signer that reports the WALLET's agentId but its OWN public key.
+		const other = {
 			agentId: "wallet",
-			publicKeyBase64: "pk-session",
+			publicKeyBase64: "pk-other",
 		} as unknown as Signer;
 
-		useAuthStore.getState().setSigner(session, session.agentId, wallet);
+		useAuthStore.getState().setSigner(other, other.agentId, wallet);
 
 		const state = useAuthStore.getState();
-		// Routine calls use the session key...
-		expect(state.signer).toBe(session);
-		// ...but identity-binding registration uses the wallet, whose public key
-		// derives the cryptoId.
+		// Routine calls use the active signer...
+		expect(state.signer).toBe(other);
+		// ...but identity-binding registration uses the explicit identity signer,
+		// whose public key derives the cryptoId.
 		expect(state.identitySigner).toBe(wallet);
 		expect(state.identitySigner?.publicKeyBase64).toBe("pk-wallet");
 		expect(state.signer?.publicKeyBase64).not.toBe(

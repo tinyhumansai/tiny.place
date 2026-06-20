@@ -183,10 +183,11 @@ describe("DomainRegistration x402 payment signing", () => {
 
 		expect(createClient).toHaveBeenCalledWith(wallet);
 		const unpaidRequest = register.mock.calls[0]?.[0] as RegisterRequest;
+		// The handle binds to the wallet via cryptoId; the SDK derives publicKey
+		// from it, so the register request body intentionally omits publicKey.
 		expect(unpaidRequest).toMatchObject({
 			username: "@atlas",
 			cryptoId: "wallet-agent",
-			publicKey: "wallet-public-key",
 			primary: true,
 			actorType: "human",
 		});

@@ -284,9 +284,8 @@ impl RegistryApi {
             );
             let signature = sign_fresh_canonical_payload(signer.as_ref(), &payload).await?;
             headers.push(("X-TinyPlace-Signature".to_string(), signature));
-            // Present the signing key so the backend can authorize a delegated
-            // hot session key (the X-TinyPlace-Signature above is the ownership
-            // proof).
+            // Present the signing key (the X-TinyPlace-Signature above is the
+            // ownership proof).
             if let Some(presented_key) = self.http.signing_public_key() {
                 headers.push(("X-TinyPlace-Public-Key".to_string(), presented_key));
             }

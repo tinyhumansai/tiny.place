@@ -141,17 +141,17 @@ describe("x402 helpers", () => {
     });
   });
 
-  it("uses delegated session x402 metadata when the signer provides it", async () => {
+  it("uses custom x402 metadata when the signer provides it", async () => {
     const signer = {
       agentId: payerAddress,
-      publicKeyBase64: "session-public-key",
+      publicKeyBase64: "custom-public-key",
       sign(): Uint8Array {
         return new Uint8Array([1, 2, 3]);
       },
       x402PaymentMetadata(): Record<string, string> {
         return {
-          publicKey: "session-public-key",
-          parentNonce: "approved-session-nonce",
+          publicKey: "custom-public-key",
+          custom: "custom-value",
         };
       },
     };
@@ -168,8 +168,8 @@ describe("x402 helpers", () => {
 
     expect(authorization.metadata).toEqual({
       domain: "tiny.place",
-      publicKey: "session-public-key",
-      parentNonce: "approved-session-nonce",
+      publicKey: "custom-public-key",
+      custom: "custom-value",
       kind: "identity-listing",
     });
   });

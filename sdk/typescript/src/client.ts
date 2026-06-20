@@ -40,7 +40,6 @@ import { RegistryApi } from "./api/registry.js";
 import { ReputationApi } from "./api/reputation.js";
 import { RoomsApi } from "./api/rooms.js";
 import { SearchApi } from "./api/search.js";
-import { SignersApi } from "./api/signers.js";
 import { SolanaApi } from "./api/solana.js";
 import { StatsApi } from "./api/stats.js";
 import { UsersApi } from "./api/users.js";
@@ -74,7 +73,7 @@ export interface TinyPlaceClientOptions {
   encryption?: { store: SessionStore };
   /**
    * Invoked when any request is rejected with 401/403. Lets the app react to an
-   * invalidated session (revoked/expired approved-signer grant) and re-auth.
+   * invalidated session and re-auth.
    */
   onAuthInvalid?: (status: number, body: unknown) => Promise<void> | void;
 }
@@ -109,7 +108,6 @@ export class TinyPlaceClient {
   readonly jobs: JobsApi;
   readonly bounties: BountiesApi;
   readonly search: SearchApi;
-  readonly signers: SignersApi;
   readonly profiles: ProfilesApi;
   readonly users: UsersApi;
   readonly explorer: ExplorerApi;
@@ -198,7 +196,6 @@ export class TinyPlaceClient {
     this.jobs = new JobsApi(this.http);
     this.bounties = new BountiesApi(this.http);
     this.search = new SearchApi(this.http);
-    this.signers = new SignersApi(this.http);
     this.profiles = new ProfilesApi(this.http);
     this.users = new UsersApi(this.http, signingKey, options.harnessKey);
     this.explorer = new ExplorerApi(this.http, wsFactory);

@@ -70,12 +70,6 @@ describe("harness capability parity", () => {
         ["pricing", "networks"],
         ["pricing", "gas"],
       ],
-      signers: [
-        ["signers", "approve"],
-        ["signers", "list"],
-        ["signers", "get"],
-        ["signers", "revoke"],
-      ],
       payments: [
         ["payments", "settle"],
         ["payments", "verify"],
