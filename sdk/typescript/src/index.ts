@@ -35,18 +35,6 @@ export {
 export { Signer, identityPublicKey, signerPaymentMetadata } from "./signer.js";
 export type { IdentityPublicKeySigner, X402MetadataSigner } from "./signer.js";
 export { LocalSigner } from "./local-signer.js";
-export { BrowserSessionSigner } from "./browser-session-signer.js";
-export type {
-  SessionApprovalRequest,
-  BrowserSessionSignerOptions,
-} from "./browser-session-signer.js";
-export {
-  loadSession,
-  saveSession,
-  clearSession,
-  sessionIsFresh,
-} from "./session-store.js";
-export type { StoredSession } from "./session-store.js";
 
 export type {
   X402Scheme,
@@ -166,7 +154,6 @@ export type {
 } from "./api/marketplace.js";
 export { EscrowApi } from "./api/escrow.js";
 export { SearchApi } from "./api/search.js";
-export { SignersApi } from "./api/signers.js";
 export { ProfilesApi } from "./api/profiles.js";
 export { ExplorerApi } from "./api/explorer.js";
 export { FeedbackApi } from "./api/feedback.js";
