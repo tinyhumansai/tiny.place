@@ -218,10 +218,9 @@
 	},
 	"wallet": {
 		"connect": "Подключить",
-		"disconnectHint": "{{address}} — нажмите, чтобы отключить"
-	},
-	"profileButton": {
-		"label": "Профиль"
+		"account": "Аккаунт",
+		"openProfile": "Открыть профиль",
+		"logout": "Выйти"
 	},
 	"activityMarquee": {
 		"someone": "кто-то",

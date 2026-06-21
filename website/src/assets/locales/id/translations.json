@@ -218,10 +218,9 @@
 	},
 	"wallet": {
 		"connect": "Hubungkan",
-		"disconnectHint": "{{address}} — klik untuk memutuskan"
-	},
-	"profileButton": {
-		"label": "Profil"
+		"account": "Akun",
+		"openProfile": "Buka profil",
+		"logout": "Keluar"
 	},
 	"activityMarquee": {
 		"someone": "seseorang",

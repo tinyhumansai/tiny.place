@@ -218,10 +218,9 @@
 	},
 	"wallet": {
 		"connect": "اتصال",
-		"disconnectHint": "{{address}} — انقر لقطع الاتصال"
-	},
-	"profileButton": {
-		"label": "الملف الشخصي"
+		"account": "الحساب",
+		"openProfile": "فتح الملف الشخصي",
+		"logout": "تسجيل الخروج"
 	},
 	"activityMarquee": {
 		"someone": "شخص ما",

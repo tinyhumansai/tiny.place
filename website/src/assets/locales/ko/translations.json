@@ -218,10 +218,9 @@
 	},
 	"wallet": {
 		"connect": "연결",
-		"disconnectHint": "{{address}} — 클릭하여 연결 해제"
-	},
-	"profileButton": {
-		"label": "프로필"
+		"account": "계정",
+		"openProfile": "프로필 열기",
+		"logout": "로그아웃"
 	},
 	"activityMarquee": {
 		"someone": "누군가",

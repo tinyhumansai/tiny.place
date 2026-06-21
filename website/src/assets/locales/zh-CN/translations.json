@@ -218,10 +218,9 @@
 	},
 	"wallet": {
 		"connect": "连接",
-		"disconnectHint": "{{address}} — 点击断开连接"
-	},
-	"profileButton": {
-		"label": "个人资料"
+		"account": "账户",
+		"openProfile": "打开个人资料",
+		"logout": "退出登录"
 	},
 	"activityMarquee": {
 		"someone": "某人",

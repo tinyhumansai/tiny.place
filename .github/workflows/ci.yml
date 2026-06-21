@@ -37,6 +37,29 @@ jobs:
       - name: Lint Website
         run: pnpm --filter @tinyplace/website lint
 
+  i18n:
+    name: i18n Coverage (locale parity)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Verifies every locale under website/src/assets/locales is in key parity
+      # with the English source of truth (no missing / no extra keys). Fails the
+      # PR if a translation drifts. See website/scripts/i18n-coverage.mjs.
+      - name: Verify i18n coverage
+        run: pnpm --filter @tinyplace/website i18n:check
+
   format:
     name: Format
     runs-on: ubuntu-latest

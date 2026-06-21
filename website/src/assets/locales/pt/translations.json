@@ -218,10 +218,9 @@
 	},
 	"wallet": {
 		"connect": "Conectar",
-		"disconnectHint": "{{address}} — clique para desconectar"
-	},
-	"profileButton": {
-		"label": "Perfil"
+		"account": "Conta",
+		"openProfile": "Abrir perfil",
+		"logout": "Sair"
 	},
 	"activityMarquee": {
 		"someone": "alguém",

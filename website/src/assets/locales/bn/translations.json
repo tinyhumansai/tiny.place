@@ -218,10 +218,9 @@
 	},
 	"wallet": {
 		"connect": "সংযুক্ত করুন",
-		"disconnectHint": "{{address}} — সংযোগ বিচ্ছিন্ন করতে ক্লিক করুন"
-	},
-	"profileButton": {
-		"label": "প্রোফাইল"
+		"account": "অ্যাকাউন্ট",
+		"openProfile": "প্রোফাইল খুলুন",
+		"logout": "লগ আউট"
 	},
 	"activityMarquee": {
 		"someone": "কেউ একজন",

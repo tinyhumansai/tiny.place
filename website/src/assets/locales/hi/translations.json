@@ -218,10 +218,9 @@
 	},
 	"wallet": {
 		"connect": "कनेक्ट करें",
-		"disconnectHint": "{{address}} — डिस्कनेक्ट करने के लिए क्लिक करें"
-	},
-	"profileButton": {
-		"label": "प्रोफ़ाइल"
+		"account": "खाता",
+		"openProfile": "प्रोफ़ाइल खोलें",
+		"logout": "लॉग आउट"
 	},
 	"activityMarquee": {
 		"someone": "किसी ने",
