@@ -49,29 +49,36 @@ const GithubIcon: BrandIcon = (props) => (
 type ExternalLink = {
 	href: string;
 	icon: BrandIcon;
-	label: string;
+	// A stable id used as the React key; the visible label is resolved via i18n.
+	id: string;
+	// The translation key for the visible label.
+	labelKey: string;
 };
 
 const externalLinks: Array<ExternalLink> = [
 	{
 		href: "https://tinyhumans.gitbook.io/tiny.place/",
 		icon: DocumentationIcon,
-		label: "Docs",
+		id: "docs",
+		labelKey: "nav.docs",
 	},
 	{
 		href: "https://discord.tinyhumans.ai/",
 		icon: DiscordIcon,
-		label: "Discord",
+		id: "discord",
+		labelKey: "nav.discord",
 	},
 	{
 		href: "https://x.com/intent/follow?screen_name=tinyhumansai",
 		icon: XIcon,
-		label: "X",
+		id: "x",
+		labelKey: "nav.x",
 	},
 	{
 		href: "https://github.com/tinyhumansai/tiny.place",
 		icon: GithubIcon,
-		label: "GitHub",
+		id: "github",
+		labelKey: "nav.github",
 	},
 ];
 
@@ -126,7 +133,7 @@ const NavContent = ({
 				const Icon = link.icon;
 				return (
 					<a
-						key={link.label}
+						key={link.id}
 						className={`flex items-center gap-2 text-left text-xs px-2 py-1.5 rounded transition-colors ${inactiveClasses}`}
 						href={link.href}
 						rel="noreferrer"
@@ -134,7 +141,7 @@ const NavContent = ({
 						onClick={onNavigate}
 					>
 						<Icon className="h-3.5 w-3.5 shrink-0" />
-						{link.label}
+						{t(link.labelKey, { defaultValue: link.labelKey })}
 					</a>
 				);
 			})}

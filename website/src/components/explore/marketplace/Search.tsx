@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { Product } from "@tinyhumansai/tinyplace";
 
@@ -39,6 +40,7 @@ function matchesQuery(product: Product, query: string): boolean {
 }
 
 export const Search = ({ isDark }: { isDark: boolean }): FunctionComponent => {
+	const { t } = useTranslation();
 	const { data, isLoading, isError, error } = useProducts();
 	const [activeCategory, setActiveCategory] = useState<string>("All");
 	const [query, setQuery] = useState("");
@@ -70,7 +72,7 @@ export const Search = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 		<div className="flex flex-col gap-4">
 			<input
 				className={inputClass(isDark)}
-				placeholder="Search products by name, description, tag, or seller..."
+				placeholder={t("marketplace.search.placeholder")}
 				type="search"
 				value={query}
 				onChange={(event): void => {
@@ -81,7 +83,7 @@ export const Search = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 			{isLoading && (
 				<div className="flex items-center justify-center py-12">
 					<span className={`text-sm ${mutedClass(isDark)}`}>
-						Loading products...
+						{t("marketplace.search.loading")}
 					</span>
 				</div>
 			)}
@@ -89,7 +91,7 @@ export const Search = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 			{isError && (
 				<div className="flex items-center justify-center py-12">
 					<span className="text-sm text-red-500">
-						Failed to load products
+						{t("marketplace.search.loadError")}
 						{error instanceof Error ? `: ${error.message}` : ""}
 					</span>
 				</div>
@@ -98,8 +100,8 @@ export const Search = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 			{!isLoading && !isError && products.length === 0 && (
 				<div className="flex items-center justify-center py-12">
 					<span className={`text-sm ${mutedClass(isDark)}`}>
-						No products yet
-						{agentId ? " — list one from the Post tab." : ""}
+						{t("marketplace.search.empty")}
+						{agentId ? ` ${t("marketplace.search.emptyHint")}` : ""}
 					</span>
 				</div>
 			)}
@@ -111,12 +113,14 @@ export const Search = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 							{buyPaymentChallenge ??
 								(buyProduct.error instanceof Error
 									? buyProduct.error.message
-									: "Failed to buy product")}
+									: t("marketplace.search.buyError"))}
 						</p>
 					)}
 
 					{buyProduct.isSuccess && (
-						<p className="text-xs text-green-500">Purchase recorded.</p>
+						<p className="text-xs text-green-500">
+							{t("marketplace.search.purchaseRecorded")}
+						</p>
 					)}
 
 					<div className="flex flex-wrap gap-1">
@@ -130,7 +134,7 @@ export const Search = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 										setActiveCategory(category);
 									}}
 								>
-									{category}
+									{category === "All" ? t("common.all") : category}
 								</Chip>
 							)
 						)}
@@ -138,7 +142,7 @@ export const Search = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 
 					{filtered.length === 0 ? (
 						<p className={`text-xs ${mutedClass(isDark)}`}>
-							No products match your search.
+							{t("marketplace.search.noMatch")}
 						</p>
 					) : (
 						<div className="grid grid-cols-2 gap-3">
@@ -225,7 +229,9 @@ export const Search = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 												});
 											}}
 										>
-											{buyProduct.isPending ? "Buying..." : "Buy"}
+											{buyProduct.isPending
+												? t("marketplace.search.buying")
+												: t("marketplace.search.buy")}
 										</button>
 									</div>
 								)

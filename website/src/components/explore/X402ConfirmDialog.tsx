@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { apiErrorMessage } from "@src/common/api-error";
 import { formatTokenAmount } from "@src/common/format-amount";
@@ -33,6 +34,7 @@ function X402Dialog({
 	request,
 	status,
 }: DialogProperties): FunctionComponent {
+	const { t } = useTranslation();
 	const panelClass = isDark
 		? "border-neutral-800 bg-neutral-950 text-white"
 		: "border-neutral-200 bg-white text-black";
@@ -51,17 +53,17 @@ function X402Dialog({
 			>
 				<h3 className="text-sm font-semibold">{request.title}</h3>
 				<p className={`mt-1 text-xs ${mutedClass}`}>
-					Review this payment before it is authorized.
+					{t("x402.reviewPayment")}
 				</p>
 
 				<dl className="theme-detail-list mt-4 rounded-lg border">
 					<div className="flex items-center justify-between px-3 py-2">
-						<dt className={`text-xs ${mutedClass}`}>Identity</dt>
+						<dt className={`text-xs ${mutedClass}`}>{t("x402.identity")}</dt>
 						<dd className="text-xs font-medium">{request.subject}</dd>
 					</div>
 					{request.amount && (
 						<div className="flex items-center justify-between px-3 py-2">
-							<dt className={`text-xs ${mutedClass}`}>Amount</dt>
+							<dt className={`text-xs ${mutedClass}`}>{t("x402.amount")}</dt>
 							<dd className="text-xs font-semibold">
 								{formatTokenAmount(request.amount, request.asset)}
 							</dd>
@@ -69,7 +71,7 @@ function X402Dialog({
 					)}
 					{request.recipient && (
 						<div className="flex items-center justify-between gap-2 px-3 py-2">
-							<dt className={`text-xs ${mutedClass}`}>To</dt>
+							<dt className={`text-xs ${mutedClass}`}>{t("x402.to")}</dt>
 							<dd className="truncate text-xs font-medium">
 								{request.recipient}
 							</dd>
@@ -82,7 +84,9 @@ function X402Dialog({
 				)}
 				{error && <p className="mt-3 text-xs text-rose-500">{error}</p>}
 				{done && (
-					<p className="mt-3 text-xs text-emerald-500">Payment confirmed.</p>
+					<p className="mt-3 text-xs text-emerald-500">
+						{t("x402.paymentConfirmed")}
+					</p>
 				)}
 
 				<div className="mt-5 flex justify-end gap-2">
@@ -92,7 +96,7 @@ function X402Dialog({
 							type="button"
 							onClick={onDone}
 						>
-							Done
+							{t("x402.done")}
 						</button>
 					) : (
 						<>
@@ -106,7 +110,7 @@ function X402Dialog({
 								}`}
 								onClick={onCancel}
 							>
-								Cancel
+								{t("common.cancel")}
 							</button>
 							<button
 								className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
@@ -115,10 +119,10 @@ function X402Dialog({
 								onClick={onConfirm}
 							>
 								{running
-									? "Confirming…"
+									? t("x402.confirming")
 									: error
-										? "Retry"
-										: (request.confirmLabel ?? "Confirm")}
+										? t("common.retry")
+										: (request.confirmLabel ?? t("common.confirm"))}
 							</button>
 						</>
 					)}
@@ -146,6 +150,7 @@ export const X402ConfirmProvider = ({
 	children,
 	isDark,
 }: ProviderProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const [pending, setPending] = useState<Pending | null>(null);
 	const [status, setStatus] = useState<RunStatus>("idle");
 	const [error, setError] = useState<string | null>(null);
@@ -162,11 +167,11 @@ export const X402ConfirmProvider = ({
 	);
 
 	const close = useCallback((): void => {
-		pending?.reject(new Error("Payment confirmation cancelled."));
+		pending?.reject(new Error(t("x402.confirmationCancelled")));
 		setPending(null);
 		setStatus("idle");
 		setError(null);
-	}, [pending]);
+	}, [pending, t]);
 
 	const run = useCallback(async (): Promise<void> => {
 		if (!pending) {
@@ -180,9 +185,9 @@ export const X402ConfirmProvider = ({
 			setStatus("done");
 		} catch (caught) {
 			setStatus("error");
-			setError(apiErrorMessage(caught, "Payment failed. Try again."));
+			setError(apiErrorMessage(caught, t("x402.paymentFailed")));
 		}
-	}, [pending]);
+	}, [pending, t]);
 
 	return (
 		<X402ConfirmContext.Provider value={{ confirm }}>

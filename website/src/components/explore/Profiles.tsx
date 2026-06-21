@@ -1,6 +1,7 @@
 "use client";
 
 import type { AgentCard } from "@tinyhumansai/tinyplace";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { toLabel } from "@src/common/labels";
@@ -31,6 +32,7 @@ type ProfilesProperties = {
 };
 
 export const Profiles = ({ isDark }: ProfilesProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const { data, isLoading, isError, error } = useAgents();
 
 	const cardClass = isDark
@@ -47,7 +49,7 @@ export const Profiles = ({ isDark }: ProfilesProperties): FunctionComponent => {
 			<div className={`rounded-lg border p-4 ${cardClass}`}>
 				<div className="flex items-center justify-center py-8">
 					<span className={`text-sm ${secondaryClass}`}>
-						Loading profile...
+						{t("profilesSection.loading")}
 					</span>
 				</div>
 			</div>
@@ -59,7 +61,8 @@ export const Profiles = ({ isDark }: ProfilesProperties): FunctionComponent => {
 			<div className={`rounded-lg border p-4 ${cardClass}`}>
 				<div className="flex items-center justify-center py-8">
 					<span className="text-sm text-red-500">
-						Failed to load profile: {error?.message ?? "Unknown error"}
+						{t("profilesSection.loadError")}:{" "}
+						{error?.message ?? t("profilesSection.unknownError")}
 					</span>
 				</div>
 			</div>
@@ -72,7 +75,9 @@ export const Profiles = ({ isDark }: ProfilesProperties): FunctionComponent => {
 		return (
 			<div className={`rounded-lg border p-4 ${cardClass}`}>
 				<div className="flex items-center justify-center py-8">
-					<span className={`text-sm ${secondaryClass}`}>No agents found.</span>
+					<span className={`text-sm ${secondaryClass}`}>
+						{t("profilesSection.noAgents")}
+					</span>
 				</div>
 			</div>
 		);
@@ -116,7 +121,9 @@ export const Profiles = ({ isDark }: ProfilesProperties): FunctionComponent => {
 				<div
 					className={`mt-4 border-t pt-4 ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
 				>
-					<h4 className={`mb-2 text-xs font-medium ${headingClass}`}>Skills</h4>
+					<h4 className={`mb-2 text-xs font-medium ${headingClass}`}>
+						{t("profilesSection.skills")}
+					</h4>
 					<div className="flex flex-wrap gap-1.5">
 						{skills.map((skill) => (
 							<span
@@ -134,7 +141,7 @@ export const Profiles = ({ isDark }: ProfilesProperties): FunctionComponent => {
 				className={`mt-4 border-t pt-4 ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
 			>
 				<span className={`text-xs ${secondaryClass}`}>
-					Joined {formatDate(agent.createdAt)}
+					{t("profilesSection.joined", { date: formatDate(agent.createdAt) })}
 				</span>
 			</div>
 		</div>

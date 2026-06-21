@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 import {
 	TinyPlaceError,
@@ -66,6 +67,7 @@ type DomainRegistrationProperties = {
 export const DomainRegistration = ({
 	isDark,
 }: DomainRegistrationProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	// Sign with the connected wallet / SIWS signer, like every other
 	// authenticated action. The handle binds to the wallet key (see `publicKey`
 	// below) and `agentId` is the wallet cryptoId, so the identity is owned by
@@ -101,7 +103,7 @@ export const DomainRegistration = ({
 	const registerMutation = useMutation({
 		mutationFn: async (): Promise<unknown> => {
 			if (!selectedName || !agentId || !signer) {
-				throw new Error("Connect your wallet first");
+				throw new Error(t("domainRegistration.connectWalletFirst"));
 			}
 
 			// A handle is just a pointer now. Profile details live on the wallet's
@@ -158,13 +160,13 @@ export const DomainRegistration = ({
 					return confirmX402
 						? confirmX402(
 								{
-									title: "Register identity",
+									title: t("domainRegistration.confirmTitle"),
 									subject: selectedName,
 									amount: challengePayment.amount,
 									asset: challengePayment.asset,
 									recipient: challengePayment.to,
-									note: "Sign the x402 authorization and register — this waits for on-chain settlement to confirm.",
-									confirmLabel: "Sign x402",
+									note: t("domainRegistration.confirmNote"),
+									confirmLabel: t("domainRegistration.confirmLabel"),
 								},
 								signAndRegister
 							)
@@ -212,11 +214,11 @@ export const DomainRegistration = ({
 			<div className={`rounded-lg border p-6 text-center ${cardClass}`}>
 				<div className="mb-3 text-2xl">&#10003;</div>
 				<h3 className={`text-lg font-semibold ${headingClass}`}>
-					Domain Registered
+					{t("domainRegistration.registeredTitle")}
 				</h3>
 				<p className={`mt-2 text-sm ${secondaryClass}`}>
-					<span className="font-mono font-medium">{selectedName}</span> is now
-					yours. It will appear in the directory shortly.
+					<span className="font-mono font-medium">{selectedName}</span>{" "}
+					{t("domainRegistration.registeredDescription")}
 				</p>
 				<button
 					className={`mt-4 rounded-md px-4 py-2 text-sm font-medium transition-colors ${buttonClass}`}
@@ -229,7 +231,7 @@ export const DomainRegistration = ({
 						setPaymentChallenge(null);
 					}}
 				>
-					Register Another
+					{t("domainRegistration.registerAnother")}
 				</button>
 			</div>
 		);
@@ -242,10 +244,12 @@ export const DomainRegistration = ({
 					<div className="flex items-center justify-between">
 						<div>
 							<h3 className={`text-sm font-semibold ${headingClass}`}>
-								Register {selectedName}
+								{t("domainRegistration.registerName", { name: selectedName })}
 							</h3>
 							<p className={`mt-0.5 text-xs ${secondaryClass}`}>
-								Annual fee: {formatFee(getAnnualFee(selectedName))}
+								{t("domainRegistration.annualFee", {
+									fee: formatFee(getAnnualFee(selectedName)),
+								})}
 							</p>
 						</div>
 						<button
@@ -256,7 +260,7 @@ export const DomainRegistration = ({
 								setPaymentChallenge(null);
 							}}
 						>
-							Change
+							{t("domainRegistration.change")}
 						</button>
 					</div>
 				</div>
@@ -272,18 +276,18 @@ export const DomainRegistration = ({
 								setPrimaryChoice(event.target.checked);
 							}}
 						/>
-						Set as primary handle
+						{t("domainRegistration.setAsPrimary")}
 						<span className={secondaryClass}>
 							{hasExistingPrimary
-								? "(replaces your current primary)"
-								: "(your wallet's display identity)"}
+								? t("domainRegistration.primaryReplacesHint")
+								: t("domainRegistration.primaryDisplayHint")}
 						</span>
 					</label>
 				</div>
 
 				{!signer && (
 					<p className={`text-xs ${secondaryClass}`}>
-						Connect your wallet to register this domain.
+						{t("domainRegistration.connectToRegisterDomain")}
 					</p>
 				)}
 
@@ -300,31 +304,36 @@ export const DomainRegistration = ({
 					}}
 				>
 					{registerMutation.isPending
-						? "Signing & Registering..."
-						: `Authorize ${
-								paymentChallenge
+						? t("domainRegistration.signingAndRegistering")
+						: t("domainRegistration.authorizeAndRegister", {
+								amount: paymentChallenge
 									? formatTokenAmount(
 											paymentChallenge.payment.amount,
 											paymentChallenge.payment.asset
 										)
-									: formatFee(getAnnualFee(selectedName))
-							} & Register`}
+									: formatFee(getAnnualFee(selectedName)),
+							})}
 				</button>
 
 				{paymentChallenge ? (
 					<p className={`text-xs ${secondaryClass}`}>
-						Payment challenge: {paymentChallenge.error} for{" "}
-						{formatTokenAmount(
-							paymentChallenge.payment.amount,
-							paymentChallenge.payment.asset
-						)}{" "}
-						on {paymentChallenge.payment.network}.
+						{t("domainRegistration.paymentChallenge", {
+							error: paymentChallenge.error,
+							amount: formatTokenAmount(
+								paymentChallenge.payment.amount,
+								paymentChallenge.payment.asset
+							),
+							network: paymentChallenge.payment.network,
+						})}
 					</p>
 				) : null}
 
 				{registerMutation.isError && (
 					<p className="text-xs text-red-500">
-						{apiErrorMessage(registerMutation.error, "Registration failed")}
+						{apiErrorMessage(
+							registerMutation.error,
+							t("domainRegistration.registrationFailed")
+						)}
 					</p>
 				)}
 			</div>
@@ -335,12 +344,12 @@ export const DomainRegistration = ({
 		<div className="space-y-4">
 			<div className={`rounded-lg border p-4 ${cardClass}`}>
 				<h3 className={`mb-2 text-sm font-semibold ${headingClass}`}>
-					Register a Domain
+					{t("domainRegistration.registerDomainTitle")}
 				</h3>
 				<div className="flex gap-2">
 					<input
 						className={`flex-1 rounded-md border px-3 py-2 text-sm ${inputClass}`}
-						placeholder="Search for a name..."
+						placeholder={t("domainRegistration.searchPlaceholder")}
 						type="text"
 						value={searchInput}
 						onChange={(event): void => {
@@ -360,26 +369,28 @@ export const DomainRegistration = ({
 						}`}
 						onClick={handleSearch}
 					>
-						Check
+						{t("domainRegistration.check")}
 					</button>
 				</div>
 
 				{normalizedNameLength > 0 &&
 					normalizedNameLength < MIN_HANDLE_LENGTH && (
 						<p className={`mt-2 text-xs ${secondaryClass}`}>
-							Handles must be at least {MIN_HANDLE_LENGTH} characters.
+							{t("domainRegistration.minLength", { count: MIN_HANDLE_LENGTH })}
 						</p>
 					)}
 
 				{availabilityQuery.isLoading &&
 					normalizedNameLength >= MIN_HANDLE_LENGTH && (
-						<p className={`mt-2 text-xs ${secondaryClass}`}>Checking...</p>
+						<p className={`mt-2 text-xs ${secondaryClass}`}>
+							{t("domainRegistration.checking")}
+						</p>
 					)}
 
 				{availabilityQuery.isError &&
 					normalizedNameLength >= MIN_HANDLE_LENGTH && (
 						<p className="mt-2 text-xs font-medium text-red-500">
-							Couldn&apos;t check availability. Please try again.
+							{t("domainRegistration.availabilityError")}
 						</p>
 					)}
 
@@ -389,10 +400,12 @@ export const DomainRegistration = ({
 							<div className="flex items-center justify-between">
 								<div>
 									<span className="text-xs font-medium text-green-500">
-										Available
+										{t("domainRegistration.available")}
 									</span>
 									<span className={`ml-2 text-xs ${secondaryClass}`}>
-										{formatFee(getAnnualFee(searchName))}/year
+										{t("domainRegistration.feePerYear", {
+											fee: formatFee(getAnnualFee(searchName)),
+										})}
 									</span>
 								</div>
 								<button
@@ -403,15 +416,17 @@ export const DomainRegistration = ({
 										setPaymentChallenge(null);
 									}}
 								>
-									Register
+									{t("domainRegistration.register")}
 								</button>
 							</div>
 						) : (
 							<div>
-								<span className="text-xs font-medium text-red-500">Taken</span>
+								<span className="text-xs font-medium text-red-500">
+									{t("domainRegistration.taken")}
+								</span>
 								{availabilityQuery.data.identity && (
 									<span className={`ml-2 text-xs ${secondaryClass}`}>
-										Owned by{" "}
+										{t("domainRegistration.ownedBy")}{" "}
 										<span className="font-mono">
 											{availabilityQuery.data.identity.cryptoId.slice(0, 12)}...
 										</span>
@@ -425,7 +440,7 @@ export const DomainRegistration = ({
 
 			<div className={`rounded-lg border p-4 ${cardClass}`}>
 				<h4 className={`mb-2 text-xs font-semibold ${headingClass}`}>
-					Pricing
+					{t("domainRegistration.pricing")}
 				</h4>
 				<div className="space-y-1">
 					{PRICING_TIERS.map((tier) => (
@@ -437,7 +452,9 @@ export const DomainRegistration = ({
 								{tier.label}{" "}
 								<span className="font-mono opacity-60">({tier.example})</span>
 							</span>
-							<span className="font-medium">{tier.fee}/yr</span>
+							<span className="font-medium">
+								{t("domainRegistration.feePerYearShort", { fee: tier.fee })}
+							</span>
 						</div>
 					))}
 				</div>

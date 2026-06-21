@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import type {
 	ExplorerOverview,
@@ -18,20 +20,22 @@ function truncateTransactionId(transactionId: string): string {
 	return `${transactionId.slice(0, 6)}...${transactionId.slice(-4)}`;
 }
 
-function formatTimestamp(timestamp: string): string {
+function formatTimestamp(timestamp: string, t: TFunction): string {
 	const date = new Date(timestamp);
 	const now = new Date();
 	const differenceMs = now.getTime() - date.getTime();
 	const differenceMinutes = Math.floor(differenceMs / 60_000);
 
-	if (differenceMinutes < 1) return "just now";
-	if (differenceMinutes < 60) return `${differenceMinutes}m ago`;
+	if (differenceMinutes < 1) return t("explorer.justNow");
+	if (differenceMinutes < 60)
+		return t("explorer.minutesAgo", { count: differenceMinutes });
 
 	const differenceHours = Math.floor(differenceMinutes / 60);
-	if (differenceHours < 24) return `${differenceHours}h ago`;
+	if (differenceHours < 24)
+		return t("explorer.hoursAgo", { count: differenceHours });
 
 	const differenceDays = Math.floor(differenceHours / 24);
-	return `${differenceDays}d ago`;
+	return t("explorer.daysAgo", { count: differenceDays });
 }
 
 const typeColors: Record<string, string> = {
@@ -80,25 +84,33 @@ function networkLabel(network: string): string {
 	return network;
 }
 
-function metricCards(data: ExplorerOverview | undefined): Array<{
+function metricCards(
+	data: ExplorerOverview | undefined,
+	t: TFunction
+): Array<{
+	key: string;
 	label: string;
 	value: string;
 }> {
 	return [
 		{
-			label: "24h transactions",
+			key: "transactions24h",
+			label: t("explorer.transactions24h"),
 			value: String(data?.last24h.transactions ?? 0),
 		},
 		{
-			label: "24h volume",
+			key: "volume24h",
+			label: t("explorer.volume24h"),
 			value: `$${data?.last24h.volumeUsd ?? "0"}`,
 		},
 		{
-			label: "All-time volume",
+			key: "volumeAllTime",
+			label: t("explorer.volumeAllTime"),
 			value: `$${data?.allTime.volumeUsd ?? "0"}`,
 		},
 		{
-			label: "Fees",
+			key: "fees",
+			label: t("explorer.fees"),
 			value: `$${data?.allTime.feesUsd ?? "0"}`,
 		},
 	];
@@ -117,6 +129,7 @@ export const Explorer = ({
 	isDark,
 	query: externalQuery,
 }: ExplorerProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const [internalQuery, setInternalQuery] = useState("");
 	const controlled = externalQuery !== undefined;
 	const searchQuery = externalQuery ?? internalQuery;
@@ -133,7 +146,7 @@ export const Explorer = ({
 				<span
 					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 				>
-					Loading transactions...
+					{t("explorer.loadingTransactions")}
 				</span>
 			</div>
 		);
@@ -142,9 +155,7 @@ export const Explorer = ({
 	if (overview.isError) {
 		return (
 			<div className="flex items-center justify-center py-12">
-				<span className="text-xs text-red-500">
-					Failed to load transactions. Please try again.
-				</span>
+				<span className="text-xs text-red-500">{t("explorer.loadError")}</span>
 			</div>
 		);
 	}
@@ -177,7 +188,7 @@ export const Explorer = ({
 					}`}
 				>
 					<input
-						placeholder="Search by tx hash, agent..."
+						placeholder={t("explorer.searchPlaceholder")}
 						type="text"
 						value={internalQuery}
 						className={`w-full rounded-lg px-3 py-2 text-xs outline-none ${
@@ -202,15 +213,15 @@ export const Explorer = ({
 							setActiveFilter(filter);
 						}}
 					>
-						{filter}
+						{filter === "All" ? t("common.all") : filter}
 					</Chip>
 				))}
 			</div>
 
 			<div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-				{metricCards(overview.data).map((metric) => (
+				{metricCards(overview.data, t).map((metric) => (
 					<div
-						key={metric.label}
+						key={metric.key}
 						className={`rounded-lg border p-2.5 ${
 							isDark
 								? "border-neutral-800 bg-neutral-950"
@@ -244,56 +255,56 @@ export const Explorer = ({
 									isDark ? "text-neutral-500" : "text-neutral-400"
 								}`}
 							>
-								Tx Hash
+								{t("explorer.colTxHash")}
 							</th>
 							<th
 								className={`px-3 py-2 text-left text-xs font-medium ${
 									isDark ? "text-neutral-500" : "text-neutral-400"
 								}`}
 							>
-								Type
+								{t("explorer.colType")}
 							</th>
 							<th
 								className={`px-3 py-2 text-left text-xs font-medium ${
 									isDark ? "text-neutral-500" : "text-neutral-400"
 								}`}
 							>
-								From / To
+								{t("explorer.colFromTo")}
 							</th>
 							<th
 								className={`px-3 py-2 text-left text-xs font-medium ${
 									isDark ? "text-neutral-500" : "text-neutral-400"
 								}`}
 							>
-								Amount
+								{t("explorer.colAmount")}
 							</th>
 							<th
 								className={`px-3 py-2 text-left text-xs font-medium ${
 									isDark ? "text-neutral-500" : "text-neutral-400"
 								}`}
 							>
-								Fee
+								{t("explorer.colFee")}
 							</th>
 							<th
 								className={`px-3 py-2 text-left text-xs font-medium ${
 									isDark ? "text-neutral-500" : "text-neutral-400"
 								}`}
 							>
-								Network
+								{t("explorer.colNetwork")}
 							</th>
 							<th
 								className={`px-3 py-2 text-left text-xs font-medium ${
 									isDark ? "text-neutral-500" : "text-neutral-400"
 								}`}
 							>
-								Status
+								{t("explorer.colStatus")}
 							</th>
 							<th
 								className={`px-3 py-2 text-right text-xs font-medium ${
 									isDark ? "text-neutral-500" : "text-neutral-400"
 								}`}
 							>
-								Time
+								{t("explorer.colTime")}
 							</th>
 						</tr>
 					</thead>
@@ -304,7 +315,7 @@ export const Explorer = ({
 									<span
 										className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 									>
-										No transactions found.
+										{t("explorer.noTransactions")}
 									</span>
 								</td>
 							</tr>
@@ -347,7 +358,7 @@ export const Explorer = ({
 										<span
 											className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 										>
-											{transaction.from ?? "System"}{" "}
+											{transaction.from ?? t("explorer.system")}{" "}
 											<span
 												className={
 													isDark ? "text-neutral-600" : "text-neutral-300"
@@ -355,7 +366,7 @@ export const Explorer = ({
 											>
 												→
 											</span>{" "}
-											{transaction.to ?? "System"}
+											{transaction.to ?? t("explorer.system")}
 										</span>
 									</td>
 									<td className="px-3 py-2 text-right">
@@ -405,7 +416,7 @@ export const Explorer = ({
 										<span
 											className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 										>
-											{formatTimestamp(transaction.timestamp)}
+											{formatTimestamp(transaction.timestamp, t)}
 										</span>
 									</td>
 								</tr>
@@ -418,8 +429,10 @@ export const Explorer = ({
 			<p
 				className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 			>
-				Showing {filteredTransactions.length} of {totalEntries.toLocaleString()}{" "}
-				transactions
+				{t("explorer.showingCount", {
+					shown: filteredTransactions.length,
+					total: totalEntries.toLocaleString(),
+				})}
 			</p>
 		</div>
 	);

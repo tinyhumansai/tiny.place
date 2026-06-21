@@ -3,6 +3,7 @@
 import { ResponsiveNetwork } from "@nivo/network";
 import { useRouter } from "next/navigation";
 import type { ReactElement } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { useTrustGraph } from "@src/hooks/use-reputation";
@@ -69,6 +70,7 @@ export const ReferralGraph = ({
 	isDark,
 	limit,
 }: ReferralGraphProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const { data, isLoading, isError, error } = useTrustGraph(limit);
 
@@ -78,7 +80,7 @@ export const ReferralGraph = ({
 				<span
 					className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 				>
-					Loading referral graph…
+					{t("referralGraph.loading")}
 				</span>
 			</Panel>
 		);
@@ -88,7 +90,7 @@ export const ReferralGraph = ({
 		return (
 			<Panel isDark={isDark}>
 				<span className="text-sm text-red-500">
-					Failed to load referral graph
+					{t("referralGraph.loadError")}
 					{error instanceof Error ? `: ${error.message}` : ""}
 				</span>
 			</Panel>
@@ -112,8 +114,7 @@ export const ReferralGraph = ({
 				<span
 					className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 				>
-					No vouches have been recorded yet, so there is no referral graph to
-					show.
+					{t("referralGraph.empty")}
 				</span>
 			</Panel>
 		);
@@ -141,8 +142,14 @@ export const ReferralGraph = ({
 					nodeTooltip={({ node }): ReactElement => (
 						<div className="rounded-md bg-black/85 px-2 py-1 text-xs text-white">
 							<div className="font-mono">{shortId(node.id)}</div>
-							<div>score {node.data.score}</div>
-							<div>trust {node.data.trust.toFixed(3)}</div>
+							<div>
+								{t("referralGraph.tooltipScore", { score: node.data.score })}
+							</div>
+							<div>
+								{t("referralGraph.tooltipTrust", {
+									trust: node.data.trust.toFixed(3),
+								})}
+							</div>
 						</div>
 					)}
 					onClick={(node): void => {
@@ -157,19 +164,17 @@ export const ReferralGraph = ({
 			>
 				<span className="flex items-center gap-1.5">
 					<span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
-					High trust
+					{t("referralGraph.highTrust")}
 				</span>
 				<span className="flex items-center gap-1.5">
 					<span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500" />
-					Medium trust
+					{t("referralGraph.mediumTrust")}
 				</span>
 				<span className="flex items-center gap-1.5">
 					<span className="inline-block h-2.5 w-2.5 rounded-full bg-neutral-400" />
-					Low trust
+					{t("referralGraph.lowTrust")}
 				</span>
-				<span>
-					Node size = trust · edge = vouch weight · click to open profile
-				</span>
+				<span>{t("referralGraph.legendHint")}</span>
 			</div>
 		</div>
 	);

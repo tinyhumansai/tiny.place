@@ -2,6 +2,7 @@
 
 import type { TwitterChallengeResult } from "@tinyhumansai/tinyplace";
 import { useEffect, useRef, useState, type ReactElement } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
 	useRequestTwitterChallenge,
@@ -35,6 +36,7 @@ export function TwitterVerificationCard({
 	agentCryptoId,
 	onVerified,
 }: TwitterVerificationCardProperties): ReactElement {
+	const { t } = useTranslation();
 	const [handle, setHandle] = useState("");
 	const [challenge, setChallenge] = useState<TwitterChallengeResult | null>(
 		null
@@ -101,27 +103,26 @@ export function TwitterVerificationCard({
 	return (
 		<section className="rounded-lg border border-border bg-surface p-4">
 			<h2 className="mb-1 text-sm font-medium text-front">
-				Verify Twitter / X
+				{t("profile.twitter.title")}
 			</h2>
 			<p className="mb-3 text-xs text-muted">
-				Prove you control a Twitter/X account to earn a verified badge and
-				reputation. Optional.
+				{t("profile.twitter.description")}
 			</p>
 
 			{status === "verified" ? (
 				<p className="rounded-md bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-500">
-					Verified! @{normalizedHandle} is now linked to your profile.
+					{t("profile.twitter.verified", { handle: normalizedHandle })}
 				</p>
 			) : !challenge ? (
 				<div className="flex flex-col gap-2">
 					<label className="text-xs text-muted" htmlFor="twitter-handle">
-						Twitter / X handle
+						{t("profile.twitter.handleLabel")}
 					</label>
 					<div className="flex gap-2">
 						<input
 							className={inputClass}
 							id="twitter-handle"
-							placeholder="@yourhandle"
+							placeholder={t("profile.twitter.handlePlaceholder")}
 							value={handle}
 							onChange={(event): void => {
 								setHandle(event.target.value);
@@ -133,7 +134,9 @@ export function TwitterVerificationCard({
 							type="button"
 							onClick={requestChallenge}
 						>
-							{challengeMutation.isPending ? "Requesting…" : "Get challenge"}
+							{challengeMutation.isPending
+								? t("profile.twitter.requesting")
+								: t("profile.twitter.getChallenge")}
 						</button>
 					</div>
 					{challengeMutation.isError && (
@@ -146,7 +149,7 @@ export function TwitterVerificationCard({
 				<div className="flex flex-col gap-3">
 					<div>
 						<p className="mb-1 text-xs text-muted">
-							1. Post this exact text as a tweet from @{normalizedHandle}:
+							{t("profile.twitter.step1", { handle: normalizedHandle })}
 						</p>
 						<pre className="overflow-x-auto rounded-md border border-border bg-bg px-3 py-2 text-xs text-front">
 							{challenge.challengeCode}
@@ -160,7 +163,7 @@ export function TwitterVerificationCard({
 									challenge.challengeCode
 								)}`}
 							>
-								Open Twitter
+								{t("profile.twitter.openTwitter")}
 							</a>
 							<button
 								className="rounded-md border border-border px-3 py-2 text-sm font-medium text-front transition-colors hover:bg-bg"
@@ -169,13 +172,13 @@ export function TwitterVerificationCard({
 									void navigator.clipboard?.writeText(challenge.challengeCode);
 								}}
 							>
-								Copy
+								{t("common.copy")}
 							</button>
 						</div>
 					</div>
 					<div>
 						<label className="text-xs text-muted" htmlFor="tweet-url">
-							2. Paste the tweet URL
+							{t("profile.twitter.step2")}
 						</label>
 						<div className="mt-1 flex gap-2">
 							<input
@@ -193,7 +196,9 @@ export function TwitterVerificationCard({
 								type="button"
 								onClick={submitTweet}
 							>
-								{submitMutation.isPending ? "Submitting…" : "Verify"}
+								{submitMutation.isPending
+									? t("common.submitting")
+									: t("profile.twitter.verify")}
 							</button>
 						</div>
 						{submitMutation.isError && (
@@ -205,21 +210,20 @@ export function TwitterVerificationCard({
 
 					{attestationId && status !== "failed" && (
 						<p className="text-xs text-muted">
-							Verification in progress — checking your tweet against the Twitter
-							API. This can take a moment.
+							{t("profile.twitter.inProgress")}
 						</p>
 					)}
 					{status === "failed" && (
 						<div className="flex items-center justify-between gap-2">
 							<p className="text-xs text-danger">
-								{statusQuery.data?.reason ?? "Verification failed."}
+								{statusQuery.data?.reason ?? t("profile.twitter.failed")}
 							</p>
 							<button
 								className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-front hover:bg-bg"
 								type="button"
 								onClick={reset}
 							>
-								Try again
+								{t("common.retry")}
 							</button>
 						</div>
 					)}

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import type { InboxItem, InboxType } from "@tinyhumansai/tinyplace";
 
@@ -23,6 +25,13 @@ const filterOptions = ["All", "Tasks", "Payments", "Invites"] as const;
 
 type Filter = (typeof filterOptions)[number];
 
+const filterLabelKeys: Record<Filter, string> = {
+	All: "common.all",
+	Tasks: "inbox.filterTasks",
+	Payments: "inbox.filterPayments",
+	Invites: "inbox.filterInvites",
+};
+
 const typeColorMap: Record<InboxType, string> = {
 	TASK_REQUEST: "bg-blue-500",
 	TASK_UPDATE: "bg-blue-400",
@@ -44,7 +53,7 @@ const filterTypeMap: Record<Filter, Array<InboxType> | null> = {
 	Invites: ["GROUP_INVITE"],
 };
 
-function formatTimestamp(timestamp: string): string {
+function formatTimestamp(timestamp: string, t: TFunction): string {
 	const date = new Date(timestamp);
 	const now = new Date();
 	const diffMs = now.getTime() - date.getTime();
@@ -52,10 +61,10 @@ function formatTimestamp(timestamp: string): string {
 	const diffHours = Math.floor(diffMs / 3_600_000);
 	const diffDays = Math.floor(diffMs / 86_400_000);
 
-	if (diffMinutes < 1) return "just now";
-	if (diffMinutes < 60) return `${diffMinutes}m ago`;
-	if (diffHours < 24) return `${diffHours}h ago`;
-	return `${diffDays}d ago`;
+	if (diffMinutes < 1) return t("inbox.justNow");
+	if (diffMinutes < 60) return t("inbox.minutesAgo", { count: diffMinutes });
+	if (diffHours < 24) return t("inbox.hoursAgo", { count: diffHours });
+	return t("inbox.daysAgo", { count: diffDays });
 }
 
 function matchesFilter(item: InboxItem, filter: Filter): boolean {
@@ -65,12 +74,13 @@ function matchesFilter(item: InboxItem, filter: Filter): boolean {
 }
 
 export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
+	const { t } = useTranslation();
 	const [activeFilter, setActiveFilter] = useState<Filter>("All");
 	const agentId = useAuthStore((state) => state.agentId);
 	const ownedIdentities = useOwnedIdentities(agentId);
 	const inboxIdentity = firstActiveIdentity(ownedIdentities.data?.identities);
 	const owner = inboxIdentity?.username ?? agentId;
-	const gateMessage = useWriteGateMessage("view your inbox");
+	const gateMessage = useWriteGateMessage(t("writeGate.actions.viewYourInbox"));
 	const { data, isLoading, isError, error } = useInbox({ limit: 50 }, owner);
 	const markRead = useMarkInboxRead();
 	const archiveItem = useArchiveInboxItem();
@@ -99,7 +109,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 				<p
 					className={`text-sm ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
 				>
-					{gateMessage ?? "Connect your wallet to view your inbox"}
+					{gateMessage ?? t("inbox.connectPrompt")}
 				</p>
 			</div>
 		);
@@ -113,7 +123,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 				<p
 					className={`text-sm ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
 				>
-					Failed to load inbox
+					{t("inbox.loadFailed")}
 				</p>
 			</div>
 		);
@@ -136,7 +146,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 				<span
 					className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 				>
-					Inbox
+					{t("inbox.title")}
 					{unreadCount > 0 && (
 						<span className="ml-2 inline-flex items-center justify-center rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
 							{unreadCount}
@@ -160,7 +170,9 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 									setActiveFilter(filter);
 								}}
 							>
-								{filter}
+								{t(filterLabelKeys[filter], {
+									defaultValue: filterLabelKeys[filter],
+								})}
 							</button>
 						)
 					)}
@@ -172,7 +184,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 							markAllRead.mutate({ owner });
 						}}
 					>
-						Read all
+						{t("inbox.readAll")}
 					</button>
 				</div>
 			</div>
@@ -188,7 +200,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 						<p
 							className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 						>
-							Loading...
+							{t("common.loading")}
 						</p>
 					</div>
 				)}
@@ -198,7 +210,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 						<p
 							className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 						>
-							No items in your inbox
+							{t("inbox.empty")}
 						</p>
 					</div>
 				)}
@@ -232,7 +244,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 								<p
 									className={`mt-1 text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
 								>
-									{formatTimestamp(item.timestamp)}
+									{formatTimestamp(item.timestamp, t)}
 								</p>
 							</div>
 							<div className="flex shrink-0 gap-1">
@@ -245,7 +257,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 											markRead.mutate({ itemId: item.itemId, owner });
 										}}
 									>
-										Read
+										{t("inbox.markRead")}
 									</button>
 								) : null}
 								{item.status !== "archived" ? (
@@ -261,7 +273,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 											archiveItem.mutate({ itemId: item.itemId, owner });
 										}}
 									>
-										Archive
+										{t("inbox.archive")}
 									</button>
 								) : null}
 								<button
@@ -272,7 +284,7 @@ export const Inbox = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 										deleteItem.mutate({ itemId: item.itemId, owner });
 									}}
 								>
-									Delete
+									{t("common.delete")}
 								</button>
 							</div>
 						</div>

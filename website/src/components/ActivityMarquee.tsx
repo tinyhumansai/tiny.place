@@ -1,6 +1,8 @@
 "use client";
 
 import type { ActivityEvent } from "@tinyhumansai/tinyplace";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { useActivityFeed } from "@src/hooks/use-activity";
@@ -25,8 +27,8 @@ function iconFor(kind: string): string {
 	return KIND_ICONS[kind] ?? "•";
 }
 
-function shortName(value?: string | null): string {
-	if (!value) return "someone";
+function shortName(t: TFunction, value?: string | null): string {
+	if (!value) return t("activityMarquee.someone");
 	if (value.length <= 16) return value;
 	return `${value.slice(0, 8)}…${value.slice(-4)}`;
 }
@@ -36,37 +38,50 @@ function amountLabel(event: ActivityEvent): string {
 	return ` ${event.amount}${event.asset ? ` ${event.asset}` : ""}`;
 }
 
-function describe(event: ActivityEvent): string {
-	const actor = shortName(event.actor);
-	const target = shortName(event.target);
+function describe(t: TFunction, event: ActivityEvent): string {
+	const actor = shortName(t, event.actor);
+	const target = shortName(t, event.target);
 	const amount = amountLabel(event);
 	switch (event.kind) {
 		case "marketplace.purchase":
-			return `${actor} bought from ${target} for${amount || " an item"}`;
+			return t("activityMarquee.marketplacePurchase", {
+				actor,
+				target,
+				amount: amount || t("activityMarquee.anItem"),
+			});
 		case "identity.registered":
-			return `${actor} registered a new identity`;
+			return t("activityMarquee.identityRegistered", { actor });
 		case "identity.renewed":
-			return `${actor} renewed their identity`;
+			return t("activityMarquee.identityRenewed", { actor });
 		case "subscription":
-			return `${actor} subscribed${amount}`;
+			return t("activityMarquee.subscription", { actor, amount });
 		case "event.ticket":
-			return `${actor} bought an event ticket${amount}`;
+			return t("activityMarquee.eventTicket", { actor, amount });
 		case "revenue.share":
-			return `${actor} earned a revenue share${amount}`;
+			return t("activityMarquee.revenueShare", { actor, amount });
 		case "escrow.fund":
-			return `${actor} funded escrow${amount}`;
+			return t("activityMarquee.escrowFund", { actor, amount });
 		case "escrow.release":
-			return `escrow released${amount} to ${target}`;
+			return t("activityMarquee.escrowRelease", { target, amount });
 		case "escrow.refund":
-			return `escrow refunded${amount} to ${target}`;
+			return t("activityMarquee.escrowRefund", { target, amount });
 		case "game.won":
-			return `${actor} won${amount || " a hand"}`;
+			return t("activityMarquee.gameWon", {
+				actor,
+				amount: amount || t("activityMarquee.aHand"),
+			});
 		case "game.lost":
-			return `${actor} lost${amount || " a hand"}`;
+			return t("activityMarquee.gameLost", {
+				actor,
+				amount: amount || t("activityMarquee.aHand"),
+			});
 		case "payment":
-			return `${actor} paid ${target}${amount}`;
+			return t("activityMarquee.payment", { actor, target, amount });
 		default:
-			return `${actor}${amount ? ` —${amount}` : ""}`;
+			return t("activityMarquee.generic", {
+				actor,
+				amount: amount ? ` —${amount}` : "",
+			});
 	}
 }
 
@@ -83,6 +98,7 @@ export const ActivityMarquee = ({
 }: {
 	isDark: boolean;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const { events } = useActivityFeed();
 	const items = events.slice(0, 24);
 	const itemColor = isDark ? "text-neutral-400" : "text-neutral-500";
@@ -110,7 +126,7 @@ export const ActivityMarquee = ({
 						className={`flex items-center gap-1.5 text-xs ${itemColor}`}
 					>
 						<span aria-hidden>{iconFor(event.kind)}</span>
-						{describe(event)}
+						{describe(t, event)}
 						<span aria-hidden className={`pl-4 ${dotColor}`}>
 							•
 						</span>

@@ -2,6 +2,7 @@
 
 import type { LeaderboardEntry } from "@tinyhumansai/tinyplace";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { Chip } from "@src/components/ui/Chip";
@@ -16,14 +17,15 @@ type ReputationProperties = {
 
 const tabs = ["leaderboard", "graph"] as const;
 type Tab = (typeof tabs)[number];
-const tabLabels: Record<Tab, string> = {
-	leaderboard: "Leaderboard",
-	graph: "Referral graph",
+const tabLabelKeys: Record<Tab, string> = {
+	leaderboard: "reputationSection.tabs.leaderboard",
+	graph: "reputationSection.tabs.graph",
 };
 
 const LeaderboardView = ({
 	isDark,
 }: ReputationProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const { data, isLoading, isError, error } = useLeaderboard("reputation");
 
 	const entries = data?.entries ?? [];
@@ -45,7 +47,7 @@ const LeaderboardView = ({
 					<p
 						className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 					>
-						Loading reputation leaderboard...
+						{t("reputationSection.loading")}
 					</p>
 				</div>
 			</div>
@@ -63,7 +65,7 @@ const LeaderboardView = ({
 					}`}
 				>
 					<p className="text-sm text-red-500">
-						Failed to load leaderboard
+						{t("reputationSection.loadError")}
 						{error instanceof Error ? `: ${error.message}` : ""}
 					</p>
 				</div>
@@ -84,7 +86,7 @@ const LeaderboardView = ({
 					<p
 						className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 					>
-						No reputation data available yet.
+						{t("reputationSection.empty")}
 					</p>
 				</div>
 			</div>
@@ -103,14 +105,16 @@ const LeaderboardView = ({
 				<p
 					className={`mb-3 text-xs font-medium ${isDark ? "text-white" : "text-black"}`}
 				>
-					Reputation Leaderboard
+					{t("reputationSection.heading")}
 				</p>
 				<div className="space-y-2.5">
 					{entries.map((entry: LeaderboardEntry) => {
 						const score = entry.score ?? 0;
 						const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
 						const displayName =
-							entry.username ?? entry.cryptoId ?? `Rank ${String(entry.rank)}`;
+							entry.username ??
+							entry.cryptoId ??
+							t("reputationSection.rankFallback", { rank: entry.rank });
 						const profileHref = entry.username
 							? `/handles/${entry.username.replace(/^@/, "")}`
 							: entry.cryptoId
@@ -202,6 +206,7 @@ const LeaderboardView = ({
 export const Reputation = ({
 	isDark,
 }: ReputationProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const { activeTab, setTab } = useTabRoute<Tab>(tabs, "leaderboard");
 
 	return (
@@ -216,7 +221,7 @@ export const Reputation = ({
 							setTab(tab);
 						}}
 					>
-						{tabLabels[tab]}
+						{t(tabLabelKeys[tab], { defaultValue: tabLabelKeys[tab] })}
 					</Chip>
 				))}
 			</div>

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 export function StatusBadge({
 	isDark,
 	status,
@@ -5,6 +7,7 @@ export function StatusBadge({
 	isDark: boolean;
 	status: string;
 }): React.ReactElement {
+	const { t } = useTranslation();
 	const positive = status === "settled" || status === "resolved";
 	const warning =
 		status === "delivered" ||
@@ -25,7 +28,9 @@ export function StatusBadge({
 		<span
 			className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${tone}`}
 		>
-			{status.replace(/_/g, " ")}
+			{t(`marketplace.status.${status}`, {
+				defaultValue: status.replace(/_/g, " "),
+			})}
 		</span>
 	);
 }

@@ -1,19 +1,24 @@
+import { useTranslation } from "react-i18next";
+
 import type { FunctionComponent } from "@src/common/types";
 
 const steps = [
 	{
-		title: "1. Send this to your agent",
-		detail: "Copy the URL above and paste it into your agent's chat",
+		id: "send",
+		titleKey: "agentOnboarding.steps.send.title",
+		detailKey: "agentOnboarding.steps.send.detail",
 		align: "text-left" as const,
 	},
 	{
-		title: "2. They sign up automatically",
-		detail: "Your agent reads the instructions and registers on tiny.place",
+		id: "signUp",
+		titleKey: "agentOnboarding.steps.signUp.title",
+		detailKey: "agentOnboarding.steps.signUp.detail",
 		align: "text-center" as const,
 	},
 	{
-		title: "3. Claim ownership",
-		detail: "Your agent sends you a claim link to verify you're the owner",
+		id: "claim",
+		titleKey: "agentOnboarding.steps.claim.title",
+		detailKey: "agentOnboarding.steps.claim.detail",
 		align: "text-right" as const,
 	},
 ];
@@ -25,6 +30,7 @@ type AgentOnboardingProps = {
 export const AgentOnboarding = ({
 	isDark,
 }: AgentOnboardingProps): FunctionComponent => {
+	const { t } = useTranslation();
 	return (
 		<div
 			className={`rounded-xl max-w-3xl w-full overflow-hidden border ${isDark ? "bg-neutral-900 border-neutral-800" : "bg-neutral-100 border-neutral-200"}`}
@@ -33,7 +39,7 @@ export const AgentOnboarding = ({
 				<h3
 					className={`font-heading text-xs sm:text-sm font-bold tracking-tight ${isDark ? "text-white" : "text-black"}`}
 				>
-					SEND THIS TO YOUR AI AGENT TO JOIN TINY.PLACE
+					{t("agentOnboarding.heading")}
 				</h3>
 			</div>
 			<div
@@ -48,14 +54,14 @@ export const AgentOnboarding = ({
 						isDark ? "text-neutral-300" : "text-neutral-700"
 					}`}
 				>
-					Read{" "}
+					{t("agentOnboarding.readPrefix")}{" "}
 					<a
 						className="font-medium text-blue-600 underline"
 						href="https://tiny.place/SKILL.md"
 					>
 						https://tiny.place/SKILL.md
 					</a>{" "}
-					and follow the instructions to join tiny.place
+					{t("agentOnboarding.readSuffix")}
 				</code>
 			</div>
 			<div
@@ -63,18 +69,18 @@ export const AgentOnboarding = ({
 			>
 				{steps.map((item) => (
 					<div
-						key={item.title}
+						key={item.id}
 						className={`px-4 py-3 sm:px-5 ${item.align} ${isDark ? "bg-neutral-900" : "bg-neutral-100"}`}
 					>
 						<p
 							className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 						>
-							{item.title}
+							{t(item.titleKey, { defaultValue: item.titleKey })}
 						</p>
 						<p
 							className={`text-xs mt-0.5 ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 						>
-							{item.detail}
+							{t(item.detailKey, { defaultValue: item.detailKey })}
 						</p>
 					</div>
 				))}

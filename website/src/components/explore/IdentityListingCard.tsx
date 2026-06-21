@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
 	compareAmount,
@@ -72,6 +73,7 @@ export function IdentityListingCard({
 	isDark,
 	listing,
 }: IdentityListingCardProperties): FunctionComponent {
+	const { t } = useTranslation();
 	const [panel, setPanel] = useState<Panel>("none");
 	const [bidAmount, setBidAmount] = useState("");
 	const [offerAmount, setOfferAmount] = useState("");
@@ -185,7 +187,7 @@ export function IdentityListingCard({
 				</span>
 				{isAuction && (
 					<span className="rounded-full bg-orange-600/20 px-2 py-0.5 text-xs font-medium text-orange-500">
-						Auction
+						{t("identityListing.auction")}
 					</span>
 				)}
 			</div>
@@ -194,11 +196,15 @@ export function IdentityListingCard({
 				<div>
 					<div className={`text-xs font-semibold ${headingClass}`}>
 						{isAuction
-							? `${highest ? formatPrice(highest) : formatPrice(listing.price)}${highest ? " bid" : " start"}`
+							? highest
+								? t("identityListing.priceBid", { price: formatPrice(highest) })
+								: t("identityListing.priceStart", {
+										price: formatPrice(listing.price),
+									})
 							: formatPrice(listing.price)}
 					</div>
 					<div className={`text-xs ${secondaryClass}`}>
-						by{" "}
+						{t("identityListing.bySeller")}{" "}
 						<ProfileEntityLink
 							className="hover:underline"
 							value={listing.seller}
@@ -215,7 +221,7 @@ export function IdentityListingCard({
 							togglePanel("details");
 						}}
 					>
-						Details
+						{t("identityListing.details")}
 					</button>
 					{isAuction ? (
 						<button
@@ -226,7 +232,7 @@ export function IdentityListingCard({
 								togglePanel("bid");
 							}}
 						>
-							Bid
+							{t("identityListing.bid")}
 						</button>
 					) : (
 						<button
@@ -247,7 +253,9 @@ export function IdentityListingCard({
 								});
 							}}
 						>
-							{buyListing.isPending ? "Buying…" : "Buy"}
+							{buyListing.isPending
+								? t("identityListing.buying")
+								: t("identityListing.buy")}
 						</button>
 					)}
 					{canActAsBuyer && (
@@ -258,7 +266,7 @@ export function IdentityListingCard({
 								togglePanel("offer");
 							}}
 						>
-							Offer
+							{t("identityListing.offer")}
 						</button>
 					)}
 				</div>
@@ -277,7 +285,9 @@ export function IdentityListingCard({
 						});
 					}}
 				>
-					{closeAuction.isPending ? "Closing…" : "Close auction & settle"}
+					{closeAuction.isPending
+						? t("identityListing.closing")
+						: t("identityListing.closeAuction")}
 				</button>
 			)}
 
@@ -285,14 +295,26 @@ export function IdentityListingCard({
 				<div className={`mt-2 space-y-1 text-xs ${secondaryClass}`}>
 					<p>
 						{listing.description ||
-							(isAuction ? "Auction listing" : "Fixed-price identity listing")}
+							(isAuction
+								? t("identityListing.auctionListing")
+								: t("identityListing.fixedPriceListing"))}
 					</p>
 					{isAuction && listing.reservePrice && (
-						<p>Reserve: {formatPrice(listing.reservePrice)}</p>
+						<p>
+							{t("identityListing.reserve", {
+								price: formatPrice(listing.reservePrice),
+							})}
+						</p>
 					)}
 					{isAuction && listing.expiresAt && (
 						<p>
-							{expired ? "Ended" : "Ends"} {listing.expiresAt.slice(0, 10)}
+							{expired
+								? t("identityListing.ended", {
+										date: listing.expiresAt.slice(0, 10),
+									})
+								: t("identityListing.ends", {
+										date: listing.expiresAt.slice(0, 10),
+									})}
 						</p>
 					)}
 				</div>
@@ -304,24 +326,32 @@ export function IdentityListingCard({
 						required
 						className={inputClass}
 						min={minBid}
-						placeholder={`At least ${minBid} ${listing.price.asset}`}
 						step="1"
 						type="number"
 						value={bidAmount}
+						placeholder={t("identityListing.bidPlaceholder", {
+							amount: minBid,
+							asset: listing.price.asset,
+						})}
 						onChange={(event): void => {
 							setBidAmount(event.target.value);
 						}}
 					/>
 					<p className={`text-xs ${secondaryClass}`}>
-						Minimum bid: {minBid} {listing.price.asset}
-						{highest ? " (5% above the current bid)" : ""}
+						{t("identityListing.minimumBid", {
+							amount: minBid,
+							asset: listing.price.asset,
+						})}
+						{highest ? t("identityListing.aboveCurrentBid") : ""}
 					</p>
 					<button
 						className={`${accentButtonClass(isDark, "orange")} w-full px-3 py-1.5`}
 						disabled={placeBid.isPending || bidBelowMinimum}
 						type="submit"
 					>
-						{placeBid.isPending ? "Bidding…" : "Place bid"}
+						{placeBid.isPending
+							? t("identityListing.bidding")
+							: t("identityListing.placeBid")}
 					</button>
 				</form>
 			)}
@@ -332,7 +362,7 @@ export function IdentityListingCard({
 						required
 						className={inputClass}
 						min="0"
-						placeholder="Offer amount (USDC)"
+						placeholder={t("identityListing.offerPlaceholder")}
 						step="0.01"
 						type="number"
 						value={offerAmount}
@@ -345,7 +375,9 @@ export function IdentityListingCard({
 						disabled={createOffer.isPending || !offerAmount}
 						type="submit"
 					>
-						{createOffer.isPending ? "Submitting…" : `Offer on ${listing.name}`}
+						{createOffer.isPending
+							? t("identityListing.submitting")
+							: t("identityListing.offerOn", { name: listing.name })}
 					</button>
 				</form>
 			)}
@@ -354,7 +386,7 @@ export function IdentityListingCard({
 				<p className="mt-2 text-xs text-rose-500">
 					{closeAuction.error instanceof Error
 						? closeAuction.error.message
-						: "Failed to close auction"}
+						: t("identityListing.closeError")}
 				</p>
 			)}
 		</div>

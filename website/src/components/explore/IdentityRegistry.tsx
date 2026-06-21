@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { IdentityListing } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
@@ -31,6 +32,7 @@ function formatDate(value: string): string {
 export const IdentityRegistry = ({
 	isDark,
 }: IdentityRegistryProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const cardClass = isDark
 		? "border-neutral-800 bg-neutral-950"
 		: "border-neutral-200 bg-neutral-50";
@@ -64,12 +66,12 @@ export const IdentityRegistry = ({
 					className={`text-xs font-medium ${headingClass}`}
 					htmlFor="handle-availability-input"
 				>
-					Check handle availability
+					{t("identityRegistry.checkAvailability")}
 				</label>
 				<div className="mt-2 flex gap-2">
 					<input
 						id="handle-availability-input"
-						placeholder="@yourhandle"
+						placeholder={t("identityRegistry.handlePlaceholder")}
 						value={input}
 						className={`flex-1 rounded-md border px-2 py-1 text-xs ${
 							isDark
@@ -87,14 +89,18 @@ export const IdentityRegistry = ({
 							isDark ? "bg-white text-black" : "bg-black text-white"
 						} ${input.trim() ? "" : "opacity-50"}`}
 					>
-						Check
+						{t("identityRegistry.check")}
 					</button>
 				</div>
 				{checked && isFetching && (
-					<p className={`mt-2 text-xs ${secondaryClass}`}>Checking…</p>
+					<p className={`mt-2 text-xs ${secondaryClass}`}>
+						{t("identityRegistry.checking")}
+					</p>
 				)}
 				{checked && isError && (
-					<p className="mt-2 text-xs text-rose-500">Failed to check handle</p>
+					<p className="mt-2 text-xs text-rose-500">
+						{t("identityRegistry.checkError")}
+					</p>
 				)}
 				{checked && !isFetching && !isError && data ? (
 					<p
@@ -102,7 +108,9 @@ export const IdentityRegistry = ({
 							data.available ? "text-green-500" : "text-rose-500"
 						}`}
 					>
-						{data.name} is {data.available ? "available" : "taken"}
+						{data.available
+							? t("identityRegistry.handleAvailable", { name: data.name })
+							: t("identityRegistry.handleTaken", { name: data.name })}
 					</p>
 				) : null}
 			</form>
@@ -114,25 +122,27 @@ export const IdentityRegistry = ({
 					}`}
 				>
 					<span className={`text-xs font-medium ${headingClass}`}>
-						Directory identities
+						{t("identityRegistry.directoryIdentities")}
 					</span>
-					<span className={`text-xs ${secondaryClass}`}>Live from staging</span>
+					<span className={`text-xs ${secondaryClass}`}>
+						{t("identityRegistry.liveFromStaging")}
+					</span>
 				</div>
 				{identitiesQuery.isLoading ? (
 					<p className={`px-3 py-4 text-xs ${secondaryClass}`}>
-						Loading identities...
+						{t("identityRegistry.loadingIdentities")}
 					</p>
 				) : null}
 				{identitiesQuery.isError ? (
 					<p className="px-3 py-4 text-xs text-rose-500">
-						Failed to load identities
+						{t("identityRegistry.loadError")}
 					</p>
 				) : null}
 				{!identitiesQuery.isLoading &&
 				!identitiesQuery.isError &&
 				listings.length === 0 ? (
 					<p className={`px-3 py-4 text-xs ${secondaryClass}`}>
-						No directory identities are currently listed.
+						{t("identityRegistry.empty")}
 					</p>
 				) : null}
 				<table className="w-full text-left text-xs">
@@ -140,14 +150,20 @@ export const IdentityRegistry = ({
 						<tr
 							className={`border-b ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
 						>
-							<th className={`px-3 py-2 font-medium ${headerClass}`}>Handle</th>
-							<th className={`px-3 py-2 font-medium ${headerClass}`}>Seller</th>
 							<th className={`px-3 py-2 font-medium ${headerClass}`}>
-								Updated
+								{t("identityRegistry.colHandle")}
 							</th>
-							<th className={`px-3 py-2 font-medium ${headerClass}`}>Status</th>
+							<th className={`px-3 py-2 font-medium ${headerClass}`}>
+								{t("identityRegistry.colSeller")}
+							</th>
+							<th className={`px-3 py-2 font-medium ${headerClass}`}>
+								{t("identityRegistry.colUpdated")}
+							</th>
+							<th className={`px-3 py-2 font-medium ${headerClass}`}>
+								{t("identityRegistry.colStatus")}
+							</th>
 							<th className={`px-3 py-2 text-right font-medium ${headerClass}`}>
-								Price
+								{t("identityRegistry.colPrice")}
 							</th>
 						</tr>
 					</thead>

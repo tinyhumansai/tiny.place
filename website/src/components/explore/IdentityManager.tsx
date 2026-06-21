@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { Identity, IdentityListing } from "@tinyhumansai/tinyplace";
 
@@ -45,6 +46,7 @@ function IdentityCard({
 	isDark,
 	listing,
 }: IdentityCardProperties): FunctionComponent {
+	const { t } = useTranslation();
 	const [panel, setPanel] = useState<ActionPanel>("none");
 	const [price, setPrice] = useState("");
 	const [description, setDescription] = useState("");
@@ -126,11 +128,11 @@ function IdentityCard({
 		try {
 			recipientKeys = deriveRecipient(recipient);
 		} catch {
-			setRecipientError("Enter a valid Solana wallet address");
+			setRecipientError(t("identityManager.invalidWalletAddress"));
 			return;
 		}
 		if (recipientKeys.cryptoId === agentId) {
-			setRecipientError("That is your own wallet");
+			setRecipientError(t("identityManager.ownWallet"));
 			return;
 		}
 		setRecipientError(null);
@@ -162,12 +164,15 @@ function IdentityCard({
 					</span>
 					{isPrimary && (
 						<span className="rounded-full bg-emerald-600/20 px-2 py-0.5 text-xs font-medium text-emerald-500">
-							Primary
+							{t("identityManager.primary")}
 						</span>
 					)}
 					{isListed && (
 						<span className="rounded-full bg-blue-600/20 px-2 py-0.5 text-xs font-medium text-blue-400">
-							Listed · {listing?.price.amount} {listing?.price.asset}
+							{t("identityManager.listedBadge", {
+								amount: listing?.price.amount,
+								asset: listing?.price.asset,
+							})}
 						</span>
 					)}
 				</div>
@@ -185,8 +190,9 @@ function IdentityCard({
 
 			{identity.subnames && identity.subnames.length > 0 && (
 				<p className={`mt-1 text-xs ${secondaryClass}`}>
-					{identity.subnames.length} subname
-					{identity.subnames.length === 1 ? "" : "s"}
+					{t("identityManager.subnameCount", {
+						count: identity.subnames.length,
+					})}
 				</p>
 			)}
 
@@ -202,7 +208,9 @@ function IdentityCard({
 						});
 					}}
 				>
-					{isPrimary ? "Unassign primary" : "Set primary"}
+					{isPrimary
+						? t("identityManager.unassignPrimary")
+						: t("identityManager.setPrimary")}
 				</button>
 				<button
 					className={ghostButton}
@@ -212,7 +220,9 @@ function IdentityCard({
 						renew.mutate({ name: identity.username });
 					}}
 				>
-					{renew.isPending ? "Renewing…" : "Renew"}
+					{renew.isPending
+						? t("identityManager.renewing")
+						: t("identityManager.renew")}
 				</button>
 				{isListed ? (
 					<button
@@ -225,37 +235,33 @@ function IdentityCard({
 							}
 						}}
 					>
-						{deleteListing.isPending ? "Cancelling…" : "Cancel listing"}
+						{deleteListing.isPending
+							? t("identityManager.cancelling")
+							: t("identityManager.cancelListing")}
 					</button>
 				) : (
 					<button
 						className={ghostButton}
 						disabled={isPrimary}
+						title={isPrimary ? t("identityManager.unassignBeforeSell") : ""}
 						type="button"
-						title={
-							isPrimary ? "Unassign the primary handle before selling it" : ""
-						}
 						onClick={(): void => {
 							togglePanel("list");
 						}}
 					>
-						List for sale
+						{t("identityManager.listForSale")}
 					</button>
 				)}
 				<button
 					className={ghostButton}
 					disabled={isPrimary}
+					title={isPrimary ? t("identityManager.unassignBeforeTransfer") : ""}
 					type="button"
-					title={
-						isPrimary
-							? "Unassign the primary handle before transferring it"
-							: ""
-					}
 					onClick={(): void => {
 						togglePanel("transfer");
 					}}
 				>
-					Transfer
+					{t("identityManager.transfer")}
 				</button>
 				<button
 					className={ghostButton}
@@ -264,7 +270,9 @@ function IdentityCard({
 						togglePanel("offers");
 					}}
 				>
-					Offers{offers.length > 0 ? ` (${String(offers.length)})` : ""}
+					{offers.length > 0
+						? t("identityManager.offersCount", { count: offers.length })
+						: t("identityManager.offers")}
 				</button>
 			</div>
 
@@ -272,21 +280,21 @@ function IdentityCard({
 				<p className="mt-2 text-xs text-rose-500">
 					{renew.error instanceof Error
 						? renew.error.message
-						: "Renewal failed"}
+						: t("identityManager.renewalFailed")}
 				</p>
 			)}
 			{setPrimary.isError && (
 				<p className="mt-2 text-xs text-rose-500">
 					{setPrimary.error instanceof Error
 						? setPrimary.error.message
-						: "Failed to update primary"}
+						: t("identityManager.updatePrimaryFailed")}
 				</p>
 			)}
 			{deleteListing.isError && (
 				<p className="mt-2 text-xs text-rose-500">
 					{deleteListing.error instanceof Error
 						? deleteListing.error.message
-						: "Failed to cancel listing"}
+						: t("identityManager.cancelListingFailed")}
 				</p>
 			)}
 
@@ -308,7 +316,9 @@ function IdentityCard({
 									setListingType(kind);
 								}}
 							>
-								{kind === "fixed" ? "Fixed price" : "Auction"}
+								{kind === "fixed"
+									? t("identityManager.fixedPrice")
+									: t("identityManager.auction")}
 							</button>
 						))}
 					</div>
@@ -316,8 +326,8 @@ function IdentityCard({
 						<div>
 							<label className={labelClass}>
 								{listingType === "auction"
-									? "Starting bid (USDC)"
-									: "Price (USDC)"}
+									? t("identityManager.startingBid")
+									: t("identityManager.price")}
 							</label>
 							<input
 								required
@@ -333,10 +343,12 @@ function IdentityCard({
 							/>
 						</div>
 						<div>
-							<label className={labelClass}>Description</label>
+							<label className={labelClass}>
+								{t("identityManager.description")}
+							</label>
 							<input
 								className={inputClass}
-								placeholder="Premium agent handle"
+								placeholder={t("identityManager.descriptionPlaceholder")}
 								type="text"
 								value={description}
 								onChange={(event): void => {
@@ -348,7 +360,9 @@ function IdentityCard({
 					{listingType === "auction" && (
 						<div className="grid grid-cols-2 gap-2">
 							<div>
-								<label className={labelClass}>Reserve (USDC, optional)</label>
+								<label className={labelClass}>
+									{t("identityManager.reserve")}
+								</label>
 								<input
 									className={inputClass}
 									min="0"
@@ -362,7 +376,9 @@ function IdentityCard({
 								/>
 							</div>
 							<div>
-								<label className={labelClass}>Duration (days)</label>
+								<label className={labelClass}>
+									{t("identityManager.durationDays")}
+								</label>
 								<input
 									className={inputClass}
 									min="1"
@@ -380,7 +396,7 @@ function IdentityCard({
 						<p className="text-xs text-rose-500">
 							{createListing.error instanceof Error
 								? createListing.error.message
-								: "Failed to list identity"}
+								: t("identityManager.listFailed")}
 						</p>
 					)}
 					<button
@@ -388,7 +404,9 @@ function IdentityCard({
 						disabled={createListing.isPending || !price}
 						type="submit"
 					>
-						{createListing.isPending ? "Listing…" : `List ${identity.username}`}
+						{createListing.isPending
+							? t("identityManager.listing")
+							: t("identityManager.listName", { name: identity.username })}
 					</button>
 				</form>
 			)}
@@ -396,11 +414,13 @@ function IdentityCard({
 			{panel === "transfer" && (
 				<form className="mt-3 space-y-2" onSubmit={handleTransfer}>
 					<div>
-						<label className={labelClass}>Recipient wallet address</label>
+						<label className={labelClass}>
+							{t("identityManager.recipientWallet")}
+						</label>
 						<input
 							required
 							className={inputClass}
-							placeholder="Solana address"
+							placeholder={t("identityManager.solanaAddress")}
 							type="text"
 							value={recipient}
 							onChange={(event): void => {
@@ -419,8 +439,9 @@ function IdentityCard({
 								setConfirmTransfer(event.target.checked);
 							}}
 						/>
-						I understand this permanently gives {identity.username} to another
-						wallet.
+						{t("identityManager.transferConfirm", {
+							name: identity.username,
+						})}
 					</label>
 					{recipientError && (
 						<p className="text-xs text-rose-500">{recipientError}</p>
@@ -429,7 +450,7 @@ function IdentityCard({
 						<p className="text-xs text-rose-500">
 							{transfer.error instanceof Error
 								? transfer.error.message
-								: "Transfer failed"}
+								: t("identityManager.transferFailed")}
 						</p>
 					)}
 					<button
@@ -438,8 +459,10 @@ function IdentityCard({
 						type="submit"
 					>
 						{transfer.isPending
-							? "Transferring…"
-							: `Transfer ${strip(identity.username)}`}
+							? t("identityManager.transferring")
+							: t("identityManager.transferName", {
+									name: strip(identity.username),
+								})}
 					</button>
 				</form>
 			)}
@@ -447,11 +470,15 @@ function IdentityCard({
 			{panel === "offers" && (
 				<div className="mt-3 space-y-2">
 					{offersQuery.isLoading && (
-						<p className={`text-xs ${secondaryClass}`}>Loading offers…</p>
+						<p className={`text-xs ${secondaryClass}`}>
+							{t("identityManager.loadingOffers")}
+						</p>
 					)}
 					{!offersQuery.isLoading && offers.length === 0 && (
 						<p className={`text-xs ${secondaryClass}`}>
-							No pending offers for {identity.username}.
+							{t("identityManager.noPendingOffers", {
+								name: identity.username,
+							})}
 						</p>
 					)}
 					{offers.map((offer) => (
@@ -464,7 +491,7 @@ function IdentityCard({
 									{offer.price.amount} {offer.price.asset}
 								</div>
 								<div className={`text-xs ${secondaryClass}`}>
-									from {offer.buyer}
+									{t("identityManager.offerFrom", { buyer: offer.buyer })}
 								</div>
 							</div>
 							<button
@@ -482,7 +509,9 @@ function IdentityCard({
 									);
 								}}
 							>
-								{acceptOffer.isPending ? "Accepting…" : "Accept"}
+								{acceptOffer.isPending
+									? t("identityManager.accepting")
+									: t("identityManager.accept")}
 							</button>
 						</div>
 					))}
@@ -490,7 +519,7 @@ function IdentityCard({
 						<p className="text-xs text-rose-500">
 							{acceptOffer.error instanceof Error
 								? acceptOffer.error.message
-								: "Failed to accept offer"}
+								: t("identityManager.acceptOfferFailed")}
 						</p>
 					)}
 				</div>
@@ -516,6 +545,7 @@ export function IdentityManager({
 	isDark,
 	listings,
 }: IdentityManagerProperties): FunctionComponent {
+	const { t } = useTranslation();
 	const cardClass = isDark
 		? "border-neutral-800 bg-neutral-950"
 		: "border-neutral-200 bg-neutral-50";
@@ -535,7 +565,7 @@ export function IdentityManager({
 	return (
 		<div className={`rounded-lg border p-4 ${cardClass}`}>
 			<h3 className={`mb-3 text-sm font-medium ${headingClass}`}>
-				Your Identities
+				{t("identityManager.yourIdentities")}
 			</h3>
 			<ul className="space-y-2">
 				{identities.map((identity) => (

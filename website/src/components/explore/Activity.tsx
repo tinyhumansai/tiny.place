@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, type ReactElement } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { Chip } from "@src/components/ui/Chip";
@@ -11,12 +13,13 @@ type ActivityProperties = {
 	isDark: boolean;
 };
 
-const CATEGORY_FILTERS: Array<{ label: string; value?: ActivityCategory }> = [
-	{ label: "All" },
-	{ label: "Financial", value: "financial" },
-	{ label: "Identity", value: "identity" },
-	{ label: "Games", value: "game" },
-];
+const CATEGORY_FILTERS: Array<{ labelKey: string; value?: ActivityCategory }> =
+	[
+		{ labelKey: "activitySection.filters.all" },
+		{ labelKey: "activitySection.filters.financial", value: "financial" },
+		{ labelKey: "activitySection.filters.identity", value: "identity" },
+		{ labelKey: "activitySection.filters.games", value: "game" },
+	];
 
 const KIND_ICONS: Record<string, string> = {
 	"marketplace.purchase": "🛒",
@@ -47,9 +50,9 @@ function humanizeKind(kind: string): string {
 	return kind.replace(/[._]/g, " ").trim();
 }
 
-function shortName(value?: string | null): string {
+function shortName(value: string | null | undefined, t: TFunction): string {
 	if (!value) {
-		return "someone";
+		return t("activitySection.someone");
 	}
 	if (value.length <= 16) {
 		return value;
@@ -64,72 +67,89 @@ function amountLabel(event: ActivityEvent): string {
 	return ` ${event.amount}${event.asset ? " " + event.asset : ""}`;
 }
 
-function describe(event: ActivityEvent): string {
-	const actor = shortName(event.actor);
-	const target = shortName(event.target);
+function describe(event: ActivityEvent, t: TFunction): string {
+	const actor = shortName(event.actor, t);
+	const target = shortName(event.target, t);
 	const amount = amountLabel(event);
 	switch (event.kind) {
 		case "marketplace.purchase":
-			return `${actor} bought from ${target} for${amount || " an item"}`;
+			return t("activitySection.kinds.marketplacePurchase", {
+				actor,
+				target,
+				amount: amount || ` ${t("activitySection.anItem")}`,
+			});
 		case "identity.registered":
-			return `${actor} registered a new identity`;
+			return t("activitySection.kinds.identityRegistered", { actor });
 		case "identity.renewed":
-			return `${actor} renewed their identity`;
+			return t("activitySection.kinds.identityRenewed", { actor });
 		case "subscription":
-			return `${actor} subscribed${amount}`;
+			return t("activitySection.kinds.subscription", { actor, amount });
 		case "group.fee":
-			return `${actor} paid a group fee${amount}`;
+			return t("activitySection.kinds.groupFee", { actor, amount });
 		case "event.ticket":
-			return `${actor} bought an event ticket${amount}`;
+			return t("activitySection.kinds.eventTicket", { actor, amount });
 		case "event.refund":
-			return `event refunded${amount} to ${target}`;
+			return t("activitySection.kinds.eventRefund", { target, amount });
 		case "revenue.share":
-			return `${actor} earned a revenue share${amount}`;
+			return t("activitySection.kinds.revenueShare", { actor, amount });
 		case "escrow.fund":
-			return `${actor} funded escrow${amount}`;
+			return t("activitySection.kinds.escrowFund", { actor, amount });
 		case "escrow.release":
-			return `escrow released${amount} to ${target}`;
+			return t("activitySection.kinds.escrowRelease", { target, amount });
 		case "escrow.refund":
-			return `escrow refunded${amount} to ${target}`;
+			return t("activitySection.kinds.escrowRefund", { target, amount });
 		case "arbitration.fee":
-			return `${actor} paid an arbitration fee${amount}`;
+			return t("activitySection.kinds.arbitrationFee", { actor, amount });
 		case "fee":
-			return `${actor} paid a fee${amount}`;
+			return t("activitySection.kinds.fee", { actor, amount });
 		case "game.won":
-			return `${actor} won${amount || " a hand"}`;
+			return t("activitySection.kinds.gameWon", {
+				actor,
+				amount: amount || ` ${t("activitySection.aHand")}`,
+			});
 		case "game.lost":
-			return `${actor} lost${amount || " a hand"}`;
+			return t("activitySection.kinds.gameLost", {
+				actor,
+				amount: amount || ` ${t("activitySection.aHand")}`,
+			});
 		case "social.post":
-			return `${actor} posted`;
+			return t("activitySection.kinds.socialPost", { actor });
 		case "payment":
-			return `${actor} paid ${target}${amount}`;
+			return t("activitySection.kinds.payment", { actor, target, amount });
 		default:
 			// Unknown/future kind: still describe the action from its kind name
 			// rather than showing just the actor id.
-			return `${actor} · ${humanizeKind(event.kind)}${amount}`;
+			return t("activitySection.kinds.unknown", {
+				actor,
+				kind: humanizeKind(event.kind),
+				amount,
+			});
 	}
 }
 
-function relativeTime(timestamp: string): string {
+function relativeTime(timestamp: string, t: TFunction): string {
 	const seconds = Math.max(
 		0,
 		Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000)
 	);
 	if (seconds < 60) {
-		return `${seconds}s ago`;
+		return t("activitySection.relativeTime.seconds", { count: seconds });
 	}
 	const minutes = Math.floor(seconds / 60);
 	if (minutes < 60) {
-		return `${minutes}m ago`;
+		return t("activitySection.relativeTime.minutes", { count: minutes });
 	}
 	const hours = Math.floor(minutes / 60);
 	if (hours < 24) {
-		return `${hours}h ago`;
+		return t("activitySection.relativeTime.hours", { count: hours });
 	}
-	return `${Math.floor(hours / 24)}d ago`;
+	return t("activitySection.relativeTime.days", {
+		count: Math.floor(hours / 24),
+	});
 }
 
 export const Activity = ({ isDark }: ActivityProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const [category, setCategory] = useState<ActivityCategory | undefined>(
 		undefined
 	);
@@ -152,7 +172,7 @@ export const Activity = ({ isDark }: ActivityProperties): FunctionComponent => {
 				<span
 					className={`text-xs ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
 				>
-					{isLive ? "Live" : "Connecting…"}
+					{isLive ? t("activitySection.live") : t("activitySection.connecting")}
 				</span>
 			</div>
 			<div className="flex gap-1">
@@ -160,7 +180,7 @@ export const Activity = ({ isDark }: ActivityProperties): FunctionComponent => {
 					const active = category === filter.value;
 					return (
 						<Chip
-							key={filter.label}
+							key={filter.labelKey}
 							active={active}
 							isDark={isDark}
 							shape="pill"
@@ -168,7 +188,7 @@ export const Activity = ({ isDark }: ActivityProperties): FunctionComponent => {
 								setCategory(filter.value);
 							}}
 						>
-							{filter.label}
+							{t(filter.labelKey, { defaultValue: filter.labelKey })}
 						</Chip>
 					);
 				})}
@@ -188,7 +208,7 @@ export const Activity = ({ isDark }: ActivityProperties): FunctionComponent => {
 				<p
 					className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 				>
-					Loading activity…
+					{t("activitySection.loading")}
 				</p>
 			</div>
 		);
@@ -201,7 +221,7 @@ export const Activity = ({ isDark }: ActivityProperties): FunctionComponent => {
 						: "border-red-200 bg-red-50 text-red-600"
 				}`}
 			>
-				<p className="text-sm">Failed to load activity.</p>
+				<p className="text-sm">{t("activitySection.loadError")}</p>
 			</div>
 		);
 	} else if (events.length === 0) {
@@ -213,7 +233,7 @@ export const Activity = ({ isDark }: ActivityProperties): FunctionComponent => {
 						: "border-neutral-200 bg-neutral-50 text-neutral-400"
 				}`}
 			>
-				<p className="text-sm">No activity yet.</p>
+				<p className="text-sm">{t("activitySection.empty")}</p>
 			</div>
 		);
 	} else {
@@ -238,12 +258,12 @@ export const Activity = ({ isDark }: ActivityProperties): FunctionComponent => {
 						<p
 							className={`flex-1 truncate text-sm ${isDark ? "text-neutral-200" : "text-neutral-700"}`}
 						>
-							{describe(event)}
+							{describe(event, t)}
 						</p>
 						<span
 							className={`shrink-0 text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 						>
-							{relativeTime(event.timestamp)}
+							{relativeTime(event.timestamp, t)}
 						</span>
 					</div>
 				))}

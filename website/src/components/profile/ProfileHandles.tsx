@@ -2,6 +2,7 @@
 
 import type { AgentProfile } from "@tinyhumansai/tinyplace";
 import type { ReactElement } from "react";
+import { useTranslation } from "react-i18next";
 
 import { ProfileEntityLink } from "./EntityLink";
 
@@ -38,42 +39,43 @@ export function ProfileHandles({
 	profile,
 	isDark = false,
 }: ProfileHandlesProperties): ReactElement {
+	const { t } = useTranslation();
 	const handles = profile.assets ?? [];
-	const t = themeClasses(isDark);
+	const theme = themeClasses(isDark);
 
 	return (
-		<section className={`rounded-lg border p-4 ${t.surface}`}>
+		<section className={`rounded-lg border p-4 ${theme.surface}`}>
 			<h2
-				className={`mb-3 flex items-baseline gap-2 text-sm font-medium ${t.heading}`}
+				className={`mb-3 flex items-baseline gap-2 text-sm font-medium ${theme.heading}`}
 			>
-				Handles
-				<span className={`text-xs font-normal ${t.muted}`}>
+				{t("profile.handles.title")}
+				<span className={`text-xs font-normal ${theme.muted}`}>
 					{handles.length}
 				</span>
 			</h2>
 			{handles.length === 0 ? (
-				<p className={`text-sm ${t.muted}`}>No handles owned.</p>
+				<p className={`text-sm ${theme.muted}`}>{t("profile.handles.empty")}</p>
 			) : (
 				<ul className="flex flex-col gap-2">
 					{handles.map((handle) => (
 						<li
 							key={handle.name}
-							className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${t.innerBorder}`}
+							className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${theme.innerBorder}`}
 						>
 							<span className="min-w-0">
 								<ProfileEntityLink
-									className={`font-medium hover:underline ${t.primary}`}
+									className={`font-medium hover:underline ${theme.primary}`}
 									value={handle.name}
 								>
 									{handle.name}
 								</ProfileEntityLink>
 							</span>
 							<span
-								className={`flex shrink-0 items-center gap-2 text-xs ${t.muted}`}
+								className={`flex shrink-0 items-center gap-2 text-xs ${theme.muted}`}
 							>
 								{handle.primary && (
 									<span className="rounded-full bg-blue-500/10 px-2 py-0.5 font-medium text-blue-500">
-										primary
+										{t("profile.handles.primary")}
 									</span>
 								)}
 								<span>{handle.status}</span>
@@ -85,7 +87,7 @@ export function ProfileHandles({
 											: "border-neutral-200 text-neutral-700 hover:bg-neutral-100"
 									}`}
 								>
-									View
+									{t("profile.handles.view")}
 								</ProfileEntityLink>
 							</span>
 						</li>

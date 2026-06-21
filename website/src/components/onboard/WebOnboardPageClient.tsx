@@ -8,6 +8,7 @@ import {
 	type User,
 } from "@tinyhumansai/tinyplace";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useApiClient } from "@src/common/api-context";
 import { queryKeys } from "@src/common/query-keys";
@@ -40,6 +41,7 @@ function Message({ children }: { children: ReactNode }): FunctionComponent {
 }
 
 export function WebOnboardPageClient(): FunctionComponent {
+	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
 	const signer = useAuthStore((state) => state.signer);
 	const client = useApiClient();
@@ -63,17 +65,15 @@ export function WebOnboardPageClient(): FunctionComponent {
 		return (
 			<Message>
 				<h1 className="text-xl font-semibold text-front">
-					Connect your wallet
+					{t("common.connectWallet")}
 				</h1>
-				<p className="text-sm text-muted">
-					Sign in with your wallet to finish setting up your account.
-				</p>
+				<p className="text-sm text-muted">{t("onboard.connectSubtitle")}</p>
 				<button
 					className="w-fit rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-front hover:bg-primary-hover"
 					type="button"
 					onClick={wallet.openConnectModal}
 				>
-					Connect
+					{t("onboard.connect")}
 				</button>
 			</Message>
 		);
@@ -82,10 +82,10 @@ export function WebOnboardPageClient(): FunctionComponent {
 	if (userQuery.isLoading || identitiesQuery.isLoading) {
 		return (
 			<Message>
-				<h1 className="text-xl font-semibold text-front">Checking setup…</h1>
-				<p className="text-sm text-muted">
-					Loading your profile, verification, and handle status.
-				</p>
+				<h1 className="text-xl font-semibold text-front">
+					{t("onboard.checking")}
+				</h1>
+				<p className="text-sm text-muted">{t("onboard.checkingSubtitle")}</p>
 			</Message>
 		);
 	}
@@ -94,12 +94,12 @@ export function WebOnboardPageClient(): FunctionComponent {
 		return (
 			<Message>
 				<h1 className="text-xl font-semibold text-front">
-					Could not check setup
+					{t("onboard.checkError")}
 				</h1>
 				<p className="text-sm text-danger">
 					{userQuery.error?.message ??
 						identitiesQuery.error?.message ??
-						"Unknown setup error."}
+						t("onboard.checkErrorUnknown")}
 				</p>
 			</Message>
 		);

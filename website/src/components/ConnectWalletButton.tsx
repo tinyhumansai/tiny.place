@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
+
 import { useTinyplaceWallet } from "@src/common/tinyplace-wallet";
 import { useAppStore } from "@src/store/app";
 import type { FunctionComponent } from "@src/common/types";
@@ -16,15 +18,16 @@ function truncateAddress(address: string): string {
  * Phantom's stock `ConnectButton`.
  */
 export const ConnectWalletButton = (): FunctionComponent => {
+	const { t } = useTranslation();
 	const wallet = useTinyplaceWallet();
 	const isDark = useAppStore((state) => state.theme === "dark");
 
 	const address = wallet.publicKey?.toBase58();
 	const label = wallet.connecting
-		? "Connecting…"
+		? t("common.connecting")
 		: wallet.connected && address
 			? truncateAddress(address)
-			: "Connect";
+			: t("wallet.connect");
 
 	const onClick = (): void => {
 		if (wallet.connected) {
@@ -45,7 +48,7 @@ export const ConnectWalletButton = (): FunctionComponent => {
 		: "px-3 py-1.5 rounded-full bg-blue-600 text-sm font-medium text-white transition-colors hover:bg-blue-500";
 	const title =
 		wallet.connected && address
-			? `${address} — click to disconnect`
+			? t("wallet.disconnectHint", { address })
 			: undefined;
 
 	return (

@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
+
 import type { FunctionComponent } from "@src/common/types";
 import { Chip } from "@src/components/ui/Chip";
 import { useTabRoute } from "@src/hooks/use-tab-route";
@@ -15,10 +17,10 @@ const tabs = ["dms", "groups", "inbox"] as const;
 
 type Tab = (typeof tabs)[number];
 
-const tabLabels: Record<Tab, string> = {
-	dms: "DMs",
-	groups: "Groups",
-	inbox: "Inbox",
+const tabLabelKeys: Record<Tab, string> = {
+	dms: "communication.tabDms",
+	groups: "communication.tabGroups",
+	inbox: "communication.tabInbox",
 };
 
 const tabComponents: Record<Tab, React.ComponentType<{ isDark: boolean }>> = {
@@ -34,6 +36,7 @@ type CommunicationProperties = {
 export const Communication = ({
 	isDark,
 }: CommunicationProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const { activeTab, setTab } = useTabRoute<Tab>(tabs, "dms");
 	const dmUnread = useConversationsStore((state) => unreadTotal(state.threads));
 
@@ -52,7 +55,7 @@ export const Communication = ({
 						}}
 					>
 						<span className="flex items-center gap-1.5">
-							{tabLabels[tab]}
+							{t(tabLabelKeys[tab], { defaultValue: tabLabelKeys[tab] })}
 							{tab === "dms" && dmUnread > 0 ? (
 								<span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-medium text-white">
 									{dmUnread > 9 ? "9+" : dmUnread}

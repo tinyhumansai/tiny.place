@@ -3,6 +3,7 @@
 import { CheckIcon } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
 
+import { locales } from "@src/common/locales";
 import type { FunctionComponent } from "@src/common/types";
 import { useAppStore } from "@src/store/app";
 
@@ -14,24 +15,14 @@ type ThemeOption = {
 	background: string;
 	flavor: ThemeFlavor;
 	foreground: string;
-	label: string;
+	labelKey: string;
 	mode: ThemeMode;
 	surface: string;
 };
 
-type LanguageOption = {
-	code: "en" | "es";
-	label: string;
-};
-
-const languageOptions: Array<LanguageOption> = [
-	{ code: "en", label: "English" },
-	{ code: "es", label: "Español" },
-];
-
 const themeOptions: Array<ThemeOption> = [
 	{
-		label: "Dark",
+		labelKey: "settings.themes.dark",
 		mode: "dark",
 		flavor: "default",
 		background: "#050505",
@@ -40,7 +31,7 @@ const themeOptions: Array<ThemeOption> = [
 		accent: "#2563eb",
 	},
 	{
-		label: "Light",
+		labelKey: "settings.themes.light",
 		mode: "light",
 		flavor: "default",
 		background: "#ffffff",
@@ -49,7 +40,7 @@ const themeOptions: Array<ThemeOption> = [
 		accent: "#111111",
 	},
 	{
-		label: "Green",
+		labelKey: "settings.themes.green",
 		mode: "light",
 		flavor: "green",
 		background: "#f7fdf9",
@@ -58,7 +49,7 @@ const themeOptions: Array<ThemeOption> = [
 		accent: "#047857",
 	},
 	{
-		label: "Dark Green",
+		labelKey: "settings.themes.darkGreen",
 		mode: "dark",
 		flavor: "green",
 		background: "#02130d",
@@ -67,7 +58,7 @@ const themeOptions: Array<ThemeOption> = [
 		accent: "#10b981",
 	},
 	{
-		label: "Dark Blue",
+		labelKey: "settings.themes.darkBlue",
 		mode: "dark",
 		flavor: "dark-blue",
 		background: "#020617",
@@ -76,7 +67,7 @@ const themeOptions: Array<ThemeOption> = [
 		accent: "#38bdf8",
 	},
 	{
-		label: "Mint",
+		labelKey: "settings.themes.mint",
 		mode: "light",
 		flavor: "mint",
 		background: "#f0fdfa",
@@ -85,7 +76,7 @@ const themeOptions: Array<ThemeOption> = [
 		accent: "#0f766e",
 	},
 	{
-		label: "Violet",
+		labelKey: "settings.themes.violet",
 		mode: "dark",
 		flavor: "violet",
 		background: "#10051f",
@@ -104,34 +95,40 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 	const setFlavor = useAppStore((state) => state.setFlavor);
 	const setTheme = useAppStore((state) => state.setTheme);
 	const theme = useAppStore((state) => state.theme);
-	const { i18n } = useTranslation();
+	const { i18n, t } = useTranslation();
 
 	const headingClass = isDark ? "text-white" : "text-black";
 	const panelClass = isDark
 		? "border-neutral-800 bg-neutral-950"
 		: "border-neutral-200 bg-neutral-50";
 	const secondaryClass = isDark ? "text-neutral-400" : "text-neutral-500";
-	const currentTheme =
-		themeOptions.find(
-			(option) => option.mode === theme && option.flavor === flavor
-		)?.label ?? "Custom";
+	const currentThemeOption = themeOptions.find(
+		(option) => option.mode === theme && option.flavor === flavor
+	);
+	const currentThemeLabel = currentThemeOption
+		? t(currentThemeOption.labelKey, {
+				defaultValue: currentThemeOption.labelKey,
+			})
+		: t("settings.customTheme");
 
 	return (
 		<div className="space-y-6">
 			<header>
 				<h1 className={`font-heading text-2xl font-bold ${headingClass}`}>
-					Settings
+					{t("settings.title")}
 				</h1>
-				<p className={`mt-1 text-sm ${secondaryClass}`}>{currentTheme}</p>
+				<p className={`mt-1 text-sm ${secondaryClass}`}>{currentThemeLabel}</p>
 				<p className={`mt-2 max-w-2xl text-sm leading-6 ${secondaryClass}`}>
-					Language, theme, and interface preferences for this browser.
+					{t("settings.subtitle")}
 				</p>
 			</header>
 
 			<section className="space-y-3">
-				<h2 className={`text-sm font-semibold ${headingClass}`}>Language</h2>
+				<h2 className={`text-sm font-semibold ${headingClass}`}>
+					{t("settings.language")}
+				</h2>
 				<div className="flex flex-wrap gap-2">
-					{languageOptions.map((option) => {
+					{locales.map((option) => {
 						const selected = i18n.resolvedLanguage === option.code;
 
 						return (
@@ -148,7 +145,7 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 									void i18n.changeLanguage(option.code);
 								}}
 							>
-								{option.label}
+								{option.nativeName}
 							</button>
 						);
 					})}
@@ -156,14 +153,16 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 			</section>
 
 			<section className="space-y-3">
-				<h2 className={`text-sm font-semibold ${headingClass}`}>Theme</h2>
+				<h2 className={`text-sm font-semibold ${headingClass}`}>
+					{t("settings.theme")}
+				</h2>
 				<div className="grid gap-2 sm:grid-cols-3">
 					{themeOptions.map((option) => {
 						const selected = option.mode === theme && option.flavor === flavor;
 
 						return (
 							<button
-								key={`${option.mode}-${option.flavor}-${option.label}`}
+								key={`${option.mode}-${option.flavor}-${option.labelKey}`}
 								aria-pressed={selected}
 								type="button"
 								className={`group rounded-md border p-2 text-left transition-colors ${
@@ -201,7 +200,7 @@ export const Settings = ({ isDark }: SettingsProperties): FunctionComponent => {
 								</div>
 								<div className="mt-2 flex items-center justify-between gap-2">
 									<span className={`text-sm font-medium ${headingClass}`}>
-										{option.label}
+										{t(option.labelKey, { defaultValue: option.labelKey })}
 									</span>
 									<span
 										className={`flex h-5 w-5 items-center justify-center rounded-full ${

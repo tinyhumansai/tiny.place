@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { Escrow } from "@tinyhumansai/tinyplace";
 
@@ -44,6 +45,7 @@ export const EscrowCard = ({
 	isDark: boolean;
 	role: EscrowRole;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const escrowId = escrow.escrowId;
 	const [openAction, setOpenAction] = useState<TextAction | null>(null);
 	const [text, setText] = useState("");
@@ -137,13 +139,17 @@ export const EscrowCard = ({
 				className={`mt-3 grid grid-cols-4 gap-2 text-[10px] ${mutedClass(isDark)}`}
 			>
 				<div>
-					<p>Your role</p>
+					<p>{t("marketplace.escrowCard.yourRole")}</p>
 					<p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
-						{role}
+						{t(`marketplace.escrowCard.roles.${role}`, { defaultValue: role })}
 					</p>
 				</div>
 				<div>
-					<p>{isProvider ? "Client" : "Provider"}</p>
+					<p>
+						{isProvider
+							? t("marketplace.escrowCard.client")
+							: t("marketplace.escrowCard.provider")}
+					</p>
 					<p
 						className={`truncate ${isDark ? "text-neutral-300" : "text-neutral-700"}`}
 					>
@@ -151,13 +157,13 @@ export const EscrowCard = ({
 					</p>
 				</div>
 				<div>
-					<p>Amount</p>
+					<p>{t("marketplace.escrowCard.amount")}</p>
 					<p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
 						{escrow.amount} {escrow.asset}
 					</p>
 				</div>
 				<div>
-					<p>Deadline</p>
+					<p>{t("marketplace.escrowCard.deadline")}</p>
 					<p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
 						{formatDate(escrow.terms.deadline)}
 					</p>
@@ -185,7 +191,10 @@ export const EscrowCard = ({
 
 			{(escrow.revisionCount > 0 || escrow.terms.maxRevisions > 0) && (
 				<p className={`mt-2 text-[10px] ${mutedClass(isDark)}`}>
-					Revisions used {escrow.revisionCount}/{escrow.terms.maxRevisions}
+					{t("marketplace.escrowCard.revisionsUsed", {
+						used: escrow.revisionCount,
+						max: escrow.terms.maxRevisions,
+					})}
 				</p>
 			)}
 
@@ -197,7 +206,9 @@ export const EscrowCard = ({
 							: "border-neutral-200 bg-white"
 					}`}
 				>
-					<p className={mutedClass(isDark)}>Latest delivery</p>
+					<p className={mutedClass(isDark)}>
+						{t("marketplace.escrowCard.latestDelivery")}
+					</p>
 					<p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
 						{escrow.deliveries[escrow.deliveries.length - 1]?.description}
 					</p>
@@ -214,7 +225,7 @@ export const EscrowCard = ({
 							accept.mutate({ actor, escrowId });
 						}}
 					>
-						Accept job
+						{t("marketplace.escrowCard.acceptJob")}
 					</button>
 				)}
 
@@ -228,7 +239,7 @@ export const EscrowCard = ({
 								toggle("deliver");
 							}}
 						>
-							Deliver work
+							{t("marketplace.escrowCard.deliverWork")}
 						</button>
 					)}
 
@@ -241,7 +252,7 @@ export const EscrowCard = ({
 							toggle("extend");
 						}}
 					>
-						Request extension
+						{t("marketplace.escrowCard.requestExtension")}
 					</button>
 				)}
 
@@ -254,7 +265,7 @@ export const EscrowCard = ({
 							approveExtension.mutate({ actor, escrowId });
 						}}
 					>
-						Approve extension
+						{t("marketplace.escrowCard.approveExtension")}
 					</button>
 				)}
 
@@ -267,7 +278,7 @@ export const EscrowCard = ({
 							acceptDelivery.mutate({ actor, escrowId });
 						}}
 					>
-						Accept delivery
+						{t("marketplace.escrowCard.acceptDelivery")}
 					</button>
 				)}
 
@@ -280,7 +291,7 @@ export const EscrowCard = ({
 							toggle("revision");
 						}}
 					>
-						Request revision
+						{t("marketplace.escrowCard.requestRevision")}
 					</button>
 				)}
 
@@ -293,7 +304,7 @@ export const EscrowCard = ({
 							toggle("dispute");
 						}}
 					>
-						Open dispute
+						{t("marketplace.escrowCard.openDispute")}
 					</button>
 				)}
 
@@ -306,7 +317,7 @@ export const EscrowCard = ({
 							cancel.mutate({ actor, escrowId });
 						}}
 					>
-						Cancel
+						{t("common.cancel")}
 					</button>
 				)}
 
@@ -319,7 +330,7 @@ export const EscrowCard = ({
 							release.mutate({ actor, escrowId });
 						}}
 					>
-						Claim release
+						{t("marketplace.escrowCard.claimRelease")}
 					</button>
 				)}
 
@@ -335,7 +346,7 @@ export const EscrowCard = ({
 								refund.mutate({ actor, escrowId });
 							}}
 						>
-							Claim refund
+							{t("marketplace.escrowCard.claimRefund")}
 						</button>
 					)}
 			</div>
@@ -344,7 +355,9 @@ export const EscrowCard = ({
 				<div className="mt-3 space-y-2">
 					{openAction === "extend" ? (
 						<div>
-							<label className={labelClass(isDark)}>New deadline</label>
+							<label className={labelClass(isDark)}>
+								{t("marketplace.escrowCard.newDeadline")}
+							</label>
 							<input
 								type="datetime-local"
 								value={deadline}
@@ -369,10 +382,10 @@ export const EscrowCard = ({
 							}`}
 							placeholder={
 								openAction === "deliver"
-									? "Describe what you delivered and where to find it..."
+									? t("marketplace.escrowCard.deliverPlaceholder")
 									: openAction === "revision"
-										? "What needs to change?"
-										: "Why are you opening a dispute?"
+										? t("marketplace.escrowCard.revisionPlaceholder")
+										: t("marketplace.escrowCard.disputePlaceholder")
 							}
 							onChange={(event): void => {
 								setText(event.target.value);
@@ -389,7 +402,7 @@ export const EscrowCard = ({
 							}
 							onClick={submitText}
 						>
-							Submit
+							{t("common.submit")}
 						</button>
 						<button
 							className={secondary}
@@ -397,7 +410,7 @@ export const EscrowCard = ({
 							type="button"
 							onClick={resetForm}
 						>
-							Cancel
+							{t("common.cancel")}
 						</button>
 					</div>
 				</div>
@@ -405,7 +418,7 @@ export const EscrowCard = ({
 
 			{actionError && (
 				<p className="mt-2 text-xs text-red-500">
-					{errorMessage(actionError, "Action failed")}
+					{errorMessage(actionError, t("marketplace.escrowCard.actionFailed"))}
 				</p>
 			)}
 		</div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { GameRoom } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
@@ -132,18 +133,24 @@ function LiveRoomList({
 	isLoading: boolean;
 	rooms: Array<GameRoom>;
 }): React.ReactElement {
+	const { t } = useTranslation();
+
 	if (isLoading) {
 		return (
 			<p
 				className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 			>
-				Loading live rooms...
+				{t("roomsSection.loadingLiveRooms")}
 			</p>
 		);
 	}
 
 	if (isError) {
-		return <p className="text-sm text-red-500">Live rooms unavailable.</p>;
+		return (
+			<p className="text-sm text-red-500">
+				{t("roomsSection.liveRoomsUnavailable")}
+			</p>
+		);
 	}
 
 	if (rooms.length === 0) {
@@ -151,7 +158,7 @@ function LiveRoomList({
 			<p
 				className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 			>
-				No live rooms are open.
+				{t("roomsSection.noLiveRooms")}
 			</p>
 		);
 	}
@@ -194,7 +201,7 @@ function LiveRoomList({
 					<div className="mt-3 grid grid-cols-3 gap-2 text-xs">
 						<div>
 							<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>
-								Stakes
+								{t("roomsSection.stakes")}
 							</p>
 							<p className={isDark ? "text-white" : "text-black"}>
 								{formatRoomStakes(room)}
@@ -202,7 +209,7 @@ function LiveRoomList({
 						</div>
 						<div>
 							<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>
-								Seats
+								{t("roomsSection.seats")}
 							</p>
 							<p className={isDark ? "text-white" : "text-black"}>
 								{room.players.length}/{room.seats}
@@ -210,7 +217,7 @@ function LiveRoomList({
 						</div>
 						<div>
 							<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>
-								Hands
+								{t("roomsSection.hands")}
 							</p>
 							<p className={isDark ? "text-white" : "text-black"}>
 								{room.handNumber}
@@ -224,6 +231,7 @@ function LiveRoomList({
 }
 
 export const Rooms = ({ isDark }: RoomsProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
 	const rooms = useRooms({ limit: 6 });
 
@@ -237,12 +245,12 @@ export const Rooms = ({ isDark }: RoomsProperties): FunctionComponent => {
 				<h2
 					className={`text-lg font-semibold ${isDark ? "text-white" : "text-black"}`}
 				>
-					Rooms
+					{t("roomsSection.title")}
 				</h2>
 				<p
 					className={`mt-1 text-sm ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
 				>
-					Themed spaces for conversation, games, governance, and trade.
+					{t("roomsSection.subtitle")}
 				</p>
 			</div>
 
@@ -256,7 +264,7 @@ export const Rooms = ({ isDark }: RoomsProperties): FunctionComponent => {
 				<h3
 					className={`mb-3 text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 				>
-					Live Poker Rooms
+					{t("roomsSection.livePokerRooms")}
 				</h3>
 				<LiveRoomList
 					isDark={isDark}
@@ -319,7 +327,7 @@ export const Rooms = ({ isDark }: RoomsProperties): FunctionComponent => {
 											: "bg-neutral-100 text-neutral-500"
 									}`}
 								>
-									Up to {preset.capacity}
+									{t("roomsSection.upTo", { capacity: preset.capacity })}
 								</span>
 								<span
 									className="inline-block h-2 w-2 rounded-full"
@@ -371,7 +379,7 @@ export const Rooms = ({ isDark }: RoomsProperties): FunctionComponent => {
 											<p
 												className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 											>
-												Dimensions
+												{t("roomsSection.dimensions")}
 											</p>
 											<p
 												className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
@@ -383,7 +391,7 @@ export const Rooms = ({ isDark }: RoomsProperties): FunctionComponent => {
 											<p
 												className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 											>
-												Walkable tiles
+												{t("roomsSection.walkableTiles")}
 											</p>
 											<p
 												className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
@@ -395,7 +403,7 @@ export const Rooms = ({ isDark }: RoomsProperties): FunctionComponent => {
 											<p
 												className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 											>
-												Capacity
+												{t("roomsSection.capacity")}
 											</p>
 											<p
 												className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
@@ -409,7 +417,7 @@ export const Rooms = ({ isDark }: RoomsProperties): FunctionComponent => {
 										href="/rooms"
 										style={{ backgroundColor: preset.color }}
 									>
-										Enter Room
+										{t("roomsSection.enterRoom")}
 									</a>
 								</div>
 							</div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
+
 import type { FunctionComponent } from "@src/common/types";
 import { Chip } from "@src/components/ui/Chip";
 import { useTabRoute } from "@src/hooks/use-tab-route";
@@ -24,13 +26,13 @@ const tabs = [
 
 type Tab = (typeof tabs)[number];
 
-const tabLabels: Record<Tab, string> = {
-	search: "Search",
-	post: "Post",
-	active: "Active",
-	delivered: "Delivered",
-	disputes: "Disputes",
-	artifacts: "Artifacts",
+const tabLabelKeys: Record<Tab, string> = {
+	search: "storefront.tabs.search",
+	post: "storefront.tabs.post",
+	active: "storefront.tabs.active",
+	delivered: "storefront.tabs.delivered",
+	disputes: "storefront.tabs.disputes",
+	artifacts: "storefront.tabs.artifacts",
 };
 
 const tabComponents: Record<Tab, React.ComponentType<{ isDark: boolean }>> = {
@@ -49,6 +51,7 @@ type StorefrontProperties = {
 export const Storefront = ({
 	isDark,
 }: StorefrontProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const { activeTab, setTab } = useTabRoute<Tab>(tabs, "search");
 
 	const ActiveComponent = tabComponents[activeTab];
@@ -65,7 +68,7 @@ export const Storefront = ({
 							setTab(tab);
 						}}
 					>
-						{tabLabels[tab]}
+						{t(tabLabelKeys[tab], { defaultValue: tabLabelKeys[tab] })}
 					</Chip>
 				))}
 			</div>

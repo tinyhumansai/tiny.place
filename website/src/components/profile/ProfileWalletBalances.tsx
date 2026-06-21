@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
+
 import type { FunctionComponent } from "@src/common/types";
 import {
 	useWalletBalances,
@@ -21,6 +23,7 @@ function BalanceRow({
 	balance: WalletBalance;
 	isDark: boolean;
 }): FunctionComponent {
+	const { t } = useTranslation();
 	return (
 		<div
 			className={`grid grid-cols-[minmax(0,1fr)_auto] gap-3 rounded-lg border p-3 ${
@@ -67,7 +70,7 @@ function BalanceRow({
 						isDark ? "text-neutral-600" : "text-neutral-400"
 					}`}
 				>
-					raw {balance.rawAmount}
+					{t("profile.balances.raw", { amount: balance.rawAmount })}
 				</p>
 			</div>
 		</div>
@@ -81,6 +84,7 @@ export const ProfileWalletBalances = ({
 	isDark: boolean;
 	walletAddress?: string;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
 	const connectedBalances = useWalletBalances();
 	const addressBalances = useWalletBalancesForAddress(walletAddress);
@@ -98,7 +102,7 @@ export const ProfileWalletBalances = ({
 				<p
 					className={`text-sm ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
 				>
-					Connect your wallet to view balances.
+					{t("profile.balances.connect")}
 				</p>
 			</div>
 		);
@@ -122,12 +126,12 @@ export const ProfileWalletBalances = ({
 						<h3
 							className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 						>
-							Wallet Balances
+							{t("profile.balances.title")}
 						</h3>
 						<p
 							className={`mt-1 text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 						>
-							On-chain balances for the connected Solana wallet.
+							{t("profile.balances.subtitle")}
 						</p>
 					</div>
 					<span
@@ -146,19 +150,21 @@ export const ProfileWalletBalances = ({
 				<p
 					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 				>
-					Loading balances...
+					{t("profile.balances.loading")}
 				</p>
 			)}
 			{balances.isError && (
 				<p className="text-xs text-red-500">
-					Failed to load wallet balances: {balances.error.message}
+					{t("profile.balances.loadError", {
+						message: balances.error.message,
+					})}
 				</p>
 			)}
 			{!balances.isLoading && !balances.isError && data.length === 0 && (
 				<p
 					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 				>
-					No balances found.
+					{t("profile.balances.empty")}
 				</p>
 			)}
 			{nativeBalances.length > 0 && (
@@ -186,7 +192,7 @@ export const ProfileWalletBalances = ({
 							isDark ? "text-neutral-500" : "text-neutral-500"
 						}`}
 					>
-						SPL Tokens
+						{t("profile.balances.splTokens")}
 					</p>
 					{splBalances.map((balance) => (
 						<BalanceRow

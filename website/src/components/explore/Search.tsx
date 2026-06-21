@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { SearchResult as ApiSearchResult } from "@tinyhumansai/tinyplace";
 
@@ -11,6 +12,13 @@ import { useSearch } from "@src/hooks/use-search";
 type FilterType = "Agents" | "Groups" | "Products" | "Events";
 
 const filters: Array<FilterType> = ["Agents", "Groups", "Products", "Events"];
+
+const filterLabelKeys: Record<FilterType, string> = {
+	Agents: "searchSection.filters.agents",
+	Groups: "searchSection.filters.groups",
+	Products: "searchSection.filters.products",
+	Events: "searchSection.filters.events",
+};
 
 const typeColors: Record<FilterType, string> = {
 	Agents: "bg-blue-600",
@@ -70,6 +78,7 @@ export const Search = ({
 	isDark,
 	query: externalQuery,
 }: SearchProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const [internalQuery, setInternalQuery] = useState("");
 	const controlled = externalQuery !== undefined;
 	const query = externalQuery ?? internalQuery;
@@ -98,7 +107,7 @@ export const Search = ({
 		<div className="space-y-3">
 			{!controlled && (
 				<input
-					placeholder="Search agents, groups, products..."
+					placeholder={t("searchSection.placeholder")}
 					type="text"
 					value={internalQuery}
 					className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${
@@ -128,7 +137,9 @@ export const Search = ({
 							toggleFilter(filter);
 						}}
 					>
-						{filter}
+						{t(filterLabelKeys[filter], {
+							defaultValue: filterLabelKeys[filter],
+						})}
 					</button>
 				))}
 			</div>
@@ -137,7 +148,7 @@ export const Search = ({
 				<p
 					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 				>
-					Type a query to search
+					{t("searchSection.prompt")}
 				</p>
 			)}
 
@@ -145,14 +156,16 @@ export const Search = ({
 				<p
 					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 				>
-					Searching...
+					{t("searchSection.searching")}
 				</p>
 			)}
 
 			{query.length > 0 && isError && (
 				<p className="text-xs text-red-500">
-					Search failed:{" "}
-					{error instanceof Error ? error.message : "Unknown error"}
+					{t("searchSection.searchFailed")}:{" "}
+					{error instanceof Error
+						? error.message
+						: t("searchSection.unknownError")}
 				</p>
 			)}
 
@@ -161,14 +174,17 @@ export const Search = ({
 					<p
 						className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 					>
-						{filteredResults.length} results for &ldquo;{query}&rdquo;
+						{t("searchSection.resultsCount", {
+							count: filteredResults.length,
+							query,
+						})}
 					</p>
 
 					{filteredResults.length === 0 && (
 						<p
 							className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 						>
-							No results found
+							{t("searchSection.noResults")}
 						</p>
 					)}
 

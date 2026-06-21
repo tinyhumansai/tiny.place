@@ -3,6 +3,8 @@
 import { MoonPaySellWidget } from "@moonpay/moonpay-react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import {
@@ -25,20 +27,18 @@ const tabs = ["onramp", "offramp"] as const;
 
 type Tab = (typeof tabs)[number];
 
-const tabLabels: Record<Tab, string> = {
-	onramp: "On-ramp",
-	offramp: "Off-ramp",
-};
+const tabLabel = (t: TFunction, tab: Tab): string =>
+	tab === "onramp" ? t("onRamp.tabOnramp") : t("onRamp.tabOfframp");
 
 // On-ramp funding methods: fiat card via MoonPay, or crypto bridge via deBridge.
 const fundingMethods = ["card", "crypto"] as const;
 
 type FundingMethod = (typeof fundingMethods)[number];
 
-const fundingMethodLabels: Record<FundingMethod, string> = {
-	card: "Credit / debit card",
-	crypto: "Crypto",
-};
+const fundingMethodLabel = (t: TFunction, method: FundingMethod): string =>
+	method === "card"
+		? t("onRamp.fundingMethodCard")
+		: t("onRamp.fundingMethodCrypto");
 
 // The wallet can be funded with native SOL or with USDC on Solana. A `?asset=`
 // URL param (sent by the CLI's fund link) preselects which one.
@@ -98,42 +98,45 @@ const CardFundPanel = ({
 	baseCurrencyAmount,
 	isDark,
 	walletAddress,
-}: CardFundPanelProperties): FunctionComponent => (
-	<div
-		className={`space-y-3 rounded-lg border p-4 ${
-			isDark
-				? "border-neutral-800 bg-neutral-950"
-				: "border-neutral-200 bg-neutral-50"
-		}`}
-	>
-		<p
-			className={`text-sm ${isDark ? "text-neutral-400" : "text-neutral-600"}`}
-		>
-			Pay with a credit or debit card through MoonPay. You complete the purchase
-			on MoonPay&apos;s hosted page
-			{baseCurrencyAmount === undefined
-				? ""
-				: ` (prefilled to $${baseCurrencyAmount})`}
-			; {asset} settles straight to your Solana wallet.
-		</p>
-		<a
-			rel="noreferrer"
-			target="_blank"
-			className={`inline-flex items-center rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+}: CardFundPanelProperties): FunctionComponent => {
+	const { t } = useTranslation();
+	return (
+		<div
+			className={`space-y-3 rounded-lg border p-4 ${
 				isDark
-					? "bg-white text-black hover:bg-neutral-200"
-					: "bg-black text-white hover:bg-neutral-800"
+					? "border-neutral-800 bg-neutral-950"
+					: "border-neutral-200 bg-neutral-50"
 			}`}
-			href={buildMoonPayBuyUrl({
-				walletAddress,
-				baseCurrencyAmount,
-				currencyCode: moonPayCurrencyCode(asset),
-			})}
 		>
-			Fund with card on MoonPay →
-		</a>
-	</div>
-);
+			<p
+				className={`text-sm ${isDark ? "text-neutral-400" : "text-neutral-600"}`}
+			>
+				{baseCurrencyAmount === undefined
+					? t("onRamp.cardDescription", { asset })
+					: t("onRamp.cardDescriptionPrefilled", {
+							amount: baseCurrencyAmount,
+							asset,
+						})}
+			</p>
+			<a
+				rel="noreferrer"
+				target="_blank"
+				className={`inline-flex items-center rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+					isDark
+						? "bg-white text-black hover:bg-neutral-200"
+						: "bg-black text-white hover:bg-neutral-800"
+				}`}
+				href={buildMoonPayBuyUrl({
+					walletAddress,
+					baseCurrencyAmount,
+					currencyCode: moonPayCurrencyCode(asset),
+				})}
+			>
+				{t("onRamp.fundWithCard")}
+			</a>
+		</div>
+	);
+};
 
 // Funds the SOL wallet with the chosen asset by bridging crypto from another
 // chain via deBridge. We can only build the link once we know the destination
@@ -143,6 +146,7 @@ const CryptoFundPanel = ({
 	isDark,
 	walletAddress,
 }: WidgetProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	if (walletAddress === undefined) {
 		return (
 			<p
@@ -152,8 +156,8 @@ const CryptoFundPanel = ({
 						: "border-neutral-200 bg-neutral-50 text-neutral-500"
 				}`}
 			>
-				Connect your wallet, or open this page with an <code>?address=</code>{" "}
-				wallet, to fund it with crypto.
+				{t("onRamp.cryptoConnectPrefix")} <code>?address=</code>{" "}
+				{t("onRamp.cryptoConnectSuffix")}
 			</p>
 		);
 	}
@@ -169,9 +173,7 @@ const CryptoFundPanel = ({
 			<p
 				className={`text-sm ${isDark ? "text-neutral-400" : "text-neutral-600"}`}
 			>
-				Already hold crypto on another chain? Bridge it into {asset} on this
-				Solana wallet through deBridge. You pick the source chain, token, and
-				amount on deBridge; funds settle straight to your wallet.
+				{t("onRamp.cryptoDescription", { asset })}
 			</p>
 			<a
 				rel="noreferrer"
@@ -186,7 +188,7 @@ const CryptoFundPanel = ({
 					deBridgeOutputCurrency(asset)
 				)}
 			>
-				Fund with crypto on deBridge →
+				{t("onRamp.fundWithCrypto")}
 			</a>
 		</div>
 	);
@@ -212,6 +214,7 @@ type OnRampProperties = {
 };
 
 export const OnRamp = ({ isDark }: OnRampProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const { publicKey } = useTinyplaceWallet();
 	const searchParameters = useSearchParams();
 	const { activeTab, setTab } = useTabRoute<Tab>(tabs, "onramp");
@@ -240,13 +243,12 @@ export const OnRamp = ({ isDark }: OnRampProperties): FunctionComponent => {
 				<h2
 					className={`text-lg font-bold ${isDark ? "text-white" : "text-black"}`}
 				>
-					On-ramp / Off-ramp
+					{t("onRamp.title")}
 				</h2>
 				<p
 					className={`mt-1 text-sm ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
 				>
-					Fund or cash out your Solana wallet — pay by card via MoonPay, or
-					bridge crypto in via deBridge.
+					{t("onRamp.subtitle")}
 				</p>
 			</div>
 
@@ -254,7 +256,7 @@ export const OnRamp = ({ isDark }: OnRampProperties): FunctionComponent => {
 				<p
 					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 				>
-					Wallet: {walletAddress}
+					{t("onRamp.walletLabel", { address: walletAddress })}
 				</p>
 			) : (
 				<p
@@ -264,8 +266,7 @@ export const OnRamp = ({ isDark }: OnRampProperties): FunctionComponent => {
 							: "border-neutral-200 bg-neutral-50 text-neutral-500"
 					}`}
 				>
-					Connect your wallet to prefill the destination address. You can also
-					enter one on MoonPay after you continue.
+					{t("onRamp.connectPrompt")}
 				</p>
 			)}
 
@@ -273,7 +274,7 @@ export const OnRamp = ({ isDark }: OnRampProperties): FunctionComponent => {
 				<p
 					className={`text-xs font-medium ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
 				>
-					Asset
+					{t("onRamp.assetLabel")}
 				</p>
 				<div className="flex gap-1">
 					{fundAssets.map((option) => (
@@ -302,7 +303,7 @@ export const OnRamp = ({ isDark }: OnRampProperties): FunctionComponent => {
 							setTab(tab);
 						}}
 					>
-						{tabLabels[tab]}
+						{tabLabel(t, tab)}
 					</Chip>
 				))}
 			</div>
@@ -320,7 +321,7 @@ export const OnRamp = ({ isDark }: OnRampProperties): FunctionComponent => {
 									setFundingMethod(method);
 								}}
 							>
-								{fundingMethodLabels[method]}
+								{fundingMethodLabel(t, method)}
 							</Chip>
 						))}
 					</div>

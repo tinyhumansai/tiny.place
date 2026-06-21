@@ -7,6 +7,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { JobPosting, Proposal } from "@tinyhumansai/tinyplace";
 
@@ -43,11 +44,6 @@ const tabs = ["browse", "post"] as const;
 
 type Tab = (typeof tabs)[number];
 
-const tabLabels: Record<Tab, string> = {
-	browse: "Browse",
-	post: "Post a Bounty",
-};
-
 function statusTone(status: string): string {
 	switch (status) {
 		case "open":
@@ -78,6 +74,7 @@ function StatusBadge({ status }: { status: string }): FunctionComponent {
 }
 
 export const Jobs = ({ isDark }: { isDark: boolean }): FunctionComponent => {
+	const { t } = useTranslation();
 	// Everything lives in the URL: `/bounties` and `/bounties/post` are the tabs,
 	// and `/bounties/<jobId>` is a specific bounty (any non-tab second segment is
 	// treated as a bounty id), so an open bounty is shareable and survives reload.
@@ -111,7 +108,7 @@ export const Jobs = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 								goTab(tab);
 							}}
 						>
-							{tabLabels[tab]}
+							{t(`jobs.tabs.${tab}`)}
 						</Chip>
 					))}
 				</div>
@@ -141,18 +138,17 @@ const BrowseJobs = ({
 	isDark: boolean;
 	onOpen: (jobId: string) => void;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } =
 		useJobsInfinite();
 	const jobs = flattenPages(data?.pages);
 	if (isLoading) {
-		return <p className={`text-xs ${mutedClass(isDark)}`}>Loading bounties…</p>;
+		return (
+			<p className={`text-xs ${mutedClass(isDark)}`}>{t("jobs.loading")}</p>
+		);
 	}
 	if (jobs.length === 0) {
-		return (
-			<p className={`text-xs ${mutedClass(isDark)}`}>
-				No bounties posted yet. Be the first to post one.
-			</p>
-		);
+		return <p className={`text-xs ${mutedClass(isDark)}`}>{t("jobs.empty")}</p>;
 	}
 	return (
 		<div className="space-y-2">
@@ -176,12 +172,12 @@ const BrowseJobs = ({
 					</p>
 					<div className={`mt-2 flex gap-3 text-xs ${mutedClass(isDark)}`}>
 						<span>
-							Budget:{" "}
+							{t("jobs.budget")}{" "}
 							<span className={strongClass(isDark)}>
 								{job.budget.amount} {job.budget.asset}
 							</span>
 						</span>
-						<span>{job.proposalCount} proposals</span>
+						<span>{t("jobs.proposalCount", { count: job.proposalCount })}</span>
 					</div>
 				</button>
 			))}
@@ -203,6 +199,7 @@ const PostJob = ({
 	isDark: boolean;
 	onCreated: (jobId: string) => void;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
 	const create = useCreateJob();
 	const [title, setTitle] = useState("");
@@ -234,7 +231,7 @@ const PostJob = ({
 	if (!agentId) {
 		return (
 			<p className={`text-xs ${mutedClass(isDark)}`}>
-				Connect your wallet to post a bounty.
+				{t("jobs.post.connectPrompt")}
 			</p>
 		);
 	}
@@ -242,7 +239,7 @@ const PostJob = ({
 	return (
 		<div className={`${cardClass(isDark)} space-y-2`}>
 			<div>
-				<label className={labelClass(isDark)}>Title</label>
+				<label className={labelClass(isDark)}>{t("jobs.post.title")}</label>
 				<input
 					className={inputClass(isDark)}
 					value={title}
@@ -252,7 +249,9 @@ const PostJob = ({
 				/>
 			</div>
 			<div>
-				<label className={labelClass(isDark)}>Description</label>
+				<label className={labelClass(isDark)}>
+					{t("jobs.post.description")}
+				</label>
 				<textarea
 					className={inputClass(isDark)}
 					rows={3}
@@ -263,10 +262,10 @@ const PostJob = ({
 				/>
 			</div>
 			<div>
-				<label className={labelClass(isDark)}>Skills (comma-separated)</label>
+				<label className={labelClass(isDark)}>{t("jobs.post.skills")}</label>
 				<input
 					className={inputClass(isDark)}
-					placeholder="go, solana, design"
+					placeholder={t("jobs.post.skillsPlaceholder")}
 					value={skills}
 					onChange={(event): void => {
 						setSkills(event.target.value);
@@ -275,7 +274,9 @@ const PostJob = ({
 			</div>
 			<div className="flex gap-2">
 				<div className="flex-1">
-					<label className={labelClass(isDark)}>Budget</label>
+					<label className={labelClass(isDark)}>
+						{t("jobs.post.budgetLabel")}
+					</label>
 					<input
 						className={inputClass(isDark)}
 						placeholder="10"
@@ -286,7 +287,7 @@ const PostJob = ({
 					/>
 				</div>
 				<div className="w-24">
-					<label className={labelClass(isDark)}>Asset</label>
+					<label className={labelClass(isDark)}>{t("jobs.post.asset")}</label>
 					<input
 						className={inputClass(isDark)}
 						value={asset}
@@ -297,12 +298,11 @@ const PostJob = ({
 				</div>
 			</div>
 			<p className={`text-[11px] ${mutedClass(isDark)}`}>
-				The budget is escrowed when you post. Funds release to the chosen
-				candidate on acceptance, or are returned if you cancel before selecting.
+				{t("jobs.post.escrowNote")}
 			</p>
 			{create.isError ? (
 				<p className="text-xs text-red-400">
-					{errorMessage(create.error, "Could not post the bounty")}
+					{errorMessage(create.error, t("jobs.post.error"))}
 				</p>
 			) : null}
 			<button
@@ -311,7 +311,7 @@ const PostJob = ({
 				type="button"
 				onClick={submit}
 			>
-				{create.isPending ? "Posting…" : "Post + fund escrow"}
+				{create.isPending ? t("jobs.post.posting") : t("jobs.post.submit")}
 			</button>
 		</div>
 	);
@@ -326,12 +326,17 @@ const JobDetail = ({
 	jobId: string;
 	onBack: () => void;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
 	const { data: job, isLoading } = useJob(jobId);
 	const isClient = Boolean(agentId && job && agentId === job.client);
 
 	if (isLoading || !job) {
-		return <p className={`text-xs ${mutedClass(isDark)}`}>Loading bounty…</p>;
+		return (
+			<p className={`text-xs ${mutedClass(isDark)}`}>
+				{t("jobs.loadingDetail")}
+			</p>
+		);
 	}
 
 	return (
@@ -341,7 +346,7 @@ const JobDetail = ({
 				type="button"
 				onClick={onBack}
 			>
-				← Back
+				{t("jobs.detail.back")}
 			</button>
 			<div className={`${cardClass(isDark)} space-y-2`}>
 				<div className="flex items-center justify-between gap-2">
@@ -353,19 +358,19 @@ const JobDetail = ({
 				<p className={`text-xs ${mutedClass(isDark)}`}>{job.description}</p>
 				<div className={`flex flex-wrap gap-3 text-xs ${mutedClass(isDark)}`}>
 					<span>
-						Budget:{" "}
+						{t("jobs.budget")}{" "}
 						<span className={strongClass(isDark)}>
 							{job.budget.amount} {job.budget.asset}
 						</span>
 					</span>
 					<span className="inline-flex items-center gap-1.5">
-						Client:
+						{t("jobs.detail.client")}
 						<ActorAvatar sizeClass="h-4 w-4 text-[8px]" value={job.client} />
 						<ActorLink className="hover:underline" value={job.client} />
 					</span>
 					{job.selectedCandidate ? (
 						<span className="inline-flex items-center gap-1.5">
-							Provider:
+							{t("jobs.detail.provider")}
 							<ActorAvatar
 								sizeClass="h-4 w-4 text-[8px]"
 								value={job.selectedCandidate}
@@ -403,6 +408,7 @@ const ApplyForm = ({
 	isDark: boolean;
 	jobId: string;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
 	const apply = useApplyToJob(jobId);
 	const [coverLetter, setCoverLetter] = useState("");
@@ -411,26 +417,22 @@ const ApplyForm = ({
 	if (!agentId) {
 		return (
 			<p className={`text-xs ${mutedClass(isDark)}`}>
-				Connect your wallet to apply.
+				{t("jobs.apply.connectPrompt")}
 			</p>
 		);
 	}
 	if (apply.isSuccess) {
-		return (
-			<p className="text-xs text-green-400">
-				Proposal submitted. The client will review and may select you.
-			</p>
-		);
+		return <p className="text-xs text-green-400">{t("jobs.apply.success")}</p>;
 	}
 
 	return (
 		<div className={`${cardClass(isDark)} space-y-2`}>
 			<span className={`text-sm font-semibold ${strongClass(isDark)}`}>
-				Submit a proposal
+				{t("jobs.apply.heading")}
 			</span>
 			<textarea
 				className={inputClass(isDark)}
-				placeholder="Why you're a good fit, your approach, links to past work…"
+				placeholder={t("jobs.apply.coverLetterPlaceholder")}
 				rows={3}
 				value={coverLetter}
 				onChange={(event): void => {
@@ -438,7 +440,7 @@ const ApplyForm = ({
 				}}
 			/>
 			<div className="w-32">
-				<label className={labelClass(isDark)}>Your bid</label>
+				<label className={labelClass(isDark)}>{t("jobs.apply.bid")}</label>
 				<input
 					className={inputClass(isDark)}
 					placeholder="9"
@@ -450,7 +452,7 @@ const ApplyForm = ({
 			</div>
 			{apply.isError ? (
 				<p className="text-xs text-red-400">
-					{errorMessage(apply.error, "Could not submit proposal")}
+					{errorMessage(apply.error, t("jobs.apply.error"))}
 				</p>
 			) : null}
 			<button
@@ -461,7 +463,7 @@ const ApplyForm = ({
 					apply.mutate({ candidate: agentId, coverLetter, bidAmount });
 				}}
 			>
-				{apply.isPending ? "Submitting…" : "Submit proposal"}
+				{apply.isPending ? t("jobs.apply.submitting") : t("jobs.apply.submit")}
 			</button>
 		</div>
 	);
@@ -474,6 +476,7 @@ const ClientProposals = ({
 	isDark: boolean;
 	job: JobPosting;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const { data, isLoading } = useJobProposals(job.jobId, job.client);
 	const select = useSelectCandidate(job.jobId);
 	const cancel = useCancelJob(job.jobId);
@@ -483,7 +486,7 @@ const ClientProposals = ({
 		<div className="space-y-2">
 			<div className="flex items-center justify-between">
 				<span className={`text-sm font-semibold ${strongClass(isDark)}`}>
-					Candidates ({proposals.length})
+					{t("jobs.proposals.candidates", { count: proposals.length })}
 				</span>
 				<button
 					className={secondaryButtonClass(isDark)}
@@ -493,14 +496,18 @@ const ClientProposals = ({
 						cancel.mutate();
 					}}
 				>
-					Cancel posting
+					{t("jobs.proposals.cancelPosting")}
 				</button>
 			</div>
 			{isLoading ? (
-				<p className={`text-xs ${mutedClass(isDark)}`}>Loading candidates…</p>
+				<p className={`text-xs ${mutedClass(isDark)}`}>
+					{t("jobs.proposals.loading")}
+				</p>
 			) : null}
 			{!isLoading && proposals.length === 0 ? (
-				<p className={`text-xs ${mutedClass(isDark)}`}>No proposals yet.</p>
+				<p className={`text-xs ${mutedClass(isDark)}`}>
+					{t("jobs.proposals.empty")}
+				</p>
 			) : null}
 			{proposals.map((proposal: Proposal) => (
 				<div
@@ -521,7 +528,10 @@ const ClientProposals = ({
 							/>
 						</span>
 						<span className={`text-xs ${mutedClass(isDark)}`}>
-							Bid: {proposal.bidAmount || job.budget.amount} {job.budget.asset}
+							{t("jobs.proposals.bid", {
+								amount: proposal.bidAmount || job.budget.amount,
+								asset: job.budget.asset,
+							})}
 						</span>
 					</div>
 					<p className={`text-xs ${mutedClass(isDark)}`}>
@@ -529,7 +539,9 @@ const ClientProposals = ({
 					</p>
 					{proposal.pastWork && proposal.pastWork.length > 0 ? (
 						<p className={`text-[11px] ${mutedClass(isDark)}`}>
-							{proposal.pastWork.length} past-work artifact(s) attached
+							{t("jobs.proposals.pastWork", {
+								count: proposal.pastWork.length,
+							})}
 						</p>
 					) : null}
 					{proposal.status === "submitted" ||
@@ -543,8 +555,8 @@ const ClientProposals = ({
 							}}
 						>
 							{select.isPending
-								? "Starting contract…"
-								: "Select & start contract"}
+								? t("jobs.proposals.starting")
+								: t("jobs.proposals.select")}
 						</button>
 					) : (
 						<StatusBadge status={proposal.status} />
@@ -553,7 +565,7 @@ const ClientProposals = ({
 			))}
 			{select.isError ? (
 				<p className="text-xs text-red-400">
-					{errorMessage(select.error, "Could not select candidate")}
+					{errorMessage(select.error, t("jobs.proposals.selectError"))}
 				</p>
 			) : null}
 		</div>
@@ -567,6 +579,7 @@ const ContractPanel = ({
 	isDark: boolean;
 	job: JobPosting;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const dispute = useOpenJobDispute(job.jobId);
 	const adjudicate = useAdjudicateJobDispute(job.jobId);
 	const [reason, setReason] = useState("");
@@ -574,20 +587,20 @@ const ContractPanel = ({
 	return (
 		<div className={`${cardClass(isDark)} space-y-2`}>
 			<span className={`text-sm font-semibold ${strongClass(isDark)}`}>
-				Contract
+				{t("jobs.contract.heading")}
 			</span>
 			<p className={`text-xs ${mutedClass(isDark)}`}>
-				Escrow contract {job.contractEscrowId}. Deliver work and upload
-				proof-of-work artifacts (7-day expiry) from the Artifacts tab; accept
-				the delivery to release funds, or open a dispute for the AI judge panel.
+				{t("jobs.contract.note", { escrowId: job.contractEscrowId })}
 			</p>
 
 			{job.status === "contracted" ? (
 				<div className="space-y-1">
-					<label className={labelClass(isDark)}>Open a dispute</label>
+					<label className={labelClass(isDark)}>
+						{t("jobs.contract.openDispute")}
+					</label>
 					<textarea
 						className={inputClass(isDark)}
-						placeholder="Describe the problem for the judge panel…"
+						placeholder={t("jobs.contract.disputePlaceholder")}
 						rows={2}
 						value={reason}
 						onChange={(event): void => {
@@ -602,7 +615,9 @@ const ContractPanel = ({
 							dispute.mutate({ reason });
 						}}
 					>
-						{dispute.isPending ? "Opening…" : "Open dispute"}
+						{dispute.isPending
+							? t("jobs.contract.opening")
+							: t("jobs.contract.openDisputeButton")}
 					</button>
 				</div>
 			) : null}
@@ -610,7 +625,10 @@ const ContractPanel = ({
 			{job.status === "disputed" && job.dispute ? (
 				<div className="space-y-2">
 					<p className={`text-xs ${mutedClass(isDark)}`}>
-						Dispute opened by {job.dispute.openedBy}: “{job.dispute.reason}”
+						{t("jobs.contract.disputeOpenedBy", {
+							by: job.dispute.openedBy,
+							reason: job.dispute.reason,
+						})}
 					</p>
 					{job.dispute.status === "open" ? (
 						<button
@@ -622,13 +640,13 @@ const ContractPanel = ({
 							}}
 						>
 							{adjudicate.isPending
-								? "Convening panel…"
-								: "Convene AI judge panel"}
+								? t("jobs.contract.convening")
+								: t("jobs.contract.convene")}
 						</button>
 					) : null}
 					{adjudicate.isError ? (
 						<p className="text-xs text-red-400">
-							{errorMessage(adjudicate.error, "Judging failed")}
+							{errorMessage(adjudicate.error, t("jobs.contract.judgingFailed"))}
 						</p>
 					) : null}
 				</div>
@@ -648,17 +666,21 @@ const Verdict = ({
 	isDark: boolean;
 	dispute: NonNullable<JobPosting["dispute"]>;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	return (
 		<div className="space-y-1 rounded-md border border-neutral-700 p-2">
 			<div className="flex items-center justify-between">
 				<span className={`text-xs font-semibold ${strongClass(isDark)}`}>
-					Judge verdict: {dispute.outcome}
+					{t("jobs.verdict.judgeVerdict", { outcome: dispute.outcome })}
 					{dispute.outcome === "partial"
-						? ` (${(dispute.splitBps ?? 0) / 100}% to provider)`
+						? t("jobs.verdict.splitToProvider", {
+								percent: (dispute.splitBps ?? 0) / 100,
+							})
 						: ""}
 				</span>
 				<span className={`text-[10px] ${mutedClass(isDark)}`}>
-					{dispute.presided ? "judge" : "jury"}: {dispute.judgeModel}
+					{dispute.presided ? t("jobs.verdict.judge") : t("jobs.verdict.jury")}:{" "}
+					{dispute.judgeModel}
 				</span>
 			</div>
 			{dispute.reasoning ? (
@@ -671,7 +693,9 @@ const Verdict = ({
 					{dispute.jury.map((vote) => (
 						<li key={vote.model}>
 							• {vote.model}:{" "}
-							{vote.error ? `error (${vote.error})` : vote.outcome}
+							{vote.error
+								? t("jobs.verdict.voteError", { error: vote.error })
+								: vote.outcome}
 						</li>
 					))}
 				</ul>

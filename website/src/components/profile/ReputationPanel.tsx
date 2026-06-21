@@ -7,6 +7,7 @@ import type {
 	ReputationScore,
 } from "@tinyhumansai/tinyplace";
 import type { ReactElement } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import {
@@ -147,7 +148,8 @@ export const ReputationPanel = ({
 	score,
 	isDark = false,
 }: ReputationPanelProperties): FunctionComponent => {
-	const t = panelTheme(isDark);
+	const { t } = useTranslation();
+	const theme = panelTheme(isDark);
 	const fetchedScore = useReputationScore(score ? "" : agentId);
 	const historyQuery = useReputationHistory(agentId);
 	const reviewsQuery = useReputationReviews(agentId);
@@ -164,26 +166,30 @@ export const ReputationPanel = ({
 	const reviews: Array<ReputationReview> = reviewsQuery.data?.reviews ?? [];
 
 	return (
-		<section className={`rounded-lg border p-4 ${t.surface}`}>
-			<h2 className={`mb-3 text-sm font-medium ${t.heading}`}>Reputation</h2>
+		<section className={`rounded-lg border p-4 ${theme.surface}`}>
+			<h2 className={`mb-3 text-sm font-medium ${theme.heading}`}>
+				{t("profile.reputation.title")}
+			</h2>
 
 			<div className="flex items-baseline gap-2">
-				<span className={`text-2xl font-semibold ${t.primary}`}>
+				<span className={`text-2xl font-semibold ${theme.primary}`}>
 					{resolvedScore?.score ?? "—"}
 				</span>
-				<span className={`text-xs ${t.muted}`}>reputation score</span>
+				<span className={`text-xs ${theme.muted}`}>
+					{t("profile.reputation.scoreLabel")}
+				</span>
 			</div>
 
 			{breakdown.length > 0 && (
 				<dl className="mt-4 flex flex-col gap-2">
 					{breakdown.map(([key, value]) => (
 						<div key={key} className="flex items-center gap-3">
-							<dt className={`w-32 shrink-0 text-xs ${t.secondary}`}>
+							<dt className={`w-32 shrink-0 text-xs ${theme.secondary}`}>
 								{breakdownLabel(key)}
 							</dt>
 							<dd className="flex flex-1 items-center gap-2">
 								<div
-									className={`h-1.5 flex-1 overflow-hidden rounded-full ${t.track}`}
+									className={`h-1.5 flex-1 overflow-hidden rounded-full ${theme.track}`}
 								>
 									<div
 										className={`h-full rounded-full ${value < 0 ? "bg-red-500" : "bg-emerald-500"}`}
@@ -192,7 +198,7 @@ export const ReputationPanel = ({
 										}}
 									/>
 								</div>
-								<span className={`w-10 text-right text-xs ${t.body}`}>
+								<span className={`w-10 text-right text-xs ${theme.body}`}>
 									{value}
 								</span>
 							</dd>
@@ -202,49 +208,59 @@ export const ReputationPanel = ({
 			)}
 
 			<div className="mt-6">
-				<p className={`mb-2 text-xs font-medium ${t.secondary}`}>
-					Score over time
+				<p className={`mb-2 text-xs font-medium ${theme.secondary}`}>
+					{t("profile.reputation.scoreOverTime")}
 				</p>
 				{historyQuery.isLoading ? (
-					<p className={`text-sm ${t.muted}`}>Loading history…</p>
+					<p className={`text-sm ${theme.muted}`}>
+						{t("profile.reputation.loadingHistory")}
+					</p>
 				) : history.length > 1 ? (
-					<HistoryChart history={history} theme={t} />
+					<HistoryChart history={history} theme={theme} />
 				) : (
-					<p className={`text-sm ${t.muted}`}>
-						Not enough history to chart yet.
+					<p className={`text-sm ${theme.muted}`}>
+						{t("profile.reputation.notEnoughHistory")}
 					</p>
 				)}
 			</div>
 
 			<div className="mt-6">
-				<p className={`mb-2 text-xs font-medium ${t.secondary}`}>
-					Reviews{" "}
-					<span className={t.muted}>
+				<p className={`mb-2 text-xs font-medium ${theme.secondary}`}>
+					{t("profile.reputation.reviews")}{" "}
+					<span className={theme.muted}>
 						{reviews.length > 0 && reviews.length}
 					</span>
 				</p>
 				{reviewsQuery.isLoading ? (
-					<p className={`text-sm ${t.muted}`}>Loading reviews…</p>
+					<p className={`text-sm ${theme.muted}`}>
+						{t("profile.reputation.loadingReviews")}
+					</p>
 				) : reviews.length === 0 ? (
-					<p className={`text-sm ${t.muted}`}>No reviews yet.</p>
+					<p className={`text-sm ${theme.muted}`}>
+						{t("profile.reputation.noReviews")}
+					</p>
 				) : (
 					<ul className="flex flex-col gap-2">
 						{reviews.map((review) => (
 							<li
 								key={review.reviewId}
-								className={`rounded-lg border px-3 py-2 ${t.innerBorder}`}
+								className={`rounded-lg border px-3 py-2 ${theme.innerBorder}`}
 							>
 								<div className="flex items-center justify-between gap-2">
 									<Stars rating={review.rating} />
-									<span className={`text-xs ${t.muted}`}>
+									<span className={`text-xs ${theme.muted}`}>
 										{formatDate(review.createdAt)}
 									</span>
 								</div>
 								{review.comment && (
-									<p className={`mt-1 text-sm ${t.body}`}>{review.comment}</p>
+									<p className={`mt-1 text-sm ${theme.body}`}>
+										{review.comment}
+									</p>
 								)}
-								<p className={`mt-1 font-mono text-xs ${t.muted}`}>
-									by {review.reviewer}
+								<p className={`mt-1 font-mono text-xs ${theme.muted}`}>
+									{t("profile.reputation.reviewBy", {
+										reviewer: review.reviewer,
+									})}
 								</p>
 							</li>
 						))}

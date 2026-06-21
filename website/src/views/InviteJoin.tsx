@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import {
@@ -15,6 +16,7 @@ import {
 import { useAuthStore } from "@src/store/auth";
 
 export const InviteJoin = (): FunctionComponent => {
+	const { t } = useTranslation();
 	const parameters = useSearchParams();
 	const groupId = parameters.get("group") ?? "";
 	const token = parameters.get("token") ?? "";
@@ -35,10 +37,10 @@ export const InviteJoin = (): FunctionComponent => {
 	if (!groupId || !token) {
 		return (
 			<div className={wrapperClass}>
-				<h1 className="text-lg font-semibold text-front">Invalid invite</h1>
-				<p className="mt-2 text-sm text-muted">
-					This invite link is missing its group or token.
-				</p>
+				<h1 className="text-lg font-semibold text-front">
+					{t("invite.invalidTitle")}
+				</h1>
+				<p className="mt-2 text-sm text-muted">{t("invite.invalidBody")}</p>
 			</div>
 		);
 	}
@@ -46,7 +48,7 @@ export const InviteJoin = (): FunctionComponent => {
 	if (preview.isLoading) {
 		return (
 			<div className={wrapperClass}>
-				<p className="text-sm text-muted">Loading invite…</p>
+				<p className="text-sm text-muted">{t("invite.loading")}</p>
 			</div>
 		);
 	}
@@ -54,11 +56,10 @@ export const InviteJoin = (): FunctionComponent => {
 	if (preview.isError || !preview.data?.valid) {
 		return (
 			<div className={wrapperClass}>
-				<h1 className="text-lg font-semibold text-front">Invite unavailable</h1>
-				<p className="mt-2 text-sm text-muted">
-					This invite link is invalid, expired, or has been revoked. Ask a group
-					admin for a fresh link.
-				</p>
+				<h1 className="text-lg font-semibold text-front">
+					{t("invite.unavailableTitle")}
+				</h1>
+				<p className="mt-2 text-sm text-muted">{t("invite.unavailableBody")}</p>
 			</div>
 		);
 	}
@@ -69,16 +70,14 @@ export const InviteJoin = (): FunctionComponent => {
 		return (
 			<div className={wrapperClass}>
 				<h1 className="text-lg font-semibold text-front">
-					You&rsquo;ve joined {group.name}
+					{t("invite.joinedTitle", { name: group.name })}
 				</h1>
-				<p className="mt-2 text-sm text-muted">
-					You&rsquo;re now a member of this encrypted group.
-				</p>
+				<p className="mt-2 text-sm text-muted">{t("invite.joinedBody")}</p>
 				<Link
 					className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-white"
 					href="/explore"
 				>
-					Open your groups
+					{t("invite.openGroups")}
 				</Link>
 			</div>
 		);
@@ -87,14 +86,17 @@ export const InviteJoin = (): FunctionComponent => {
 	return (
 		<div className={wrapperClass}>
 			<p className="text-xs uppercase tracking-wide text-muted">
-				You&rsquo;ve been invited to join
+				{t("invite.invitedToJoin")}
 			</p>
 			<h1 className="mt-1 text-xl font-semibold text-front">{group.name}</h1>
 			{group.description ? (
 				<p className="mt-2 text-sm text-muted">{group.description}</p>
 			) : null}
 			<p className="mt-3 text-xs text-muted">
-				{group.memberCount} members · invited by {group.invitedBy}
+				{t("invite.memberSummary", {
+					count: group.memberCount,
+					invitedBy: group.invitedBy,
+				})}
 			</p>
 
 			<button
@@ -105,11 +107,11 @@ export const InviteJoin = (): FunctionComponent => {
 					redeem.mutate({ agentId: actor, groupId, token });
 				}}
 			>
-				{redeem.isPending ? "Joining…" : "Accept invite & join"}
+				{redeem.isPending ? t("invite.joining") : t("invite.accept")}
 			</button>
 			{!actor ? (
 				<p className="mt-2 text-xs text-danger">
-					Connect your wallet to accept this invite.
+					{t("invite.connectToAccept")}
 				</p>
 			) : null}
 			{redeem.error ? (

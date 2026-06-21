@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { useDirectMessages } from "@src/hooks/use-direct-messages";
@@ -13,6 +14,7 @@ type DirectMessagesProperties = {
 export const DirectMessages = ({
 	isDark,
 }: DirectMessagesProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const {
 		isReady,
 		isEnabling,
@@ -89,8 +91,7 @@ export const DirectMessages = ({
 				className={`flex flex-col items-center justify-center gap-3 rounded-lg border p-8 text-center ${panelClass}`}
 			>
 				<p className={`text-sm ${mutedText}`}>
-					End-to-end encrypted messaging needs a one-time signature to derive
-					your encryption keys.
+					{t("directMessages.enablePrompt")}
 				</p>
 				<button
 					disabled={isEnabling}
@@ -104,7 +105,9 @@ export const DirectMessages = ({
 						void enable();
 					}}
 				>
-					{isEnabling ? "Deriving keys…" : "Enable encryption"}
+					{isEnabling
+						? t("directMessages.derivingKeys")
+						: t("directMessages.enableEncryption")}
 				</button>
 				{error ? <p className="text-xs text-rose-500">{error}</p> : null}
 			</div>
@@ -120,7 +123,9 @@ export const DirectMessages = ({
 					className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 ${panelClass}`}
 				>
 					<div className="min-w-0">
-						<span className={`block text-xs ${mutedText}`}>Your address</span>
+						<span className={`block text-xs ${mutedText}`}>
+							{t("directMessages.yourAddress")}
+						</span>
 						<span
 							className={`block truncate font-mono text-xs ${
 								isDark ? "text-white" : "text-black"
@@ -140,7 +145,7 @@ export const DirectMessages = ({
 							handleCopy();
 						}}
 					>
-						{copied ? "Copied" : "Copy"}
+						{copied ? t("common.copied") : t("common.copy")}
 					</button>
 				</div>
 			) : null}
@@ -163,7 +168,7 @@ export const DirectMessages = ({
 						}}
 					>
 						<input
-							placeholder="@handle or key"
+							placeholder={t("directMessages.peerPlaceholder")}
 							value={peerInput}
 							className={`rounded-md border px-2 py-1 text-xs ${
 								isDark
@@ -179,7 +184,9 @@ export const DirectMessages = ({
 						) : null}
 					</form>
 					{peers.length === 0 ? (
-						<p className={`px-1 text-xs ${mutedText}`}>No conversations yet</p>
+						<p className={`px-1 text-xs ${mutedText}`}>
+							{t("directMessages.noConversations")}
+						</p>
 					) : null}
 					{peers.map((peer) => {
 						const unread = unreadForPeer(threads, peer.address);
@@ -214,14 +221,14 @@ export const DirectMessages = ({
 						<div
 							className={`flex flex-1 items-center justify-center p-8 text-xs ${mutedText}`}
 						>
-							Select or add a conversation
+							{t("directMessages.selectConversation")}
 						</div>
 					) : (
 						<>
 							<div className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
 								{activeThread.length === 0 ? (
 									<p className={`text-xs ${mutedText}`}>
-										No messages yet — say hello
+										{t("directMessages.noMessages")}
 									</p>
 								) : null}
 								{activeThread.map((message) => (
@@ -247,7 +254,7 @@ export const DirectMessages = ({
 								}}
 							>
 								<input
-									placeholder="Type a message…"
+									placeholder={t("directMessages.messagePlaceholder")}
 									value={messageInput}
 									className={`flex-1 rounded-md border px-2 py-1 text-xs ${
 										isDark
@@ -265,7 +272,7 @@ export const DirectMessages = ({
 										isDark ? "bg-white text-black" : "bg-black text-white"
 									} ${isSending || !messageInput.trim() ? "opacity-50" : ""}`}
 								>
-									Send
+									{t("directMessages.send")}
 								</button>
 							</form>
 						</>

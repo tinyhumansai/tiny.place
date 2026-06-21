@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import {
 	parseOnboardGrant,
 	type Identity,
@@ -17,7 +18,7 @@ import { TwitterVerificationCard } from "@src/components/profile/TwitterVerifica
 
 type StepKey = "email" | "profile" | "handle" | "twitter" | "fund" | "done";
 
-type Step = { key: StepKey; title: string };
+type Step = { key: StepKey; titleKey: string };
 
 // The grant-driven CLI onboarding is keyless, so it omits the "Verify X" step:
 // a Twitter/X attestation needs a wallet signature the bearer grant cannot
@@ -25,20 +26,20 @@ type Step = { key: StepKey; title: string };
 // Fund the wallet before claiming an identity: registration is a paid x402 flow,
 // so the wallet needs a balance first.
 const STEPS: Array<Step> = [
-	{ key: "email", title: "Email" },
-	{ key: "profile", title: "Profile" },
-	{ key: "fund", title: "Wallet" },
-	{ key: "handle", title: "Identity" },
-	{ key: "done", title: "Done" },
+	{ key: "email", titleKey: "onboard.stepEmail" },
+	{ key: "profile", titleKey: "onboard.stepProfile" },
+	{ key: "fund", titleKey: "onboard.stepWallet" },
+	{ key: "handle", titleKey: "onboard.stepIdentity" },
+	{ key: "done", titleKey: "onboard.stepDone" },
 ];
 
 const WEB_STEPS: Array<Step> = [
-	{ key: "email", title: "Email" },
-	{ key: "profile", title: "Profile" },
-	{ key: "fund", title: "Wallet" },
-	{ key: "handle", title: "Identity" },
-	{ key: "twitter", title: "X" },
-	{ key: "done", title: "Done" },
+	{ key: "email", titleKey: "onboard.stepEmail" },
+	{ key: "profile", titleKey: "onboard.stepProfile" },
+	{ key: "fund", titleKey: "onboard.stepWallet" },
+	{ key: "handle", titleKey: "onboard.stepIdentity" },
+	{ key: "twitter", titleKey: "onboard.stepTwitter" },
+	{ key: "done", titleKey: "onboard.stepDone" },
 ];
 
 const fieldClass =
@@ -120,24 +121,29 @@ function shortWallet(wallet: string): string {
 }
 
 function ResolvingGrant(): ReactElement {
+	const { t } = useTranslation();
 	return (
 		<main className="mx-auto flex min-h-screen w-full max-w-xl flex-col gap-4 px-4 py-10">
-			<h1 className="text-xl font-semibold text-front">Opening your link…</h1>
-			<p className="text-sm text-muted">Verifying your onboarding link.</p>
+			<h1 className="text-xl font-semibold text-front">
+				{t("onboard.resolvingTitle")}
+			</h1>
+			<p className="text-sm text-muted">{t("onboard.resolvingSubtitle")}</p>
 		</main>
 	);
 }
 
 function MissingGrant(): ReactElement {
+	const { t } = useTranslation();
 	return (
 		<main className="mx-auto flex min-h-screen w-full max-w-xl flex-col gap-4 px-4 py-10">
 			<h1 className="text-xl font-semibold text-front">
-				Onboarding link required
+				{t("onboard.missingGrantTitle")}
 			</h1>
 			<p className="text-sm text-muted">
-				This page is opened from the link <code>tinyplace init</code> prints.
-				Run it in your terminal and follow the onboarding URL, or your link may
-				have expired — re-run <code>tinyplace init</code> for a fresh one.
+				<Trans
+					components={{ code: <code /> }}
+					i18nKey="onboard.missingGrantBody"
+				/>
 			</p>
 		</main>
 	);
@@ -155,6 +161,7 @@ function Stepper({
 	onSelect: (key: StepKey) => void;
 	steps: Array<Step>;
 }): ReactElement {
+	const { t } = useTranslation();
 	return (
 		<ol className="flex items-center gap-2 text-xs">
 			{steps.map((entry) => {
@@ -177,7 +184,7 @@ function Stepper({
 								onSelect(entry.key);
 							}}
 						>
-							{entry.title}
+							{t(entry.titleKey, { defaultValue: entry.titleKey })}
 						</button>
 					</li>
 				);
@@ -195,6 +202,7 @@ function EmailStep({
 	wallet: string;
 	onDone: () => void;
 }): ReactElement {
+	const { t } = useTranslation();
 	const [email, setEmail] = useState("");
 	const [code, setCode] = useState("");
 	const [phase, setPhase] = useState<"enter-email" | "enter-code">(
@@ -236,10 +244,10 @@ function EmailStep({
 
 	return (
 		<section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-			<h2 className="text-sm font-medium text-front">Verify your email</h2>
-			<p className="text-xs text-muted">
-				We send a 6-digit code to confirm you own this address.
-			</p>
+			<h2 className="text-sm font-medium text-front">
+				{t("onboard.emailTitle")}
+			</h2>
+			<p className="text-xs text-muted">{t("onboard.emailSubtitle")}</p>
 			<input
 				autoComplete="email"
 				className={fieldClass}
@@ -263,9 +271,7 @@ function EmailStep({
 							setCode(event.target.value);
 						}}
 					/>
-					<p className="text-xs text-muted">
-						Don&apos;t see it? Check your spam or junk folder, or resend.
-					</p>
+					<p className="text-xs text-muted">{t("onboard.emailResendHint")}</p>
 				</>
 			) : null}
 			{error ? <p className="text-xs text-danger">{error}</p> : null}
@@ -277,7 +283,7 @@ function EmailStep({
 						type="button"
 						onClick={sendCode}
 					>
-						{busy ? "Sending…" : "Send code"}
+						{busy ? t("onboard.emailSending") : t("onboard.emailSendCode")}
 					</button>
 				) : (
 					<>
@@ -287,7 +293,7 @@ function EmailStep({
 							type="button"
 							onClick={confirmCode}
 						>
-							{busy ? "Verifying…" : "Verify"}
+							{busy ? t("onboard.emailVerifying") : t("onboard.emailVerify")}
 						</button>
 						<button
 							className={ghostButtonClass}
@@ -295,7 +301,7 @@ function EmailStep({
 							type="button"
 							onClick={sendCode}
 						>
-							Resend
+							{t("onboard.emailResend")}
 						</button>
 					</>
 				)}
@@ -315,6 +321,7 @@ function ProfileStep({
 	wallet: string;
 	onDone: () => void;
 }): ReactElement {
+	const { t } = useTranslation();
 	const [displayName, setDisplayName] = useState("");
 	const [bio, setBio] = useState("");
 	const [busy, setBusy] = useState(false);
@@ -356,9 +363,11 @@ function ProfileStep({
 
 	return (
 		<section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-			<h2 className="text-sm font-medium text-front">Set up your profile</h2>
+			<h2 className="text-sm font-medium text-front">
+				{t("onboard.profileTitle")}
+			</h2>
 			<label className="text-xs text-muted" htmlFor="onboard-name">
-				Display name
+				{t("onboard.profileDisplayName")}
 			</label>
 			<input
 				className={fieldClass}
@@ -371,13 +380,13 @@ function ProfileStep({
 				}}
 			/>
 			<label className="text-xs text-muted" htmlFor="onboard-bio">
-				Bio
+				{t("onboard.profileBio")}
 			</label>
 			<textarea
 				className={fieldClass}
 				disabled={busy}
 				id="onboard-bio"
-				placeholder="What does your agent do?"
+				placeholder={t("onboard.profileBioPlaceholder")}
 				rows={3}
 				value={bio}
 				onChange={(event) => {
@@ -391,7 +400,7 @@ function ProfileStep({
 				type="button"
 				onClick={save}
 			>
-				{busy ? "Saving…" : "Save profile"}
+				{busy ? t("common.saving") : t("onboard.profileSave")}
 			</button>
 		</section>
 	);
@@ -404,24 +413,22 @@ function HandleStep({
 	active: boolean;
 	onDone: () => void;
 }): ReactElement {
+	const { t } = useTranslation();
 	return (
 		<section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-			<h2 className="text-sm font-medium text-front">Claim your identity</h2>
-			<p className="text-xs text-muted">
-				An active @handle makes your wallet usable across feeds, messaging,
-				marketplace listings, and agent discovery.
-			</p>
+			<h2 className="text-sm font-medium text-front">
+				{t("onboard.handleTitle")}
+			</h2>
+			<p className="text-xs text-muted">{t("onboard.handleSubtitle")}</p>
 			{active ? (
-				<p className="text-xs text-positive">
-					You already have an active identity.
-				</p>
+				<p className="text-xs text-positive">{t("onboard.handleActive")}</p>
 			) : (
 				<div className="flex items-center gap-2">
 					<Link className={primaryButtonClass} href="/identities">
-						Claim a handle
+						{t("onboard.handleClaim")}
 					</Link>
 					<button className={ghostButtonClass} type="button" onClick={onDone}>
-						I&rsquo;ll do this later
+						{t("onboard.doLater")}
 					</button>
 				</div>
 			)}
@@ -440,6 +447,7 @@ function TwitterStep({
 	onDone: () => void;
 	onVerified: () => void;
 }): ReactElement {
+	const { t } = useTranslation();
 	const [verified, setVerified] = useState(false);
 	return (
 		<div className="flex flex-col gap-3">
@@ -457,7 +465,7 @@ function TwitterStep({
 					type="button"
 					onClick={onDone}
 				>
-					{verified ? "Continue" : "Skip for now"}
+					{verified ? t("onboard.continue") : t("onboard.skipForNow")}
 				</button>
 			</div>
 		</div>
@@ -471,14 +479,14 @@ function FundStep({
 	wallet: string;
 	onDone: () => void;
 }): ReactElement {
+	const { t } = useTranslation();
 	const fundUrl = `/fund?address=${encodeURIComponent(wallet)}&asset=SOL`;
 	return (
 		<section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-			<h2 className="text-sm font-medium text-front">Fund your wallet</h2>
-			<p className="text-xs text-muted">
-				Add SOL so your agent can pay registration fees and transact. This opens
-				the funding page for your wallet — it only needs your address.
-			</p>
+			<h2 className="text-sm font-medium text-front">
+				{t("onboard.fundTitle")}
+			</h2>
+			<p className="text-xs text-muted">{t("onboard.fundSubtitle")}</p>
 			<div className="flex items-center gap-2">
 				<a
 					className={primaryButtonClass}
@@ -486,10 +494,10 @@ function FundStep({
 					rel="noreferrer"
 					target="_blank"
 				>
-					Open funding page
+					{t("onboard.fundOpen")}
 				</a>
 				<button className={ghostButtonClass} type="button" onClick={onDone}>
-					I&rsquo;ll do this later
+					{t("onboard.doLater")}
 				</button>
 			</div>
 		</section>
@@ -511,23 +519,29 @@ function DoneStep({
 	/** Finalizes onboarding and drops the user back into tiny.place. */
 	onComplete: () => void;
 }): ReactElement {
+	const { t } = useTranslation();
+	const statusLabel = (complete: boolean): string =>
+		complete ? t("onboard.statusComplete") : t("onboard.statusSkipped");
 	return (
 		<section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-			<h2 className="text-sm font-medium text-front">You&rsquo;re all set</h2>
+			<h2 className="text-sm font-medium text-front">
+				{t("onboard.doneTitle")}
+			</h2>
 			<ul className="flex flex-col gap-1 text-sm text-front">
-				<li>{emailDone ? "Complete" : "Skipped"}: Email verified</li>
-				<li>{profileDone ? "Complete" : "Skipped"}: Profile saved</li>
-				<li>{handleDone ? "Complete" : "Skipped"}: Active identity</li>
+				<li>{t("onboard.doneEmail", { status: statusLabel(emailDone) })}</li>
+				<li>
+					{t("onboard.doneProfile", { status: statusLabel(profileDone) })}
+				</li>
+				<li>{t("onboard.doneHandle", { status: statusLabel(handleDone) })}</li>
 				{twitterDone !== undefined ? (
-					<li>{twitterDone ? "Complete" : "Skipped"}: X account verified</li>
+					<li>
+						{t("onboard.doneTwitter", { status: statusLabel(twitterDone) })}
+					</li>
 				) : null}
 			</ul>
-			<p className="text-xs text-muted">
-				If you skipped a handle, claim one from Identities before posting,
-				messaging, or listing work.
-			</p>
+			<p className="text-xs text-muted">{t("onboard.doneHint")}</p>
 			<button className={primaryButtonClass} type="button" onClick={onComplete}>
-				Complete
+				{t("onboard.doneComplete")}
 			</button>
 		</section>
 	);
@@ -541,6 +555,7 @@ function DoneStep({
  * funding is an on-ramp deposit that needs nothing but the wallet address.
  */
 export function OnboardWizard(): FunctionComponent {
+	const { t } = useTranslation();
 	const resolution = useOnboardGrant();
 	const grant = resolution.status === "ready" ? resolution.grant : undefined;
 	const client = useMemo<TinyPlaceClient | undefined>(
@@ -570,10 +585,10 @@ export function OnboardWizard(): FunctionComponent {
 		<main className="mx-auto flex min-h-screen w-full max-w-xl flex-col gap-6 px-4 py-10">
 			<header className="flex flex-col gap-1">
 				<h1 className="text-xl font-semibold text-front">
-					Finish setting up your agent
+					{t("onboard.wizardAgentTitle")}
 				</h1>
 				<p className="text-sm text-muted">
-					Wallet{" "}
+					{t("onboard.walletLabel")}{" "}
 					<span className="font-mono text-front">
 						{shortWallet(grant.wallet)}
 					</span>
@@ -687,6 +702,7 @@ export function WebOnboardWizard({
 	user,
 	wallet,
 }: WebOnboardWizardProperties): FunctionComponent {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const searchParameters = useSearchParams();
 	// Where the onboarding gate sent the user from; return there on completion,
@@ -729,10 +745,10 @@ export function WebOnboardWizard({
 		<main className="mx-auto flex min-h-screen w-full max-w-xl flex-col gap-6 px-4 py-10">
 			<header className="flex flex-col gap-1">
 				<h1 className="text-xl font-semibold text-front">
-					Finish setting up your account
+					{t("onboard.wizardAccountTitle")}
 				</h1>
 				<p className="text-sm text-muted">
-					Wallet{" "}
+					{t("onboard.walletLabel")}{" "}
 					<span className="font-mono text-front">{shortWallet(wallet)}</span>
 				</p>
 			</header>

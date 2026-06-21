@@ -1,6 +1,8 @@
 "use client";
 
 import type { ExplorerOverview } from "@tinyhumansai/tinyplace";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { Chip } from "@src/components/ui/Chip";
@@ -38,30 +40,30 @@ function formatUsd(value: string): string {
 	return `$${number.toFixed(2)}`;
 }
 
-function buildMetrics(data: ExplorerOverview): Array<Metric> {
+function buildMetrics(data: ExplorerOverview, t: TFunction): Array<Metric> {
 	return [
 		{
-			label: "Total Agents",
+			label: t("statsSection.metrics.totalAgents"),
 			value: formatNumber(data.allTime.registeredAgents),
 		},
 		{
-			label: "Total Volume",
+			label: t("statsSection.metrics.totalVolume"),
 			value: formatUsd(data.allTime.volumeUsd),
 		},
 		{
-			label: "24h Transactions",
+			label: t("statsSection.metrics.transactions24h"),
 			value: formatNumber(data.last24h.transactions),
 		},
 		{
-			label: "24h Volume",
+			label: t("statsSection.metrics.volume24h"),
 			value: formatUsd(data.last24h.volumeUsd),
 		},
 		{
-			label: "Active Agents",
+			label: t("statsSection.metrics.activeAgents"),
 			value: formatNumber(data.last24h.uniqueAgents),
 		},
 		{
-			label: "Total Entries",
+			label: t("statsSection.metrics.totalEntries"),
 			value: formatNumber(data.ledger.totalEntries),
 		},
 	];
@@ -72,6 +74,7 @@ type GeneralProperties = {
 };
 
 const General = ({ isDark }: GeneralProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const { data, isLoading, isError, error } = useExplorerOverview();
 
 	if (isLoading) {
@@ -108,7 +111,7 @@ const General = ({ isDark }: GeneralProperties): FunctionComponent => {
 				}`}
 			>
 				<p className="text-sm">
-					Failed to load stats
+					{t("statsSection.loadError")}
 					{error instanceof Error ? `: ${error.message}` : ""}
 				</p>
 			</div>
@@ -119,7 +122,7 @@ const General = ({ isDark }: GeneralProperties): FunctionComponent => {
 		return null;
 	}
 
-	const metrics = buildMetrics(data);
+	const metrics = buildMetrics(data, t);
 
 	return (
 		<div className="space-y-4">
@@ -154,9 +157,9 @@ const tabs = ["general", "pricing"] as const;
 
 type Tab = (typeof tabs)[number];
 
-const tabLabels: Record<Tab, string> = {
-	general: "General",
-	pricing: "Pricing",
+const tabLabelKeys: Record<Tab, string> = {
+	general: "statsSection.tabs.general",
+	pricing: "statsSection.tabs.pricing",
 };
 
 const tabComponents: Record<Tab, React.ComponentType<{ isDark: boolean }>> = {
@@ -169,6 +172,7 @@ type StatsProperties = {
 };
 
 export const Stats = ({ isDark }: StatsProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const { activeTab, setTab } = useTabRoute<Tab>(tabs, "general");
 
 	const ActiveComponent = tabComponents[activeTab];
@@ -185,7 +189,7 @@ export const Stats = ({ isDark }: StatsProperties): FunctionComponent => {
 							setTab(tab);
 						}}
 					>
-						{tabLabels[tab]}
+						{t(tabLabelKeys[tab], { defaultValue: tabLabelKeys[tab] })}
 					</Chip>
 				))}
 			</div>

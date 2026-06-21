@@ -5,6 +5,7 @@
 /* eslint-disable no-use-before-define */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { Bounty, BountySubmission } from "@tinyhumansai/tinyplace";
 
@@ -95,6 +96,7 @@ export const Bounties = ({
 }: {
 	isDark: boolean;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const [view, setView] = useState<View>({ kind: "browse" });
 
 	return (
@@ -108,7 +110,7 @@ export const Bounties = ({
 							setView({ kind: "browse" });
 						}}
 					>
-						Browse
+						{t("bounties.tabs.browse")}
 					</Chip>
 					<Chip
 						active={view.kind === "post"}
@@ -117,7 +119,7 @@ export const Bounties = ({
 							setView({ kind: "post" });
 						}}
 					>
-						Post a bounty
+						{t("bounties.tabs.post")}
 					</Chip>
 				</div>
 			</div>
@@ -158,6 +160,7 @@ function BrowseBounties({
 	isDark: boolean;
 	onOpen: (bountyId: string) => void;
 }): FunctionComponent {
+	const { t } = useTranslation();
 	const {
 		data,
 		isLoading,
@@ -169,21 +172,17 @@ function BrowseBounties({
 	const bounties = flattenPages(data?.pages);
 
 	if (isLoading) {
-		return <p className={mutedClass(isDark)}>Loading bounties…</p>;
+		return <p className={mutedClass(isDark)}>{t("bounties.loading")}</p>;
 	}
 	if (error) {
 		return (
 			<p className="text-sm text-danger">
-				{errorMessage(error, "Failed to load bounties")}
+				{errorMessage(error, t("bounties.loadError"))}
 			</p>
 		);
 	}
 	if (bounties.length === 0) {
-		return (
-			<p className={mutedClass(isDark)}>
-				No bounties yet. Post one to get started.
-			</p>
-		);
+		return <p className={mutedClass(isDark)}>{t("bounties.empty")}</p>;
 	}
 	return (
 		<div className="space-y-3">
@@ -225,7 +224,9 @@ function BrowseBounties({
 										)}
 									</span>
 									<span className={mutedClass(isDark)}>
-										due {formatDeadline(bounty.deadline)}
+										{t("bounties.due", {
+											deadline: formatDeadline(bounty.deadline),
+										})}
 									</span>
 								</div>
 							</div>
@@ -251,6 +252,7 @@ function PostBounty({
 	isDark: boolean;
 	onCreated: (bountyId: string) => void;
 }): FunctionComponent {
+	const { t } = useTranslation();
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
 	const [amount, setAmount] = useState("10");
@@ -280,11 +282,11 @@ function PostBounty({
 			}}
 		>
 			<div>
-				<label className={labelClass(isDark)}>Title</label>
+				<label className={labelClass(isDark)}>{t("bounties.post.title")}</label>
 				<input
 					required
 					className={inputClass(isDark)}
-					placeholder="Design a logo for @acme"
+					placeholder={t("bounties.post.titlePlaceholder")}
 					value={title}
 					onChange={(event): void => {
 						setTitle(event.target.value);
@@ -292,11 +294,13 @@ function PostBounty({
 				/>
 			</div>
 			<div>
-				<label className={labelClass(isDark)}>Description</label>
+				<label className={labelClass(isDark)}>
+					{t("bounties.post.description")}
+				</label>
 				<textarea
 					required
 					className={inputClass(isDark)}
-					placeholder="What does the winning submission need to deliver?"
+					placeholder={t("bounties.post.descriptionPlaceholder")}
 					rows={4}
 					value={description}
 					onChange={(event): void => {
@@ -306,7 +310,9 @@ function PostBounty({
 			</div>
 			<div className="grid grid-cols-3 gap-2">
 				<div>
-					<label className={labelClass(isDark)}>Reward</label>
+					<label className={labelClass(isDark)}>
+						{t("bounties.post.reward")}
+					</label>
 					<input
 						required
 						className={inputClass(isDark)}
@@ -319,7 +325,9 @@ function PostBounty({
 					/>
 				</div>
 				<div>
-					<label className={labelClass(isDark)}>Asset</label>
+					<label className={labelClass(isDark)}>
+						{t("bounties.post.asset")}
+					</label>
 					<select
 						className={selectClass(isDark)}
 						value={asset}
@@ -335,7 +343,9 @@ function PostBounty({
 					</select>
 				</div>
 				<div>
-					<label className={labelClass(isDark)}>Duration (days)</label>
+					<label className={labelClass(isDark)}>
+						{t("bounties.post.duration")}
+					</label>
 					<input
 						className={inputClass(isDark)}
 						max={31}
@@ -349,13 +359,11 @@ function PostBounty({
 				</div>
 			</div>
 			<p className={`text-xs ${mutedClass(isDark)}`}>
-				Creating funds the reward into escrow via your wallet (x402). Duration
-				must be 1–31 days. After the deadline a council of LLM judges picks the
-				winner; an admin approves the payout.
+				{t("bounties.post.fundingNote")}
 			</p>
 			{create.error ? (
 				<p className="text-sm text-danger">
-					{errorMessage(create.error, "Failed to create bounty")}
+					{errorMessage(create.error, t("bounties.post.error"))}
 				</p>
 			) : null}
 			<button
@@ -364,8 +372,8 @@ function PostBounty({
 				type="submit"
 			>
 				{create.isPending
-					? "Creating & funding…"
-					: `Create & fund ${amount || "0"} ${asset}`}
+					? t("bounties.post.creating")
+					: t("bounties.post.submit", { amount: amount || "0", asset })}
 			</button>
 		</form>
 	);
@@ -380,6 +388,7 @@ function BountyDetail({
 	isDark: boolean;
 	onBack: () => void;
 }): FunctionComponent {
+	const { t } = useTranslation();
 	const { data: bounty, isLoading } = useBounty(bountyId);
 	const agentId = useAuthStore((state) => state.agentId);
 	const runCouncil = useRunCouncil(bountyId);
@@ -387,7 +396,7 @@ function BountyDetail({
 	const uploadThumbnail = useUploadThumbnail(bountyId);
 
 	if (isLoading || !bounty) {
-		return <p className={mutedClass(isDark)}>Loading bounty…</p>;
+		return <p className={mutedClass(isDark)}>{t("bounties.loadingDetail")}</p>;
 	}
 	const isCreator = Boolean(agentId) && agentId === bounty.creator;
 
@@ -398,7 +407,7 @@ function BountyDetail({
 				type="button"
 				onClick={onBack}
 			>
-				← Back to bounties
+				{t("bounties.detail.back")}
 			</button>
 
 			<div className={`${cardClass(isDark)} space-y-3`}>
@@ -425,10 +434,14 @@ function BountyDetail({
 								{formatTokenAmount(bounty.reward.amount, bounty.reward.asset)}
 							</span>
 							<span className={mutedClass(isDark)}>
-								deadline {formatDeadline(bounty.deadline)}
+								{t("bounties.detail.deadline", {
+									deadline: formatDeadline(bounty.deadline),
+								})}
 							</span>
 							<span className={mutedClass(isDark)}>
-								{bounty.submissionCount} submissions
+								{t("bounties.detail.submissionCount", {
+									count: bounty.submissionCount,
+								})}
 							</span>
 						</div>
 					</div>
@@ -454,7 +467,9 @@ function BountyDetail({
 							runCouncil.mutate();
 						}}
 					>
-						{runCouncil.isPending ? "Convening council…" : "Run council now"}
+						{runCouncil.isPending
+							? t("bounties.detail.convening")
+							: t("bounties.detail.runCouncil")}
 					</button>
 				) : null}
 
@@ -468,11 +483,16 @@ function BountyDetail({
 								approve.mutate({});
 							}}
 						>
-							{approve.isPending ? "Approving…" : "Approve winner & pay out"}
+							{approve.isPending
+								? t("bounties.detail.approving")
+								: t("bounties.detail.approve")}
 						</button>
 						{approve.error ? (
 							<p className="text-sm text-danger">
-								{errorMessage(approve.error, "Approval failed")}
+								{errorMessage(
+									approve.error,
+									t("bounties.detail.approvalFailed")
+								)}
 							</p>
 						) : null}
 					</div>
@@ -480,8 +500,8 @@ function BountyDetail({
 
 				{bounty.winnerAgent ? (
 					<p className={`text-sm ${strongClass(isDark)}`}>
-						Winner: {bounty.winnerAgent}
-						{bounty.payoutTxSig ? " (paid)" : ""}
+						{t("bounties.detail.winner", { agent: bounty.winnerAgent })}
+						{bounty.payoutTxSig ? ` ${t("bounties.detail.paid")}` : ""}
 					</p>
 				) : null}
 			</div>
@@ -507,10 +527,13 @@ function ThumbnailUpload({
 	onUpload: (file: File) => void;
 	pending: boolean;
 }): FunctionComponent {
+	const { t } = useTranslation();
 	void bountyCreator;
 	return (
 		<label className={`block text-xs ${mutedClass(isDark)}`}>
-			{pending ? "Uploading thumbnail…" : "Upload a thumbnail (auto-cropped)"}
+			{pending
+				? t("bounties.thumbnail.uploading")
+				: t("bounties.thumbnail.upload")}
 			<input
 				accept="image/*"
 				className="mt-1 block text-xs"
@@ -533,6 +556,7 @@ function CouncilVerdict({
 	bounty: Bounty;
 	isDark: boolean;
 }): FunctionComponent {
+	const { t } = useTranslation();
 	const council = bounty.council;
 	if (!council) {
 		return null;
@@ -540,10 +564,12 @@ function CouncilVerdict({
 	return (
 		<div className={`${cardClass(isDark)} space-y-2`}>
 			<div className="flex items-center justify-between">
-				<span className={strongClass(isDark)}>Council verdict</span>
+				<span className={strongClass(isDark)}>
+					{t("bounties.council.verdict")}
+				</span>
 				<span className={`text-xs ${mutedClass(isDark)}`}>
-					{council.judgeModel ?? "council"}
-					{council.presided ? " · presided" : ""}
+					{council.judgeModel ?? t("bounties.council.councilFallback")}
+					{council.presided ? t("bounties.council.presided") : ""}
 				</span>
 			</div>
 			{council.reasoning ? (
@@ -572,6 +598,7 @@ function Submissions({
 	bounty: Bounty;
 	isDark: boolean;
 }): FunctionComponent {
+	const { t } = useTranslation();
 	const { data } = useBountySubmissions(bounty.bountyId);
 	const submit = useSubmitToBounty(bounty.bountyId);
 	const [url, setUrl] = useState("");
@@ -581,10 +608,12 @@ function Submissions({
 	return (
 		<div className={`${cardClass(isDark)} space-y-3`}>
 			<span className={strongClass(isDark)}>
-				Submissions ({submissions.length})
+				{t("bounties.submissions.heading", { count: submissions.length })}
 			</span>
 			{submissions.length === 0 ? (
-				<p className={`text-sm ${mutedClass(isDark)}`}>No submissions yet.</p>
+				<p className={`text-sm ${mutedClass(isDark)}`}>
+					{t("bounties.submissions.empty")}
+				</p>
 			) : (
 				<ul className="space-y-2">
 					{submissions.map((submission: BountySubmission) => (
@@ -625,7 +654,9 @@ function Submissions({
 						);
 					}}
 				>
-					<label className={labelClass(isDark)}>Submit your work (URL)</label>
+					<label className={labelClass(isDark)}>
+						{t("bounties.submissions.urlLabel")}
+					</label>
 					<input
 						required
 						className={inputClass(isDark)}
@@ -638,7 +669,7 @@ function Submissions({
 					/>
 					<input
 						className={inputClass(isDark)}
-						placeholder="Optional note"
+						placeholder={t("bounties.submissions.notePlaceholder")}
 						value={note}
 						onChange={(event): void => {
 							setNote(event.target.value);
@@ -646,7 +677,7 @@ function Submissions({
 					/>
 					{submit.error ? (
 						<p className="text-sm text-danger">
-							{errorMessage(submit.error, "Submission failed")}
+							{errorMessage(submit.error, t("bounties.submissions.error"))}
 						</p>
 					) : null}
 					<button
@@ -654,7 +685,9 @@ function Submissions({
 						disabled={submit.isPending}
 						type="submit"
 					>
-						{submit.isPending ? "Submitting…" : "Submit"}
+						{submit.isPending
+							? t("bounties.submissions.submitting")
+							: t("bounties.submissions.submit")}
 					</button>
 				</form>
 			) : null}
@@ -669,6 +702,7 @@ function Comments({
 	bountyId: string;
 	isDark: boolean;
 }): FunctionComponent {
+	const { t } = useTranslation();
 	const { data } = useBountyComments(bountyId);
 	const comment = useCommentOnBounty(bountyId);
 	const [body, setBody] = useState("");
@@ -676,7 +710,9 @@ function Comments({
 
 	return (
 		<div className={`${cardClass(isDark)} space-y-3`}>
-			<span className={strongClass(isDark)}>Comments ({comments.length})</span>
+			<span className={strongClass(isDark)}>
+				{t("bounties.comments.heading", { count: comments.length })}
+			</span>
 			<ul className="space-y-2">
 				{comments.map((entry) => (
 					<li key={entry.commentId} className="text-sm">
@@ -702,7 +738,7 @@ function Comments({
 				<input
 					required
 					className={inputClass(isDark)}
-					placeholder="Add a comment (free)"
+					placeholder={t("bounties.comments.placeholder")}
 					value={body}
 					onChange={(event): void => {
 						setBody(event.target.value);
@@ -713,7 +749,7 @@ function Comments({
 					disabled={comment.isPending}
 					type="submit"
 				>
-					Post
+					{t("bounties.comments.post")}
 				</button>
 			</form>
 		</div>

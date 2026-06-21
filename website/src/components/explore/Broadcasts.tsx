@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import type { BroadcastChannel, TinyPlaceError } from "@tinyhumansai/tinyplace";
 
@@ -38,15 +40,15 @@ function buttonClass(isDark: boolean): string {
 	}`;
 }
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: unknown, t: TFunction): string {
 	if (error instanceof Error) {
 		const typed = error as TinyPlaceError;
 		if (typed.name === "TinyPlaceError" && typed.status === 402) {
-			return "Payment required for this paid channel action.";
+			return t("broadcasts.paymentRequired");
 		}
 		return error.message;
 	}
-	return "Paid channel request failed.";
+	return t("broadcasts.requestFailed");
 }
 
 function BroadcastCard({
@@ -64,6 +66,7 @@ function BroadcastCard({
 	onSubscribe: (broadcastId: string) => void;
 	postBody: string;
 }): React.ReactElement {
+	const { t } = useTranslation();
 	const paid =
 		channel.paymentPolicy && channel.paymentPolicy.type !== "free"
 			? channel.paymentPolicy.type
@@ -81,7 +84,7 @@ function BroadcastCard({
 					<p
 						className={`mt-0.5 text-[10px] ${isDark ? "text-neutral-600" : "text-neutral-300"}`}
 					>
-						by {channel.owner}
+						{t("broadcasts.byOwner", { owner: channel.owner })}
 					</p>
 				</div>
 				<span
@@ -93,11 +96,14 @@ function BroadcastCard({
 			<p
 				className={`mt-2 text-[10px] ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 			>
-				{channel.description ?? "No description"}
+				{channel.description ?? t("broadcasts.noDescription")}
 			</p>
 			<div className="mt-2 flex items-center justify-between text-[10px]">
 				<span className={isDark ? "text-neutral-600" : "text-neutral-300"}>
-					{channel.subscriberCount.toLocaleString()} subscribers
+					{t("broadcasts.subscriberCount", {
+						count: channel.subscriberCount,
+						formatted: channel.subscriberCount.toLocaleString(),
+					})}
 				</span>
 				<span className={isDark ? "text-neutral-600" : "text-neutral-300"}>
 					{channel.encryption}
@@ -112,7 +118,7 @@ function BroadcastCard({
 						onSubscribe(channel.broadcastId);
 					}}
 				>
-					Subscribe
+					{t("broadcasts.subscribe")}
 				</button>
 				<button
 					className={buttonClass(isDark)}
@@ -122,7 +128,7 @@ function BroadcastCard({
 						onPost(channel.broadcastId);
 					}}
 				>
-					Post
+					{t("broadcasts.post")}
 				</button>
 			</div>
 		</div>
@@ -134,9 +140,12 @@ export const Broadcasts = ({
 }: {
 	isDark: boolean;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const { data, isLoading, isError, error } = useBroadcasts({ limit: 12 });
 	const agentId = useAuthStore((state) => state.agentId);
-	const gateMessage = useWriteGateMessage("create or post paid channels");
+	const gateMessage = useWriteGateMessage(
+		t("writeGate.actions.createOrPostPaidChannels")
+	);
 	const ownedIdentities = useOwnedIdentities(agentId);
 	const broadcasterIdentity = firstActiveIdentity(
 		ownedIdentities.data?.identities
@@ -175,7 +184,7 @@ export const Broadcasts = ({
 				<div className="grid gap-2 md:grid-cols-2">
 					<input
 						className={inputClass(isDark)}
-						placeholder="Paid channel name"
+						placeholder={t("broadcasts.namePlaceholder")}
 						type="text"
 						value={name}
 						onChange={(event): void => {
@@ -184,7 +193,7 @@ export const Broadcasts = ({
 					/>
 					<input
 						className={inputClass(isDark)}
-						placeholder="Description"
+						placeholder={t("broadcasts.descriptionPlaceholder")}
 						type="text"
 						value={description}
 						onChange={(event): void => {
@@ -195,7 +204,7 @@ export const Broadcasts = ({
 				<div className="mt-2 flex gap-2">
 					<input
 						className={`${inputClass(isDark)} flex-1`}
-						placeholder="Message to publish"
+						placeholder={t("broadcasts.messagePlaceholder")}
 						type="text"
 						value={postBody}
 						onChange={(event): void => {
@@ -207,12 +216,14 @@ export const Broadcasts = ({
 						disabled={createBroadcast.isPending || !actor || !name.trim()}
 						type="submit"
 					>
-						{createBroadcast.isPending ? "Creating..." : "Create"}
+						{createBroadcast.isPending
+							? t("common.creating")
+							: t("common.create")}
 					</button>
 				</div>
 				{actionError ? (
 					<p className="mt-2 text-xs text-red-500">
-						{errorMessage(actionError)}
+						{errorMessage(actionError, t)}
 					</p>
 				) : null}
 				{agentId ? (
@@ -220,10 +231,10 @@ export const Broadcasts = ({
 						className={`mt-2 text-xs ${actor ? (isDark ? "text-neutral-500" : "text-neutral-400") : "text-red-500"}`}
 					>
 						{actor
-							? `Publishing as ${actor}`
+							? t("broadcasts.publishingAs", { actor })
 							: ownedIdentities.isLoading
-								? "Checking your active handle..."
-								: "Connect your wallet to create or post paid channels."}
+								? t("broadcasts.checkingHandle")
+								: t("broadcasts.connectToManage")}
 					</p>
 				) : (
 					<p className="mt-2 text-xs text-red-500">{gateMessage}</p>
@@ -237,24 +248,25 @@ export const Broadcasts = ({
 					<span
 						className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 					>
-						Paid Channels
+						{t("broadcasts.paidChannels")}
 					</span>
 				</div>
 
 				{isLoading ? (
 					<p className="p-4 text-sm text-neutral-500">
-						Loading paid channels...
+						{t("broadcasts.loading")}
 					</p>
 				) : null}
 				{isError ? (
 					<p className="p-4 text-sm text-red-500">
-						Failed to load paid channels
-						{error instanceof Error ? `: ${error.message}` : ""}
+						{error instanceof Error
+							? t("broadcasts.loadFailedDetail", { message: error.message })
+							: t("broadcasts.loadFailed")}
 					</p>
 				) : null}
 				{!isLoading && !isError && broadcasts.length === 0 ? (
 					<p className="p-4 text-sm text-neutral-500">
-						No paid channels available
+						{t("broadcasts.empty")}
 					</p>
 				) : null}
 				<div className="grid gap-2 p-3 md:grid-cols-2">

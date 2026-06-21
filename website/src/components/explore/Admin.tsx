@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import type {
 	AdminAuditEntry,
 	AdminFeeMetrics,
@@ -60,14 +62,14 @@ function formatDate(value: string | undefined): string {
 	});
 }
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: unknown, t: TFunction): string {
 	if (error instanceof Error && error.message.includes("403")) {
-		return "Admin credentials required.";
+		return t("admin.credentialsRequired");
 	}
 	if (error instanceof Error) {
 		return error.message;
 	}
-	return "Unavailable from staging.";
+	return t("admin.unavailableFromStaging");
 }
 
 function DataState({
@@ -83,17 +85,18 @@ function DataState({
 	isError: boolean;
 	isLoading: boolean;
 }): React.ReactElement {
+	const { t } = useTranslation();
 	if (isLoading) {
 		return (
 			<p
 				className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 			>
-				Loading...
+				{t("common.loading")}
 			</p>
 		);
 	}
 	if (isError) {
-		return <p className="text-xs text-red-500">{errorMessage(error)}</p>;
+		return <p className="text-xs text-red-500">{errorMessage(error, t)}</p>;
 	}
 	return <>{children}</>;
 }
@@ -121,11 +124,14 @@ function ConfigPanel({
 	config: Record<string, string>;
 	isDark: boolean;
 }): React.ReactElement {
+	const { t } = useTranslation();
 	const entries = Object.entries(config).sort(([left], [right]) =>
 		left.localeCompare(right)
 	);
 	if (entries.length === 0) {
-		return <p className="text-xs text-neutral-500">No config returned.</p>;
+		return (
+			<p className="text-xs text-neutral-500">{t("admin.noConfigReturned")}</p>
+		);
 	}
 	return (
 		<div className="space-y-2">
@@ -161,9 +167,10 @@ function FeePanel({
 	fees: Array<FeeConfig>;
 	isDark: boolean;
 }): React.ReactElement {
+	const { t } = useTranslation();
 	if (fees.length === 0) {
 		return (
-			<p className="text-xs text-neutral-500">No fee overrides returned.</p>
+			<p className="text-xs text-neutral-500">{t("admin.noFeeOverrides")}</p>
 		);
 	}
 	return (
@@ -186,8 +193,10 @@ function FeePanel({
 					<p
 						className={`mt-1 ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 					>
-						{fee.agents.length > 0 ? fee.agents.join(" -> ") : "global"} -{" "}
-						{fee.reason || fee.feeId}
+						{fee.agents.length > 0
+							? fee.agents.join(" -> ")
+							: t("admin.global")}{" "}
+						- {fee.reason || fee.feeId}
 					</p>
 				</div>
 			))}
@@ -202,11 +211,12 @@ function MetricsPanel({
 	isDark: boolean;
 	metrics: AdminFeeMetrics;
 }): React.ReactElement {
+	const { t } = useTranslation();
 	const items = [
-		["Count", String(metrics.count)],
-		["Total", metrics.total],
-		["Last 24h", metrics.last24h],
-		["Last 30d", metrics.last30d],
+		[t("admin.metricCount"), String(metrics.count)],
+		[t("admin.metricTotal"), metrics.total],
+		[t("admin.metricLast24h"), metrics.last24h],
+		[t("admin.metricLast30d"), metrics.last30d],
 	];
 	return (
 		<div className="grid grid-cols-2 gap-2 text-xs">
@@ -238,9 +248,10 @@ function AuditPanel({
 	audit: Array<AdminAuditEntry>;
 	isDark: boolean;
 }): React.ReactElement {
+	const { t } = useTranslation();
 	if (audit.length === 0) {
 		return (
-			<p className="text-xs text-neutral-500">No audit entries returned.</p>
+			<p className="text-xs text-neutral-500">{t("admin.noAuditEntries")}</p>
 		);
 	}
 	return (
@@ -280,8 +291,11 @@ function ResolutionPanel({
 	isDark: boolean;
 	resolution: FeeResolveResponse | undefined;
 }): React.ReactElement {
+	const { t } = useTranslation();
 	if (!resolution) {
-		return <p className="text-xs text-neutral-500">No fee preview returned.</p>;
+		return (
+			<p className="text-xs text-neutral-500">{t("admin.noFeePreview")}</p>
+		);
 	}
 	const { fee } = resolution;
 	return (
@@ -306,6 +320,7 @@ function ResolutionPanel({
 }
 
 export const Admin = ({ isDark }: AdminProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const [from, setFrom] = useState("@buyer");
 	const [to, setTo] = useState("@seller");
 	const [type, setType] = useState<LedgerType>("PAYMENT");
@@ -334,10 +349,10 @@ export const Admin = ({ isDark }: AdminProperties): FunctionComponent => {
 	return (
 		<div className="space-y-4">
 			<div className={panelClass(isDark)}>
-				<SectionTitle isDark={isDark} title="Fee Resolution" />
+				<SectionTitle isDark={isDark} title={t("admin.feeResolution")} />
 				<div className="mb-3 grid grid-cols-3 gap-2">
 					<div>
-						<label className={labelClass(isDark)}>From</label>
+						<label className={labelClass(isDark)}>{t("admin.from")}</label>
 						<input
 							className={`${inputClass(isDark)} w-full`}
 							type="text"
@@ -348,7 +363,7 @@ export const Admin = ({ isDark }: AdminProperties): FunctionComponent => {
 						/>
 					</div>
 					<div>
-						<label className={labelClass(isDark)}>To</label>
+						<label className={labelClass(isDark)}>{t("admin.to")}</label>
 						<input
 							className={`${inputClass(isDark)} w-full`}
 							type="text"
@@ -359,7 +374,7 @@ export const Admin = ({ isDark }: AdminProperties): FunctionComponent => {
 						/>
 					</div>
 					<div>
-						<label className={labelClass(isDark)}>Type</label>
+						<label className={labelClass(isDark)}>{t("admin.type")}</label>
 						<select
 							className={`${inputClass(isDark)} w-full`}
 							value={type}
@@ -387,7 +402,7 @@ export const Admin = ({ isDark }: AdminProperties): FunctionComponent => {
 
 			<div className="grid gap-4 lg:grid-cols-2">
 				<div className={panelClass(isDark)}>
-					<SectionTitle isDark={isDark} title="Runtime Configuration" />
+					<SectionTitle isDark={isDark} title={t("admin.runtimeConfig")} />
 					<DataState
 						error={configQuery.error}
 						isDark={isDark}
@@ -402,10 +417,10 @@ export const Admin = ({ isDark }: AdminProperties): FunctionComponent => {
 				</div>
 
 				<form className={panelClass(isDark)} onSubmit={handleConfigSubmit}>
-					<SectionTitle isDark={isDark} title="Update Configuration" />
+					<SectionTitle isDark={isDark} title={t("admin.updateConfig")} />
 					<div className="space-y-2">
 						<div>
-							<label className={labelClass(isDark)}>Key</label>
+							<label className={labelClass(isDark)}>{t("admin.key")}</label>
 							<input
 								className={`${inputClass(isDark)} w-full`}
 								type="text"
@@ -416,7 +431,7 @@ export const Admin = ({ isDark }: AdminProperties): FunctionComponent => {
 							/>
 						</div>
 						<div>
-							<label className={labelClass(isDark)}>Value</label>
+							<label className={labelClass(isDark)}>{t("admin.value")}</label>
 							<input
 								className={`${inputClass(isDark)} w-full`}
 								type="text"
@@ -427,7 +442,7 @@ export const Admin = ({ isDark }: AdminProperties): FunctionComponent => {
 							/>
 						</div>
 						<div>
-							<label className={labelClass(isDark)}>Reason</label>
+							<label className={labelClass(isDark)}>{t("admin.reason")}</label>
 							<input
 								className={`${inputClass(isDark)} w-full`}
 								type="text"
@@ -446,16 +461,16 @@ export const Admin = ({ isDark }: AdminProperties): FunctionComponent => {
 									: "bg-black text-white disabled:bg-neutral-200 disabled:text-neutral-500"
 							}`}
 						>
-							{updateConfig.isPending ? "Saving..." : "Save"}
+							{updateConfig.isPending ? t("common.saving") : t("common.save")}
 						</button>
 						{updateConfig.isError ? (
 							<p className="text-xs text-red-500">
-								{errorMessage(updateConfig.error)}
+								{errorMessage(updateConfig.error, t)}
 							</p>
 						) : null}
 						{updateConfig.isSuccess ? (
 							<p className="text-xs text-emerald-500">
-								Saved {updateConfig.data.key}.
+								{t("admin.savedKey", { key: updateConfig.data.key })}
 							</p>
 						) : null}
 					</div>
@@ -464,7 +479,7 @@ export const Admin = ({ isDark }: AdminProperties): FunctionComponent => {
 
 			<div className="grid gap-4 lg:grid-cols-2">
 				<div className={panelClass(isDark)}>
-					<SectionTitle isDark={isDark} title="Fee Metrics" />
+					<SectionTitle isDark={isDark} title={t("admin.feeMetrics")} />
 					<DataState
 						error={metricsQuery.error}
 						isDark={isDark}
@@ -474,7 +489,7 @@ export const Admin = ({ isDark }: AdminProperties): FunctionComponent => {
 						{metricsQuery.data ? (
 							<MetricsPanel isDark={isDark} metrics={metricsQuery.data} />
 						) : (
-							<p className="text-xs text-neutral-500">No metrics returned.</p>
+							<p className="text-xs text-neutral-500">{t("admin.noMetrics")}</p>
 						)}
 					</DataState>
 				</div>
@@ -482,7 +497,7 @@ export const Admin = ({ isDark }: AdminProperties): FunctionComponent => {
 
 			<div className="grid gap-4 lg:grid-cols-2">
 				<div className={panelClass(isDark)}>
-					<SectionTitle isDark={isDark} title="Fee Overrides" />
+					<SectionTitle isDark={isDark} title={t("admin.feeOverrides")} />
 					<DataState
 						error={feesQuery.error}
 						isDark={isDark}
@@ -494,7 +509,7 @@ export const Admin = ({ isDark }: AdminProperties): FunctionComponent => {
 				</div>
 
 				<div className={panelClass(isDark)}>
-					<SectionTitle isDark={isDark} title="Audit Log" />
+					<SectionTitle isDark={isDark} title={t("admin.auditLog")} />
 					<DataState
 						error={auditQuery.error}
 						isDark={isDark}

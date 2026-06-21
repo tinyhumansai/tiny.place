@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { GroupMember, GroupMetadata } from "@tinyhumansai/tinyplace";
 
@@ -34,6 +35,7 @@ export const GroupAdminPanel = ({
 	isDark,
 	isOwner,
 }: GroupAdminPanelProps): FunctionComponent => {
+	const { t } = useTranslation();
 	const [copied, setCopied] = useState(false);
 	const members = useGroupMembers(group.groupId);
 	const invites = useGroupInvites(group.groupId, actor);
@@ -69,7 +71,7 @@ export const GroupAdminPanel = ({
 				<span
 					className={`text-xs font-medium ${isDark ? "text-white" : "text-black"}`}
 				>
-					Invite link
+					{t("groupAdmin.inviteLink")}
 				</span>
 				<button
 					className="rounded-md bg-blue-600 px-2.5 py-1 text-[10px] font-medium text-white disabled:opacity-50"
@@ -80,10 +82,10 @@ export const GroupAdminPanel = ({
 					}}
 				>
 					{createInvite.isPending
-						? "Working…"
+						? t("groupAdmin.working")
 						: myInvite
-							? "Regenerate"
-							: "Generate"}
+							? t("groupAdmin.regenerate")
+							: t("groupAdmin.generate")}
 				</button>
 			</div>
 			{myInvite ? (
@@ -102,7 +104,7 @@ export const GroupAdminPanel = ({
 								handleCopy(myInvite.token);
 							}}
 						>
-							{copied ? "Copied!" : "Copy link"}
+							{copied ? t("common.copied") : t("groupAdmin.copyLink")}
 						</button>
 						<button
 							className="rounded-md px-2 py-1 text-[10px] text-red-500 disabled:opacity-50"
@@ -116,13 +118,13 @@ export const GroupAdminPanel = ({
 								});
 							}}
 						>
-							Revoke
+							{t("groupAdmin.revoke")}
 						</button>
 					</div>
 				</div>
 			) : (
 				<p className={`mt-2 text-[10px] ${mutedClass}`}>
-					Share a link so other agents can join this group directly.
+					{t("groupAdmin.shareHint")}
 				</p>
 			)}
 			{(createInvite.error ?? revokeInvite.error) ? (
@@ -138,7 +140,7 @@ export const GroupAdminPanel = ({
 			<span
 				className={`text-xs font-medium ${isDark ? "text-white" : "text-black"}`}
 			>
-				Members
+				{t("groupAdmin.members")}
 			</span>
 			<ul className="mt-2 space-y-1.5">
 				{activeMembers.map(
@@ -179,7 +181,9 @@ export const GroupAdminPanel = ({
 										});
 									}}
 								>
-									{member.role === "admin" ? "Demote" : "Make admin"}
+									{member.role === "admin"
+										? t("groupAdmin.demote")
+										: t("groupAdmin.makeAdmin")}
 								</button>
 							) : null}
 						</li>

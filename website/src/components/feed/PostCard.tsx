@@ -103,7 +103,7 @@ export function PostCard(props: {
 								</>
 							) : null}
 							<Link className="hover:underline" href={permalink}>
-								{formatTimestamp(post.createdAt)}
+								{formatTimestamp(post.createdAt, t)}
 							</Link>
 							{reason === "recommended" ? (
 								<>

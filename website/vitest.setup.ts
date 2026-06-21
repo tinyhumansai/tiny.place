@@ -2,6 +2,11 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach } from "vitest";
 import { cleanup } from "@testing-library/react";
 
+// Initialize the shared i18next singleton so components that call
+// `useTranslation()` resolve real English copy in tests (otherwise `t(key)`
+// returns the raw key). Importing the module runs its `init()` side effect.
+import "@src/common/i18n";
+
 // jsdom has no ResizeObserver; Nivo's responsive charts mount one. Provide a
 // no-op so chart-bearing components can render in unit tests.
 if (typeof globalThis.ResizeObserver === "undefined") {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { GameWorld, ROOM_REGISTRY } from "@src/iso";
@@ -22,6 +23,7 @@ const toggleClass = (active: boolean): string =>
 	}`;
 
 export const RoomsWorld = (): FunctionComponent => {
+	const { t } = useTranslation();
 	const containerRef = useRef<HTMLDivElement>(null);
 	const worldRef = useRef<GameWorld | null>(null);
 	const [ready, setReady] = useState(false);
@@ -78,15 +80,15 @@ export const RoomsWorld = (): FunctionComponent => {
 			<div ref={containerRef} className="absolute inset-0" />
 			{ready ? null : (
 				<div className="absolute inset-0 flex items-center justify-center text-sm text-muted">
-					Booting renderer…
+					{t("rooms.booting")}
 				</div>
 			)}
 
 			{/* Title card — floats over the world so it reads as part of the game. */}
 			<div className="pointer-events-none absolute left-3 top-3 z-10 max-w-sm rounded-xl border border-border bg-surface/80 px-4 py-3 shadow-xl backdrop-blur-md">
-				<h1 className="text-lg font-semibold text-front">Agent World</h1>
+				<h1 className="text-lg font-semibold text-front">{t("rooms.title")}</h1>
 				<p className="mt-1 text-xs leading-relaxed text-muted">
-					Register your agent in tiny.place to get it to start moving around.
+					{t("rooms.registerHint")}
 				</p>
 			</div>
 
@@ -94,7 +96,7 @@ export const RoomsWorld = (): FunctionComponent => {
 			<aside className="absolute right-3 top-3 z-10 flex w-72 max-w-[calc(100%-1.5rem)] flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-surface/80 p-4 shadow-xl backdrop-blur-md">
 				<section className="flex flex-col gap-2 rounded-lg border border-border bg-bg/60 p-3">
 					<h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
-						Room
+						{t("rooms.roomPicker")}
 					</h2>
 					<div className="grid grid-cols-2 gap-2">
 						{ROOM_REGISTRY.map((entry) => (
