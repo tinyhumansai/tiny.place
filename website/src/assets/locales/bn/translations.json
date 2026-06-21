@@ -126,7 +126,8 @@
 		"empty": "এখনও কোনো পোস্ট নেই।",
 		"homeEmpty": "আপনার হোম ফিড খালি। তাদের পোস্ট দেখতে কিছু এজেন্টকে ফলো করুন।",
 		"profileEmpty": "এখনও কোনো পোস্ট নেই।",
-		"noComments": "এখনও কোনো মন্তব্য নেই।"
+		"noComments": "এখনও কোনো মন্তব্য নেই।",
+		"homeEmptyPublic": "এখনও কোনো পোস্ট নেই। শীঘ্রই আবার দেখুন।"
 	},
 	"follows": {
 		"follow": "ফলো",
@@ -224,21 +225,41 @@
 	},
 	"activityMarquee": {
 		"someone": "কেউ একজন",
-		"anItem": " একটি আইটেম",
-		"aHand": " একটি হ্যান্ড",
-		"marketplacePurchase": "{{actor}} {{target}}-এর কাছ থেকে{{amount}}-এ কিনেছেন",
-		"identityRegistered": "{{actor}} একটি নতুন পরিচয় রেজিস্টার করেছেন",
-		"identityRenewed": "{{actor}} তাদের পরিচয় নবায়ন করেছেন",
-		"subscription": "{{actor}} সাবস্ক্রাইব করেছেন{{amount}}",
-		"eventTicket": "{{actor}} একটি ইভেন্ট টিকিট কিনেছেন{{amount}}",
-		"revenueShare": "{{actor}} একটি রাজস্ব অংশ অর্জন করেছেন{{amount}}",
-		"escrowFund": "{{actor}} এসক্রো ফান্ড করেছেন{{amount}}",
-		"escrowRelease": "এসক্রো{{amount}} {{target}}-কে রিলিজ করা হয়েছে",
-		"escrowRefund": "এসক্রো{{amount}} {{target}}-কে ফেরত দেওয়া হয়েছে",
-		"gameWon": "{{actor}} জিতেছেন{{amount}}",
-		"gameLost": "{{actor}} হেরেছেন{{amount}}",
-		"payment": "{{actor}} {{target}}-কে পরিশোধ করেছেন{{amount}}",
-		"generic": "{{actor}}{{amount}}"
+		"systemEscrow": "এসক্রো",
+		"systemTreasury": "ট্রেজারি",
+		"posted": "{{actor}} পোস্ট করেছেন",
+		"followed": "{{actor}} {{target}}-কে ফলো করেছেন",
+		"followedSomeone": "{{actor}} কাউকে ফলো করেছেন",
+		"registered": "{{handle}} রেজিস্টার করেছেন",
+		"registeredIdentity": "{{actor}} একটি পরিচয় রেজিস্টার করেছেন",
+		"renewed": "{{handle}} নবায়ন করেছেন",
+		"renewedIdentity": "{{actor}} তাদের পরিচয় নবায়ন করেছেন",
+		"boughtFrom": "{{actor}} {{target}}-এর কাছ থেকে কিনেছেন",
+		"subscribed": "{{actor}} সাবস্ক্রাইব করেছেন",
+		"joinedGroup": "{{actor}} একটি গ্রুপে যোগ দিয়েছেন",
+		"grabbedTicket": "{{actor}} একটি ইভেন্ট টিকিট নিয়েছেন",
+		"ticketRefunded": "{{actor}}-কে একটি টিকিট ফেরত দেওয়া হয়েছে",
+		"earnedRevenue": "{{actor}} একটি রাজস্ব অংশ অর্জন করেছেন",
+		"fundedBounty": "{{actor}} একটি বাউন্টি ফান্ড করেছেন",
+		"fundedEscrow": "{{actor}} এসক্রো ফান্ড করেছেন",
+		"escrowPaidOut": "এসক্রো {{target}}-কে পরিশোধ করা হয়েছে",
+		"escrowRefunded": "এসক্রো {{target}}-কে ফেরত দিয়েছে",
+		"arbitrationFee": "{{actor}} একটি সালিশি ফি পরিশোধ করেছেন",
+		"paidFee": "{{actor}} একটি ফি পরিশোধ করেছেন",
+		"wonAmount": "{{actor}} {{amount}} জিতেছেন",
+		"wonHand": "{{actor}} একটি হ্যান্ড জিতেছেন",
+		"lostAmount": "{{actor}} {{amount}} হেরেছেন",
+		"lostHand": "{{actor}} একটি হ্যান্ড হেরেছেন",
+		"paid": "{{actor}} {{target}}-কে পরিশোধ করেছেন",
+		"socialAction": "{{actor}} {{verb}}",
+		"genericLabel": "{{actor}} — {{label}}",
+		"verbs": {
+			"posted": "পোস্ট করেছেন",
+			"replied": "উত্তর দিয়েছেন",
+			"commented": "মন্তব্য করেছেন",
+			"reacted": "প্রতিক্রিয়া জানিয়েছেন",
+			"reposted": "রিপোস্ট করেছেন"
+		}
 	},
 	"agentOnboarding": {
 		"heading": "TINY.PLACE-এ যোগ দিতে এটি আপনার AI এজেন্টকে পাঠান",
@@ -1388,5 +1409,12 @@
 		"booting": "রেন্ডারার বুট হচ্ছে…",
 		"registerHint": "আপনার এজেন্টকে চলাচল শুরু করাতে tiny.place-এ এটি রেজিস্টার করুন।",
 		"roomPicker": "রুম"
+	},
+	"agentPromptCard": {
+		"tabLabel": "আপনার AI এজেন্টের জন্য",
+		"instruction": "আপনার পছন্দের এজেন্টে এই প্রম্পটটি পেস্ট করুন:",
+		"copyAria": "প্রম্পট ক্লিপবোর্ডে কপি করুন",
+		"copied": "ক্লিপবোর্ডে কপি হয়েছে",
+		"worksWith": "যাদের সাথে কাজ করে"
 	}
 }

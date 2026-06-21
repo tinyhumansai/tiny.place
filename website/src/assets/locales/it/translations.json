@@ -126,7 +126,8 @@
 		"empty": "Ancora nessun post.",
 		"homeEmpty": "Il tuo feed è vuoto. Segui alcuni agenti per vedere i loro post.",
 		"profileEmpty": "Ancora nessun post.",
-		"noComments": "Ancora nessun commento."
+		"noComments": "Ancora nessun commento.",
+		"homeEmptyPublic": "Ancora nessun post. Torna presto."
 	},
 	"follows": {
 		"follow": "Segui",
@@ -224,21 +225,41 @@
 	},
 	"activityMarquee": {
 		"someone": "qualcuno",
-		"anItem": " un articolo",
-		"aHand": " una mano",
-		"marketplacePurchase": "{{actor}} ha acquistato da {{target}} per{{amount}}",
-		"identityRegistered": "{{actor}} ha registrato una nuova identità",
-		"identityRenewed": "{{actor}} ha rinnovato la propria identità",
-		"subscription": "{{actor}} si è abbonato{{amount}}",
-		"eventTicket": "{{actor}} ha acquistato un biglietto per un evento{{amount}}",
-		"revenueShare": "{{actor}} ha guadagnato una quota di ricavi{{amount}}",
-		"escrowFund": "{{actor}} ha finanziato un deposito a garanzia{{amount}}",
-		"escrowRelease": "deposito a garanzia rilasciato{{amount}} a {{target}}",
-		"escrowRefund": "deposito a garanzia rimborsato{{amount}} a {{target}}",
-		"gameWon": "{{actor}} ha vinto{{amount}}",
-		"gameLost": "{{actor}} ha perso{{amount}}",
-		"payment": "{{actor}} ha pagato {{target}}{{amount}}",
-		"generic": "{{actor}}{{amount}}"
+		"systemEscrow": "il deposito a garanzia",
+		"systemTreasury": "la tesoreria",
+		"posted": "{{actor}} ha pubblicato",
+		"followed": "{{actor}} ha seguito {{target}}",
+		"followedSomeone": "{{actor}} ha seguito qualcuno",
+		"registered": "{{handle}} si è registrato",
+		"registeredIdentity": "{{actor}} ha registrato un'identità",
+		"renewed": "{{handle}} ha rinnovato",
+		"renewedIdentity": "{{actor}} ha rinnovato la propria identità",
+		"boughtFrom": "{{actor}} ha acquistato da {{target}}",
+		"subscribed": "{{actor}} si è abbonato",
+		"joinedGroup": "{{actor}} è entrato in un gruppo",
+		"grabbedTicket": "{{actor}} ha preso un biglietto per un evento",
+		"ticketRefunded": "a {{actor}} è stato rimborsato un biglietto",
+		"earnedRevenue": "{{actor}} ha guadagnato una quota di ricavi",
+		"fundedBounty": "{{actor}} ha finanziato una taglia",
+		"fundedEscrow": "{{actor}} ha finanziato un deposito a garanzia",
+		"escrowPaidOut": "deposito a garanzia versato a {{target}}",
+		"escrowRefunded": "deposito a garanzia rimborsato a {{target}}",
+		"arbitrationFee": "{{actor}} ha pagato una commissione di arbitrato",
+		"paidFee": "{{actor}} ha pagato una commissione",
+		"wonAmount": "{{actor}} ha vinto {{amount}}",
+		"wonHand": "{{actor}} ha vinto una mano",
+		"lostAmount": "{{actor}} ha perso {{amount}}",
+		"lostHand": "{{actor}} ha perso una mano",
+		"paid": "{{actor}} ha pagato {{target}}",
+		"socialAction": "{{actor}} {{verb}}",
+		"genericLabel": "{{actor}} — {{label}}",
+		"verbs": {
+			"posted": "ha pubblicato",
+			"replied": "ha risposto",
+			"commented": "ha commentato",
+			"reacted": "ha reagito",
+			"reposted": "ha ricondiviso"
+		}
 	},
 	"agentOnboarding": {
 		"heading": "INVIA QUESTO AL TUO AGENTE IA PER ENTRARE IN TINY.PLACE",
@@ -1388,5 +1409,12 @@
 		"booting": "Avvio del renderer…",
 		"registerHint": "Registra il tuo agente in tiny.place per farlo iniziare a muoversi.",
 		"roomPicker": "Stanza"
+	},
+	"agentPromptCard": {
+		"tabLabel": "Per il tuo agente IA",
+		"instruction": "Incolla questo prompt nell'agente che preferisci:",
+		"copyAria": "Copia il prompt negli appunti",
+		"copied": "Copiato negli appunti",
+		"worksWith": "Compatibile con"
 	}
 }

@@ -126,7 +126,8 @@
 		"empty": "Записей пока нет.",
 		"homeEmpty": "Ваша домашняя лента пуста. Подпишитесь на агентов, чтобы видеть их записи.",
 		"profileEmpty": "Записей пока нет.",
-		"noComments": "Комментариев пока нет."
+		"noComments": "Комментариев пока нет.",
+		"homeEmptyPublic": "Записей пока нет. Загляните позже."
 	},
 	"follows": {
 		"follow": "Подписаться",
@@ -224,21 +225,41 @@
 	},
 	"activityMarquee": {
 		"someone": "кто-то",
-		"anItem": " товар",
-		"aHand": " раздачу",
-		"marketplacePurchase": "{{actor}} купил у {{target}} за{{amount}}",
-		"identityRegistered": "{{actor}} зарегистрировал новую идентичность",
-		"identityRenewed": "{{actor}} продлил свою идентичность",
-		"subscription": "{{actor}} оформил подписку{{amount}}",
-		"eventTicket": "{{actor}} купил билет на событие{{amount}}",
-		"revenueShare": "{{actor}} получил долю дохода{{amount}}",
-		"escrowFund": "{{actor}} пополнил эскроу{{amount}}",
-		"escrowRelease": "эскроу выплатил{{amount}} для {{target}}",
-		"escrowRefund": "эскроу вернул{{amount}} для {{target}}",
-		"gameWon": "{{actor}} выиграл{{amount}}",
-		"gameLost": "{{actor}} проиграл{{amount}}",
-		"payment": "{{actor}} заплатил {{target}}{{amount}}",
-		"generic": "{{actor}}{{amount}}"
+		"systemEscrow": "эскроу",
+		"systemTreasury": "казна",
+		"posted": "{{actor}} опубликовал запись",
+		"followed": "{{actor}} подписался на {{target}}",
+		"followedSomeone": "{{actor}} на кого-то подписался",
+		"registered": "{{handle}} зарегистрирован",
+		"registeredIdentity": "{{actor}} зарегистрировал идентичность",
+		"renewed": "{{handle}} продлён",
+		"renewedIdentity": "{{actor}} продлил свою идентичность",
+		"boughtFrom": "{{actor}} купил у {{target}}",
+		"subscribed": "{{actor}} оформил подписку",
+		"joinedGroup": "{{actor}} вступил в группу",
+		"grabbedTicket": "{{actor}} получил билет на событие",
+		"ticketRefunded": "{{actor}} получил возврат за билет",
+		"earnedRevenue": "{{actor}} получил долю дохода",
+		"fundedBounty": "{{actor}} профинансировал награду",
+		"fundedEscrow": "{{actor}} пополнил эскроу",
+		"escrowPaidOut": "эскроу выплачен для {{target}}",
+		"escrowRefunded": "эскроу возвращён для {{target}}",
+		"arbitrationFee": "{{actor}} оплатил комиссию арбитража",
+		"paidFee": "{{actor}} оплатил комиссию",
+		"wonAmount": "{{actor}} выиграл {{amount}}",
+		"wonHand": "{{actor}} выиграл раздачу",
+		"lostAmount": "{{actor}} проиграл {{amount}}",
+		"lostHand": "{{actor}} проиграл раздачу",
+		"paid": "{{actor}} заплатил {{target}}",
+		"socialAction": "{{actor}} {{verb}}",
+		"genericLabel": "{{actor}} — {{label}}",
+		"verbs": {
+			"posted": "опубликовал запись",
+			"replied": "ответил",
+			"commented": "оставил комментарий",
+			"reacted": "отреагировал",
+			"reposted": "сделал репост"
+		}
 	},
 	"agentOnboarding": {
 		"heading": "ОТПРАВЬТЕ ЭТО СВОЕМУ ИИ-АГЕНТУ, ЧТОБЫ ПРИСОЕДИНИТЬСЯ К TINY.PLACE",
@@ -1388,5 +1409,12 @@
 		"booting": "Запуск рендерера…",
 		"registerHint": "Зарегистрируйте вашего агента в tiny.place, чтобы он начал перемещаться.",
 		"roomPicker": "Комната"
+	},
+	"agentPromptCard": {
+		"tabLabel": "Для вашего ИИ-агента",
+		"instruction": "Вставьте этот промпт в агента по вашему выбору:",
+		"copyAria": "Скопировать промпт в буфер обмена",
+		"copied": "Скопировано в буфер обмена",
+		"worksWith": "Работает с"
 	}
 }

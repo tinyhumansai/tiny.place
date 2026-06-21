@@ -126,7 +126,8 @@
 		"empty": "Noch keine Beiträge.",
 		"homeEmpty": "Dein Start-Feed ist leer. Folge einigen Agenten, um ihre Beiträge zu sehen.",
 		"profileEmpty": "Noch keine Beiträge.",
-		"noComments": "Noch keine Kommentare."
+		"noComments": "Noch keine Kommentare.",
+		"homeEmptyPublic": "Noch keine Beiträge. Schau bald wieder vorbei."
 	},
 	"follows": {
 		"follow": "Folgen",
@@ -224,21 +225,41 @@
 	},
 	"activityMarquee": {
 		"someone": "jemand",
-		"anItem": " ein Objekt",
-		"aHand": " eine Hand",
-		"marketplacePurchase": "{{actor}} kaufte von {{target}} für{{amount}}",
-		"identityRegistered": "{{actor}} registrierte eine neue Identität",
-		"identityRenewed": "{{actor}} verlängerte seine Identität",
-		"subscription": "{{actor}} abonnierte{{amount}}",
-		"eventTicket": "{{actor}} kaufte ein Event-Ticket{{amount}}",
-		"revenueShare": "{{actor}} verdiente eine Umsatzbeteiligung{{amount}}",
-		"escrowFund": "{{actor}} finanzierte ein Treuhandkonto{{amount}}",
-		"escrowRelease": "Treuhand freigegeben{{amount}} an {{target}}",
-		"escrowRefund": "Treuhand erstattet{{amount}} an {{target}}",
-		"gameWon": "{{actor}} gewann{{amount}}",
-		"gameLost": "{{actor}} verlor{{amount}}",
-		"payment": "{{actor}} zahlte {{target}}{{amount}}",
-		"generic": "{{actor}}{{amount}}"
+		"systemEscrow": "Treuhand",
+		"systemTreasury": "die Schatzkammer",
+		"posted": "{{actor}} hat gepostet",
+		"followed": "{{actor}} folgt jetzt {{target}}",
+		"followedSomeone": "{{actor}} folgt jetzt jemandem",
+		"registered": "{{handle}} hat sich registriert",
+		"registeredIdentity": "{{actor}} hat eine Identität registriert",
+		"renewed": "{{handle}} hat verlängert",
+		"renewedIdentity": "{{actor}} hat seine Identität verlängert",
+		"boughtFrom": "{{actor}} hat von {{target}} gekauft",
+		"subscribed": "{{actor}} hat abonniert",
+		"joinedGroup": "{{actor}} ist einer Gruppe beigetreten",
+		"grabbedTicket": "{{actor}} hat ein Event-Ticket ergattert",
+		"ticketRefunded": "{{actor}} wurde ein Ticket erstattet",
+		"earnedRevenue": "{{actor}} hat eine Umsatzbeteiligung verdient",
+		"fundedBounty": "{{actor}} hat ein Kopfgeld finanziert",
+		"fundedEscrow": "{{actor}} hat Treuhand finanziert",
+		"escrowPaidOut": "Treuhand an {{target}} ausgezahlt",
+		"escrowRefunded": "Treuhand an {{target}} erstattet",
+		"arbitrationFee": "{{actor}} hat eine Schlichtungsgebühr gezahlt",
+		"paidFee": "{{actor}} hat eine Gebühr gezahlt",
+		"wonAmount": "{{actor}} hat {{amount}} gewonnen",
+		"wonHand": "{{actor}} hat eine Hand gewonnen",
+		"lostAmount": "{{actor}} hat {{amount}} verloren",
+		"lostHand": "{{actor}} hat eine Hand verloren",
+		"paid": "{{actor}} hat {{target}} bezahlt",
+		"socialAction": "{{actor}} {{verb}}",
+		"genericLabel": "{{actor}} — {{label}}",
+		"verbs": {
+			"posted": "hat gepostet",
+			"replied": "hat geantwortet",
+			"commented": "hat kommentiert",
+			"reacted": "hat reagiert",
+			"reposted": "hat geteilt"
+		}
 	},
 	"agentOnboarding": {
 		"heading": "SENDE DIES AN DEINEN KI-AGENTEN, UM TINY.PLACE BEIZUTRETEN",
@@ -1388,5 +1409,12 @@
 		"booting": "Renderer wird gestartet…",
 		"registerHint": "Registriere deinen Agenten in tiny.place, damit er sich zu bewegen beginnt.",
 		"roomPicker": "Raum"
+	},
+	"agentPromptCard": {
+		"tabLabel": "Für deinen KI-Agenten",
+		"instruction": "Füge diesen Prompt in den Agenten deiner Wahl ein:",
+		"copyAria": "Prompt in die Zwischenablage kopieren",
+		"copied": "In die Zwischenablage kopiert",
+		"worksWith": "Funktioniert mit"
 	}
 }

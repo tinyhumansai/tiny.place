@@ -6,6 +6,11 @@
 // lines, using the richer fields the API actually sends (`reference` carries the
 // registered @handle or the funded bounty; amounts arrive in base units and must
 // be decimal-formatted) rather than dumping the raw actor pubkey.
+//
+// Copy is localized: callers pass an i18next `t` (the marquee is a client
+// component with `useTranslation`), so these helpers stay pure.
+
+import type { TFunction } from "i18next";
 
 import type { ActivityEvent } from "@tinyhumansai/tinyplace";
 
@@ -67,8 +72,9 @@ const CATEGORY_ICONS: Record<string, string> = {
 	social: "💬",
 };
 
-// Verb for social kinds we don't special-case, keyed by the part after the dot.
-const SOCIAL_VERBS: Record<string, string> = {
+// Verb i18n keys for social kinds we don't special-case, keyed by the part after
+// the dot. Resolved against `activityMarquee.verbs.*`.
+const SOCIAL_VERB_KEYS: Record<string, string> = {
 	post: "posted",
 	reply: "replied",
 	comment: "commented",
@@ -78,9 +84,9 @@ const SOCIAL_VERBS: Record<string, string> = {
 };
 
 // Known non-handle system actors/targets that read better as a friendly word.
-const SYSTEM_NAMES: Record<string, string> = {
-	"tinyplace-escrow": "escrow",
-	"tinyplace-treasury": "the treasury",
+const SYSTEM_NAME_KEYS: Record<string, string> = {
+	"tinyplace-escrow": "systemEscrow",
+	"tinyplace-treasury": "systemTreasury",
 };
 
 export function iconFor(event: ActivityEvent): string {
@@ -92,9 +98,15 @@ export function iconFor(event: ActivityEvent): string {
  * short system names pass through untouched; long wallet pubkeys are truncated
  * to `head…tail` so they don't dominate the ticker.
  */
-export function shortName(value?: string | null): string {
-	if (!value) return "someone";
-	if (SYSTEM_NAMES[value]) return SYSTEM_NAMES[value];
+export function shortName(
+	value: string | null | undefined,
+	t: TFunction
+): string {
+	if (!value) return t("activityMarquee.someone");
+	const systemKey = SYSTEM_NAME_KEYS[value];
+	if (systemKey) {
+		return t(`activityMarquee.${systemKey}`, { defaultValue: value });
+	}
 	if (value.startsWith("@")) return value;
 	if (value.length <= 14) return value;
 	return `${value.slice(0, 4)}…${value.slice(-4)}`;
@@ -109,78 +121,90 @@ function amountLabel(event: ActivityEvent): string {
 /**
  * Turns a raw activity event into a human sentence. Special-cases the kinds the
  * API actually emits today (social.post, identity.registered, escrow.fund) and
- * degrades gracefully — never a bare pubkey — for anything new.
+ * degrades gracefully — never a bare pubkey — for anything new. Copy is resolved
+ * through the passed-in i18next `t`.
  */
-export function describeActivity(event: ActivityEvent): string {
-	const actor = shortName(event.actor);
-	const target = shortName(event.target);
+export function describeActivity(event: ActivityEvent, t: TFunction): string {
+	const actor = shortName(event.actor, t);
+	const target = shortName(event.target, t);
 	const amount = amountLabel(event);
 	const withAmount = (text: string): string =>
 		amount ? `${text} · ${amount}` : text;
 
 	switch (event.kind) {
 		case "social.post":
-			return `${actor} posted`;
+			return t("activityMarquee.posted", { actor });
 		case "social.follow":
 			return event.target
-				? `${actor} followed ${target}`
-				: `${actor} followed someone`;
+				? t("activityMarquee.followed", { actor, target })
+				: t("activityMarquee.followedSomeone", { actor });
 		case "identity.registered": {
 			// The registered @handle lives in `reference.id`; the actor is its
 			// (less meaningful) wallet, so lead with the handle when we have it.
 			const handle =
 				event.reference?.kind === "identity" ? event.reference.id : null;
 			return handle
-				? `${handle} registered`
-				: `${actor} registered an identity`;
+				? t("activityMarquee.registered", { handle })
+				: t("activityMarquee.registeredIdentity", { actor });
 		}
 		case "identity.renewed": {
 			const handle =
 				event.reference?.kind === "identity" ? event.reference.id : null;
-			return handle ? `${handle} renewed` : `${actor} renewed their identity`;
+			return handle
+				? t("activityMarquee.renewed", { handle })
+				: t("activityMarquee.renewedIdentity", { actor });
 		}
 		case "marketplace.purchase":
-			return withAmount(`${actor} bought from ${target}`);
+			return withAmount(t("activityMarquee.boughtFrom", { actor, target }));
 		case "subscription":
-			return withAmount(`${actor} subscribed`);
+			return withAmount(t("activityMarquee.subscribed", { actor }));
 		case "group.fee":
-			return withAmount(`${actor} joined a group`);
+			return withAmount(t("activityMarquee.joinedGroup", { actor }));
 		case "event.ticket":
-			return withAmount(`${actor} grabbed an event ticket`);
+			return withAmount(t("activityMarquee.grabbedTicket", { actor }));
 		case "event.refund":
-			return withAmount(`${actor} was refunded a ticket`);
+			return withAmount(t("activityMarquee.ticketRefunded", { actor }));
 		case "revenue.share":
-			return withAmount(`${actor} earned a revenue share`);
+			return withAmount(t("activityMarquee.earnedRevenue", { actor }));
 		case "escrow.fund":
 			return withAmount(
 				event.reference?.kind === "bounty"
-					? `${actor} funded a bounty`
-					: `${actor} funded escrow`
+					? t("activityMarquee.fundedBounty", { actor })
+					: t("activityMarquee.fundedEscrow", { actor })
 			);
 		case "escrow.release":
-			return withAmount(`escrow paid out to ${target}`);
+			return withAmount(t("activityMarquee.escrowPaidOut", { target }));
 		case "escrow.refund":
-			return withAmount(`escrow refunded ${target}`);
+			return withAmount(t("activityMarquee.escrowRefunded", { target }));
 		case "arbitration.fee":
-			return withAmount(`${actor} paid an arbitration fee`);
+			return withAmount(t("activityMarquee.arbitrationFee", { actor }));
 		case "fee":
-			return withAmount(`${actor} paid a fee`);
+			return withAmount(t("activityMarquee.paidFee", { actor }));
 		case "game.won":
-			return amount ? `${actor} won ${amount}` : `${actor} won a hand`;
+			return amount
+				? t("activityMarquee.wonAmount", { actor, amount })
+				: t("activityMarquee.wonHand", { actor });
 		case "game.lost":
-			return amount ? `${actor} lost ${amount}` : `${actor} lost a hand`;
+			return amount
+				? t("activityMarquee.lostAmount", { actor, amount })
+				: t("activityMarquee.lostHand", { actor });
 		case "payment":
-			return withAmount(`${actor} paid ${target}`);
+			return withAmount(t("activityMarquee.paid", { actor, target }));
 		default: {
 			// Unmapped kind — degrade gracefully instead of showing a bare pubkey.
 			const parts = event.kind.split(".");
 			const verb = parts[1];
-			if (event.category === "social" && verb && SOCIAL_VERBS[verb]) {
-				return `${actor} ${SOCIAL_VERBS[verb]}`;
+			if (event.category === "social" && verb && SOCIAL_VERB_KEYS[verb]) {
+				return t("activityMarquee.socialAction", {
+					actor,
+					verb: t(`activityMarquee.verbs.${SOCIAL_VERB_KEYS[verb]}`, {
+						defaultValue: SOCIAL_VERB_KEYS[verb],
+					}),
+				});
 			}
 			if (amount) return `${actor} · ${amount}`;
 			const label = (verb ?? parts[0] ?? event.kind).replace(/[_-]/g, " ");
-			return `${actor} — ${label}`;
+			return t("activityMarquee.genericLabel", { actor, label });
 		}
 	}
 }

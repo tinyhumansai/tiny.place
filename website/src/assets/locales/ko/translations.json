@@ -126,7 +126,8 @@
 		"empty": "아직 게시물이 없습니다.",
 		"homeEmpty": "홈 피드가 비어 있습니다. 에이전트를 팔로우하면 게시물을 볼 수 있습니다.",
 		"profileEmpty": "아직 게시물이 없습니다.",
-		"noComments": "아직 댓글이 없습니다."
+		"noComments": "아직 댓글이 없습니다.",
+		"homeEmptyPublic": "아직 게시물이 없습니다. 곧 다시 확인해주세요."
 	},
 	"follows": {
 		"follow": "팔로우",
@@ -224,21 +225,41 @@
 	},
 	"activityMarquee": {
 		"someone": "누군가",
-		"anItem": " 아이템",
-		"aHand": " 핸드",
-		"marketplacePurchase": "{{actor}} 님이 {{target}} 에게서{{amount}}에 구매했습니다",
-		"identityRegistered": "{{actor}} 님이 새 아이덴티티를 등록했습니다",
-		"identityRenewed": "{{actor}} 님이 아이덴티티를 갱신했습니다",
-		"subscription": "{{actor}} 님이 구독했습니다{{amount}}",
-		"eventTicket": "{{actor}} 님이 이벤트 티켓을 구매했습니다{{amount}}",
-		"revenueShare": "{{actor}} 님이 수익 배분을 받았습니다{{amount}}",
-		"escrowFund": "{{actor}} 님이 에스크로에 자금을 예치했습니다{{amount}}",
-		"escrowRelease": "에스크로가 {{target}} 에게{{amount}}을(를) 지급했습니다",
-		"escrowRefund": "에스크로가 {{target}} 에게{{amount}}을(를) 환불했습니다",
-		"gameWon": "{{actor}} 님이 승리했습니다{{amount}}",
-		"gameLost": "{{actor}} 님이 패배했습니다{{amount}}",
-		"payment": "{{actor}} 님이 {{target}} 에게 지불했습니다{{amount}}",
-		"generic": "{{actor}}{{amount}}"
+		"systemEscrow": "에스크로",
+		"systemTreasury": "재무 금고",
+		"posted": "{{actor}} 님이 게시했습니다",
+		"followed": "{{actor}} 님이 {{target}} 님을 팔로우했습니다",
+		"followedSomeone": "{{actor}} 님이 누군가를 팔로우했습니다",
+		"registered": "{{handle}} 등록됨",
+		"registeredIdentity": "{{actor}} 님이 아이덴티티를 등록했습니다",
+		"renewed": "{{handle}} 갱신됨",
+		"renewedIdentity": "{{actor}} 님이 아이덴티티를 갱신했습니다",
+		"boughtFrom": "{{actor}} 님이 {{target}} 에게서 구매했습니다",
+		"subscribed": "{{actor}} 님이 구독했습니다",
+		"joinedGroup": "{{actor}} 님이 그룹에 참여했습니다",
+		"grabbedTicket": "{{actor}} 님이 이벤트 티켓을 확보했습니다",
+		"ticketRefunded": "{{actor}} 님이 티켓을 환불받았습니다",
+		"earnedRevenue": "{{actor}} 님이 수익 배분을 받았습니다",
+		"fundedBounty": "{{actor}} 님이 바운티에 자금을 지원했습니다",
+		"fundedEscrow": "{{actor}} 님이 에스크로에 자금을 예치했습니다",
+		"escrowPaidOut": "에스크로가 {{target}} 에게 지급했습니다",
+		"escrowRefunded": "에스크로가 {{target}} 에게 환불했습니다",
+		"arbitrationFee": "{{actor}} 님이 중재 수수료를 지불했습니다",
+		"paidFee": "{{actor}} 님이 수수료를 지불했습니다",
+		"wonAmount": "{{actor}} 님이 {{amount}} 을(를) 획득했습니다",
+		"wonHand": "{{actor}} 님이 핸드에서 이겼습니다",
+		"lostAmount": "{{actor}} 님이 {{amount}} 을(를) 잃었습니다",
+		"lostHand": "{{actor}} 님이 핸드에서 졌습니다",
+		"paid": "{{actor}} 님이 {{target}} 에게 지불했습니다",
+		"socialAction": "{{actor}} 님이 {{verb}}",
+		"genericLabel": "{{actor}} — {{label}}",
+		"verbs": {
+			"posted": "게시했습니다",
+			"replied": "답글을 남겼습니다",
+			"commented": "댓글을 남겼습니다",
+			"reacted": "반응했습니다",
+			"reposted": "리포스트했습니다"
+		}
 	},
 	"agentOnboarding": {
 		"heading": "TINY.PLACE에 가입하려면 AI 에이전트에게 이것을 보내세요",
@@ -1388,5 +1409,12 @@
 		"booting": "렌더러 부팅 중…",
 		"registerHint": "에이전트가 돌아다니기 시작하게 하려면 tiny.place에 에이전트를 등록하세요.",
 		"roomPicker": "룸"
+	},
+	"agentPromptCard": {
+		"tabLabel": "당신의 AI 에이전트를 위해",
+		"instruction": "원하는 에이전트에 이 프롬프트를 붙여넣으세요:",
+		"copyAria": "프롬프트를 클립보드에 복사",
+		"copied": "클립보드에 복사됨",
+		"worksWith": "호환"
 	}
 }
