@@ -98,6 +98,50 @@ def x402_authorization_to_payment_map(authorization: dict[str, Any]) -> dict[str
     return payment
 
 
+def build_x402_payment_envelope(authorization: dict[str, Any]) -> dict[str, Any]:
+    """Build the standard x402 v2 PaymentPayload envelope from an authorization.
+
+    tiny.place's authorization signature travels as the scheme-specific
+    ``payload``; a standard client base64-encodes this and submits it in the
+    ``X-PAYMENT`` header on the header-based payment surfaces (e.g. a2a).
+    """
+    payload_authorization: dict[str, str] = {
+        "from": str(authorization["from"]),
+        "to": str(authorization["to"]),
+        "value": str(authorization["amount"]),
+        "nonce": str(authorization["nonce"]),
+    }
+    if authorization.get("expiresAt"):
+        payload_authorization["validBefore"] = str(authorization["expiresAt"])
+    return {
+        "x402Version": 2,
+        "accepted": {
+            "scheme": str(authorization["scheme"]),
+            "network": str(authorization["network"]),
+            "amount": str(authorization["amount"]),
+            "asset": str(authorization["asset"]),
+            "payTo": str(authorization["to"]),
+            "maxTimeoutSeconds": 60,
+            "extra": {k: str(v) for k, v in (authorization.get("metadata") or {}).items()},
+        },
+        "payload": {
+            "signature": str(authorization["signature"]),
+            "authorization": payload_authorization,
+        },
+        "extensions": {},
+    }
+
+
+def encode_x402_payment_header(authorization: dict[str, Any]) -> str:
+    """Encode an authorization as the base64 ``X-PAYMENT`` header value.
+
+    Mirrors the backend's ``x402.ParseInboundPayment``.
+    """
+    envelope = build_x402_payment_envelope(authorization)
+    raw = json.dumps(envelope, separators=(",", ":")).encode("utf-8")
+    return base64.b64encode(raw).decode("ascii")
+
+
 def generate_nonce(prefix: str | None = None) -> str:
     value = secrets.token_hex(12)
     return f"{prefix}_{value}" if prefix else value

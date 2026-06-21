@@ -14,6 +14,13 @@ from .auth import AdminSigningOptions, sign_admin_request, sign_directory_write,
 from .signer import Signer
 from .types import Headers, Json, JsonDict, Query
 
+# HEADER_SDK_CLIENT identifies this first-party SDK to the backend so it can
+# serve the legacy x402 challenge shape during the standardization migration;
+# standard clients omit it and receive a clean x402 v2 challenge. SDK_CLIENT
+# mirrors the pyproject.toml version — keep in sync on release.
+HEADER_SDK_CLIENT = "X-Tinyplace-SDK"
+SDK_CLIENT = "py/1.0.1"
+
 AuthInvalidHook = Callable[[int, Json], None]
 
 #: Default per-request timeout in seconds when none is configured.
@@ -260,7 +267,11 @@ class HttpClient:
         while True:
             # Re-sign on every attempt so retries carry a fresh timestamp/nonce
             # and are never rejected as a replay.
-            request_headers = {"Content-Type": "application/json", **(headers or {})}
+            request_headers = {
+                "Content-Type": "application/json",
+                HEADER_SDK_CLIENT: SDK_CLIENT,
+                **(headers or {}),
+            }
             await self._apply_auth(
                 request_headers, auth, method, request_uri, body_text, actor
             )
@@ -382,19 +393,65 @@ def _build_query(query: Query) -> str:
 
 
 def _payment_required_from_body(body: Json) -> PaymentRequiredChallenge | None:
-    if isinstance(body, dict) and isinstance(body.get("payment"), dict):
-        return PaymentRequiredChallenge(error=body.get("error"), payment=body["payment"])
-    return None
+    return _challenge_from_object(body)
 
 
 def _payment_required_from_header(headers: Headers) -> PaymentRequiredChallenge | None:
     value = headers.get("X-Payment-Required") or headers.get("x-payment-required")
     if not value:
         return None
-    parsed = _decode_payment_header(value)
-    if isinstance(parsed, dict) and isinstance(parsed.get("payment"), dict):
-        return PaymentRequiredChallenge(error=parsed.get("error"), payment=parsed["payment"])
+    return _challenge_from_object(_decode_payment_header(value))
+
+
+def _challenge_from_object(value: Json) -> PaymentRequiredChallenge | None:
+    """Parse a 402 challenge, preferring the standard x402 v2 ``accepts[]``.
+
+    Falls back to the legacy top-level ``payment`` object (removed in Phase 2
+    once the standard path is the only one in the field).
+    """
+    if not isinstance(value, dict):
+        return None
+    payment = _challenge_payment_from_accepts(value)
+    if payment is not None:
+        return PaymentRequiredChallenge(error=value.get("error"), payment=payment)
+    if isinstance(value.get("payment"), dict):
+        return PaymentRequiredChallenge(error=value.get("error"), payment=value["payment"])
     return None
+
+
+def _challenge_payment_from_accepts(value: dict[str, Any]) -> dict[str, Any] | None:
+    """Map the first standard ``accepts[]`` entry onto the flat payment dict.
+
+    The payer-binding fields (``from``/``nonce``/``expiresAt``) are promoted out
+    of ``extra`` to the top level; the rest of ``extra`` becomes the signed
+    metadata, exactly mirroring the legacy ``payment`` shape.
+    """
+    accepts = value.get("accepts")
+    if not isinstance(accepts, list) or not accepts:
+        return None
+    entry = accepts[0]
+    if not isinstance(entry, dict):
+        return None
+    extra = entry.get("extra") if isinstance(entry.get("extra"), dict) else {}
+    binding_keys = ("from", "nonce", "expiresAt")
+
+    payment: dict[str, Any] = {}
+    for key in ("scheme", "network", "asset", "amount"):
+        if isinstance(entry.get(key), str):
+            payment[key] = entry[key]
+    if isinstance(entry.get("payTo"), str):
+        payment["to"] = entry["payTo"]
+    for key in binding_keys:
+        if isinstance(extra.get(key), str):
+            payment[key] = extra[key]
+    metadata = {
+        key: value_
+        for key, value_ in extra.items()
+        if key not in binding_keys and isinstance(value_, str)
+    }
+    if metadata:
+        payment["metadata"] = metadata
+    return payment
 
 
 def _decode_payment_header(value: str) -> Any:
