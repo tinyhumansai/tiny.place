@@ -58,5 +58,5 @@ pub use auth::AdminSigningOptions;
 pub use x402::{
     build_x402_payment_authorization, build_x402_payment_envelope, build_x402_payment_map,
     encode_x402_payment_header, sign_x402_authorization, X402Authorization,
-    X402AuthorizationFields, X402PaymentAuthorizationOptions, X402PaymentMap,
+    X402AuthorizationFields, X402PaymentAuthorizationOptions, X402PaymentMap, X402_PAYMENT_HEADER,
 };

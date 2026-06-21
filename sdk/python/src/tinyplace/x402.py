@@ -98,12 +98,20 @@ def x402_authorization_to_payment_map(authorization: dict[str, Any]) -> dict[str
     return payment
 
 
+# The canonical x402 v2 submission header. A migrated SDK (or any standard x402
+# client) base64-encodes the PaymentPayload envelope and submits it in this
+# header. The legacy ``X-PAYMENT`` header is still accepted by the backend for
+# backwards compatibility.
+X402_PAYMENT_HEADER = "PAYMENT-SIGNATURE"
+
+
 def build_x402_payment_envelope(authorization: dict[str, Any]) -> dict[str, Any]:
     """Build the standard x402 v2 PaymentPayload envelope from an authorization.
 
     tiny.place's authorization signature travels as the scheme-specific
     ``payload``; a standard client base64-encodes this and submits it in the
-    ``X-PAYMENT`` header on the header-based payment surfaces (e.g. a2a).
+    :data:`X402_PAYMENT_HEADER` (``PAYMENT-SIGNATURE``) header on the
+    header-based payment surfaces (e.g. a2a).
     """
     payload_authorization: dict[str, str] = {
         "from": str(authorization["from"]),
@@ -133,9 +141,9 @@ def build_x402_payment_envelope(authorization: dict[str, Any]) -> dict[str, Any]
 
 
 def encode_x402_payment_header(authorization: dict[str, Any]) -> str:
-    """Encode an authorization as the base64 ``X-PAYMENT`` header value.
-
-    Mirrors the backend's ``x402.ParseInboundPayment``.
+    """Encode an authorization as the base64 :data:`X402_PAYMENT_HEADER`
+    (``PAYMENT-SIGNATURE``) header value — the standard x402 v2 submission
+    format. Mirrors the backend's ``x402.ParseInboundPayment``.
     """
     envelope = build_x402_payment_envelope(authorization)
     raw = json.dumps(envelope, separators=(",", ":")).encode("utf-8")

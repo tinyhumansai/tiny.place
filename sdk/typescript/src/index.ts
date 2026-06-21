@@ -75,6 +75,7 @@ export {
   buildX402PaymentPayload,
   buildX402PaymentEnvelope,
   encodeX402PaymentHeader,
+  X402_PAYMENT_HEADER,
   signX402Authorization,
   x402AuthorizationToPaymentMap,
   generateNonce,

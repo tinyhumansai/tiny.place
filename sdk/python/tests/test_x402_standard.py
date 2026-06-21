@@ -6,11 +6,16 @@ import json
 from tinyplace import (
     TinyPlaceClient,
     TinyPlaceError,
+    X402_PAYMENT_HEADER,
     build_x402_payment_envelope,
     encode_x402_payment_header,
 )
 
 from .helpers import FakeResponse, FakeSession
+
+
+def test_exposes_canonical_submission_header() -> None:
+    assert X402_PAYMENT_HEADER == "PAYMENT-SIGNATURE"
 
 
 async def test_sends_sdk_identification_header() -> None:

@@ -8,8 +8,13 @@ use base64::Engine as _;
 use serde_json::json;
 use tinyplace::{
     build_x402_payment_envelope, encode_x402_payment_header, Error, HttpClient, HttpClientOptions,
-    RetryOptions, X402Authorization, X402AuthorizationFields,
+    RetryOptions, X402Authorization, X402AuthorizationFields, X402_PAYMENT_HEADER,
 };
+
+#[test]
+fn exposes_canonical_submission_header() {
+    assert_eq!(X402_PAYMENT_HEADER, "PAYMENT-SIGNATURE");
+}
 use wiremock::matchers::any;
 use wiremock::{Mock, MockServer, ResponseTemplate};
 

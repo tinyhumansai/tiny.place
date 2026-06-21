@@ -6,6 +6,7 @@ import {
   buildX402PaymentMap,
   buildX402PaymentPayload,
   encodeX402PaymentHeader,
+  X402_PAYMENT_HEADER,
   signX402Authorization,
   x402AuthorizationToPaymentMap,
   type SigningKey,
@@ -116,6 +117,10 @@ describe("x402 helpers", () => {
     expect(decoded.payload.authorization.validBefore).toBe(
       "2026-06-21T00:00:00Z",
     );
+  });
+
+  it("exposes the canonical x402 v2 submission header", () => {
+    expect(X402_PAYMENT_HEADER).toBe("PAYMENT-SIGNATURE");
   });
 
   it("keeps metadata sorted in canonical signing messages", () => {

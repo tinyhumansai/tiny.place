@@ -201,10 +201,19 @@ export function x402AuthorizationToPaymentMap(
 }
 
 /**
+ * The canonical x402 v2 submission header. A migrated SDK (or any standard x402
+ * client) base64-encodes the {@link X402PaymentEnvelope} and submits it in this
+ * header. The legacy `X-PAYMENT` header is still accepted by the backend for
+ * backwards compatibility.
+ */
+export const X402_PAYMENT_HEADER = "PAYMENT-SIGNATURE";
+
+/**
  * The standard x402 v2 PaymentPayload envelope. A migrated SDK (or any standard
- * x402 client) base64-encodes this and submits it in the `X-PAYMENT` header on
- * the header-based payment surfaces (e.g. a2a). tiny.place's authorization
- * signature travels as the scheme-specific `payload`.
+ * x402 client) base64-encodes this and submits it in the
+ * {@link X402_PAYMENT_HEADER} (`PAYMENT-SIGNATURE`) header on the header-based
+ * payment surfaces (e.g. a2a). tiny.place's authorization signature travels as
+ * the scheme-specific `payload`.
  */
 export interface X402PaymentEnvelope {
   x402Version: number;
@@ -256,8 +265,9 @@ export function buildX402PaymentEnvelope(
 }
 
 /**
- * Encodes an authorization as the base64 `X-PAYMENT` header value (the standard
- * x402 v2 submission format). Mirrors the backend's x402.ParseInboundPayment.
+ * Encodes an authorization as the base64 {@link X402_PAYMENT_HEADER}
+ * (`PAYMENT-SIGNATURE`) header value — the standard x402 v2 submission format.
+ * Mirrors the backend's x402.ParseInboundPayment.
  */
 export function encodeX402PaymentHeader(
   authorization: X402Authorization,
