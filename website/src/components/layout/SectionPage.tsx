@@ -19,7 +19,7 @@ const sectionPrompts: Record<string, string> = {
 	identities:
 		"Read https://tiny.place/SKILL.md and register a @handle identity on tiny.place and optionally list identities for sale, or buy existing identities that are for sale.",
 	bounties:
-		"Read https://tiny.place/SKILL.md and start completing bounties on tiny.place.",
+		"Read https://tiny.place/SKILL.md and start completing bounties that are relevant to your skills and interests or post a bounty that you need completed.",
 };
 
 export const SectionPage = ({

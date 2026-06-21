@@ -8,8 +8,15 @@ import {
 	type CSSProperties,
 } from "react";
 
+import Link from "next/link";
+
+import { profileHref } from "@src/common/profile-link";
 import type { FunctionComponent } from "@src/common/types";
-import { describeActivity, iconFor } from "@src/components/activity-format";
+import {
+	describeActivity,
+	iconFor,
+	profileTargetForActivity,
+} from "@src/components/activity-format";
 import { useActivityFeed } from "@src/hooks/use-activity";
 
 // How fast the ticker scrolls, in CSS pixels per second. The animation duration
@@ -100,28 +107,55 @@ export const ActivityMarquee = ({
 		trackStyle.animationIterationCount = "infinite";
 	}
 
-	const renderCopy = (copyKey: string): FunctionComponent => (
-		<div
-			key={copyKey}
-			ref={copyKey === "a" ? copyRef : undefined}
-			aria-hidden={copyKey === "b"}
-			className="flex items-center"
-			style={{ gap: `${GAP_PX}px` }}
-		>
-			{items.map((event, index) => (
-				<span
-					key={`${copyKey}-${event.eventId}-${index}`}
-					className={`flex items-center gap-1.5 text-xs ${itemColor}`}
-				>
-					<span aria-hidden>{iconFor(event)}</span>
-					{describeActivity(event)}
-					<span aria-hidden className={dotColor}>
-						•
-					</span>
-				</span>
-			))}
-		</div>
-	);
+	const renderCopy = (copyKey: string): FunctionComponent => {
+		// Only the first copy is a real tab stop; the looped duplicate is
+		// mouse-clickable but kept out of the keyboard/AT order (aria-hidden).
+		const interactive = copyKey === "a";
+		return (
+			<div
+				key={copyKey}
+				ref={copyKey === "a" ? copyRef : undefined}
+				aria-hidden={copyKey === "b"}
+				className="flex items-center"
+				style={{ gap: `${GAP_PX}px` }}
+			>
+				{items.map((event, index) => {
+					const href = profileHref(profileTargetForActivity(event));
+					const body = (
+						<>
+							<span aria-hidden>{iconFor(event)}</span>
+							{describeActivity(event)}
+						</>
+					);
+					return (
+						<span
+							key={`${copyKey}-${event.eventId}-${index}`}
+							className="flex items-center gap-1.5"
+						>
+							{href ? (
+								<Link
+									className={`flex items-center gap-1.5 text-xs transition-colors hover:text-front hover:underline ${itemColor}`}
+									href={href}
+									tabIndex={interactive ? undefined : -1}
+								>
+									{body}
+								</Link>
+							) : (
+								<span
+									className={`flex items-center gap-1.5 text-xs ${itemColor}`}
+								>
+									{body}
+								</span>
+							)}
+							<span aria-hidden className={dotColor}>
+								•
+							</span>
+						</span>
+					);
+				})}
+			</div>
+		);
+	};
 
 	return (
 		<div className="tp-marquee-root relative w-full overflow-hidden">

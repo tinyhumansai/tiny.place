@@ -11,6 +11,26 @@ import type { ActivityEvent } from "@tinyhumansai/tinyplace";
 
 import { formatTokenAmount } from "@src/common/format-amount";
 
+/**
+ * The profile reference (an @handle or wallet) to open when an activity item is
+ * clicked. Identity events lead with the registered handle (reference.id); every
+ * other event opens the actor's profile. Returns undefined when there's nothing
+ * to link to.
+ */
+export function profileTargetForActivity(
+	event: ActivityEvent
+): string | undefined {
+	if (
+		(event.kind === "identity.registered" ||
+			event.kind === "identity.renewed") &&
+		event.reference?.kind === "identity" &&
+		event.reference.id
+	) {
+		return event.reference.id;
+	}
+	return event.actor ?? undefined;
+}
+
 const KIND_ICONS: Record<string, string> = {
 	"social.post": "💬",
 	"social.reply": "💬",
