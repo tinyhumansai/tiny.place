@@ -463,7 +463,9 @@ describe("tinyplace CLI", () => {
     }>;
     // `profile-feed` is a raw command; bare `feed` is now a workflow, so it (like
     // `status`) is excluded from the raw-only listing.
-    expect(commands.find((command) => command.name === "profile-feed")).toBeTruthy();
+    expect(
+      commands.find((command) => command.name === "profile-feed"),
+    ).toBeTruthy();
     expect(commands.find((command) => command.name === "feed")).toBeFalsy();
     expect(commands.find((command) => command.name === "status")).toBeFalsy();
   });
@@ -526,11 +528,15 @@ describe("tinyplace CLI", () => {
       expect(first.code).toBe(0);
       const persisted = JSON.parse(await readFile(configPath, "utf8"));
       expect(persisted.secretKey).toMatch(/^[0-9a-f]{64}$/);
+      // The SIWS proof is minted once and persisted alongside the key.
+      expect(persisted.siwsToken).toMatch(/^siws:/);
 
       const second = await runTinyPlaceCli(["version"]);
       expect(second.code).toBe(0);
       const reused = JSON.parse(await readFile(configPath, "utf8"));
       expect(reused.secretKey).toBe(persisted.secretKey);
+      // The stored proof is adopted and reused verbatim, not re-minted each run.
+      expect(reused.siwsToken).toBe(persisted.siwsToken);
     } finally {
       if (savedConfig === undefined) delete process.env.TINYPLACE_CONFIG;
       else process.env.TINYPLACE_CONFIG = savedConfig;
@@ -590,7 +596,10 @@ describe("tinyplace CLI", () => {
     // No secret key: init must mint the wallet itself by grinding. "1" is a
     // leadable base58 prefix, so the grind resolves near-instantly.
     const result = await runTinyPlaceCli(["init", "--vanity", "1"], {
-      env: { TINYPLACE_ENDPOINT: "https://example.test", TINYPLACE_CONFIG: configPath },
+      env: {
+        TINYPLACE_ENDPOINT: "https://example.test",
+        TINYPLACE_CONFIG: configPath,
+      },
       fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
         requests.push(new Request(input, init));
         return Response.json({ ok: true });
@@ -603,7 +612,9 @@ describe("tinyplace CLI", () => {
     expect(parsed.wallet.vanity.prefix).toBe("1");
     expect(parsed.wallet.vanity.matched).toBe(true);
     // The ground key is persisted so later runs reuse the same wallet.
-    const saved = JSON.parse(await readFile(configPath, "utf8")) as { secretKey?: string };
+    const saved = JSON.parse(await readFile(configPath, "utf8")) as {
+      secretKey?: string;
+    };
     expect(saved.secretKey).toMatch(/^[0-9a-f]{64}$/);
     // The onboarding link is minted from the ground identity.
     expect(parsed.onboardUrl).toContain("/onboard#grant=");
@@ -700,10 +711,12 @@ describe("tinyplace CLI", () => {
     const parsed = JSON.parse(result.stdout);
     expect(parsed.status).toBe("done");
     expect(parsed.suggestions[0].run).toBe("tinyplace read");
-    expect(requests.some((request) => request.url.includes("/directory/resolve"))).toBe(
+    expect(
+      requests.some((request) => request.url.includes("/directory/resolve")),
+    ).toBe(true);
+    expect(requests.some((request) => request.url.includes("/bundle"))).toBe(
       true,
     );
-    expect(requests.some((request) => request.url.includes("/bundle"))).toBe(true);
 
     const send = requests.find((request) => request.method === "PUT");
     expect(send?.url).toContain("/messages");
@@ -722,18 +735,20 @@ describe("tinyplace CLI", () => {
       fetch: async (input: RequestInfo | URL) => {
         const url = String(input instanceof Request ? input.url : input);
         if (url.includes("/inbox/counts")) return Response.json({ unread: 1 });
-        if (url.includes("/inbox")) return Response.json({ items: [{ id: "i1" }] });
+        if (url.includes("/inbox"))
+          return Response.json({ items: [{ id: "i1" }] });
         if (url.includes("/graphql"))
           return Response.json({ data: { bounties: [{ bountyId: "b1" }] } });
-        if (url.includes("/keys/")) return Response.json({ lowOneTimePreKeys: false });
+        if (url.includes("/keys/"))
+          return Response.json({ lowOneTimePreKeys: false });
         return Response.json({ messages: [{ id: "m1" }] });
       },
     });
 
     expect(result.code).toBe(0);
-    const runs = (JSON.parse(result.stdout).suggestions as Array<{ run: string }>).map(
-      (suggestion) => suggestion.run,
-    );
+    const runs = (
+      JSON.parse(result.stdout).suggestions as Array<{ run: string }>
+    ).map((suggestion) => suggestion.run);
     expect(runs).toEqual(
       expect.arrayContaining([
         "tinyplace raw inbox-read i1",
@@ -747,7 +762,10 @@ describe("tinyplace CLI", () => {
     const env = { TINYPLACE_ENDPOINT: "https://example.test" };
     const capture = (): {
       requests: Array<Request>;
-      fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+      fetch: (
+        input: RequestInfo | URL,
+        init?: RequestInit,
+      ) => Promise<Response>;
     } => {
       const requests: Array<Request> = [];
       return {
@@ -769,7 +787,8 @@ describe("tinyplace CLI", () => {
           if (query.includes("comments(")) data["comments"] = [];
           if (query.includes("postLikers("))
             data["postLikers"] = { likers: [], count: 0 };
-          if (query.includes("homeFeed(")) data["homeFeed"] = { items: [], count: 0 };
+          if (query.includes("homeFeed("))
+            data["homeFeed"] = { items: [], count: 0 };
           return Response.json({ data });
         },
       };
@@ -800,13 +819,16 @@ describe("tinyplace CLI", () => {
 
   it("passes the bounties status filter as a GraphQL variable", async () => {
     const requests: Array<Request> = [];
-    const result = await runTinyPlaceCli(["raw", "bounties", "--status", "open"], {
-      env: { TINYPLACE_ENDPOINT: "https://example.test" },
-      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
-        requests.push(new Request(input, init));
-        return Response.json({ data: { bounties: [] } });
+    const result = await runTinyPlaceCli(
+      ["raw", "bounties", "--status", "open"],
+      {
+        env: { TINYPLACE_ENDPOINT: "https://example.test" },
+        fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+          requests.push(new Request(input, init));
+          return Response.json({ data: { bounties: [] } });
+        },
       },
-    });
+    );
     expect(result.code).toBe(0);
     const body = (await requests[0].clone().json()) as {
       variables: { status?: string };

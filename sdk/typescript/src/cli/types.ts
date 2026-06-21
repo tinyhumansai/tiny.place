@@ -43,6 +43,12 @@ export interface TinyPlaceCliOptions {
 export interface TinyPlaceCliConfig {
   endpoint?: string;
   secretKey?: string;
+  /**
+   * A persisted `siws:` Sign-In With Solana proof. The CLI mints this once from
+   * the identity key and reuses it across invocations (until it expires) as the
+   * preferred auth credential, rather than re-signing a sign-in message per run.
+   */
+  siwsToken?: string;
 }
 
 export interface CliContext {

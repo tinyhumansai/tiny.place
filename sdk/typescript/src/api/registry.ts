@@ -13,8 +13,10 @@ import {
   type X402PaymentMapOptions,
 } from "../x402.js";
 import {
+  buildDelegatedX402PaymentMap,
   executeSolanaX402Payment,
   SOLANA_MAINNET_NETWORK,
+  SOLANA_NATIVE_ASSET,
   SOLANA_USDC_MINT,
   type SolanaX402PaymentExecution,
   type SolanaX402PaymentExecutionOptions,
@@ -61,8 +63,10 @@ export interface RegisterRequest {
   signature?: string;
 }
 
-export interface SolanaRegistrationPaymentOptions
-  extends Omit<SolanaX402PaymentExecutionOptions, "payment" | "signer"> {
+export interface SolanaRegistrationPaymentOptions extends Omit<
+  SolanaX402PaymentExecutionOptions,
+  "payment" | "signer"
+> {
   amount?: string;
   to?: string;
   asset?: string;
@@ -78,7 +82,20 @@ export interface SolanaRegistrationPaymentOptions
 
 export interface SolanaRegistrationResult {
   identity: Identity;
-  payment: SolanaX402PaymentExecution;
+  /**
+   * The settled x402 payment. The gasless delegated path (the default for SPL
+   * assets such as USDC, when the challenge advertises a facilitator fee payer)
+   * yields a bare {@link X402PaymentMap} with no client-broadcast signature; the
+   * direct native-SOL path yields a {@link SolanaX402PaymentExecution} that also
+   * carries the on-chain `signature`.
+   */
+  payment: SolanaX402PaymentExecution | X402PaymentMap;
+  /**
+   * The on-chain transaction signature, present only on the direct native-SOL
+   * path (the facilitator broadcasts the delegated transfer, so the gasless
+   * path has no client-side signature to surface).
+   */
+  onChainTx?: string;
 }
 
 export interface SolanaRegistrationFailure extends Error {
@@ -86,11 +103,18 @@ export interface SolanaRegistrationFailure extends Error {
   onChainTx?: string;
 }
 
-export interface SolanaRegistrationProofOptions
-  extends Partial<Pick<
+export interface SolanaRegistrationProofOptions extends Partial<
+  Pick<
     X402PaymentMapOptions,
-    "amount" | "asset" | "network" | "nonce" | "expiresAt" | "expiresInMs" | "metadata"
-  >> {
+    | "amount"
+    | "asset"
+    | "network"
+    | "nonce"
+    | "expiresAt"
+    | "expiresInMs"
+    | "metadata"
+  >
+> {
   onChainTx: string;
   to?: string;
   registrationAttempts?: number;
@@ -161,44 +185,85 @@ export class RegistryApi {
       throw new Error("registration payment requires amount and recipient");
     }
 
-    const payment = await executeSolanaX402Payment({
-      ...options,
-      mint: options.mint ?? SOLANA_USDC_MINT,
-      signer: this.signingKey,
-      payment: {
-        scheme: "exact",
-        network: options.network ?? challenge?.network ?? SOLANA_MAINNET_NETWORK,
-        asset: options.asset ?? challenge?.asset ?? "USDC",
-        amount,
+    const network =
+      options.network ?? challenge?.network ?? SOLANA_MAINNET_NETWORK;
+    const asset = options.asset ?? challenge?.asset ?? "USDC";
+    const metadata: Record<string, string> = {
+      ...challenge?.metadata,
+      identity: normalizedRequest.username,
+      purpose: "registration",
+      ...options.metadata,
+    };
+    const isNative = asset.trim().toUpperCase() === SOLANA_NATIVE_ASSET;
+    const feePayer = metadata["feePayer"];
+
+    // The USDC registration fee settles gaslessly through the facilitator: a
+    // payer-signed delegated tx whose fee payer is the facilitator (from the
+    // 402 challenge's metadata.feePayer), so the wallet needs no SOL for gas.
+    // This mirrors the bounty-funding flow and the Python/Rust SDKs. Native SOL
+    // — which the facilitator cannot settle — falls back to the direct path,
+    // where the wallet pays its own gas and broadcasts the transfer itself.
+    let payment: SolanaX402PaymentExecution | X402PaymentMap;
+    let paymentMap: X402PaymentMap;
+    let onChainTx: string | undefined;
+    if (!isNative && feePayer) {
+      paymentMap = await buildDelegatedX402PaymentMap({
+        signer: this.signingKey,
+        secretKey: options.secretKey,
+        rpcUrl: options.rpcUrl,
+        feePayer,
+        mint: options.mint ?? SOLANA_USDC_MINT,
+        decimals: options.decimals ?? 6,
         from: normalizedRequest.cryptoId,
-        to,
-        nonce:
-          options.nonce ??
-          challenge?.nonce ??
-          generateRegistrationNonce(normalizedRequest.username),
-        expiresAt: options.expiresAt ?? challenge?.expiresAt,
-        expiresInMs: options.expiresInMs,
-        metadata: {
-          ...challenge?.metadata,
-          identity: normalizedRequest.username,
-          purpose: "registration",
-          ...options.metadata,
+        ...(options.sourceTokenAccount
+          ? { sourceTokenAccount: options.sourceTokenAccount }
+          : {}),
+        ...(options.destinationTokenAccount
+          ? { destinationTokenAccount: options.destinationTokenAccount }
+          : {}),
+        ...(options.fetch ? { fetch: options.fetch } : {}),
+        payment: { network, asset, amount, to, metadata },
+      });
+      payment = paymentMap;
+    } else {
+      const execution = await executeSolanaX402Payment({
+        ...options,
+        mint: options.mint ?? SOLANA_USDC_MINT,
+        signer: this.signingKey,
+        payment: {
+          scheme: "exact",
+          network,
+          asset,
+          amount,
+          from: normalizedRequest.cryptoId,
+          to,
+          nonce:
+            options.nonce ??
+            challenge?.nonce ??
+            generateRegistrationNonce(normalizedRequest.username),
+          expiresAt: options.expiresAt ?? challenge?.expiresAt,
+          expiresInMs: options.expiresInMs,
+          metadata,
+          publicKeyBase64: normalizedRequest.publicKey,
         },
-        publicKeyBase64: normalizedRequest.publicKey,
-      },
-    });
+      });
+      payment = execution;
+      paymentMap = execution.payment;
+      onChainTx = execution.signature;
+    }
+
     let identity: Identity;
     try {
       identity = await this.registerWithPaymentMap(
         normalizedRequest,
-        payment.payment,
+        paymentMap,
         options,
       );
     } catch (error) {
       throw attachRegistrationPayment(error, payment);
     }
 
-    return { identity, payment };
+    return { identity, payment, ...(onChainTx ? { onChainTx } : {}) };
   }
 
   async registerWithExistingSolanaPayment(
@@ -206,7 +271,9 @@ export class RegistryApi {
     options: SolanaRegistrationProofOptions,
   ): Promise<SolanaRegistrationProofResult> {
     if (!this.signingKey) {
-      throw new Error("registerWithExistingSolanaPayment requires a signing key");
+      throw new Error(
+        "registerWithExistingSolanaPayment requires a signing key",
+      );
     }
 
     const normalizedRequest = normalizeRegisterRequest(request);
@@ -282,14 +349,17 @@ export class RegistryApi {
     },
   ): Promise<Identity> {
     try {
-      return await this.registerRetryingPayment({
-        ...request,
-        payment,
-      }, {
-        attempts: options.registrationAttempts,
-        intervalMs: options.registrationIntervalMs,
-        retryErrors: options.registrationRetryErrors,
-      });
+      return await this.registerRetryingPayment(
+        {
+          ...request,
+          payment,
+        },
+        {
+          attempts: options.registrationAttempts,
+          intervalMs: options.registrationIntervalMs,
+          retryErrors: options.registrationRetryErrors,
+        },
+      );
     } catch (error) {
       const recovered = await this.createdIdentityAfterRegistrationError(
         request.username,
@@ -499,8 +569,7 @@ export class RegistryApi {
     },
   ): Promise<Identity> {
     const attempts = options.attempts ?? DEFAULT_REGISTRATION_ATTEMPTS;
-    const intervalMs =
-      options.intervalMs ?? DEFAULT_REGISTRATION_INTERVAL_MS;
+    const intervalMs = options.intervalMs ?? DEFAULT_REGISTRATION_INTERVAL_MS;
     const retryErrors =
       options.retryErrors ?? DEFAULT_REGISTRATION_RETRY_ERRORS;
     let lastError: unknown;
@@ -597,7 +666,9 @@ function registrationPaymentTx(
     return payment.signature;
   }
   const paymentMap = payment as X402PaymentMap;
-  return paymentMap["onChainTx"] ?? paymentMap["tx"] ?? paymentMap["transaction"];
+  return (
+    paymentMap["onChainTx"] ?? paymentMap["tx"] ?? paymentMap["transaction"]
+  );
 }
 
 function normalizeRegisterRequest(request: RegisterRequest): RegisterRequest {

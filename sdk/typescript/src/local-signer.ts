@@ -1,3 +1,5 @@
+import { ed25519 } from "@noble/curves/ed25519.js";
+
 import { Signer } from "./signer.js";
 import {
   generateKeyPair,
@@ -24,6 +26,14 @@ export interface LocalSignerOptions {
   siwsNetwork?: string;
   /** Origin/URI recorded in the SIWS message. Defaults to https://tiny.place. */
   siwsOrigin?: string;
+  /**
+   * A previously minted, still-valid `siws:` proof to adopt instead of minting a
+   * fresh one. Lets a long-lived caller (e.g. the CLI) persist the proof across
+   * invocations and reuse it until it expires, rather than re-signing a new
+   * sign-in message every run. Ignored when it does not belong to this key, is
+   * malformed, or has expired (the signer mints a fresh proof in that case).
+   */
+  siwsToken?: string;
 }
 
 // A minted SIWS proof is reusable until it expires; mirror the website's 7-day
@@ -39,6 +49,7 @@ export class LocalSigner extends Signer {
   private readonly siwsEnabled: boolean;
   private readonly siwsNetwork: string;
   private readonly siwsOrigin: string;
+  private readonly siwsPreMinted: string | undefined;
   private siwsToken: string | undefined;
 
   private constructor(keyPair: KeyPair, options?: LocalSignerOptions) {
@@ -50,6 +61,7 @@ export class LocalSigner extends Signer {
     this.siwsEnabled = options?.siws ?? true;
     this.siwsNetwork = options?.siwsNetwork ?? "solana:mainnet";
     this.siwsOrigin = options?.siwsOrigin ?? "https://tiny.place";
+    this.siwsPreMinted = options?.siwsToken;
   }
 
   /** Construct and pre-mint the SIWS proof (when enabled) before returning. */
@@ -59,6 +71,12 @@ export class LocalSigner extends Signer {
   ): Promise<LocalSigner> {
     const signer = new LocalSigner(keyPair, options);
     if (signer.siwsEnabled) {
+      // Adopt a persisted, still-valid proof if one was supplied (and belongs to
+      // this key); otherwise mint a fresh one. Reusing the stored token avoids
+      // re-signing a sign-in message on every invocation.
+      if (signer.siwsPreMinted && signer.adoptSiws(signer.siwsPreMinted)) {
+        return signer;
+      }
       await signer.mintSiws();
     }
     return signer;
@@ -150,7 +168,10 @@ export class LocalSigner extends Signer {
       );
     }
 
-    const signer = await LocalSigner.fromSeed(secretBytes.slice(0, 32), options);
+    const signer = await LocalSigner.fromSeed(
+      secretBytes.slice(0, 32),
+      options,
+    );
     if (secretBytes.length === 64) {
       const expectedPublicKey = secretBytes.slice(32);
       if (!bytesEqual(signer.publicKey, expectedPublicKey)) {
@@ -214,6 +235,93 @@ export class LocalSigner extends Signer {
     };
     this.siwsToken = `siws:${utf8ToBase64Url(JSON.stringify(token))}`;
   }
+
+  /**
+   * Returns the cached `siws:` proof when one is held — exposed so a caller
+   * (e.g. the CLI) can persist the freshly minted token and reuse it on the next
+   * run via {@link LocalSignerOptions.siwsToken}, instead of re-minting each run.
+   */
+  persistableSiwsToken(): string | undefined {
+    return this.siwsToken;
+  }
+
+  /**
+   * Adopt a persisted `siws:` proof when it belongs to this key, parses, verifies,
+   * and is still within its expiration window. Returns true on success (the token
+   * becomes the cached proof) and false otherwise, so the caller mints a fresh
+   * proof instead of trusting a stale or foreign token.
+   */
+  private adoptSiws(token: string): boolean {
+    const parsed = parseSiwsToken(token);
+    if (!parsed) {
+      return false;
+    }
+    const { message, signature } = parsed;
+    const address = message.split("\n")[1] ?? "";
+    if (address !== this.agentId) {
+      return false;
+    }
+    const expiration = siwsExpiration(message);
+    if (expiration === undefined || expiration <= Date.now()) {
+      return false;
+    }
+    const messageBytes = new TextEncoder().encode(message);
+    if (!ed25519.verify(signature, messageBytes, this.publicKey)) {
+      return false;
+    }
+    this.siwsToken = token;
+    return true;
+  }
+}
+
+/** Decode a `siws:` token into its signed message text and raw signature bytes. */
+function parseSiwsToken(
+  token: string,
+): { message: string; signature: Uint8Array } | undefined {
+  if (!token.startsWith("siws:")) {
+    return undefined;
+  }
+  try {
+    const json = new TextDecoder().decode(
+      base64urlToBytes(token.slice("siws:".length)),
+    );
+    const parsed = JSON.parse(json) as {
+      signedMessage?: unknown;
+      signature?: unknown;
+    };
+    if (
+      typeof parsed.signedMessage !== "string" ||
+      typeof parsed.signature !== "string"
+    ) {
+      return undefined;
+    }
+    return {
+      message: new TextDecoder().decode(base64ToBytes(parsed.signedMessage)),
+      signature: base64ToBytes(parsed.signature),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+/** Parse the `Expiration Time:` line of a SIWS message into epoch milliseconds. */
+function siwsExpiration(message: string): number | undefined {
+  for (const line of message.split("\n")) {
+    if (line.startsWith("Expiration Time: ")) {
+      const value = Date.parse(line.slice("Expiration Time: ".length).trim());
+      return Number.isNaN(value) ? undefined : value;
+    }
+  }
+  return undefined;
+}
+
+function base64ToBytes(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 function generateSiwsNonce(): string {
