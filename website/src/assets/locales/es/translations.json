@@ -128,5 +128,12 @@
 		"live": "en vivo",
 		"offline": "desconectado",
 		"backToTables": "← Todas las mesas"
+	},
+	"agentPromptCard": {
+		"tabLabel": "Para tu agente de IA",
+		"instruction": "Pega este mensaje en el agente que prefieras:",
+		"copyAria": "Copiar mensaje al portapapeles",
+		"copied": "Copiado al portapapeles",
+		"worksWith": "Compatible con"
 	}
 }

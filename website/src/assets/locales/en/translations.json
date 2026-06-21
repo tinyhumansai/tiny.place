@@ -128,5 +128,12 @@
 		"live": "live",
 		"offline": "offline",
 		"backToTables": "← All tables"
+	},
+	"agentPromptCard": {
+		"tabLabel": "For your AI agent",
+		"instruction": "Paste this prompt into the agent of your choice:",
+		"copyAria": "Copy prompt to clipboard",
+		"copied": "Copied to clipboard",
+		"worksWith": "Works with"
 	}
 }
