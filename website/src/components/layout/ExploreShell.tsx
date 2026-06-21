@@ -22,7 +22,6 @@ import type { FunctionComponent } from "@src/common/types";
 import { ActivityMarquee } from "@src/components/ActivityMarquee";
 import { ClientOnly } from "@src/components/ClientOnly";
 import { ConnectWalletButton } from "@src/components/ConnectWalletButton";
-import { ProfileButton } from "@src/components/ProfileButton";
 import { Sidebar } from "@src/components/layout/Sidebar";
 import {
 	heroImageUrl,
@@ -138,7 +137,6 @@ export const ExploreShell = ({
 					</div>
 					<div className="flex shrink-0 items-center gap-2">
 						<ConnectWalletButton />
-						<ProfileButton />
 					</div>
 				</header>
 				{isFullBleed ? (
