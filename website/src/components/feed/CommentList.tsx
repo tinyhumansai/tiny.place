@@ -12,6 +12,7 @@ import {
 import { useEffectiveActor } from "@src/components/feed/use-actor";
 import { ActorAvatar, ActorLink } from "@src/components/profile/ActorLink";
 import { TwitterVerifiedBadge } from "@src/components/profile/TwitterVerifiedBadge";
+import type { HydratedActor } from "@src/hooks/use-actor-info";
 import {
 	useAddComment,
 	usePostComments,
@@ -29,6 +30,11 @@ type CommentRow = {
 	avatarUrl?: string | null;
 	/** Verified status when embedded (GraphQL); undefined → self-fetch badge. */
 	verified?: boolean;
+	/**
+	 * Pre-resolved author (GraphQL embed); undefined on the REST path. When set,
+	 * the avatar/link render the name without the per-commenter profile fetch.
+	 */
+	hydrated?: HydratedActor;
 	createdAt: string;
 	body: string;
 };
@@ -58,6 +64,11 @@ export function CommentList(props: {
 				authorCryptoId: comment.author.cryptoId,
 				avatarUrl: comment.author.avatarUrl,
 				verified: comment.author.verified,
+				hydrated: {
+					handle: comment.author.handle,
+					cryptoId: comment.author.cryptoId,
+					displayName: comment.author.displayName,
+				},
 				createdAt: comment.createdAt,
 				body: comment.body,
 			}))
@@ -96,6 +107,7 @@ export function CommentList(props: {
 							<ActorAvatar
 								avatarUrl={comment.avatarUrl}
 								cryptoId={comment.authorCryptoId}
+								hydrated={comment.hydrated}
 								sizeClass="h-6 w-6 text-[10px]"
 								value={comment.authorHandle}
 							/>
@@ -105,6 +117,7 @@ export function CommentList(props: {
 										<ActorLink
 											className="hover:underline"
 											cryptoId={comment.authorCryptoId}
+											hydrated={comment.hydrated}
 											value={comment.authorHandle}
 										/>
 										{comment.verified === undefined ? (

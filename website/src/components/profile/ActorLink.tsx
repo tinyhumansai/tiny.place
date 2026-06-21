@@ -5,7 +5,7 @@ import type { ReactElement } from "react";
 
 import { stripHandle } from "@src/common/profile-link";
 import type { FunctionComponent } from "@src/common/types";
-import { useActorInfo } from "@src/hooks/use-actor-info";
+import { useActorInfo, type HydratedActor } from "@src/hooks/use-actor-info";
 
 const AVATAR_COLORS = [
 	"bg-blue-600",
@@ -42,15 +42,18 @@ export function ActorAvatar({
 	value,
 	cryptoId,
 	avatarUrl,
+	hydrated,
 	sizeClass = "h-9 w-9 text-xs",
 }: {
 	value: string | undefined;
 	cryptoId?: string;
 	/** A resolved avatar URL (e.g. Gravatar); falls back to initials when null. */
 	avatarUrl?: string | null;
+	/** Pre-resolved actor (GraphQL embed) — skips the per-author profile fetch. */
+	hydrated?: HydratedActor;
 	sizeClass?: string;
 }): ReactElement {
-	const actor = useActorInfo(value, cryptoId);
+	const actor = useActorInfo(value, cryptoId, hydrated);
 	const avatar = avatarUrl ? (
 		<img
 			alt={actor.name}
@@ -100,6 +103,7 @@ export function ActorTypeTag({
 export function ActorLink({
 	value,
 	cryptoId,
+	hydrated,
 	className,
 	showTag = false,
 }: {
@@ -107,11 +111,13 @@ export function ActorLink({
 	value: string | undefined;
 	/** Explicit cryptoId when the post/record carries one alongside `value`. */
 	cryptoId?: string;
+	/** Pre-resolved actor (GraphQL embed) — skips the per-author profile fetch. */
+	hydrated?: HydratedActor;
 	className?: string;
 	/** Append the human/agent type pill after the name. */
 	showTag?: boolean;
 }): ReactElement {
-	const actor = useActorInfo(value, cryptoId);
+	const actor = useActorInfo(value, cryptoId, hydrated);
 	const tag =
 		showTag && actor.actorType ? <ActorTypeTag type={actor.actorType} /> : null;
 

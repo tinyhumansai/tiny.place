@@ -22,6 +22,21 @@ export type ActorInfo = {
 	actorType?: ActorType;
 };
 
+/**
+ * An actor whose identity was already resolved upstream — e.g. the GraphQL
+ * gateway embeds `handle`/`cryptoId`/`displayName` on every feed post and
+ * comment author. Passing this to {@link useActorInfo} lets it build the label
+ * without the per-author User + reverse-directory requests, which is what
+ * removes the feed's N+1 profile fetches. `actorType` isn't part of the embedded
+ * payload, so the human/agent tag is simply omitted on hydrated references.
+ */
+export type HydratedActor = {
+	handle: string;
+	cryptoId: string;
+	displayName: string;
+	actorType?: ActorType;
+};
+
 /** Picks a wallet's primary handle (or its first) from reverse-lookup results. */
 function primaryUsername(
 	identities: Array<{ username: string; primary?: boolean }> | undefined
@@ -47,23 +62,30 @@ function primaryUsername(
  */
 export function useActorInfo(
 	reference: string | undefined,
-	cryptoId?: string
+	cryptoId?: string,
+	hydrated?: HydratedActor
 ): ActorInfo {
 	const referenceIsWallet = isWalletAddress(reference);
 	const wallet =
-		cryptoId ?? (referenceIsWallet ? reference?.trim() : undefined);
-	const knownHandle =
-		reference && !referenceIsWallet
+		hydrated?.cryptoId ??
+		cryptoId ??
+		(referenceIsWallet ? reference?.trim() : undefined);
+	const knownHandle = hydrated
+		? stripHandle(hydrated.handle) || undefined
+		: reference && !referenceIsWallet
 			? stripHandle(reference) || undefined
 			: undefined;
 
-	const user = useUser(wallet);
+	// When the actor was hydrated upstream (GraphQL gateway) we already hold the
+	// display name and handle, so both per-author requests are disabled. This is
+	// the whole point: a hydrated feed/comment makes zero profile fetches.
+	const user = useUser(hydrated ? undefined : wallet);
 	// Only reverse-resolve when the reference is a bare wallet — otherwise we'd
 	// spend a request to recover a handle we already have.
 	const reverse = useReverseDirectory(knownHandle ? undefined : wallet);
 	const handle = knownHandle ?? primaryUsername(reverse.data?.identities);
 
-	const displayName = user.data?.displayName?.trim();
+	const displayName = (hydrated?.displayName ?? user.data?.displayName)?.trim();
 	const canonical = handle ? `@${handle}` : (wallet ?? reference);
 	const name =
 		displayName ||
@@ -78,6 +100,6 @@ export function useActorInfo(
 		name,
 		handle,
 		wallet,
-		actorType: user.data?.actorType,
+		actorType: hydrated?.actorType ?? user.data?.actorType,
 	};
 }

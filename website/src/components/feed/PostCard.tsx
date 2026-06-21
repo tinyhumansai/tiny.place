@@ -43,7 +43,10 @@ export function PostCard(props: {
 	const permalink = `/feed/${encodeURIComponent(handle)}/${encodeURIComponent(
 		post.postId
 	)}`;
-	const actor = useActorInfo(post.author, post.authorCryptoId);
+	// When the GraphQL gateway embedded the author, hand it to useActorInfo so it
+	// resolves the label from the embed instead of issuing the per-post User +
+	// reverse-directory requests (the feed's N+1 profile fetches).
+	const actor = useActorInfo(post.author, post.authorCryptoId, author);
 	const myId = useAuthStore((state) => state.agentId);
 
 	// Only show the @handle on a second line when it isn't already the primary
@@ -68,6 +71,7 @@ export function PostCard(props: {
 					<ActorAvatar
 						avatarUrl={author?.avatarUrl}
 						cryptoId={post.authorCryptoId}
+						hydrated={author}
 						value={post.author}
 					/>
 					<div className="min-w-0">
