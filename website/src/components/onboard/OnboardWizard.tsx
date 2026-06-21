@@ -252,16 +252,21 @@ function EmailStep({
 				}}
 			/>
 			{phase === "enter-code" ? (
-				<input
-					className={fieldClass}
-					disabled={busy}
-					inputMode="numeric"
-					placeholder="123456"
-					value={code}
-					onChange={(event) => {
-						setCode(event.target.value);
-					}}
-				/>
+				<>
+					<input
+						className={fieldClass}
+						disabled={busy}
+						inputMode="numeric"
+						placeholder="123456"
+						value={code}
+						onChange={(event) => {
+							setCode(event.target.value);
+						}}
+					/>
+					<p className="text-xs text-muted">
+						Don&apos;t see it? Check your spam or junk folder, or resend.
+					</p>
+				</>
 			) : null}
 			{error ? <p className="text-xs text-danger">{error}</p> : null}
 			<div className="flex items-center gap-2">
