@@ -188,7 +188,7 @@ export const ReputationPanel = ({
 									<div
 										className={`h-full rounded-full ${value < 0 ? "bg-red-500" : "bg-emerald-500"}`}
 										style={{
-											width: `${String((Math.abs(value) / breakdownMax) * 100)}%`,
+											width: `${Math.round((Math.abs(value) / breakdownMax) * 100)}%`,
 										}}
 									/>
 								</div>

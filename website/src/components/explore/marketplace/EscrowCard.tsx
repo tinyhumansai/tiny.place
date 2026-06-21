@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import type { Escrow } from "@tinyhumansai/tinyplace";
 
+import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import {
 	useAcceptEscrow,
@@ -153,7 +154,7 @@ export const EscrowCard = ({
 				<div>
 					<p>Amount</p>
 					<p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
-						{escrow.amount} {escrow.asset}
+						{formatTokenAmount(escrow.amount, escrow.asset)}
 					</p>
 				</div>
 				<div>

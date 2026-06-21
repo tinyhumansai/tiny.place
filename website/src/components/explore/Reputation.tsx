@@ -164,7 +164,7 @@ const LeaderboardView = ({
 									}`}
 								>
 									<div
-										style={{ width: `${String(percentage)}%` }}
+										style={{ width: `${Math.round(percentage)}%` }}
 										className={`h-full rounded-full ${
 											entry.rank === 1
 												? "bg-amber-500"

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import type { Product } from "@tinyhumansai/tinyplace";
 
+import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 import { Chip } from "@src/components/ui/Chip";
@@ -183,7 +184,10 @@ export const Search = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 											<span
 												className={`text-xs font-medium ${strongClass(isDark)}`}
 											>
-												{product.price.amount} {product.price.asset}
+												{formatTokenAmount(
+													product.price.amount,
+													product.price.asset
+												)}
 											</span>
 										</div>
 										{product.tags && product.tags.length > 0 && (

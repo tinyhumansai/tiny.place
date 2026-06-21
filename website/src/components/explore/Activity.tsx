@@ -2,6 +2,7 @@
 
 import { useState, type ReactElement } from "react";
 
+import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import { Chip } from "@src/components/ui/Chip";
 import { useActivityFeed } from "@src/hooks/use-activity";
@@ -61,7 +62,8 @@ function amountLabel(event: ActivityEvent): string {
 	if (!event.amount) {
 		return "";
 	}
-	return ` ${event.amount}${event.asset ? " " + event.asset : ""}`;
+	// event.amount is in base units; format to "1 USDC" not "1000000 USDC".
+	return ` ${formatTokenAmount(event.amount, event.asset ?? undefined)}`;
 }
 
 function describe(event: ActivityEvent): string {

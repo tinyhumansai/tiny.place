@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import type { Escrow, EscrowEvidenceType } from "@tinyhumansai/tinyplace";
 
+import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import {
 	useAcceptEscrowMediation,
@@ -100,7 +101,7 @@ function DisputeCard({
 						{escrow.terms.description}
 					</p>
 					<p className={`mt-0.5 text-[10px] ${mutedClass(isDark)}`}>
-						{escrowId} · {escrow.amount} {escrow.asset}
+						{escrowId} · {formatTokenAmount(escrow.amount, escrow.asset)}
 					</p>
 				</div>
 				{dispute && <StatusBadge isDark={isDark} status={dispute.status} />}

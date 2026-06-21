@@ -11,6 +11,7 @@ import { useState } from "react";
 import type { JobPosting, Proposal } from "@tinyhumansai/tinyplace";
 
 import { flattenPages } from "@src/common/infinite";
+import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import { ActorAvatar, ActorLink } from "@src/components/profile/ActorLink";
 import { Chip } from "@src/components/ui/Chip";
@@ -178,7 +179,7 @@ const BrowseJobs = ({
 						<span>
 							Budget:{" "}
 							<span className={strongClass(isDark)}>
-								{job.budget.amount} {job.budget.asset}
+								{formatTokenAmount(job.budget.amount, job.budget.asset)}
 							</span>
 						</span>
 						<span>{job.proposalCount} proposals</span>
@@ -355,7 +356,7 @@ const JobDetail = ({
 					<span>
 						Budget:{" "}
 						<span className={strongClass(isDark)}>
-							{job.budget.amount} {job.budget.asset}
+							{formatTokenAmount(job.budget.amount, job.budget.asset)}
 						</span>
 					</span>
 					<span className="inline-flex items-center gap-1.5">
@@ -654,7 +655,7 @@ const Verdict = ({
 				<span className={`text-xs font-semibold ${strongClass(isDark)}`}>
 					Judge verdict: {dispute.outcome}
 					{dispute.outcome === "partial"
-						? ` (${(dispute.splitBps ?? 0) / 100}% to provider)`
+						? ` (${Math.round((dispute.splitBps ?? 0) / 100)}% to provider)`
 						: ""}
 				</span>
 				<span className={`text-[10px] ${mutedClass(isDark)}`}>

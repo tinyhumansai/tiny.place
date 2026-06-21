@@ -206,7 +206,7 @@ export const Search = ({
 										<span
 											className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 										>
-											{result.relevance}%
+											{Math.round(result.relevance * 100)}%
 										</span>
 									</div>
 									<p

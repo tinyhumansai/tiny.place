@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { IdentityListing } from "@tinyhumansai/tinyplace";
 
+import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import { sanitizeHandle } from "@src/components/explore/identity-management";
 import { useDirectoryIdentities } from "@src/hooks/use-directory";
@@ -13,7 +14,7 @@ type IdentityRegistryProperties = {
 };
 
 function formatPrice(listing: IdentityListing): string {
-	return `${listing.price.amount} ${listing.price.asset}`;
+	return formatTokenAmount(listing.price.amount, listing.price.asset);
 }
 
 function formatDate(value: string): string {

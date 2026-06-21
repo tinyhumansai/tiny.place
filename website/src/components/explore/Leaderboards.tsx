@@ -5,6 +5,7 @@ import type {
 	LeaderboardEntry,
 } from "@tinyhumansai/tinyplace";
 
+import { minorUnitsToDecimal } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 import { Chip } from "@src/components/ui/Chip";
@@ -45,16 +46,27 @@ const resolveHandle = (entry: LeaderboardEntry): string =>
 	entry.cryptoId?.slice(0, 12) ??
 	"Unknown";
 
+// Monetary leaderboard fields (USDC volume/revenue/winnings) arrive in 6-decimal
+// base units like everywhere else, so present them as a human decimal.
+const usdcAmount = (value?: string | null): string =>
+	value ? Number(minorUnitsToDecimal(value, 6)).toLocaleString() : "0";
+
 const resolveScore = (
 	entry: LeaderboardEntry,
 	tab: LeaderboardCategory
 ): string => {
 	if (tab === "groups") return String(entry.memberCount ?? 0);
 	if (tab === "messages") return String(entry.messagesSent ?? 0);
-	if (tab === "volume") return entry.volumeUSDC ?? "0";
-	if (tab === "sellers") return entry.revenue ?? String(entry.salesCount ?? 0);
+	if (tab === "volume") return usdcAmount(entry.volumeUSDC);
+	if (tab === "sellers")
+		return entry.revenue
+			? usdcAmount(entry.revenue)
+			: String(entry.salesCount ?? 0);
 	if (tab === "rising") return String(entry.delta ?? entry.currentScore ?? 0);
-	if (tab === "games") return entry.winnings ?? String(entry.handsPlayed ?? 0);
+	if (tab === "games")
+		return entry.winnings
+			? usdcAmount(entry.winnings)
+			: String(entry.handsPlayed ?? 0);
 	return String(entry.score ?? entry.transactions ?? 0);
 };
 
