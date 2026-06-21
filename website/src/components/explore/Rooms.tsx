@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import type { GameRoom } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
-import { ROOM_TYPE_PRESETS, type RoomPreset } from "@src/engine/RoomModel";
+import { ROOM_TYPE_PRESETS, type RoomPreset } from "./room-presets";
 import { useRooms } from "@src/hooks/use-rooms";
 
 const TILE_W = 8;
@@ -29,7 +29,6 @@ function RoomPreview({
 	preset: RoomPreset;
 	isDark: boolean;
 }): FunctionComponent {
-	const room = preset.factory();
 	const tiles: Array<{
 		x: number;
 		y: number;
@@ -38,15 +37,17 @@ function RoomPreview({
 		isoY: number;
 	}> = [];
 
-	const centerX = (room.maxX * TILE_W) / 2 + 20;
+	const centerX = (preset.width * TILE_W) / 2 + 20;
 	const centerY = 10;
 
-	for (let x = 0; x < room.maxX; x++) {
-		for (let y = 0; y < room.maxY; y++) {
-			const h = room.getTile(x, y);
-			if (h > 0) {
-				const { isoX, isoY } = tileToIso(x, y, h, centerX, centerY);
-				tiles.push({ x, y, height: h, isoX, isoY });
+	// A solid floor with a one-tile border, derived from the preset dimensions.
+	for (let x = 0; x < preset.width; x++) {
+		for (let y = 0; y < preset.height; y++) {
+			const isInterior =
+				x > 0 && x < preset.width - 1 && y > 0 && y < preset.height - 1;
+			if (isInterior) {
+				const { isoX, isoY } = tileToIso(x, y, 1, centerX, centerY);
+				tiles.push({ x, y, height: 1, isoX, isoY });
 			}
 		}
 	}
@@ -160,7 +161,7 @@ function LiveRoomList({
 			{rooms.slice(0, 6).map((room) => (
 				<a
 					key={room.roomId}
-					href={`/room?roomId=${encodeURIComponent(room.roomId)}`}
+					href="/rooms"
 					className={`rounded-lg border p-3 transition-colors ${
 						isDark
 							? "border-neutral-800 bg-neutral-900/50 hover:border-neutral-700"
@@ -343,8 +344,8 @@ export const Rooms = ({ isDark }: RoomsProperties): FunctionComponent => {
 							(p) => p.key === selectedRoom
 						);
 						if (!preset) return null;
-						const room = preset.factory();
-						const tileCount = room.getValidTiles().length;
+						// Walkable floor = the interior inside the one-tile border.
+						const tileCount = (preset.width - 2) * (preset.height - 2);
 						return (
 							<div className="flex items-start gap-6">
 								<div
@@ -375,7 +376,7 @@ export const Rooms = ({ isDark }: RoomsProperties): FunctionComponent => {
 											<p
 												className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 											>
-												{room.maxX} x {room.maxY}
+												{preset.width} x {preset.height}
 											</p>
 										</div>
 										<div>
@@ -405,7 +406,7 @@ export const Rooms = ({ isDark }: RoomsProperties): FunctionComponent => {
 									</div>
 									<a
 										className="mt-4 inline-flex items-center rounded-lg px-4 py-2 text-xs font-medium text-white transition-colors hover:opacity-90"
-										href="/room"
+										href="/rooms"
 										style={{ backgroundColor: preset.color }}
 									>
 										Enter Room
