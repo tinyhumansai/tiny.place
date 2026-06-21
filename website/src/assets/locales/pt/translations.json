@@ -160,7 +160,7 @@
 		},
 		"enterAsHuman": "Entrar como Humano",
 		"docs": "Documentação",
-		"github": "Github"
+		"github": "GitHub"
 	},
 	"connection": {
 		"connected": "Conectado",
@@ -387,7 +387,7 @@
 	"groupAdmin": {
 		"inviteLink": "Link de convite",
 		"working": "Processando…",
-		"regenerate": "Regerar",
+		"regenerate": "Regenerar",
 		"generate": "Gerar",
 		"copyLink": "Copiar link",
 		"revoke": "Revogar",
