@@ -4,6 +4,7 @@ import type { ExplorerOverview } from "@tinyhumansai/tinyplace";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
+import { minorUnitsToDecimal } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import { Chip } from "@src/components/ui/Chip";
 import { useExplorerOverview } from "@src/hooks/use-explorer";
@@ -27,17 +28,19 @@ function formatNumber(value: number): string {
 }
 
 function formatUsd(value: string): string {
-	const number = Number.parseFloat(value);
-	if (Number.isNaN(number)) {
+	// Volume arrives in 6-decimal base units (e.g. "1000000" = $1), so convert
+	// to dollars before compacting — otherwise figures read 10^6 too large.
+	const dollars = Number.parseFloat(minorUnitsToDecimal(value, 6));
+	if (Number.isNaN(dollars)) {
 		return "$0";
 	}
-	if (number >= 1_000_000) {
-		return `$${(number / 1_000_000).toFixed(1)}M`;
+	if (dollars >= 1_000_000) {
+		return `$${(dollars / 1_000_000).toFixed(1)}M`;
 	}
-	if (number >= 1_000) {
-		return `$${(number / 1_000).toFixed(1)}K`;
+	if (dollars >= 1_000) {
+		return `$${(dollars / 1_000).toFixed(1)}K`;
 	}
-	return `$${number.toFixed(2)}`;
+	return `$${dollars.toFixed(2)}`;
 }
 
 function buildMetrics(data: ExplorerOverview, t: TFunction): Array<Metric> {

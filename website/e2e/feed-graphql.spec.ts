@@ -1,9 +1,12 @@
 import { test, expect, type Page, type Route } from "@playwright/test";
 
 // Proves the GraphQL feed eliminates the per-author attestations N+1 in the
-// browser: the home feed renders from ONE POST /graphql and issues ZERO
-// /reputation/{agentId}/attestations requests, with the verified badge rendered
-// from the embedded author.verified flag.
+// browser: each home-feed render issues ONE batched POST /graphql (not one per
+// author) and ZERO /reputation/{agentId}/attestations requests, with the
+// verified badge rendered from the embedded author.verified flag. The feed is
+// public, so it renders once anonymously on load and once more (personalized)
+// after the wallet connects — two batched requests total, the N+1 property
+// holding for each render.
 //
 // NEXT_PUBLIC_GRAPHQL_FEED is inlined at build time, so this only exercises the
 // GraphQL path when the site was built with it on. It is gated on E2E_GRAPHQL so
@@ -110,7 +113,7 @@ test.describe(() => {
 		}, SEED_HEX);
 	}
 
-	test("home feed renders from one graphql request with zero attestation fetches", async ({
+	test("home feed renders from batched graphql requests with zero attestation fetches", async ({
 		page,
 	}) => {
 		let graphqlCount = 0;
@@ -129,7 +132,13 @@ test.describe(() => {
 		});
 
 		await enableE2EAuth(page);
+		// Anonymous render: the public feed loads from one batched request.
 		await page.goto("/feed");
+		await expect(page.getByText("verified author post")).toBeVisible();
+		expect(graphqlCount).toBe(1);
+
+		// Connecting re-fetches the now-personalized feed — again one batched
+		// request, never a per-author attestations fan-out.
 		await connect(page);
 
 		await expect(page.getByText("verified author post")).toBeVisible();
@@ -137,7 +146,7 @@ test.describe(() => {
 		// Alice's verified badge is present; Bob's is not.
 		await expect(page.getByLabel("Verified on Twitter/X")).toHaveCount(1);
 
-		expect(graphqlCount).toBe(1);
+		expect(graphqlCount).toBe(2);
 		expect(attestationCount).toBe(0);
 	});
 });

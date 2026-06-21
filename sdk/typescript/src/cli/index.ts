@@ -37,6 +37,7 @@ import {
   flushCliSentry,
   initCliSentry,
 } from "./sentry.js";
+import { updateNotice } from "./update-notice.js";
 import type {
   CliContext,
   ParsedArgs,
@@ -67,7 +68,44 @@ export type {
 
 const HELP = buildHelp();
 
+/**
+ * Commands that report or perform the upgrade themselves (or do no real work),
+ * where a passive "update available" footer would be redundant or noisy.
+ */
+const NOTICE_SKIP_COMMANDS = new Set([
+  "version",
+  "update",
+  "upgrade",
+  "help",
+  "--help",
+  "-v",
+  "--version",
+]);
+
 export async function runTinyPlaceCli(
+  argv: Array<string>,
+  options: TinyPlaceCliOptions = {},
+): Promise<TinyPlaceCliResult> {
+  const result = await dispatchCli(argv, options);
+  // Only the real `tinyplace` bin (no caller-supplied env) gets the passive
+  // upgrade nudge: embedders/tests pass their own env and own their output, and
+  // managed mode is where we may read/write the daily check cache on disk.
+  if (options.env === undefined) {
+    const parsed = parseArgs(argv);
+    if (parsed.command && !NOTICE_SKIP_COMMANDS.has(parsed.command)) {
+      const notice = await updateNotice({
+        env: process.env,
+        ...(options.fetch ? { fetch: options.fetch } : {}),
+      });
+      if (notice) {
+        result.stderr = result.stderr ? `${result.stderr}${notice}` : notice;
+      }
+    }
+  }
+  return result;
+}
+
+async function dispatchCli(
   argv: Array<string>,
   options: TinyPlaceCliOptions = {},
 ): Promise<TinyPlaceCliResult> {

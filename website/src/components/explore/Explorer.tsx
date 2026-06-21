@@ -9,6 +9,7 @@ import type {
 	ExplorerTransactionSummary,
 } from "@tinyhumansai/tinyplace";
 
+import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import { Chip } from "@src/components/ui/Chip";
 import { useExplorerOverview } from "@src/hooks/use-explorer";
@@ -73,7 +74,8 @@ function amountLabel(transaction: ExplorerTransactionSummary): string {
 	if (!transaction.amount) {
 		return "";
 	}
-	return `${transaction.amount} ${transaction.asset ?? ""}`.trim();
+	// amount is in base units; render "1 USDC" not "1000000 USDC".
+	return formatTokenAmount(transaction.amount, transaction.asset ?? undefined);
 }
 
 function networkLabel(network: string): string {
@@ -381,7 +383,10 @@ export const Explorer = ({
 											className={`text-xs ${isDark ? "text-neutral-400" : "text-neutral-600"}`}
 										>
 											{transaction.fee
-												? `${transaction.fee.amount} ${transaction.asset ?? ""}`
+												? formatTokenAmount(
+														transaction.fee.amount,
+														transaction.asset ?? undefined
+													)
 												: "—"}
 										</span>
 									</td>

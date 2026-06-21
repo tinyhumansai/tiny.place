@@ -674,7 +674,7 @@ const Verdict = ({
 					{t("jobs.verdict.judgeVerdict", { outcome: dispute.outcome })}
 					{dispute.outcome === "partial"
 						? t("jobs.verdict.splitToProvider", {
-								percent: (dispute.splitBps ?? 0) / 100,
+								percent: Math.round((dispute.splitBps ?? 0) / 100),
 							})
 						: ""}
 				</span>

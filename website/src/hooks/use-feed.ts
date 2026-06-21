@@ -24,6 +24,7 @@ import type {
 import { useApiClient } from "@src/common/api-context";
 import { DEFAULT_PAGE_SIZE, getNextOffset } from "@src/common/infinite";
 import { queryKeys } from "@src/common/query-keys";
+import { useEffectiveActor } from "@src/components/feed/use-actor";
 import { commentFromGql, postFromGql } from "@src/hooks/graphql-mappers";
 
 export function useUserFeed(
@@ -51,8 +52,11 @@ export function useHomeFeed(
 	enabled = true
 ): UseQueryResult<HomeFeedResult> {
 	const client = useApiClient();
+	// Scope the cache by the connected viewer ("" when anonymous) so the public
+	// and personalized feeds never collide and connecting a wallet refetches.
+	const viewer = useEffectiveActor();
 	return useQuery({
-		queryKey: queryKeys.feeds.home(parameters),
+		queryKey: queryKeys.feeds.home(parameters, viewer),
 		queryFn: (): Promise<HomeFeedResult> => client.feeds.homeFeed(parameters),
 		enabled,
 	});
@@ -106,8 +110,9 @@ export function useHomeFeedGql(
 	enabled = true
 ): UseQueryResult<GqlHomeFeedResult> {
 	const client = useApiClient();
+	const viewer = useEffectiveActor();
 	return useQuery({
-		queryKey: queryKeys.gql.home(parameters),
+		queryKey: queryKeys.gql.home(parameters, viewer),
 		queryFn: (): Promise<GqlHomeFeedResult> =>
 			client.graphql.homeFeed(parameters),
 		enabled,
@@ -124,8 +129,9 @@ export function useHomeFeedGqlInfinite(
 	enabled = true
 ): UseInfiniteQueryResult<InfiniteData<Array<GqlHomeFeedItem>>, Error> {
 	const client = useApiClient();
+	const viewer = useEffectiveActor();
 	return useInfiniteQuery({
-		queryKey: queryKeys.gql.homeInfinite(),
+		queryKey: queryKeys.gql.homeInfinite(viewer),
 		initialPageParam: 0,
 		queryFn: async ({ pageParam }): Promise<Array<GqlHomeFeedItem>> =>
 			(

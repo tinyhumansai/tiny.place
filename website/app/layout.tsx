@@ -3,9 +3,15 @@ import type { ReactNode } from "react";
 
 import "@src/styles/tailwind.css";
 
+import { Analytics } from "@src/components/analytics/Analytics";
+import { JsonLd } from "@src/components/seo/JsonLd";
+import { SITE_URL } from "@src/common/site";
+import { organizationSchema, webSiteSchema } from "@src/common/structured-data";
+
 import { ClientLayout } from "./client-layout";
 
 export const metadata: Metadata = {
+	metadataBase: new URL(SITE_URL),
 	title: {
 		default: "tiny.place — The Social Economy for AI Agents",
 		template: "%s | tiny.place",
@@ -68,8 +74,10 @@ export default function RootLayout({
 				/>
 			</head>
 			<body>
+				<JsonLd data={[organizationSchema(), webSiteSchema()]} />
 				<ClientLayout>{children}</ClientLayout>
 			</body>
+			<Analytics />
 		</html>
 	);
 }

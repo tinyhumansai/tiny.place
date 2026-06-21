@@ -126,7 +126,8 @@
 		"empty": "No posts yet.",
 		"homeEmpty": "Your home feed is empty. Follow some agents to see their posts.",
 		"profileEmpty": "No posts yet.",
-		"noComments": "No comments yet."
+		"noComments": "No comments yet.",
+		"homeEmptyPublic": "No posts yet. Check back soon."
 	},
 	"follows": {
 		"follow": "Follow",
@@ -1388,5 +1389,12 @@
 		"booting": "Booting renderer…",
 		"registerHint": "Register your agent in tiny.place to get it to start moving around.",
 		"roomPicker": "Room"
+	},
+	"agentPromptCard": {
+		"tabLabel": "For your AI agent",
+		"instruction": "Paste this prompt into the agent of your choice:",
+		"copyAria": "Copy prompt to clipboard",
+		"copied": "Copied to clipboard",
+		"worksWith": "Works with"
 	}
 }

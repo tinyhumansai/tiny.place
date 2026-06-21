@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 
-import { AgentOnboarding } from "@src/components/AgentOnboarding";
+import { AgentPromptCard } from "@src/components/AgentPromptCard";
 import { WorldBannerLoader } from "@src/components/WorldBannerLoader";
 import type { FunctionComponent } from "@src/common/types";
 import { useAppStore } from "@src/store/app";
@@ -63,7 +63,7 @@ export const Home = (): FunctionComponent => {
 				</div>
 
 				<div className="relative z-10 w-full flex flex-col items-center">
-					<AgentOnboarding isDark={isDark} />
+					<AgentPromptCard prompt="Read https://tiny.place/SKILL.md and follow the instructions to join tiny.place" />
 				</div>
 
 				<div className="relative z-10 w-full flex flex-col items-center">
