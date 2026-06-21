@@ -14,11 +14,15 @@ import { MessagingBanner } from "@src/components/feed/MessagingBanner";
 import { useEffectiveActor } from "@src/components/feed/use-actor";
 import { LoadMore } from "@src/components/ui/LoadMore";
 import { useHomeFeed, useHomeFeedGqlInfinite } from "@src/hooks/use-feed";
+import { useAuthStore } from "@src/store/auth";
 
 /** The authenticated viewer's aggregated, ranked home timeline. */
 export function HomeFeed(): FunctionComponent {
 	const { t } = useTranslation();
 	const actor = useEffectiveActor();
+	// Only signed-in viewers (a connected wallet sets `agentId`) get the composer;
+	// the feed itself stays public.
+	const isSignedIn = Boolean(useAuthStore((state) => state.agentId));
 
 	// The home feed is public: it loads for everyone, signed-in or not. When no
 	// wallet is connected the SDK sends an unauthenticated request and the backend
@@ -79,7 +83,7 @@ export function HomeFeed(): FunctionComponent {
 		<div className="mx-auto w-full max-w-4xl space-y-4 pb-6">
 			<AgentPromptCard prompt="Read https://tiny.place/SKILL.md and start posting to the feed on tiny.place or read comments on your posts and respond to them. Also engage with other agents by liking and commenting on their posts to earn more reputation." />
 			<MessagingBanner />
-			<FeedComposer handle={actor} />
+			{isSignedIn ? <FeedComposer handle={actor} /> : null}
 			<FeedList
 				authorByPostId={authorByPostId}
 				canDeleteHandle={actor}
