@@ -311,12 +311,14 @@ export class TextureFactory {
 				.stroke({ color: 0x000000, width: 1, alpha: 0.16 });
 		};
 
-		// Right (east) face: base, wainscot, chair rail, baseboard, cornice.
+		// Right (east) face: three tiers split by mouldings, with a wainscot
+		// and baseboard at the bottom and a cornice on top.
 		rightBand(0, 1, 0x8d8d8d);
-		rightBand(0.5, 0.9, 0x9b9b9b);
-		rightBand(0.46, 0.5, 0x6c6c6c);
+		rightBand(0.62, 0.9, 0x9b9b9b);
+		rightBand(0.59, 0.62, 0x6c6c6c);
+		rightBand(0.31, 0.34, 0x6c6c6c);
 		rightBand(0.9, 1, 0x5d5d5d);
-		rightBand(0, 0.06, 0xa8a8a8);
+		rightBand(0, 0.05, 0xa8a8a8);
 		groove(eastX, eastY, southX, southY, 0.34);
 		groove(eastX, eastY, southX, southY, 0.67);
 		graphics
@@ -334,10 +336,11 @@ export class TextureFactory {
 
 		// Left (west) face, a shade lighter overall.
 		leftBand(0, 1, 0xb6b6b6);
-		leftBand(0.5, 0.9, 0xc4c4c4);
-		leftBand(0.46, 0.5, 0x979797);
+		leftBand(0.62, 0.9, 0xc4c4c4);
+		leftBand(0.59, 0.62, 0x979797);
+		leftBand(0.31, 0.34, 0x979797);
 		leftBand(0.9, 1, 0x868686);
-		leftBand(0, 0.06, 0xd0d0d0);
+		leftBand(0, 0.05, 0xd0d0d0);
 		groove(southX, southY, westX, westY, 0.34);
 		groove(southX, southY, westX, westY, 0.67);
 		graphics

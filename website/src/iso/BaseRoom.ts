@@ -32,7 +32,7 @@ import {
 	type WalkNode,
 } from "./types";
 
-const WALL_HEIGHT = 78;
+const WALL_HEIGHT = 112;
 const PARTITION_HEIGHT = 34;
 const PAVEMENT_TINT = 0x9aa3ad;
 const NEIGHBOR_STEPS: ReadonlyArray<readonly [number, number]> = [

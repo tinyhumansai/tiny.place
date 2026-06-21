@@ -23,16 +23,23 @@ import {
 import { Agent } from "./Agent";
 import type { BaseRoom, DepthObstacle } from "./BaseRoom";
 import { ChatBubble } from "./ChatBubble";
-import type { FurnitureStation } from "./furniture";
+import { FurnitureSprite, type FurnitureStation } from "./furniture";
 import {
 	LAYER_DECAL,
+	LAYER_FURNITURE,
 	NATIVE_RESOLUTION,
 	depthAt,
 	screenToTile,
+	tileToScreen,
 } from "./geometry";
 import { ROOM_REGISTRY, type RoomEntry } from "./rooms";
 import { TextureFactory } from "./textures";
-import type { AgentState, ChatMessage, WalkNode } from "./types";
+import {
+	TileCode,
+	type AgentState,
+	type ChatMessage,
+	type WalkNode,
+} from "./types";
 
 const NAMEPLATE_FONT = "iso-body";
 const BUBBLE_FONT = "iso-bubble";
@@ -44,10 +51,30 @@ const FONT_CHARACTERS: Array<Array<string> | string> = [
 ];
 
 const CAMERA_PADDING = 28;
-const ZOOM_BOOST = 1.08;
+// Pull the camera back a little now that the world renders full-screen, so the
+// room reads at a comfortable scale instead of filling every pixel.
+const ZOOM_BOOST = 0.5;
 const TAP_THRESHOLD = 6;
 const AGENT_PICK_RADIUS = 26;
 const PAN_LIMIT = 360;
+
+// Live traffic: cars cruise along the city's horizontal street rows (where the
+// 2x1 car sprite is already correctly oriented). Only the "outside" city has
+// roads, so traffic is a no-op in the indoor rooms.
+const TRAFFIC_ROOM_KEY = "outside";
+const CARS_PER_LANE = 3;
+const CAR_TINTS = [
+	0xc0392b, 0x2e86c1, 0x8e44ad, 0x27ae60, 0xd35400, 0xe6b800, 0x34495e,
+	0x16a085, 0xbdc3c7,
+];
+
+interface CarState {
+	sprite: FurnitureSprite;
+	row: number;
+	x: number;
+	direction: number;
+	speed: number;
+}
 
 const AGENT_TINTS = [
 	0xf2a154, 0x5aa9e6, 0x7fc8a9, 0xe88ec2, 0xc3a6ff, 0xffd166, 0x9ad0ec,
@@ -176,6 +203,9 @@ export class GameWorld {
 	private readonly agents = new Map<string, Agent>();
 	private readonly bubbles = new Map<string, ChatBubble>();
 	private readonly wanderTimers = new Map<string, number>();
+	private cars: Array<CarState> = [];
+	private lanes: Array<{ row: number; direction: number }> = [];
+	private trafficLength = 0;
 	private selectedId: string | null = null;
 	private autonomous = false;
 	private resizeObserver: ResizeObserver | null = null;
@@ -185,6 +215,15 @@ export class GameWorld {
 	private pointerMoved = 0;
 	private lastPointerX = 0;
 	private lastPointerY = 0;
+	private panRangeX = PAN_LIMIT;
+	private panRangeY = PAN_LIMIT;
+	// "contain" frames the whole world inside the viewport (the world page);
+	// "cover" fills the viewport, cropping the overflow (the home banner strip).
+	private readonly fillMode: "contain" | "cover";
+
+	public constructor(options: { fillMode?: "contain" | "cover" } = {}) {
+		this.fillMode = options.fillMode ?? "contain";
+	}
 
 	// ---- Lifecycle ----------------------------------------------------------
 
@@ -266,6 +305,7 @@ export class GameWorld {
 	public destroy(): void {
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
+		this.clearTraffic();
 		this.factory?.destroy();
 		const app = this.app;
 		this.app = null;
@@ -297,6 +337,7 @@ export class GameWorld {
 			return;
 		}
 		this.clearAgents();
+		this.clearTraffic();
 		if (this.room) {
 			// Detach the persistent selection ring before the old layer is freed.
 			this.selectionRing.removeFromParent();
@@ -324,12 +365,155 @@ export class GameWorld {
 				(NATIVE_RESOLUTION - CAMERA_PADDING * 2) / size.width,
 				(NATIVE_RESOLUTION - CAMERA_PADDING * 2) / size.height
 			) * ZOOM_BOOST,
-			0.6,
+			0.34,
 			1.6
 		);
 		this.camera.scale.set(zoom);
 		this.camera.position.set(NATIVE_RESOLUTION / 2, NATIVE_RESOLUTION / 2);
+		// Allow panning far enough to reach the edges of a large room/city.
+		this.panRangeX = Math.max(PAN_LIMIT, (size.width * zoom) / 2);
+		this.panRangeY = Math.max(PAN_LIMIT, (size.height * zoom) / 2);
+		this.spawnTraffic();
 		this.notifyChange();
+	}
+
+	// ---- Traffic ------------------------------------------------------------
+
+	/** Remove every live car and free its sprite. */
+	private clearTraffic(): void {
+		for (const car of this.cars) {
+			car.sprite.removeFromParent();
+			car.sprite.destroy({ children: true });
+		}
+		this.cars = [];
+		this.lanes = [];
+		this.trafficLength = 0;
+	}
+
+	/**
+	 * Populate the city's horizontal streets with cars. A "street row" is any
+	 * matrix row that is mostly road; the two rows of each 2-wide road band drive
+	 * in opposite directions, so traffic reads as oncoming lanes.
+	 */
+	private spawnTraffic(): void {
+		const room = this.room;
+		if (!room || !this.factory || room.definition.key !== TRAFFIC_ROOM_KEY) {
+			return;
+		}
+		const matrix = room.definition.matrix;
+		const columns = matrix.reduce((max, row) => Math.max(max, row.length), 0);
+		this.trafficLength = columns;
+		this.lanes = [];
+
+		for (let row = 0; row < matrix.length; row++) {
+			const cells = matrix[row]!;
+			let roadCells = 0;
+			for (let column = 0; column < columns; column++) {
+				if (cells[column] === TileCode.Road) {
+					roadCells++;
+				}
+			}
+			// Skip cross-street stubs; only full-width through-roads carry traffic.
+			if (roadCells < columns * 0.6) {
+				continue;
+			}
+			// Even/odd rows of a road band travel in opposite directions.
+			const direction = row % 2 === 0 ? 1 : -1;
+			this.lanes.push({ row, direction });
+			const spacing = columns / CARS_PER_LANE;
+			for (let index = 0; index < CARS_PER_LANE; index++) {
+				this.addCar(row, direction, index * spacing + Math.random() * spacing);
+			}
+		}
+	}
+
+	/** Put a single car on a lane at a given fractional column. */
+	private addCar(row: number, direction: number, x: number): void {
+		const room = this.room;
+		const factory = this.factory;
+		if (!room || !factory) {
+			return;
+		}
+		const tint = CAR_TINTS[Math.floor(Math.random() * CAR_TINTS.length)]!;
+		const sprite = new FurnitureSprite(
+			{ kind: "car", tileX: 0, tileY: row, tint },
+			factory
+		);
+		room.entityLayer.addChild(sprite);
+		const car: CarState = {
+			sprite,
+			row,
+			x,
+			direction,
+			speed: 1.4 + Math.random() * 1.1,
+		};
+		this.positionCar(car);
+		this.cars.push(car);
+	}
+
+	/** Send a fresh car in from the entry edge of a random lane. */
+	private spawnReplacementCar(): void {
+		if (this.lanes.length === 0) {
+			return;
+		}
+		const lane = this.lanes[Math.floor(Math.random() * this.lanes.length)]!;
+		const entryX = lane.direction > 0 ? -2 : this.trafficLength + 2;
+		this.addCar(lane.row, lane.direction, entryX);
+	}
+
+	/** Re-place a car's sprite for its current fractional position. */
+	private positionCar(car: CarState): void {
+		const screen = tileToScreen(car.x, car.row, 0);
+		car.sprite.position.set(screen.x, screen.y);
+		// Depth-sort at the 2-tile car's centre, like a parked FurnitureSprite.
+		car.sprite.zIndex = depthAt(car.x + 0.5, car.row, 0, LAYER_FURNITURE);
+	}
+
+	/**
+	 * True if a human stands on the road just ahead of the car, so it should
+	 * brake rather than drive over them. Looks one tile past the leading edge,
+	 * plus one more, for a short stopping buffer.
+	 */
+	private carBlocked(car: CarState): boolean {
+		const lead =
+			car.direction > 0 ? Math.floor(car.x + 2) : Math.floor(car.x) - 1;
+		return (
+			this.tileOccupied(lead, car.row) ||
+			this.tileOccupied(lead + car.direction, car.row)
+		);
+	}
+
+	private updateTraffic(deltaSeconds: number): void {
+		if (this.cars.length === 0) {
+			return;
+		}
+		const high = this.trafficLength + 2;
+		const survivors: Array<CarState> = [];
+		let retired = 0;
+
+		for (const car of this.cars) {
+			// Stop short of any human crossing or standing on the road ahead.
+			if (this.carBlocked(car)) {
+				survivors.push(car);
+				continue;
+			}
+			car.x += car.direction * car.speed * deltaSeconds;
+			if (car.x > high || car.x < -2) {
+				// Drove off the end of the road — retire this car entirely.
+				car.sprite.removeFromParent();
+				car.sprite.destroy({ children: true });
+				retired++;
+				continue;
+			}
+			this.positionCar(car);
+			survivors.push(car);
+		}
+
+		this.cars = survivors;
+		// Keep the streets populated by sending one fresh car in per retirement.
+		for (let index = 0; index < retired; index++) {
+			this.spawnReplacementCar();
+		}
 	}
 
 	private paintGlow(accent: number): void {
@@ -557,6 +741,8 @@ export class GameWorld {
 		const deltaMs = ticker.deltaMS;
 		const deltaSeconds = deltaMs / 1000;
 
+		this.updateTraffic(deltaSeconds);
+
 		for (const agent of this.agents.values()) {
 			if (this.autonomous) {
 				this.stepWander(agent, deltaMs);
@@ -676,13 +862,13 @@ export class GameWorld {
 		this.camera.position.set(
 			clamp(
 				this.camera.position.x + deltaX / scale,
-				NATIVE_RESOLUTION / 2 - PAN_LIMIT,
-				NATIVE_RESOLUTION / 2 + PAN_LIMIT
+				NATIVE_RESOLUTION / 2 - this.panRangeX,
+				NATIVE_RESOLUTION / 2 + this.panRangeX
 			),
 			clamp(
 				this.camera.position.y + deltaY / scale,
-				NATIVE_RESOLUTION / 2 - PAN_LIMIT,
-				NATIVE_RESOLUTION / 2 + PAN_LIMIT
+				NATIVE_RESOLUTION / 2 - this.panRangeY,
+				NATIVE_RESOLUTION / 2 + this.panRangeY
 			)
 		);
 	};
@@ -784,23 +970,42 @@ export class GameWorld {
 			.ellipse(0, 0, 16, 8)
 			.stroke({ color: 0xffffff, width: 2, alpha: 0.85 });
 		this.selectionRing.zIndex = depthAt(0, 0, 0, LAYER_DECAL);
-		this.applySize(parent.clientWidth || NATIVE_RESOLUTION);
+		this.applySize(
+			parent.clientWidth || NATIVE_RESOLUTION,
+			parent.clientHeight || NATIVE_RESOLUTION
+		);
 		this.resizeObserver = new ResizeObserver((entries) => {
-			const width = entries[0]?.contentRect.width ?? NATIVE_RESOLUTION;
-			this.applySize(width);
+			const rect = entries[0]?.contentRect;
+			this.applySize(
+				rect?.width ?? NATIVE_RESOLUTION,
+				rect?.height ?? NATIVE_RESOLUTION
+			);
 		});
 		this.resizeObserver.observe(parent);
 	}
 
-	private applySize(width: number): void {
+	private applySize(width: number, height: number): void {
 		const app = this.app;
-		if (!app || width <= 0) {
+		if (!app || width <= 0 || height <= 0) {
 			return;
 		}
-		const size = Math.round(width);
-		app.renderer.resize(size, size);
-		app.stage.hitArea = new Rectangle(0, 0, size, size);
-		this.viewport.scale.set(size / NATIVE_RESOLUTION);
+		const w = Math.round(width);
+		const h = Math.round(height);
+		// The renderer now fills the full (possibly non-square) panel. The world is
+		// authored in a NATIVE_RESOLUTION square, so we scale it to "contain" within
+		// the panel and centre it — the renderer background fills any surrounding
+		// space edge-to-edge, so the world reads as full-screen rather than boxed.
+		app.renderer.resize(w, h);
+		app.stage.hitArea = new Rectangle(0, 0, w, h);
+		const scale =
+			this.fillMode === "cover"
+				? Math.max(w, h) / NATIVE_RESOLUTION
+				: Math.min(w, h) / NATIVE_RESOLUTION;
+		this.viewport.scale.set(scale);
+		this.viewport.position.set(
+			(w - NATIVE_RESOLUTION * scale) / 2,
+			(h - NATIVE_RESOLUTION * scale) / 2
+		);
 	}
 
 	// ---- Small helpers ------------------------------------------------------
