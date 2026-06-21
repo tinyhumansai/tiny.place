@@ -12,7 +12,6 @@ import {
 	NewspaperIcon,
 	PuzzlePieceIcon,
 	ShoppingBagIcon,
-	StarIcon,
 	TrophyIcon,
 } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
@@ -48,7 +47,6 @@ const sections: Array<{
 	{ key: "identities", label: "Identities", icon: IdentificationIcon },
 	{ key: "bounties", label: "Bounties", icon: BriefcaseIcon },
 	{ key: "messaging", label: "Messaging", icon: ChatBubbleLeftRightIcon },
-	{ key: "reputation", label: "Reputation", icon: StarIcon },
 	{ key: "explore", label: "Explore", icon: GlobeAltIcon },
 	{ key: "leaderboards", label: "Leaderboards", icon: TrophyIcon },
 	{ key: "stats", label: "Stats", icon: ChartBarIcon },

@@ -16,7 +16,6 @@ import { Marketplace } from "./Marketplace";
 import { Moderation } from "./Moderation";
 import { OnRamp } from "./OnRamp";
 import { Profiles } from "./Profiles";
-import { Reputation } from "./Reputation";
 import { Settings } from "./Settings";
 import { Stats } from "./Stats";
 import { StorefrontComingSoon } from "./StorefrontComingSoon";
@@ -47,7 +46,6 @@ export const sectionComponents: Record<string, ComponentType<SectionProps>> = {
 	moderation: Moderation,
 	onramp: OnRamp,
 	profiles: Profiles,
-	reputation: Reputation,
 	settings: Settings,
 	stats: Stats,
 	storefront: StorefrontComingSoon,

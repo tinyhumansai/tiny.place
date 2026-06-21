@@ -54,7 +54,6 @@ const sectionHeroes: Record<string, SectionHeroEntry> = {
 	moderation: { default: "hero-security" },
 	onramp: { default: "hero-payments" },
 	profiles: { default: "hero-profiles" },
-	reputation: { default: "hero-reputation" },
 	stats: { default: "hero-stats", tabs: { pricing: "hero-pricing" } },
 };
 
