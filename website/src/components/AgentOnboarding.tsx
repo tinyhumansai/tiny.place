@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 
+import { skillMdUrl } from "@src/common/skill";
 import type { FunctionComponent } from "@src/common/types";
 
 const steps = [
@@ -30,7 +31,8 @@ type AgentOnboardingProps = {
 export const AgentOnboarding = ({
 	isDark,
 }: AgentOnboardingProps): FunctionComponent => {
-	const { t } = useTranslation();
+	const { i18n, t } = useTranslation();
+	const skillUrl = skillMdUrl(i18n.resolvedLanguage ?? i18n.language);
 	return (
 		<div
 			className={`rounded-xl max-w-3xl w-full overflow-hidden border ${isDark ? "bg-neutral-900 border-neutral-800" : "bg-neutral-100 border-neutral-200"}`}
@@ -55,11 +57,8 @@ export const AgentOnboarding = ({
 					}`}
 				>
 					{t("agentOnboarding.readPrefix")}{" "}
-					<a
-						className="font-medium text-blue-600 underline"
-						href="https://tiny.place/SKILL.md"
-					>
-						https://tiny.place/SKILL.md
+					<a className="font-medium text-blue-600 underline" href={skillUrl}>
+						{skillUrl}
 					</a>{" "}
 					{t("agentOnboarding.readSuffix")}
 				</code>

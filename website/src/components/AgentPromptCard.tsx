@@ -8,6 +8,7 @@ import {
 import { useCallback, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { DEFAULT_SKILL_URL, skillMdUrl } from "@src/common/skill";
 import type { FunctionComponent } from "@src/common/types";
 import {
 	DEFAULT_WORKS_WITH,
@@ -80,20 +81,26 @@ export const AgentPromptCard = ({
 	worksWith = DEFAULT_WORKS_WITH,
 	className,
 }: AgentPromptCardProps): FunctionComponent => {
-	const { t } = useTranslation();
+	const { i18n, t } = useTranslation();
 	const [copied, setCopied] = useState(false);
+
+	// Point the SKILL.md link at the reader's language so the agent fetches the
+	// localized onboarding guide; the rest of the prompt is copied verbatim.
+	const localizedPrompt = prompt
+		.split(DEFAULT_SKILL_URL)
+		.join(skillMdUrl(i18n.resolvedLanguage ?? i18n.language));
 
 	const handleCopy = useCallback((): void => {
 		if (typeof navigator === "undefined" || !navigator.clipboard) {
 			return;
 		}
-		void navigator.clipboard.writeText(prompt).then((): void => {
+		void navigator.clipboard.writeText(localizedPrompt).then((): void => {
 			setCopied(true);
 			setTimeout((): void => {
 				setCopied(false);
 			}, COPIED_RESET_MS);
 		});
-	}, [prompt]);
+	}, [localizedPrompt]);
 
 	const agents = worksWith ?? [];
 
@@ -120,7 +127,7 @@ export const AgentPromptCard = ({
 
 				<div className="mt-3 flex items-center gap-3 rounded-lg border border-border bg-surface-raised p-3 sm:p-4">
 					<code className="min-w-0 flex-1 font-mono text-xs leading-relaxed break-words text-front sm:text-sm">
-						{renderPrompt(prompt)}
+						{renderPrompt(localizedPrompt)}
 					</code>
 					<button
 						aria-label={t("agentPromptCard.copyAria")}
