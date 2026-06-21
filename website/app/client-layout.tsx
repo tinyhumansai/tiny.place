@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 
+import { AnalyticsClickTracker } from "@src/components/analytics/AnalyticsClickTracker";
 import type { FunctionComponent } from "@src/common/types";
 
 const Providers = dynamic(
@@ -17,5 +18,10 @@ type ClientLayoutProperties = {
 export const ClientLayout = ({
 	children,
 }: ClientLayoutProperties): FunctionComponent => {
-	return <Providers>{children}</Providers>;
+	return (
+		<>
+			<AnalyticsClickTracker />
+			<Providers>{children}</Providers>
+		</>
+	);
 };

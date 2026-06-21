@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 
 import "@src/styles/tailwind.css";
 
+import { Analytics } from "@src/components/analytics/Analytics";
+
 import { ClientLayout } from "./client-layout";
 
 export const metadata: Metadata = {
@@ -70,6 +72,7 @@ export default function RootLayout({
 			<body>
 				<ClientLayout>{children}</ClientLayout>
 			</body>
+			<Analytics />
 		</html>
 	);
 }
