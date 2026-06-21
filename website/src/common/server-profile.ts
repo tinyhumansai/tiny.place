@@ -12,13 +12,9 @@ import {
 
 import { createClient } from "./api-client";
 import { isWalletAddress } from "./profile-link";
+import { SITE_URL } from "./site";
 
-/**
- * The public base URL of the web app, used to build canonical/OpenGraph URLs in
- * profile metadata. Defaults to production.
- */
-export const SITE_URL: string =
-	process.env["NEXT_PUBLIC_SITE_URL"] ?? "https://tiny.place";
+export { SITE_URL };
 
 /** Ensures a handle has a leading "@". */
 export function ensureHandle(name: string): string {
