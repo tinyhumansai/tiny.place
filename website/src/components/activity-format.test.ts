@@ -1,11 +1,17 @@
+import i18n from "i18next";
 import type { ActivityEvent } from "@tinyhumansai/tinyplace";
 import { describe, expect, it } from "vitest";
 
+import "@src/common/i18n";
 import {
 	describeActivity,
 	iconFor,
 	shortName,
 } from "@src/components/activity-format";
+
+// The activity helpers take an i18next `t`; in tests we resolve against the real
+// initialized instance (English), so assertions read like the rendered copy.
+const t = i18n.t.bind(i18n);
 
 // Fixtures mirror the real shapes returned by GET https://api.tiny.place/activity
 // (the dominant kinds: social.post, identity.registered, escrow.fund).
@@ -19,22 +25,22 @@ const event = (overrides: Partial<ActivityEvent>): ActivityEvent => ({
 
 describe("shortName", () => {
 	it("passes @handles through untouched", () => {
-		expect(shortName("@overseer")).toBe("@overseer");
+		expect(shortName("@overseer", t)).toBe("@overseer");
 	});
 
 	it("truncates long wallet pubkeys to head…tail", () => {
-		expect(shortName("4Ep9Wp8DvaYgGHsFfS6RVZfGZstjjFeQZ1NS2Pojfam3")).toBe(
+		expect(shortName("4Ep9Wp8DvaYgGHsFfS6RVZfGZstjjFeQZ1NS2Pojfam3", t)).toBe(
 			"4Ep9…fam3"
 		);
 	});
 
 	it("renames known system actors", () => {
-		expect(shortName("tinyplace-escrow")).toBe("escrow");
+		expect(shortName("tinyplace-escrow", t)).toBe("escrow");
 	});
 
 	it("falls back to 'someone' for empty values", () => {
-		expect(shortName(null)).toBe("someone");
-		expect(shortName(undefined)).toBe("someone");
+		expect(shortName(null, t)).toBe("someone");
+		expect(shortName(undefined, t)).toBe("someone");
 	});
 });
 
@@ -44,14 +50,15 @@ describe("describeActivity", () => {
 			event({
 				kind: "social.post",
 				actor: "4Ep9Wp8DvaYgGHsFfS6RVZfGZstjjFeQZ1NS2Pojfam3",
-			})
+			}),
+			t
 		);
 		expect(text).toBe("4Ep9…fam3 posted");
 	});
 
 	it("keeps a @handle actor intact on social.post", () => {
 		expect(
-			describeActivity(event({ kind: "social.post", actor: "@lexaa" }))
+			describeActivity(event({ kind: "social.post", actor: "@lexaa" }), t)
 		).toBe("@lexaa posted");
 	});
 
@@ -62,7 +69,8 @@ describe("describeActivity", () => {
 				category: "identity",
 				actor: "4Ep9Wp8DvaYgGHsFfS6RVZfGZstjjFeQZ1NS2Pojfam3",
 				reference: { kind: "identity", id: "@overseer" },
-			})
+			}),
+			t
 		);
 		expect(text).toBe("@overseer registered");
 	});
@@ -77,7 +85,8 @@ describe("describeActivity", () => {
 				amount: "1000000", // 6-decimal base units => 1 USDC
 				asset: "USDC",
 				reference: { kind: "bounty", id: "bnt_djed97st06ag3ou2ibs8kx4tb" },
-			})
+			}),
+			t
 		);
 		// Crucially NOT "1000000 USDC".
 		expect(text).toBe("5Swt…CxqQ funded a bounty · 1 USDC");
@@ -86,7 +95,8 @@ describe("describeActivity", () => {
 	it("degrades unknown social kinds to a sensible verb instead of a raw pubkey", () => {
 		expect(
 			describeActivity(
-				event({ kind: "social.reaction", actor: "@lexaa", category: "social" })
+				event({ kind: "social.reaction", actor: "@lexaa", category: "social" }),
+				t
 			)
 		).toBe("@lexaa reacted");
 	});
@@ -97,7 +107,8 @@ describe("describeActivity", () => {
 				kind: "ledger.SOMETHING_NEW",
 				category: "financial",
 				actor: "@x",
-			})
+			}),
+			t
 		);
 		expect(text).toBe("@x — SOMETHING NEW");
 	});

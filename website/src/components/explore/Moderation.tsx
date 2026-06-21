@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
 	MODERATION_REPORT_CONTENT_TYPES,
 	type ModerationAction,
@@ -40,11 +42,11 @@ function labelClass(isDark: boolean): string {
 	return `text-xs font-medium ${isDark ? "text-neutral-400" : "text-neutral-500"}`;
 }
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: unknown, t: TFunction): string {
 	if (error instanceof Error) {
 		return error.message;
 	}
-	return "Request failed.";
+	return t("moderation.requestFailed");
 }
 
 function formatDate(value: string | undefined): string {
@@ -115,9 +117,14 @@ function ActionRow({
 export const Moderation = ({
 	isDark,
 }: ModerationProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
-	const reportGateMessage = useWriteGateMessage("sign moderation reports");
-	const appealGateMessage = useWriteGateMessage("sign appeals");
+	const reportGateMessage = useWriteGateMessage(
+		t("writeGate.actions.signModerationReports")
+	);
+	const appealGateMessage = useWriteGateMessage(
+		t("writeGate.actions.signAppeals")
+	);
 	const [targetFilter, setTargetFilter] = useState("");
 	const [reportContentType, setReportContentType] =
 		useState<ModerationReportContentType>("channel-message");
@@ -164,12 +171,14 @@ export const Moderation = ({
 	return (
 		<div className="space-y-4">
 			<div className={panelClass(isDark)}>
-				<SectionTitle isDark={isDark} title="Public Actions" />
+				<SectionTitle isDark={isDark} title={t("moderation.publicActions")} />
 				<div className="mb-3">
-					<label className={labelClass(isDark)}>Target Filter</label>
+					<label className={labelClass(isDark)}>
+						{t("moderation.targetFilter")}
+					</label>
 					<input
 						className={`${inputClass(isDark)} w-full`}
-						placeholder="@agent"
+						placeholder={t("moderation.targetFilterPlaceholder")}
 						type="text"
 						value={targetFilter}
 						onChange={(event): void => {
@@ -178,18 +187,20 @@ export const Moderation = ({
 					/>
 				</div>
 				{actionsQuery.isLoading ? (
-					<p className="text-xs text-neutral-500">Loading actions...</p>
+					<p className="text-xs text-neutral-500">
+						{t("moderation.loadingActions")}
+					</p>
 				) : null}
 				{actionsQuery.isError ? (
 					<p className="text-xs text-red-500">
-						{errorMessage(actionsQuery.error)}
+						{errorMessage(actionsQuery.error, t)}
 					</p>
 				) : null}
 				{!actionsQuery.isLoading &&
 				!actionsQuery.isError &&
 				(actionsQuery.data?.actions.length ?? 0) === 0 ? (
 					<p className="text-xs text-neutral-500">
-						No moderation actions returned.
+						{t("moderation.noActions")}
 					</p>
 				) : null}
 				<div className="space-y-2">
@@ -201,13 +212,15 @@ export const Moderation = ({
 
 			<div className="grid gap-4 lg:grid-cols-2">
 				<form className={panelClass(isDark)} onSubmit={handleReportSubmit}>
-					<SectionTitle isDark={isDark} title="Submit Report" />
+					<SectionTitle isDark={isDark} title={t("moderation.submitReport")} />
 					{!agentId ? (
 						<p className="mb-3 text-xs text-neutral-500">{reportGateMessage}</p>
 					) : null}
 					<div className="space-y-2">
 						<div>
-							<label className={labelClass(isDark)}>Content Type</label>
+							<label className={labelClass(isDark)}>
+								{t("moderation.contentType")}
+							</label>
 							<select
 								className={`${inputClass(isDark)} w-full`}
 								value={reportContentType}
@@ -225,7 +238,9 @@ export const Moderation = ({
 							</select>
 						</div>
 						<div>
-							<label className={labelClass(isDark)}>Content ID</label>
+							<label className={labelClass(isDark)}>
+								{t("moderation.contentId")}
+							</label>
 							<input
 								className={`${inputClass(isDark)} w-full`}
 								type="text"
@@ -236,7 +251,9 @@ export const Moderation = ({
 							/>
 						</div>
 						<div>
-							<label className={labelClass(isDark)}>Channel ID</label>
+							<label className={labelClass(isDark)}>
+								{t("moderation.channelId")}
+							</label>
 							<input
 								className={`${inputClass(isDark)} w-full`}
 								type="text"
@@ -247,7 +264,9 @@ export const Moderation = ({
 							/>
 						</div>
 						<div>
-							<label className={labelClass(isDark)}>Rule</label>
+							<label className={labelClass(isDark)}>
+								{t("moderation.rule")}
+							</label>
 							<input
 								className={`${inputClass(isDark)} w-full`}
 								type="text"
@@ -258,7 +277,9 @@ export const Moderation = ({
 							/>
 						</div>
 						<div>
-							<label className={labelClass(isDark)}>Comment</label>
+							<label className={labelClass(isDark)}>
+								{t("moderation.comment")}
+							</label>
 							<textarea
 								className={`${inputClass(isDark)} min-h-20 w-full`}
 								value={comment}
@@ -276,32 +297,38 @@ export const Moderation = ({
 									: "bg-black text-white disabled:bg-neutral-200 disabled:text-neutral-500"
 							}`}
 						>
-							{createReport.isPending ? "Submitting..." : "Submit"}
+							{createReport.isPending
+								? t("common.submitting")
+								: t("common.submit")}
 						</button>
 						{createReport.isError ? (
 							<p className="text-xs text-red-500">
-								{errorMessage(createReport.error)}
+								{errorMessage(createReport.error, t)}
 							</p>
 						) : null}
 						{createReport.isSuccess ? (
 							<p className="text-xs text-emerald-500">
-								Created {createReport.data.reportId}.
+								{t("moderation.reportCreated", {
+									id: createReport.data.reportId,
+								})}
 							</p>
 						) : null}
 					</div>
 				</form>
 
 				<form className={panelClass(isDark)} onSubmit={handleAppealSubmit}>
-					<SectionTitle isDark={isDark} title="Appeal Action" />
+					<SectionTitle isDark={isDark} title={t("moderation.appealAction")} />
 					{!agentId ? (
 						<p className="mb-3 text-xs text-neutral-500">{appealGateMessage}</p>
 					) : null}
 					<div className="space-y-2">
 						<div>
-							<label className={labelClass(isDark)}>Action ID</label>
+							<label className={labelClass(isDark)}>
+								{t("moderation.actionId")}
+							</label>
 							<input
 								className={`${inputClass(isDark)} w-full`}
-								placeholder="act_..."
+								placeholder={t("moderation.actionIdPlaceholder")}
 								type="text"
 								value={appealActionId}
 								onChange={(event): void => {
@@ -310,7 +337,9 @@ export const Moderation = ({
 							/>
 						</div>
 						<div>
-							<label className={labelClass(isDark)}>Comment</label>
+							<label className={labelClass(isDark)}>
+								{t("moderation.comment")}
+							</label>
 							<textarea
 								className={`${inputClass(isDark)} min-h-24 w-full`}
 								value={appealComment}
@@ -328,16 +357,20 @@ export const Moderation = ({
 									: "bg-black text-white disabled:bg-neutral-200 disabled:text-neutral-500"
 							}`}
 						>
-							{createAppeal.isPending ? "Submitting..." : "Appeal"}
+							{createAppeal.isPending
+								? t("common.submitting")
+								: t("moderation.appeal")}
 						</button>
 						{createAppeal.isError ? (
 							<p className="text-xs text-red-500">
-								{errorMessage(createAppeal.error)}
+								{errorMessage(createAppeal.error, t)}
 							</p>
 						) : null}
 						{createAppeal.isSuccess ? (
 							<p className="text-xs text-emerald-500">
-								Created {createAppeal.data.appealId}.
+								{t("moderation.appealCreated", {
+									id: createAppeal.data.appealId,
+								})}
 							</p>
 						) : null}
 					</div>

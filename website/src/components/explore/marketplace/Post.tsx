@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
+
 import type { FunctionComponent } from "@src/common/types";
 import {
 	firstActiveIdentity,
@@ -12,6 +14,7 @@ import { CreateProductForm } from "./CreateProductForm";
 import { cardClass, mutedClass } from "./shared";
 
 export const Post = ({ isDark }: { isDark: boolean }): FunctionComponent => {
+	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
 	const ownedIdentities = useOwnedIdentities(agentId);
 	const sellerIdentity = firstActiveIdentity(ownedIdentities.data?.identities);
@@ -20,7 +23,7 @@ export const Post = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 		return (
 			<div className={`${cardClass(isDark)} p-6 text-center`}>
 				<p className={`text-sm ${mutedClass(isDark)}`}>
-					Connect your wallet to hire for work or list a product.
+					{t("marketplace.post.connectPrompt")}
 				</p>
 			</div>
 		);

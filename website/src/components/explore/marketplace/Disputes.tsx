@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { Escrow, EscrowEvidenceType } from "@tinyhumansai/tinyplace";
 
@@ -49,6 +50,7 @@ function DisputeCard({
 	escrow: Escrow;
 	isDark: boolean;
 }): React.ReactElement {
+	const { t } = useTranslation();
 	const escrowId = escrow.escrowId;
 	const disputeQuery = useEscrowDispute(escrowId);
 	const submitEvidence = useSubmitEscrowEvidence();
@@ -112,13 +114,13 @@ function DisputeCard({
 						className={`grid grid-cols-3 gap-2 text-[10px] ${mutedClass(isDark)}`}
 					>
 						<div>
-							<p>Tier</p>
+							<p>{t("marketplace.disputes.tier")}</p>
 							<p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
 								{dispute.tier}
 							</p>
 						</div>
 						<div>
-							<p>Opened by</p>
+							<p>{t("marketplace.disputes.openedBy")}</p>
 							<p
 								className={`truncate ${isDark ? "text-neutral-300" : "text-neutral-700"}`}
 							>
@@ -126,7 +128,7 @@ function DisputeCard({
 							</p>
 						</div>
 						<div>
-							<p>Opened</p>
+							<p>{t("marketplace.disputes.opened")}</p>
 							<p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
 								{formatDate(dispute.openedAt)}
 							</p>
@@ -139,7 +141,9 @@ function DisputeCard({
 
 					{dispute.evidence && dispute.evidence.length > 0 && (
 						<p className={`text-[10px] ${mutedClass(isDark)}`}>
-							{dispute.evidence.length} piece(s) of evidence submitted
+							{t("marketplace.disputes.evidenceCount", {
+								count: dispute.evidence.length,
+							})}
 						</p>
 					)}
 
@@ -151,7 +155,9 @@ function DisputeCard({
 									: "border-neutral-200 bg-white"
 							}`}
 						>
-							<p className={strongClass(isDark)}>Mediation proposal</p>
+							<p className={strongClass(isDark)}>
+								{t("marketplace.disputes.mediationProposal")}
+							</p>
 							<p className={mutedClass(isDark)}>
 								{dispute.proposal.resolution}
 							</p>
@@ -171,10 +177,14 @@ function DisputeCard({
 									: "border-neutral-200 bg-white"
 							}`}
 						>
-							<p className={strongClass(isDark)}>Arbitration outcome</p>
+							<p className={strongClass(isDark)}>
+								{t("marketplace.disputes.arbitrationOutcome")}
+							</p>
 							<p className={mutedClass(isDark)}>
-								{dispute.arbitrationOutcome.resolution} (round{" "}
-								{dispute.arbitrationOutcome.round})
+								{t("marketplace.disputes.arbitrationResolution", {
+									resolution: dispute.arbitrationOutcome.resolution,
+									round: dispute.arbitrationOutcome.round,
+								})}
 							</p>
 						</div>
 					)}
@@ -188,7 +198,7 @@ function DisputeCard({
 								setEvidenceOpen((open) => !open);
 							}}
 						>
-							Submit evidence
+							{t("marketplace.disputes.submitEvidence")}
 						</button>
 						{dispute.proposal && dispute.status === "proposed" && (
 							<>
@@ -200,7 +210,7 @@ function DisputeCard({
 										acceptMediation.mutate({ actor, escrowId });
 									}}
 								>
-									Accept mediation
+									{t("marketplace.disputes.acceptMediation")}
 								</button>
 								<button
 									className={secondary}
@@ -210,7 +220,7 @@ function DisputeCard({
 										rejectMediation.mutate({ actor, escrowId });
 									}}
 								>
-									Reject mediation
+									{t("marketplace.disputes.rejectMediation")}
 								</button>
 							</>
 						)}
@@ -219,7 +229,9 @@ function DisputeCard({
 					{evidenceOpen && (
 						<div className="space-y-2 pt-1">
 							<div>
-								<label className={labelClass(isDark)}>Type</label>
+								<label className={labelClass(isDark)}>
+									{t("marketplace.disputes.evidenceType")}
+								</label>
 								<select
 									className={selectClass(isDark)}
 									value={evidenceType}
@@ -230,7 +242,9 @@ function DisputeCard({
 									{EVIDENCE_TYPES.map(
 										(option): React.ReactElement => (
 											<option key={option} value={option}>
-												{option.replace(/_/g, " ")}
+												{t(`marketplace.disputes.evidenceTypes.${option}`, {
+													defaultValue: option.replace(/_/g, " "),
+												})}
 											</option>
 										)
 									)}
@@ -238,7 +252,7 @@ function DisputeCard({
 							</div>
 							<textarea
 								className={`${inputClass(isDark)} min-h-[56px] resize-none`}
-								placeholder="Describe your evidence..."
+								placeholder={t("marketplace.disputes.evidenceTextPlaceholder")}
 								rows={2}
 								value={evidenceText}
 								onChange={(event): void => {
@@ -247,7 +261,7 @@ function DisputeCard({
 							/>
 							<input
 								className={inputClass(isDark)}
-								placeholder="Reference (tx hash, link, message id) — optional"
+								placeholder={t("marketplace.disputes.evidenceRefPlaceholder")}
 								type="text"
 								value={evidenceRef}
 								onChange={(event): void => {
@@ -260,7 +274,7 @@ function DisputeCard({
 								type="button"
 								onClick={handleEvidence}
 							>
-								Submit
+								{t("common.submit")}
 							</button>
 						</div>
 					)}
@@ -268,14 +282,14 @@ function DisputeCard({
 			) : (
 				<p className={`mt-2 text-xs ${mutedClass(isDark)}`}>
 					{disputeQuery.isLoading
-						? "Loading dispute..."
-						: "Dispute details unavailable."}
+						? t("marketplace.disputes.loadingDispute")
+						: t("marketplace.disputes.unavailable")}
 				</p>
 			)}
 
 			{actionError && (
 				<p className="mt-2 text-xs text-red-500">
-					{errorMessage(actionError, "Action failed")}
+					{errorMessage(actionError, t("marketplace.disputes.actionFailed"))}
 				</p>
 			)}
 		</div>
@@ -287,6 +301,7 @@ export const Disputes = ({
 }: {
 	isDark: boolean;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
 	const ownedIdentities = useOwnedIdentities(agentId);
 	const sellerIdentity = firstActiveIdentity(ownedIdentities.data?.identities);
@@ -297,7 +312,7 @@ export const Disputes = ({
 		return (
 			<div className={`${cardClass(isDark)} p-6 text-center`}>
 				<p className={`text-sm ${mutedClass(isDark)}`}>
-					Connect your wallet to view disputes.
+					{t("marketplace.disputes.connectPrompt")}
 				</p>
 			</div>
 		);
@@ -307,15 +322,23 @@ export const Disputes = ({
 
 	if (isLoading) {
 		return (
-			<p className={`text-xs ${mutedClass(isDark)}`}>Loading disputes...</p>
+			<p className={`text-xs ${mutedClass(isDark)}`}>
+				{t("marketplace.disputes.loading")}
+			</p>
 		);
 	}
 	if (isError) {
-		return <p className="text-xs text-red-500">Failed to load disputes.</p>;
+		return (
+			<p className="text-xs text-red-500">
+				{t("marketplace.disputes.loadError")}
+			</p>
+		);
 	}
 	if (disputed.length === 0) {
 		return (
-			<p className={`text-xs ${mutedClass(isDark)}`}>No active disputes.</p>
+			<p className={`text-xs ${mutedClass(isDark)}`}>
+				{t("marketplace.disputes.empty")}
+			</p>
 		);
 	}
 

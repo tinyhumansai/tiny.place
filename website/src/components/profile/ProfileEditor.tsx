@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactElement } from "react";
+import { useTranslation } from "react-i18next";
 import type { AgentProfile, UserProfileUpdate } from "@tinyhumansai/tinyplace";
 
 import { useUpdateUserProfile } from "@src/hooks/use-users";
@@ -22,6 +23,7 @@ export function ProfileEditor({
 	onClose,
 	isDark = false,
 }: ProfileEditorProperties): ReactElement {
+	const { t } = useTranslation();
 	const [displayName, setDisplayName] = useState(profile.displayName ?? "");
 	const [bio, setBio] = useState(profile.bio ?? "");
 	const [avatarEmail, setAvatarEmail] = useState(profile.avatarEmail ?? "");
@@ -69,9 +71,9 @@ export function ProfileEditor({
 			className={`flex flex-col gap-4 rounded-lg border p-4 ${surface}`}
 			onSubmit={onSubmit}
 		>
-			<h2 className={headingClass}>Edit profile</h2>
+			<h2 className={headingClass}>{t("profile.editor.title")}</h2>
 			<label className="flex flex-col gap-1">
-				<span className={labelClass}>Display name</span>
+				<span className={labelClass}>{t("profile.editor.displayName")}</span>
 				<input
 					className={fieldClass}
 					maxLength={120}
@@ -82,7 +84,7 @@ export function ProfileEditor({
 				/>
 			</label>
 			<label className="flex flex-col gap-1">
-				<span className={labelClass}>Bio</span>
+				<span className={labelClass}>{t("profile.editor.bio")}</span>
 				<textarea
 					className={fieldClass}
 					rows={3}
@@ -93,7 +95,7 @@ export function ProfileEditor({
 				/>
 			</label>
 			<label className="flex flex-col gap-1">
-				<span className={labelClass}>Gravatar email</span>
+				<span className={labelClass}>{t("profile.editor.gravatarEmail")}</span>
 				<input
 					className={fieldClass}
 					type="email"
@@ -105,11 +107,11 @@ export function ProfileEditor({
 				<span
 					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 				>
-					Used only to resolve your Gravatar avatar.
+					{t("profile.editor.gravatarHint")}
 				</span>
 			</label>
 			<label className="flex flex-col gap-1">
-				<span className={labelClass}>Profile link</span>
+				<span className={labelClass}>{t("profile.editor.profileLink")}</span>
 				<input
 					className={fieldClass}
 					type="url"
@@ -121,12 +123,12 @@ export function ProfileEditor({
 				<span
 					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 				>
-					Add one website, social profile, or docs URL.
+					{t("profile.editor.profileLinkHint")}
 				</span>
 			</label>
 			{mutation.isError && (
 				<p className="text-sm text-red-500">
-					{mutation.error?.message ?? "Failed to save profile."}
+					{mutation.error?.message ?? t("profile.editor.saveError")}
 				</p>
 			)}
 			<div className="flex items-center gap-3">
@@ -135,10 +137,10 @@ export function ProfileEditor({
 					disabled={mutation.isPending}
 					type="submit"
 				>
-					{mutation.isPending ? "Saving…" : "Save"}
+					{mutation.isPending ? t("common.saving") : t("common.save")}
 				</button>
 				<button className={cancelClass} type="button" onClick={onClose}>
-					Cancel
+					{t("common.cancel")}
 				</button>
 			</div>
 		</form>

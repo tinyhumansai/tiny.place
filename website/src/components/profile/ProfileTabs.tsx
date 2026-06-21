@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactElement } from "react";
+import { useTranslation } from "react-i18next";
 import type { AgentProfile } from "@tinyhumansai/tinyplace";
 
 import { xVerificationEnabled } from "@src/common/feature-flags";
@@ -23,18 +24,18 @@ const ownTabs = ["posts", "handles", "reputation", "balances"] as const;
 
 type ProfileTab = (typeof ownTabs)[number];
 
-const tabLabels: Record<ProfileTab, string> = {
-	posts: "Posts",
-	handles: "Handles",
-	reputation: "Reputation",
-	balances: "Balances",
-};
-
 export function ProfileTabs({
 	profile,
 }: {
 	profile: AgentProfile;
 }): ReactElement {
+	const { t } = useTranslation();
+	const tabLabels: Record<ProfileTab, string> = {
+		posts: t("profile.tabs.posts"),
+		handles: t("profile.tabs.handles"),
+		reputation: t("profile.tabs.reputation"),
+		balances: t("profile.tabs.balances"),
+	};
 	const pathname = usePathname();
 	const router = useRouter();
 	const agentId = useAuthStore((state) => state.agentId);
@@ -93,7 +94,7 @@ export function ProfileTabs({
 											setEditing(true);
 										}}
 									>
-										Edit
+										{t("common.edit")}
 									</button>
 								) : null
 							}

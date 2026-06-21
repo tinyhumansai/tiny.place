@@ -16,6 +16,7 @@
 		"test:e2e": "playwright test",
 		"test:e2e:report": "playwright show-report",
 		"sync:skill": "node scripts/sync-skill.mjs",
+		"i18n:check": "node scripts/i18n-coverage.mjs",
 		"build": "node scripts/sync-skill.mjs && next build",
 		"start": "next start"
 	},

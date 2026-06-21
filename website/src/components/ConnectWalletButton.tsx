@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useTinyplaceWallet } from "@src/common/tinyplace-wallet";
 import { useAppStore } from "@src/store/app";
@@ -19,6 +20,7 @@ function truncateAddress(address: string): string {
  * opens a small account menu where the viewer can open their profile or log out.
  */
 export const ConnectWalletButton = (): FunctionComponent => {
+	const { t } = useTranslation();
 	const wallet = useTinyplaceWallet();
 	const isDark = useAppStore((state) => state.theme === "dark");
 	const router = useRouter();
@@ -26,10 +28,10 @@ export const ConnectWalletButton = (): FunctionComponent => {
 
 	const address = wallet.publicKey?.toBase58();
 	const label = wallet.connecting
-		? "Connecting…"
+		? t("common.connecting")
 		: wallet.connected && address
 			? truncateAddress(address)
-			: "Connect";
+			: t("wallet.connect");
 
 	const onClick = (): void => {
 		if (wallet.connected) {
@@ -88,20 +90,20 @@ export const ConnectWalletButton = (): FunctionComponent => {
 							event.stopPropagation();
 						}}
 					>
-						<h3 className="text-sm font-semibold">Account</h3>
+						<h3 className="text-sm font-semibold">{t("wallet.account")}</h3>
 						{address && (
 							<p className={`mt-1 truncate text-xs ${mutedClass}`}>{address}</p>
 						)}
 						<div className="mt-4 flex flex-col gap-1">
 							<button className={itemClass} type="button" onClick={openProfile}>
-								Open profile
+								{t("wallet.openProfile")}
 							</button>
 							<button
 								className={`${itemClass} text-rose-500`}
 								type="button"
 								onClick={logout}
 							>
-								Log out
+								{t("wallet.logout")}
 							</button>
 						</div>
 					</div>

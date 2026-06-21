@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { DeliveryMethod, ProductCategory } from "@tinyhumansai/tinyplace";
 
@@ -44,6 +45,7 @@ export const CreateProductForm = ({
 	isIdentityLoading: boolean;
 	sellerHandle: string | undefined;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const createProduct = useCreateProduct();
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
@@ -114,25 +116,27 @@ export const CreateProductForm = ({
 			<h3
 				className={`mb-3 text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 			>
-				List a Product
+				{t("marketplace.createProduct.title")}
 			</h3>
 			<p
 				className={`mb-3 text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 			>
 				{isIdentityLoading
-					? "Checking registered handles..."
+					? t("marketplace.createProduct.checkingHandles")
 					: sellerHandle
-						? `Selling as ${sellerHandle}`
-						: "Connect your wallet to list products."}
+						? t("marketplace.createProduct.sellingAs", { handle: sellerHandle })
+						: t("marketplace.createProduct.connectPrompt")}
 			</p>
 
 			<div className="grid grid-cols-2 gap-3">
 				<div className="col-span-2">
-					<label className={labelClass(isDark)}>Name</label>
+					<label className={labelClass(isDark)}>
+						{t("marketplace.createProduct.name")}
+					</label>
 					<input
 						required
 						className={inputClass(isDark)}
-						placeholder="My awesome dataset"
+						placeholder={t("marketplace.createProduct.namePlaceholder")}
 						type="text"
 						value={name}
 						onChange={(event): void => {
@@ -142,11 +146,13 @@ export const CreateProductForm = ({
 				</div>
 
 				<div className="col-span-2">
-					<label className={labelClass(isDark)}>Description</label>
+					<label className={labelClass(isDark)}>
+						{t("marketplace.createProduct.description")}
+					</label>
 					<textarea
 						required
 						className={`${inputClass(isDark)} min-h-[60px] resize-none`}
-						placeholder="Describe your product..."
+						placeholder={t("marketplace.createProduct.descriptionPlaceholder")}
 						rows={2}
 						value={description}
 						onChange={(event): void => {
@@ -156,7 +162,9 @@ export const CreateProductForm = ({
 				</div>
 
 				<div>
-					<label className={labelClass(isDark)}>Category</label>
+					<label className={labelClass(isDark)}>
+						{t("marketplace.createProduct.category")}
+					</label>
 					<select
 						className={selectClass(isDark)}
 						value={category}
@@ -175,7 +183,9 @@ export const CreateProductForm = ({
 				</div>
 
 				<div>
-					<label className={labelClass(isDark)}>Price (USDC)</label>
+					<label className={labelClass(isDark)}>
+						{t("marketplace.createProduct.price")}
+					</label>
 					<input
 						required
 						className={inputClass(isDark)}
@@ -191,7 +201,9 @@ export const CreateProductForm = ({
 				</div>
 
 				<div>
-					<label className={labelClass(isDark)}>Delivery</label>
+					<label className={labelClass(isDark)}>
+						{t("marketplace.createProduct.delivery")}
+					</label>
 					<select
 						className={selectClass(isDark)}
 						value={deliveryMethod}
@@ -210,10 +222,12 @@ export const CreateProductForm = ({
 				</div>
 
 				<div>
-					<label className={labelClass(isDark)}>Tags (comma-separated)</label>
+					<label className={labelClass(isDark)}>
+						{t("marketplace.createProduct.tags")}
+					</label>
 					<input
 						className={inputClass(isDark)}
-						placeholder="ai, data, nlp"
+						placeholder={t("marketplace.createProduct.tagsPlaceholder")}
 						type="text"
 						value={tagsInput}
 						onChange={(event): void => {
@@ -224,13 +238,17 @@ export const CreateProductForm = ({
 
 				{deliveryMethod === "download" && (
 					<div className="col-span-2">
-						<label className={labelClass(isDark)}>Download content</label>
+						<label className={labelClass(isDark)}>
+							{t("marketplace.createProduct.downloadContent")}
+						</label>
 						<textarea
 							required
 							className={`${inputClass(isDark)} min-h-[72px] resize-none`}
-							placeholder="Paste the file content buyers receive after payment"
 							rows={3}
 							value={downloadContent}
+							placeholder={t(
+								"marketplace.createProduct.downloadContentPlaceholder"
+							)}
 							onChange={(event): void => {
 								setDownloadContent(event.target.value);
 							}}
@@ -243,12 +261,14 @@ export const CreateProductForm = ({
 				<p className="mt-2 text-xs text-red-500">
 					{createProduct.error instanceof Error
 						? createProduct.error.message
-						: "Failed to create product"}
+						: t("marketplace.createProduct.error")}
 				</p>
 			)}
 
 			{createProduct.isSuccess && (
-				<p className="mt-2 text-xs text-green-500">Product listed!</p>
+				<p className="mt-2 text-xs text-green-500">
+					{t("marketplace.createProduct.success")}
+				</p>
 			)}
 
 			<button
@@ -263,7 +283,9 @@ export const CreateProductForm = ({
 					(deliveryMethod === "download" && !downloadContent)
 				}
 			>
-				{createProduct.isPending ? "Listing..." : "List Product"}
+				{createProduct.isPending
+					? t("marketplace.createProduct.listing")
+					: t("marketplace.createProduct.submit")}
 			</button>
 		</form>
 	);

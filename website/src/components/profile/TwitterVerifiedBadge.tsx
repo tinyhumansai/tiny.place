@@ -2,6 +2,7 @@
 
 import { CheckBadgeIcon } from "@heroicons/react/24/solid";
 import type { ReactElement } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useAttestations } from "@src/hooks/use-reputation";
 
@@ -29,6 +30,7 @@ type TwitterVerifiedBadgeProperties =
 export function TwitterVerifiedBadge(
 	props: TwitterVerifiedBadgeProperties
 ): ReactElement | null {
+	const { t } = useTranslation();
 	// Hook is called unconditionally (rules of hooks); it is disabled when an
 	// embedded `verified` flag is supplied, so it issues no request in that case.
 	const attestations = useAttestations(props.agentId ?? "", {
@@ -46,7 +48,7 @@ export function TwitterVerifiedBadge(
 	}
 	return (
 		<CheckBadgeIcon
-			aria-label="Verified on Twitter/X"
+			aria-label={t("profile.twitter.verifiedBadge")}
 			className={props.className ?? "inline h-3.5 w-3.5 text-sky-500"}
 		/>
 	);

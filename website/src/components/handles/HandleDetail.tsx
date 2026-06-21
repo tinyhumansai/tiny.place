@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, type ReactElement } from "react";
+import { useTranslation } from "react-i18next";
 
 import type {
 	IdentityListing,
@@ -100,6 +101,7 @@ function ListingPanel({
 	isOwnHandle: boolean;
 	listing: IdentityListing | undefined;
 }): ReactElement {
+	const { t } = useTranslation();
 	const [bidAmount, setBidAmount] = useState("");
 	const buyListing = useBuyIdentityListing();
 	const placeBid = usePlaceIdentityBid();
@@ -112,13 +114,15 @@ function ListingPanel({
 			<section className={panelClass(isDark)}>
 				<div className="flex items-center justify-between gap-3">
 					<div>
-						<h2 className={`text-sm font-medium ${headingClass}`}>Listing</h2>
+						<h2 className={`text-sm font-medium ${headingClass}`}>
+							{t("handles.listing")}
+						</h2>
 						<p className={`mt-1 text-xs ${mutedClass}`}>
-							This handle is not currently listed for sale.
+							{t("handles.notListed")}
 						</p>
 					</div>
 					<Link className={buttonClass(isDark)} href="/identities">
-						Browse handles
+						{t("handles.browseHandles")}
 					</Link>
 				</div>
 			</section>
@@ -133,9 +137,11 @@ function ListingPanel({
 		<section className={panelClass(isDark)}>
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div>
-					<h2 className={`text-sm font-medium ${headingClass}`}>Listing</h2>
+					<h2 className={`text-sm font-medium ${headingClass}`}>
+						{t("handles.listing")}
+					</h2>
 					<p className={`mt-1 text-xs ${mutedClass}`}>
-						{listing.listingType} · {listing.status} · seller{" "}
+						{listing.listingType} · {listing.status} · {t("handles.seller")}{" "}
 						<ProfileEntityLink
 							className="hover:underline"
 							value={listing.seller}
@@ -149,7 +155,9 @@ function ListingPanel({
 						{formatPrice(listing.highestBid?.price ?? listing.price)}
 					</p>
 					<p className={`mt-1 text-xs ${mutedClass}`}>
-						{isAuction && listing.highestBid ? "highest bid" : "price"}
+						{isAuction && listing.highestBid
+							? t("handles.highestBid")
+							: t("handles.price")}
 					</p>
 				</div>
 			</div>
@@ -179,15 +187,19 @@ function ListingPanel({
 							});
 						}}
 					>
-						{buyListing.isPending ? "Buying..." : `Buy ${handle}`}
+						{buyListing.isPending
+							? t("handles.buying")
+							: t("handles.buy", { handle })}
 					</button>
 				)}
 				{isAuction && (
 					<div className="flex min-w-64 flex-1 gap-2">
 						<input
 							className={inputClass(isDark)}
-							placeholder={`Bid amount (${listing.price.asset})`}
 							value={bidAmount}
+							placeholder={t("handles.bidAmount", {
+								asset: listing.price.asset,
+							})}
 							onChange={(event): void => {
 								setBidAmount(event.target.value);
 							}}
@@ -213,7 +225,7 @@ function ListingPanel({
 								});
 							}}
 						>
-							{placeBid.isPending ? "Bidding..." : "Bid"}
+							{placeBid.isPending ? t("handles.bidding") : t("handles.bid")}
 						</button>
 					</div>
 				)}
@@ -231,11 +243,15 @@ function ListingPanel({
 						isDark ? "border-neutral-800" : "border-neutral-200"
 					}`}
 				>
-					<p className={`mb-2 text-xs font-medium ${mutedClass}`}>Bids</p>
+					<p className={`mb-2 text-xs font-medium ${mutedClass}`}>
+						{t("handles.bids")}
+					</p>
 					{bids.isLoading ? (
-						<p className={`text-xs ${mutedClass}`}>Loading bids...</p>
+						<p className={`text-xs ${mutedClass}`}>
+							{t("handles.loadingBids")}
+						</p>
 					) : (bids.data?.bids ?? []).length === 0 ? (
-						<p className={`text-xs ${mutedClass}`}>No bids yet.</p>
+						<p className={`text-xs ${mutedClass}`}>{t("handles.noBids")}</p>
 					) : (
 						<ul className="space-y-2">
 							{(bids.data?.bids ?? []).map((bid) => (
@@ -263,6 +279,7 @@ function ListingPanel({
 }
 
 export function HandleDetail({ handle }: { handle: string }): ReactElement {
+	const { t } = useTranslation();
 	const isDark = useAppStore((state) => state.theme === "dark");
 	const agentId = useAuthStore((state) => state.agentId);
 	const normalized = normalizeHandle(handle);
@@ -297,44 +314,46 @@ export function HandleDetail({ handle }: { handle: string }): ReactElement {
 							<span
 								className={`rounded-md px-2 py-1 text-xs ${statusClass(isDark)}`}
 							>
-								{isAvailable ? "available" : (identity?.status ?? "unknown")}
+								{isAvailable
+									? t("handles.available")
+									: (identity?.status ?? t("handles.unknown"))}
 							</span>
 							{identity?.primary && (
 								<span className="rounded-md bg-blue-500/10 px-2 py-1 text-xs font-medium text-blue-500">
-									primary
+									{t("handles.primary")}
 								</span>
 							)}
 						</div>
 						<p className={`mt-2 text-sm ${bodyClass}`}>
-							Handle ownership, active market listing, offers, and sale history.
+							{t("handles.detailSubtitle")}
 						</p>
 					</div>
 					<Link className={buttonClass(isDark)} href="/identities">
-						Find handles
+						{t("handles.findHandles")}
 					</Link>
 				</div>
 
 				<div className="mt-4 grid gap-3 sm:grid-cols-3">
 					<div>
-						<p className={`text-xs ${mutedClass}`}>Owner</p>
+						<p className={`text-xs ${mutedClass}`}>{t("handles.owner")}</p>
 						<p className={`mt-1 truncate text-sm font-medium ${headingClass}`}>
 							{owner ? (
 								<ProfileEntityLink className="hover:underline" value={owner}>
 									{owner}
 								</ProfileEntityLink>
 							) : (
-								"Unowned"
+								t("handles.unowned")
 							)}
 						</p>
 					</div>
 					<div>
-						<p className={`text-xs ${mutedClass}`}>Registered</p>
+						<p className={`text-xs ${mutedClass}`}>{t("handles.registered")}</p>
 						<p className={`mt-1 text-sm ${headingClass}`}>
 							{formatDate(identity?.registeredAt)}
 						</p>
 					</div>
 					<div>
-						<p className={`text-xs ${mutedClass}`}>Expires</p>
+						<p className={`text-xs ${mutedClass}`}>{t("handles.expires")}</p>
 						<p className={`mt-1 text-sm ${headingClass}`}>
 							{formatDate(identity?.expiresAt)}
 						</p>
@@ -355,11 +374,10 @@ export function HandleDetail({ handle }: { handle: string }): ReactElement {
 				<div className="flex flex-wrap items-start justify-between gap-3">
 					<div>
 						<h2 className={`text-sm font-medium ${headingClass}`}>
-							Make an offer
+							{t("handles.makeOffer")}
 						</h2>
 						<p className={`mt-1 text-xs ${mutedClass}`}>
-							Send an offer to the current owner. You need an active handle to
-							offer as a buyer.
+							{t("handles.makeOfferDescription")}
 						</p>
 					</div>
 					{buyerIdentity && (
@@ -373,7 +391,7 @@ export function HandleDetail({ handle }: { handle: string }): ReactElement {
 				<div className="mt-3 flex gap-2">
 					<input
 						className={inputClass(isDark)}
-						placeholder="Offer amount (USDC)"
+						placeholder={t("handles.offerAmount")}
 						value={offerAmount}
 						onChange={(event): void => {
 							setOfferAmount(event.target.value);
@@ -406,7 +424,7 @@ export function HandleDetail({ handle }: { handle: string }): ReactElement {
 							});
 						}}
 					>
-						{createOffer.isPending ? "Offering..." : "Offer"}
+						{createOffer.isPending ? t("handles.offering") : t("handles.offer")}
 					</button>
 				</div>
 				{createOffer.isError && (
@@ -417,11 +435,17 @@ export function HandleDetail({ handle }: { handle: string }): ReactElement {
 			</section>
 
 			<section className={panelClass(isDark)}>
-				<h2 className={`text-sm font-medium ${headingClass}`}>Open offers</h2>
+				<h2 className={`text-sm font-medium ${headingClass}`}>
+					{t("handles.openOffers")}
+				</h2>
 				{offers.isLoading ? (
-					<p className={`mt-3 text-xs ${mutedClass}`}>Loading offers...</p>
+					<p className={`mt-3 text-xs ${mutedClass}`}>
+						{t("handles.loadingOffers")}
+					</p>
 				) : (offers.data?.offers ?? []).length === 0 ? (
-					<p className={`mt-3 text-xs ${mutedClass}`}>No open offers.</p>
+					<p className={`mt-3 text-xs ${mutedClass}`}>
+						{t("handles.noOffers")}
+					</p>
 				) : (
 					<ul className="mt-3 space-y-2">
 						{(offers.data?.offers ?? []).map((offer) => (
@@ -446,14 +470,14 @@ export function HandleDetail({ handle }: { handle: string }): ReactElement {
 
 			<section className={panelClass(isDark)}>
 				<h2 className={`text-sm font-medium ${headingClass}`}>
-					Trading history
+					{t("handles.tradingHistory")}
 				</h2>
 				{history.isLoading ? (
-					<p className={`mt-3 text-xs ${mutedClass}`}>Loading history...</p>
-				) : (history.data?.history ?? []).length === 0 ? (
 					<p className={`mt-3 text-xs ${mutedClass}`}>
-						No completed sales yet.
+						{t("handles.loadingHistory")}
 					</p>
+				) : (history.data?.history ?? []).length === 0 ? (
+					<p className={`mt-3 text-xs ${mutedClass}`}>{t("handles.noSales")}</p>
 				) : (
 					<div
 						className={`mt-3 overflow-hidden rounded-lg border ${
@@ -466,17 +490,17 @@ export function HandleDetail({ handle }: { handle: string }): ReactElement {
 									<th
 										className={`px-3 py-2 text-left font-medium ${mutedClass}`}
 									>
-										Price
+										{t("handles.price")}
 									</th>
 									<th
 										className={`px-3 py-2 text-left font-medium ${mutedClass}`}
 									>
-										Buyer
+										{t("handles.buyer")}
 									</th>
 									<th
 										className={`px-3 py-2 text-right font-medium ${mutedClass}`}
 									>
-										Date
+										{t("handles.date")}
 									</th>
 								</tr>
 							</thead>

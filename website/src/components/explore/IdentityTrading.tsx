@@ -1,5 +1,8 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
+
 import type { MarketplacePrice } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
@@ -22,15 +25,15 @@ function formatPrice(price: MarketplacePrice): string {
 	return `${price.amount} ${price.asset}`;
 }
 
-function floorLabel(length: number): string {
-	if (length >= 5) return "5+ chars";
-	return `${String(length)} char${length === 1 ? "" : "s"}`;
+function floorLabel(length: number, t: TFunction): string {
+	if (length >= 5) return t("identityTrading.floorLabel5Plus");
+	return t("identityTrading.floorLabelChars", { count: length });
 }
 
-function floorDescription(length: number): string {
-	if (length === 3) return "Short handles";
-	if (length === 4) return "Compact handles";
-	return "Long-form identities";
+function floorDescription(length: number, t: TFunction): string {
+	if (length === 3) return t("identityTrading.floorDescShort");
+	if (length === 4) return t("identityTrading.floorDescCompact");
+	return t("identityTrading.floorDescLong");
 }
 
 const floorLengths = [3, 4, 5] as const;
@@ -41,6 +44,7 @@ type FloorCardProperties = {
 };
 
 function FloorCard({ isDark, length }: FloorCardProperties): FunctionComponent {
+	const { t } = useTranslation();
 	const floorQuery = useIdentityFloor(length);
 	const secondaryClass = isDark ? "text-neutral-500" : "text-neutral-400";
 	const headingClass = isDark ? "text-white" : "text-black";
@@ -51,16 +55,18 @@ function FloorCard({ isDark, length }: FloorCardProperties): FunctionComponent {
 
 	return (
 		<div className={`rounded-lg border p-3 ${cardClass}`}>
-			<div className={`text-xs ${secondaryClass}`}>{floorLabel(length)}</div>
+			<div className={`text-xs ${secondaryClass}`}>{floorLabel(length, t)}</div>
 			<div className={`mt-1 text-sm font-semibold ${headingClass}`}>
 				{floorQuery.isLoading
-					? "Loading..."
+					? t("common.loading")
 					: price
 						? formatPrice(price)
-						: "No floor"}
+						: t("identityTrading.noFloor")}
 			</div>
 			<div className={`mt-1 text-xs ${secondaryClass}`}>
-				{floorQuery.isError ? "Unavailable" : floorDescription(length)}
+				{floorQuery.isError
+					? t("identityTrading.unavailable")
+					: floorDescription(length, t)}
 			</div>
 		</div>
 	);
@@ -73,6 +79,7 @@ type IdentityTradingProperties = {
 export const IdentityTrading = ({
 	isDark,
 }: IdentityTradingProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
 
 	const listingsQuery = useIdentityListings();
@@ -111,7 +118,7 @@ export const IdentityTrading = ({
 				<h3
 					className={`mb-2 text-xs font-semibold uppercase tracking-wider ${secondaryClass}`}
 				>
-					Floor Prices
+					{t("identityTrading.floorPrices")}
 				</h3>
 				<div className="grid grid-cols-3 gap-2">
 					{floorLengths.map((length) => (
@@ -124,19 +131,23 @@ export const IdentityTrading = ({
 				<h3
 					className={`mb-2 text-xs font-semibold uppercase tracking-wider ${secondaryClass}`}
 				>
-					Listed for Sale
+					{t("identityTrading.listedForSale")}
 				</h3>
 				{listingsQuery.isLoading && (
-					<p className={`text-xs ${secondaryClass}`}>Loading listings…</p>
+					<p className={`text-xs ${secondaryClass}`}>
+						{t("identityTrading.loadingListings")}
+					</p>
 				)}
 				{listingsQuery.isError && (
-					<p className="text-xs text-rose-500">Failed to load listings</p>
+					<p className="text-xs text-rose-500">
+						{t("identityTrading.listingsError")}
+					</p>
 				)}
 				{!listingsQuery.isLoading &&
 					!listingsQuery.isError &&
 					listings.length === 0 && (
 						<p className={`text-xs ${secondaryClass}`}>
-							No identities listed for sale
+							{t("identityTrading.noListings")}
 						</p>
 					)}
 				<div className="grid grid-cols-2 gap-2">
@@ -156,19 +167,25 @@ export const IdentityTrading = ({
 				<h3
 					className={`mb-2 text-xs font-semibold uppercase tracking-wider ${secondaryClass}`}
 				>
-					Recent Sales
+					{t("identityTrading.recentSales")}
 				</h3>
 				<div className={`overflow-hidden rounded-lg border ${cardClass}`}>
 					{salesQuery.isLoading && (
-						<p className={`p-3 text-xs ${secondaryClass}`}>Loading sales…</p>
+						<p className={`p-3 text-xs ${secondaryClass}`}>
+							{t("identityTrading.loadingSales")}
+						</p>
 					)}
 					{salesQuery.isError && (
-						<p className="p-3 text-xs text-rose-500">Failed to load sales</p>
+						<p className="p-3 text-xs text-rose-500">
+							{t("identityTrading.salesError")}
+						</p>
 					)}
 					{!salesQuery.isLoading &&
 						!salesQuery.isError &&
 						sales.length === 0 && (
-							<p className={`p-3 text-xs ${secondaryClass}`}>No recent sales</p>
+							<p className={`p-3 text-xs ${secondaryClass}`}>
+								{t("identityTrading.noSales")}
+							</p>
 						)}
 					{sales.length > 0 && (
 						<table className="w-full text-left text-xs">
@@ -177,18 +194,18 @@ export const IdentityTrading = ({
 									className={`border-b ${isDark ? "border-neutral-800" : "border-neutral-200"}`}
 								>
 									<th className={`px-3 py-2 font-medium ${headerClass}`}>
-										Handle
+										{t("identityTrading.colHandle")}
 									</th>
 									<th className={`px-3 py-2 font-medium ${headerClass}`}>
-										Price
+										{t("identityTrading.colPrice")}
 									</th>
 									<th className={`px-3 py-2 font-medium ${headerClass}`}>
-										Buyer
+										{t("identityTrading.colBuyer")}
 									</th>
 									<th
 										className={`px-3 py-2 text-right font-medium ${headerClass}`}
 									>
-										Date
+										{t("identityTrading.colDate")}
 									</th>
 								</tr>
 							</thead>

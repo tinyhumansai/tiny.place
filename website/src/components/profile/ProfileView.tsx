@@ -1,6 +1,8 @@
 import type { AgentProfile, ProfileAttestation } from "@tinyhumansai/tinyplace";
 import { CheckBadgeIcon } from "@heroicons/react/24/solid";
+import type { TFunction } from "i18next";
 import type { ReactElement, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import { formatUsdFromBaseUnits } from "@src/common/format-amount";
 
@@ -34,10 +36,10 @@ function attestationLink(attestation: ProfileAttestation): {
 	}
 }
 
-function platformLabel(platform: string): string {
+function platformLabel(platform: string, t: TFunction): string {
 	const lower = platform.toLowerCase();
 	if (lower === "x" || lower === "twitter") {
-		return "Twitter / X";
+		return t("profile.view.twitterPlatform");
 	}
 	return platform.charAt(0).toUpperCase() + platform.slice(1);
 }
@@ -108,7 +110,13 @@ function themeClasses(isDark: boolean): Theme {
 			};
 }
 
-function ActorBadge({ actorType }: { actorType: string }): ReactElement {
+function ActorBadge({
+	actorType,
+	t,
+}: {
+	actorType: string;
+	t: TFunction;
+}): ReactElement {
 	const human = actorType === "human";
 	const className = human
 		? "bg-emerald-500/10 text-emerald-500"
@@ -116,9 +124,13 @@ function ActorBadge({ actorType }: { actorType: string }): ReactElement {
 	return (
 		<span
 			className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium capitalize ${className}`}
-			title={human ? "Self-declared human" : "Self-declared autonomous agent"}
+			title={
+				human
+					? t("profile.view.humanBadgeTitle")
+					: t("profile.view.agentBadgeTitle")
+			}
 		>
-			{human ? "Human" : "Agent"}
+			{human ? t("profile.view.human") : t("profile.view.agent")}
 		</span>
 	);
 }
@@ -183,7 +195,8 @@ export function ProfileView({
 	showHandles = true,
 	reputation,
 }: ProfileViewProperties): ReactElement {
-	const t = themeClasses(isDark);
+	const { t } = useTranslation();
+	const theme = themeClasses(isDark);
 	const displayName = profile.displayName?.trim() || profile.username;
 	const initials = displayName.replace(/^@/, "").slice(0, 2).toUpperCase();
 	const handles = profile.assets ?? [];
@@ -196,7 +209,7 @@ export function ProfileView({
 
 	return (
 		<div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-			<header className={`rounded-lg border p-4 ${t.surface}`}>
+			<header className={`rounded-lg border p-4 ${theme.surface}`}>
 				<div className="flex items-start gap-3">
 					<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-base font-semibold text-white">
 						{initials}
@@ -206,24 +219,26 @@ export function ProfileView({
 							<div className="min-w-0">
 								<div className="flex items-center gap-2">
 									<h1
-										className={`truncate text-base font-semibold ${t.heading}`}
+										className={`truncate text-base font-semibold ${theme.heading}`}
 									>
 										{displayName}
 									</h1>
-									<ActorBadge actorType={profile.actorType} />
+									<ActorBadge actorType={profile.actorType} t={t} />
 								</div>
-								<p className={`text-sm ${t.secondary}`}>{profile.username}</p>
+								<p className={`text-sm ${theme.secondary}`}>
+									{profile.username}
+								</p>
 							</div>
 							{actions}
 						</div>
 						<p
-							className={`mt-1 font-mono text-xs ${t.muted}`}
+							className={`mt-1 font-mono text-xs ${theme.muted}`}
 							title={profile.cryptoId}
 						>
 							{truncateCryptoId(profile.cryptoId)}
 						</p>
 						{profile.bio && (
-							<p className={`mt-3 text-sm leading-relaxed ${t.body}`}>
+							<p className={`mt-3 text-sm leading-relaxed ${theme.body}`}>
 								{profile.bio}
 							</p>
 						)}
@@ -244,45 +259,53 @@ export function ProfileView({
 								{tags.map((tag) => (
 									<span
 										key={tag}
-										className={`rounded-full px-2 py-0.5 text-xs ${t.chip}`}
+										className={`rounded-full px-2 py-0.5 text-xs ${theme.chip}`}
 									>
 										{tag}
 									</span>
 								))}
 							</div>
 						)}
-						<p className={`mt-3 text-xs ${t.muted}`}>
-							Joined {formatDate(profile.registeredAt)}
+						<p className={`mt-3 text-xs ${theme.muted}`}>
+							{t("profile.view.joined", {
+								date: formatDate(profile.registeredAt),
+							})}
 						</p>
 					</div>
 				</div>
 			</header>
 
 			{showHandles && (
-				<Section count={handles.length} theme={t} title="Handles owned">
+				<Section
+					count={handles.length}
+					theme={theme}
+					title={t("profile.view.handlesOwned")}
+				>
 					{handles.length === 0 ? (
-						<p className={`text-sm ${t.muted}`}>No handles owned.</p>
+						<p className={`text-sm ${theme.muted}`}>
+							{t("profile.handles.empty")}
+						</p>
 					) : (
 						<ul className="flex flex-col gap-2">
 							{handles.map((handle) => (
 								<li
 									key={handle.name}
-									className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${t.innerBorder}`}
+									className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${theme.innerBorder}`}
 								>
 									<span className="min-w-0">
 										<ProfileEntityLink
-											className={`font-medium hover:underline ${t.primary}`}
+											className={`font-medium hover:underline ${theme.primary}`}
 											value={handle.name}
 										>
 											{handle.name}
 										</ProfileEntityLink>
 									</span>
 									<span
-										className={`flex shrink-0 items-center gap-2 text-xs ${t.muted}`}
+										className={`flex shrink-0 items-center gap-2 text-xs ${theme.muted}`}
 									>
 										{handle.primary && (
 											<span className="rounded-full bg-blue-500/10 px-2 py-0.5 font-medium text-blue-500">
-												primary
+												{t("profile.handles.primary")}
 											</span>
 										)}
 										<span>{handle.status}</span>
@@ -294,7 +317,7 @@ export function ProfileView({
 													: "border-neutral-200 text-neutral-700 hover:bg-neutral-100"
 											}`}
 										>
-											View
+											{t("profile.handles.view")}
 										</ProfileEntityLink>
 									</span>
 								</li>
@@ -305,23 +328,29 @@ export function ProfileView({
 			)}
 
 			{showActivity && profile.activity && (
-				<Section theme={t} title="Activity">
+				<Section theme={theme} title={t("profile.activity.title")}>
 					<dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
 						<div>
-							<dt className={`text-xs ${t.muted}`}>Transactions</dt>
-							<dd className={`text-base font-semibold ${t.primary}`}>
+							<dt className={`text-xs ${theme.muted}`}>
+								{t("profile.activity.transactions")}
+							</dt>
+							<dd className={`text-base font-semibold ${theme.primary}`}>
 								{profile.activity.transactionCount}
 							</dd>
 						</div>
 						<div>
-							<dt className={`text-xs ${t.muted}`}>Volume (USD)</dt>
-							<dd className={`text-base font-semibold ${t.primary}`}>
+							<dt className={`text-xs ${theme.muted}`}>
+								{t("profile.activity.volumeUsd")}
+							</dt>
+							<dd className={`text-base font-semibold ${theme.primary}`}>
 								{formatUsdFromBaseUnits(profile.activity.totalVolumeUsd)}
 							</dd>
 						</div>
 						<div>
-							<dt className={`text-xs ${t.muted}`}>Counterparties</dt>
-							<dd className={`text-base font-semibold ${t.primary}`}>
+							<dt className={`text-xs ${theme.muted}`}>
+								{t("profile.activity.counterparties")}
+							</dt>
+							<dd className={`text-base font-semibold ${theme.primary}`}>
 								{profile.activity.uniqueCounterparties}
 							</dd>
 						</div>
@@ -330,15 +359,19 @@ export function ProfileView({
 			)}
 
 			{events.length > 0 && (
-				<Section count={events.length} theme={t} title="Events">
+				<Section
+					count={events.length}
+					theme={theme}
+					title={t("profile.view.events")}
+				>
 					<ul className="flex flex-col gap-2">
 						{events.map((event) => (
 							<li
 								key={event.eventId}
-								className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${t.innerBorder}`}
+								className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${theme.innerBorder}`}
 							>
-								<span className={t.primary}>{event.name}</span>
-								<span className={`text-xs ${t.muted}`}>{event.status}</span>
+								<span className={theme.primary}>{event.name}</span>
+								<span className={`text-xs ${theme.muted}`}>{event.status}</span>
 							</li>
 						))}
 					</ul>
@@ -348,8 +381,8 @@ export function ProfileView({
 			{verifiedAccounts.length > 0 && (
 				<Section
 					count={verifiedAccounts.length}
-					theme={t}
-					title="Verified accounts"
+					theme={theme}
+					title={t("profile.view.verifiedAccounts")}
 				>
 					<ul className="flex flex-col gap-2">
 						{verifiedAccounts.map((attestation) => {
@@ -357,15 +390,15 @@ export function ProfileView({
 							return (
 								<li
 									key={`${attestation.platform}:${attestation.handle}`}
-									className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${t.innerBorder}`}
+									className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${theme.innerBorder}`}
 								>
 									<span className="flex min-w-0 items-center gap-2">
 										<CheckBadgeIcon
 											aria-hidden
 											className="h-4 w-4 shrink-0 text-sky-500"
 										/>
-										<span className={`shrink-0 text-xs ${t.muted}`}>
-											{platformLabel(attestation.platform)}
+										<span className={`shrink-0 text-xs ${theme.muted}`}>
+											{platformLabel(attestation.platform, t)}
 										</span>
 										{url ? (
 											<a
@@ -377,13 +410,13 @@ export function ProfileView({
 												{label}
 											</a>
 										) : (
-											<span className={`truncate font-medium ${t.primary}`}>
+											<span className={`truncate font-medium ${theme.primary}`}>
 												{label}
 											</span>
 										)}
 									</span>
 									<span className="shrink-0 rounded-full bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-500">
-										verified
+										{t("profile.view.verified")}
 									</span>
 								</li>
 							);

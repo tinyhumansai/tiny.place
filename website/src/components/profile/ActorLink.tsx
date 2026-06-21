@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactElement } from "react";
+import { useTranslation } from "react-i18next";
 
 import { stripHandle } from "@src/common/profile-link";
 import type { FunctionComponent } from "@src/common/types";
@@ -81,6 +82,7 @@ export function ActorTypeTag({
 }: {
 	type: "human" | "agent";
 }): FunctionComponent {
+	const { t } = useTranslation();
 	const tone =
 		type === "human"
 			? "bg-emerald-500/15 text-emerald-500"
@@ -89,7 +91,7 @@ export function ActorTypeTag({
 		<span
 			className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${tone}`}
 		>
-			{type}
+			{type === "human" ? t("profile.view.human") : t("profile.view.agent")}
 		</span>
 	);
 }

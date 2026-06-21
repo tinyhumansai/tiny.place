@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
+
 import type { FunctionComponent } from "@src/common/types";
 import { Chip } from "@src/components/ui/Chip";
 import { useTabRoute } from "@src/hooks/use-tab-route";
@@ -13,10 +15,10 @@ const tabs = ["register", "registry", "trading"] as const;
 
 type Tab = (typeof tabs)[number];
 
-const tabLabels: Record<Tab, string> = {
-	register: "Register",
-	registry: "Registry",
-	trading: "Trading",
+const tabLabelKeys: Record<Tab, string> = {
+	register: "identitiesSection.tabRegister",
+	registry: "identitiesSection.tabRegistry",
+	trading: "identitiesSection.tabTrading",
 };
 
 const tabComponents: Record<Tab, React.ComponentType<{ isDark: boolean }>> = {
@@ -32,6 +34,7 @@ type IdentitiesProperties = {
 export const Identities = ({
 	isDark,
 }: IdentitiesProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const { activeTab, setTab } = useTabRoute<Tab>(tabs, "register");
 
 	const ActiveComponent = tabComponents[activeTab];
@@ -49,7 +52,7 @@ export const Identities = ({
 								setTab(tab);
 							}}
 						>
-							{tabLabels[tab]}
+							{t(tabLabelKeys[tab], { defaultValue: tabLabelKeys[tab] })}
 						</Chip>
 					))}
 				</div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { Artifact } from "@tinyhumansai/tinyplace";
 
@@ -22,13 +23,13 @@ function formatBytes(value: number | undefined): string {
 	return `${value} B`;
 }
 
-function formatDate(value: string | undefined): string {
+function formatDate(value: string | undefined, fallback: string): string {
 	if (!value) {
-		return "No expiry";
+		return fallback;
 	}
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) {
-		return "No expiry";
+		return fallback;
 	}
 	return date.toLocaleDateString(undefined, {
 		month: "short",
@@ -51,6 +52,7 @@ function ArtifactRow({
 	artifact: Artifact;
 	isDark: boolean;
 }): React.ReactElement {
+	const { t } = useTranslation();
 	const secondaryClass = isDark ? "text-neutral-500" : "text-neutral-500";
 	const name = artifact.name ?? artifact.artifactId;
 	return (
@@ -89,7 +91,7 @@ function ArtifactRow({
 				className={`mt-3 grid grid-cols-3 gap-2 text-[10px] ${secondaryClass}`}
 			>
 				<div>
-					<p>Owner</p>
+					<p>{t("artifacts.owner")}</p>
 					<p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
 						<ProfileEntityLink
 							className="hover:underline"
@@ -100,15 +102,15 @@ function ArtifactRow({
 					</p>
 				</div>
 				<div>
-					<p>Recipients</p>
+					<p>{t("artifacts.recipients")}</p>
 					<p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
 						{artifact.recipients?.length ?? 0}
 					</p>
 				</div>
 				<div>
-					<p>Expires</p>
+					<p>{t("artifacts.expires")}</p>
 					<p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
-						{formatDate(artifact.expiresAt)}
+						{formatDate(artifact.expiresAt, t("artifacts.noExpiry"))}
 					</p>
 				</div>
 			</div>
@@ -121,6 +123,7 @@ export const Artifacts = ({
 }: {
 	isDark: boolean;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
 	const artifactsQuery = useArtifacts({ status: "all", limit: 20 });
 	const createArtifact = useCreateArtifact();
@@ -186,7 +189,7 @@ export const Artifacts = ({
 				<p
 					className={`text-sm ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
 				>
-					Connect your wallet to manage artifacts.
+					{t("artifacts.connectWallet")}
 				</p>
 			</div>
 		);
@@ -205,15 +208,15 @@ export const Artifacts = ({
 				<h3
 					className={`mb-3 text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 				>
-					Create Metadata Artifact
+					{t("artifacts.createTitle")}
 				</h3>
 				<div className="grid grid-cols-2 gap-3">
 					<div>
-						<label className={labelClass}>Name</label>
+						<label className={labelClass}>{t("artifacts.name")}</label>
 						<input
 							required
 							className={inputClass}
-							placeholder="final-report"
+							placeholder={t("artifacts.namePlaceholder")}
 							type="text"
 							value={name}
 							onChange={(event): void => {
@@ -222,10 +225,10 @@ export const Artifacts = ({
 						/>
 					</div>
 					<div>
-						<label className={labelClass}>Recipients</label>
+						<label className={labelClass}>{t("artifacts.recipients")}</label>
 						<input
 							className={inputClass}
-							placeholder="@reader, Solana address"
+							placeholder={t("artifacts.recipientsPlaceholder")}
 							type="text"
 							value={recipientInput}
 							onChange={(event): void => {
@@ -234,10 +237,10 @@ export const Artifacts = ({
 						/>
 					</div>
 					<div className="col-span-2">
-						<label className={labelClass}>Description</label>
+						<label className={labelClass}>{t("artifacts.description")}</label>
 						<textarea
 							className={`${inputClass} min-h-[64px] resize-none`}
-							placeholder="What this artifact represents"
+							placeholder={t("artifacts.descriptionPlaceholder")}
 							rows={3}
 							value={description}
 							onChange={(event): void => {
@@ -250,14 +253,16 @@ export const Artifacts = ({
 					<p
 						className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 					>
-						JSON metadata records are accepted by the artifacts API.
+						{t("artifacts.metadataHint")}
 					</p>
 					<button
 						className="rounded-md bg-blue-500 px-3 py-1.5 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
 						disabled={createArtifact.isPending || !name.trim()}
 						type="submit"
 					>
-						{createArtifact.isPending ? "Creating..." : "Create"}
+						{createArtifact.isPending
+							? t("common.creating")
+							: t("common.create")}
 					</button>
 				</div>
 				{createArtifact.isError && (
@@ -272,29 +277,29 @@ export const Artifacts = ({
 					<h3
 						className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 					>
-						Artifacts
+						{t("artifacts.title")}
 					</h3>
 					<span
 						className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 					>
-						{artifacts.length} records
+						{t("artifacts.recordCount", { count: artifacts.length })}
 					</span>
 				</div>
 				{artifactsQuery.isLoading && (
 					<p
 						className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 					>
-						Loading artifacts...
+						{t("artifacts.loading")}
 					</p>
 				)}
 				{artifactsQuery.isError && (
-					<p className="text-xs text-red-500">Failed to load artifacts.</p>
+					<p className="text-xs text-red-500">{t("artifacts.loadError")}</p>
 				)}
 				{!artifactsQuery.isLoading && artifacts.length === 0 && (
 					<p
 						className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 					>
-						No artifacts found.
+						{t("artifacts.empty")}
 					</p>
 				)}
 				{artifacts.map((artifact) => (

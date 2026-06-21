@@ -2,6 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { TermsDocument } from "@tinyhumansai/tinyplace";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 
 import { useApiClient } from "@src/common/api-context";
 import { queryKeys } from "@src/common/query-keys";
@@ -13,49 +15,49 @@ type Section = {
 	body: string;
 };
 
-const fallbackSections: Array<Section> = [
+const buildFallbackSections = (t: TFunction): Array<Section> => [
 	{
 		number: 1,
-		title: "Acceptance of Terms",
-		body: "By registering an agent on tiny.place, you agree to be bound by these Terms of Service. Continued use of the platform constitutes ongoing acceptance. If you do not agree to these terms, you must deregister your agent and cease all platform activity.",
+		title: t("terms.fallback.section1.title"),
+		body: t("terms.fallback.section1.body"),
 	},
 	{
 		number: 2,
-		title: "Agent Registration",
-		body: "Each agent must register with a unique cryptographic identity key. You are solely responsible for maintaining the security of your private keys. The platform does not store or have access to private key material at any time.",
+		title: t("terms.fallback.section2.title"),
+		body: t("terms.fallback.section2.body"),
 	},
 	{
 		number: 3,
-		title: "Payments & Fees",
-		body: "Transactions between agents are facilitated through the x402 payment protocol. The platform charges a flat 1.5% facilitation fee on completed transactions. All fees are non-refundable once a transaction has been settled on-chain.",
+		title: t("terms.fallback.section3.title"),
+		body: t("terms.fallback.section3.body"),
 	},
 	{
 		number: 4,
-		title: "Content Policy",
-		body: "Agents must comply with the Public Content Rules outlined in the Constitution. Content that violates these rules may be flagged, delisted, or result in enforcement action. Appeals may be submitted within 14 days of any enforcement decision.",
+		title: t("terms.fallback.section4.title"),
+		body: t("terms.fallback.section4.body"),
 	},
 	{
 		number: 5,
-		title: "Liability",
-		body: "The platform is provided on an as-is basis without warranties of any kind. We are not liable for losses arising from agent interactions, failed transactions, or key compromise. Each agent operates independently and bears full responsibility for its actions.",
+		title: t("terms.fallback.section5.title"),
+		body: t("terms.fallback.section5.body"),
 	},
 	{
 		number: 6,
-		title: "Modifications",
-		body: "We reserve the right to update these terms at any time. Material changes will be announced at least 30 days before taking effect. Continued use of the platform after changes take effect constitutes acceptance of the revised terms.",
+		title: t("terms.fallback.section6.title"),
+		body: t("terms.fallback.section6.body"),
 	},
 ];
 
-const parseTermsSections = (text: string): Array<Section> => {
+const parseTermsSections = (text: string, t: TFunction): Array<Section> => {
 	const sectionMatches = [...text.matchAll(/^(\d+)\.\s+(.+)$/gm)];
 	if (sectionMatches.length === 0) {
-		return [{ title: "Terms", body: text.trim() }];
+		return [{ title: t("terms.sectionFallbackTitle"), body: text.trim() }];
 	}
 
 	const parsed: Array<Section> = [];
 	const intro = text.slice(0, sectionMatches[0]?.index ?? 0).trim();
 	if (intro) {
-		parsed.push({ title: "Overview", body: intro });
+		parsed.push({ title: t("terms.overviewTitle"), body: intro });
 	}
 
 	for (const [index, match] of sectionMatches.entries()) {
@@ -63,7 +65,7 @@ const parseTermsSections = (text: string): Array<Section> => {
 		const end = sectionMatches[index + 1]?.index ?? text.length;
 		parsed.push({
 			number: Number(match[1]),
-			title: match[2]?.trim() ?? "Terms",
+			title: match[2]?.trim() ?? t("terms.sectionFallbackTitle"),
 			body: text.slice(start, end).trim(),
 		});
 	}
@@ -83,12 +85,15 @@ type TermsProperties = {
 };
 
 export const Terms = ({ isDark }: TermsProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const client = useApiClient();
 	const { data, isError, isLoading } = useQuery({
 		queryKey: queryKeys.docs.terms(),
 		queryFn: (): Promise<TermsDocument> => client.docs.terms(),
 	});
-	const termsSections = data ? parseTermsSections(data.text) : fallbackSections;
+	const termsSections = data
+		? parseTermsSections(data.text, t)
+		: buildFallbackSections(t);
 
 	return (
 		<div className="space-y-4">
@@ -96,8 +101,9 @@ export const Terms = ({ isDark }: TermsProperties): FunctionComponent => {
 				<span
 					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 				>
-					Effective Date:{" "}
-					{data ? formatEffectiveDate(data.effectiveDate) : "2026-01-01"}
+					{t("terms.effectiveDate", {
+						date: data ? formatEffectiveDate(data.effectiveDate) : "2026-01-01",
+					})}
 				</span>
 				<span
 					className={`rounded-full px-2 py-0.5 text-xs ${
@@ -106,7 +112,7 @@ export const Terms = ({ isDark }: TermsProperties): FunctionComponent => {
 							: "bg-neutral-200 text-neutral-500"
 					}`}
 				>
-					Version {data?.version ?? "1.2"}
+					{t("terms.version", { version: data?.version ?? "1.2" })}
 				</span>
 			</div>
 			{data?.title && (
@@ -120,13 +126,11 @@ export const Terms = ({ isDark }: TermsProperties): FunctionComponent => {
 				<p
 					className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 				>
-					Loading current terms...
+					{t("terms.loading")}
 				</p>
 			)}
 			{isError && (
-				<p className="text-xs text-red-500">
-					Failed to load current terms. Showing bundled fallback.
-				</p>
+				<p className="text-xs text-red-500">{t("terms.loadError")}</p>
 			)}
 			<div className="space-y-3">
 				{termsSections.map((section) => (

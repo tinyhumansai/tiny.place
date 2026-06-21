@@ -101,9 +101,9 @@ describe("X402ConfirmProvider", () => {
 		await user.click(screen.getByRole("button", { name: "Buy" }));
 
 		await expect(screen.findByText(message)).resolves.toBeInTheDocument();
-		expect(screen.getByRole("button", { name: "Retry" })).toBeEnabled();
+		expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
 
-		await user.click(screen.getByRole("button", { name: "Retry" }));
+		await user.click(screen.getByRole("button", { name: "Try again" }));
 
 		await waitFor(() => {
 			expect(execute).toHaveBeenCalledTimes(2);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -26,6 +27,7 @@ import { GroupAdminPanel } from "./GroupAdminPanel";
 dayjs.extend(relativeTime);
 
 export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
+	const { t } = useTranslation();
 	const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 	const [name, setName] = useState("Research Guild");
 	const [description, setDescription] = useState("Encrypted agent workspace");
@@ -38,7 +40,9 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 	// membership detection (member.agentId === actor), `groups.list({member})`,
 	// and group message delivery (fanout targets agent ids, not usernames).
 	const actor = agentId ?? "";
-	const gateMessage = useWriteGateMessage("create or join groups");
+	const gateMessage = useWriteGateMessage(
+		t("writeGate.actions.createOrJoinGroups")
+	);
 
 	const myGroupsQuery = useMyGroups(actor);
 	const discoverQuery = useGroups();
@@ -164,8 +168,8 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 	const renderGroupThread = (group: GroupMetadata): React.ReactElement => {
 		const thread = groupMessages.threads[group.groupId] ?? [];
 		const placeholder = groupMessages.isReady
-			? "Message the group…"
-			: "Enable encryption in the DMs tab to send";
+			? t("groups.messagePlaceholder")
+			: t("groups.enableEncryption");
 		const canSend =
 			groupMessages.isReady &&
 			!groupMessages.isSending &&
@@ -176,9 +180,7 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 			>
 				<div className="flex max-h-64 flex-1 flex-col gap-2 overflow-y-auto p-3">
 					{thread.length === 0 ? (
-						<p className={`text-xs ${mutedClass}`}>
-							No messages yet — say hello to the group
-						</p>
+						<p className={`text-xs ${mutedClass}`}>{t("groups.noMessages")}</p>
 					) : null}
 					{thread.map(
 						(entry): React.ReactElement => (
@@ -222,7 +224,7 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 						disabled={!canSend}
 						type="submit"
 					>
-						{groupMessages.isSending ? "Sending…" : "Send"}
+						{groupMessages.isSending ? t("groups.sending") : t("groups.send")}
 					</button>
 				</form>
 			</div>
@@ -234,31 +236,30 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 		// invite-only is a join policy, NOT plaintext visibility — public, readable
 		// conversations are Channels, a separate surface. Label the join policy so
 		// the badge no longer implies the group is publicly readable.
-		const joinPolicy =
-			group.membershipPolicy === "open" ? "Open" : "Invite-only";
+		const isOpenPolicy = group.membershipPolicy === "open";
 		const canJoin = !isMember && group.membershipPolicy !== "invite-only";
 		return (
 			<div className="space-y-2">
 				<p className={`text-xs ${mutedClass}`}>{group.description ?? ""}</p>
 				<div className="flex flex-wrap items-center gap-2">
 					<span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-500">
-						🔒 Encrypted
+						🔒 {t("groups.encrypted")}
 					</span>
 					<span
 						className={`rounded-full px-2 py-0.5 text-[10px] ${
-							joinPolicy === "Open"
+							isOpenPolicy
 								? "bg-green-500/10 text-green-500"
 								: "bg-amber-500/10 text-amber-500"
 						}`}
 					>
-						{joinPolicy}
+						{isOpenPolicy ? t("groups.open") : t("groups.inviteOnly")}
 					</span>
 					<span className={`text-[10px] ${mutedClass}`}>
-						{group.memberCount} members
+						{t("groups.memberCount", { count: group.memberCount })}
 					</span>
 					{isMember ? (
 						<span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-500">
-							{myMember?.role ?? "member"}
+							{myMember?.role ?? t("groups.member")}
 						</span>
 					) : null}
 				</div>
@@ -286,12 +287,12 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 							joinGroup.mutate({ agentId: actor, groupId: group.groupId });
 						}}
 					>
-						{joinGroup.isPending ? "Joining..." : "Join"}
+						{joinGroup.isPending ? t("groups.joining") : t("groups.join")}
 					</button>
 				) : null}
 				{!isMember && group.membershipPolicy === "invite-only" ? (
 					<p className={`text-[10px] ${mutedClass}`}>
-						This group is invite-only — ask an admin for an invite link.
+						{t("groups.inviteOnlyNote")}
 					</p>
 				) : null}
 
@@ -339,7 +340,9 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 							: "bg-amber-500/10 text-amber-500"
 					}`}
 				>
-					{group.membershipPolicy === "open" ? "Open" : "Invite-only"}
+					{group.membershipPolicy === "open"
+						? t("groups.open")
+						: t("groups.inviteOnly")}
 				</span>
 			</div>
 			<p className={`mt-1 text-[10px] ${mutedClass}`}>
@@ -347,7 +350,7 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 			</p>
 			<div className="mt-2 flex items-center justify-between">
 				<span className={`text-[10px] ${mutedClass}`}>
-					{group.memberCount} members
+					{t("groups.memberCount", { count: group.memberCount })}
 				</span>
 				<span className={`text-[10px] ${mutedClass}`}>
 					{dayjs(group.createdAt).fromNow()}
@@ -385,7 +388,9 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 		if (myGroupsQuery.isLoading && discoverQuery.isLoading) {
 			return (
 				<div className="flex flex-1 items-center justify-center p-6">
-					<span className={`text-xs ${mutedClass}`}>Loading groups...</span>
+					<span className={`text-xs ${mutedClass}`}>
+						{t("groups.loadingGroups")}
+					</span>
 				</div>
 			);
 		}
@@ -398,17 +403,17 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 			<div className="space-y-4">
 				{actor
 					? renderSection(
-							"My Groups",
+							t("groups.myGroups"),
 							myGroups,
 							true,
-							"You haven't joined any groups yet."
+							t("groups.myGroupsEmpty")
 						)
 					: null}
 				{renderSection(
-					"Discover",
+					t("groups.discover"),
 					discoverable,
 					false,
-					"No public groups to discover."
+					t("groups.discoverEmpty")
 				)}
 			</div>
 		);
@@ -422,7 +427,7 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 				<div className="grid gap-2 md:grid-cols-[1fr_auto]">
 					<input
 						className={`rounded-md border px-2 py-1 text-xs ${inputClass}`}
-						placeholder="Group name"
+						placeholder={t("groups.groupNamePlaceholder")}
 						type="text"
 						value={name}
 						onChange={(event): void => {
@@ -440,15 +445,15 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 						}
 					>
 						{createGroup.isPending || createChannel.isPending
-							? "Creating..."
+							? t("common.creating")
 							: isPublic
-								? "Create Channel"
-								: "Create Group"}
+								? t("groups.createChannel")
+								: t("groups.createGroup")}
 					</button>
 				</div>
 				<input
 					className={`mt-2 w-full rounded-md border px-2 py-1 text-xs ${inputClass}`}
-					placeholder="Description"
+					placeholder={t("groups.descriptionPlaceholder")}
 					type="text"
 					value={description}
 					onChange={(event): void => {
@@ -465,20 +470,18 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 							setIsPublic(event.target.checked);
 						}}
 					/>
-					Public — create a plaintext Channel anyone can read &amp; join
-					(otherwise an encrypted, invite-only group)
+					{t("groups.publicChannelHint")}
 				</label>
 				{createdChannelName ? (
 					<p className="mt-2 text-xs text-green-500">
-						Created public channel “{createdChannelName}”. Open it from the
-						Channels tab to post and read its history.
+						{t("groups.channelCreated", { name: createdChannelName })}
 					</p>
 				) : null}
 				{mutationError ? (
 					<p className="mt-2 text-xs text-red-500">{mutationError.message}</p>
 				) : null}
 				<p className={`mt-2 text-xs ${actor ? mutedClass : "text-red-500"}`}>
-					{actor ? `Acting as ${actor}` : gateMessage}
+					{actor ? t("groups.actingAs", { actor }) : gateMessage}
 				</p>
 			</form>
 			<div
@@ -487,7 +490,7 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 				<span
 					className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 				>
-					{activeGroup ? activeGroup.name : "Groups"}
+					{activeGroup ? activeGroup.name : t("groups.title")}
 				</span>
 				{activeGroup ? (
 					<button
@@ -497,7 +500,7 @@ export const Groups = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 							setSelectedGroupId(null);
 						}}
 					>
-						Back
+						{t("common.back")}
 					</button>
 				) : null}
 			</div>

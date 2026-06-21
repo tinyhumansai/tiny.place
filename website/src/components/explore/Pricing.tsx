@@ -1,6 +1,7 @@
 "use client";
 
 import type { GasEstimate, PriceQuote } from "@tinyhumansai/tinyplace";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import {
@@ -65,17 +66,18 @@ function DataState({
 	isError: boolean;
 	isLoading: boolean;
 }): React.ReactElement {
+	const { t } = useTranslation();
 	if (isLoading) {
 		return (
 			<p
 				className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 			>
-				Loading...
+				{t("common.loading")}
 			</p>
 		);
 	}
 	if (isError) {
-		return <p className="text-xs text-red-500">Unavailable from staging.</p>;
+		return <p className="text-xs text-red-500">{t("pricing.unavailable")}</p>;
 	}
 	return <>{children}</>;
 }
@@ -87,26 +89,31 @@ function QuoteSummary({
 	isDark: boolean;
 	quote: PriceQuote | undefined;
 }): React.ReactElement {
+	const { t } = useTranslation();
 	if (!quote) {
-		return <p className="text-xs text-neutral-500">No quote returned.</p>;
+		return <p className="text-xs text-neutral-500">{t("pricing.noQuote")}</p>;
 	}
 	return (
 		<div className="grid grid-cols-3 gap-2 text-xs">
 			<div>
-				<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>Pair</p>
+				<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>
+					{t("pricing.pair")}
+				</p>
 				<p className={isDark ? "text-white" : "text-black"}>
 					{quote.base}/{quote.quote}
 				</p>
 			</div>
 			<div>
-				<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>Mid</p>
+				<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>
+					{t("pricing.mid")}
+				</p>
 				<p className={isDark ? "text-white" : "text-black"}>
 					{formatAmount(quote.mid)}
 				</p>
 			</div>
 			<div>
 				<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>
-					24h Change
+					{t("pricing.change24h")}
 				</p>
 				<p className={isDark ? "text-white" : "text-black"}>
 					{formatAmount(quote.change24h)}%
@@ -123,18 +130,20 @@ function GasSummary({
 	gas: GasEstimate | undefined;
 	isDark: boolean;
 }): React.ReactElement {
+	const { t } = useTranslation();
 	if (!gas) {
 		return (
-			<p className="text-xs text-neutral-500">No gas estimate returned.</p>
+			<p className="text-xs text-neutral-500">{t("pricing.noGasEstimate")}</p>
 		);
 	}
+	const speeds: Array<[string, string | undefined]> = [
+		[t("pricing.gas.slow"), gas.slow],
+		[t("pricing.gas.standard"), gas.standard],
+		[t("pricing.gas.fast"), gas.fast],
+	];
 	return (
 		<div className="grid grid-cols-3 gap-2 text-xs">
-			{[
-				["Slow", gas.slow],
-				["Standard", gas.standard],
-				["Fast", gas.fast],
-			].map(([label, value]) => (
+			{speeds.map(([label, value]) => (
 				<div key={label}>
 					<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>
 						{label}
@@ -149,6 +158,7 @@ function GasSummary({
 }
 
 export const Pricing = ({ isDark }: { isDark: boolean }): FunctionComponent => {
+	const { t } = useTranslation();
 	const priceQuote = usePriceQuote({
 		base: "SOL",
 		quote: "USDC",
@@ -161,7 +171,7 @@ export const Pricing = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 
 	return (
 		<div className="grid gap-4 md:grid-cols-2">
-			<Panel isDark={isDark} title="Price Quote">
+			<Panel isDark={isDark} title={t("pricing.priceQuote")}>
 				<DataState
 					isDark={isDark}
 					isError={priceQuote.isError}
@@ -171,7 +181,7 @@ export const Pricing = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 				</DataState>
 			</Panel>
 
-			<Panel isDark={isDark} title="Gas Estimate">
+			<Panel isDark={isDark} title={t("pricing.gasEstimate")}>
 				<DataState
 					isDark={isDark}
 					isError={gas.isError}
@@ -181,11 +191,11 @@ export const Pricing = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 				</DataState>
 			</Panel>
 
-			<Panel isDark={isDark} title="Supported Markets">
+			<Panel isDark={isDark} title={t("pricing.supportedMarkets")}>
 				<div className="grid grid-cols-3 gap-2 text-xs">
 					<div>
 						<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>
-							Assets
+							{t("pricing.assets")}
 						</p>
 						<p className={isDark ? "text-white" : "text-black"}>
 							{assets.data?.assets.length ?? 0}
@@ -193,7 +203,7 @@ export const Pricing = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 					</div>
 					<div>
 						<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>
-							Pairs
+							{t("pricing.pairs")}
 						</p>
 						<p className={isDark ? "text-white" : "text-black"}>
 							{pairs.data?.pairs.length ?? 0}
@@ -201,7 +211,7 @@ export const Pricing = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 					</div>
 					<div>
 						<p className={isDark ? "text-neutral-500" : "text-neutral-500"}>
-							Networks
+							{t("pricing.networks")}
 						</p>
 						<p className={isDark ? "text-white" : "text-black"}>
 							{networks.data?.networks.length ?? 0}
@@ -210,7 +220,7 @@ export const Pricing = ({ isDark }: { isDark: boolean }): FunctionComponent => {
 				</div>
 				{(assets.isError || pairs.isError || networks.isError) && (
 					<p className="mt-2 text-xs text-red-500">
-						Some market metadata is unavailable.
+						{t("pricing.metadataUnavailable")}
 					</p>
 				)}
 			</Panel>

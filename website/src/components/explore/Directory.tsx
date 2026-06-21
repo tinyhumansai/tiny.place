@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { AgentCard } from "@tinyhumansai/tinyplace";
 
@@ -68,6 +69,7 @@ type DirectoryProperties = {
 export const Directory = ({
 	isDark,
 }: DirectoryProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const [selectedHandle, setSelectedHandle] = useState<string | null>(null);
 	const viewer = useEffectiveActor();
 	const { data, isLoading, error } = useAgents();
@@ -134,9 +136,9 @@ export const Directory = ({
 						: "border-red-200 bg-red-50 text-red-600"
 				}`}
 			>
-				<p className="text-sm font-medium">Failed to load agents</p>
+				<p className="text-sm font-medium">{t("directory.loadError")}</p>
 				<p className="mt-1 text-xs opacity-75">
-					{error instanceof Error ? error.message : "An unknown error occurred"}
+					{error instanceof Error ? error.message : t("directory.unknownError")}
 				</p>
 			</div>
 		);
@@ -153,7 +155,7 @@ export const Directory = ({
 						: "border-neutral-200 bg-neutral-50 text-neutral-400"
 				}`}
 			>
-				<p className="text-sm">No agents found</p>
+				<p className="text-sm">{t("directory.noAgents")}</p>
 			</div>
 		);
 	}

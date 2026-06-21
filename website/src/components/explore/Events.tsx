@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import type { Event } from "@tinyhumansai/tinyplace";
 
 import type { FunctionComponent } from "@src/common/types";
@@ -53,24 +54,27 @@ function panelClass(isDark: boolean): string {
 	}`;
 }
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: unknown, fallback: string): string {
 	if (error instanceof Error) {
 		return error.message;
 	}
-	return "Request failed";
+	return fallback;
 }
 
 export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
-	const gateMessage = useWriteGateMessage("create and RSVP to events");
+	const gateMessage = useWriteGateMessage(
+		t("writeGate.actions.createAndRsvpEvents")
+	);
 	const { data, isLoading, isError, error } = useEvents();
 	const createEvent = useCreateEvent();
 	const rsvpEvent = useRsvpEvent();
 	const cancelRsvp = useCancelEventRsvp();
 	const events = data?.events ?? [];
-	const [title, setTitle] = useState("Agent Townhall");
+	const [title, setTitle] = useState(t("events.defaultTitle"));
 	const [description, setDescription] = useState(
-		"Open agent coordination call"
+		t("events.defaultDescription")
 	);
 	const [startAt, setStartAt] = useState("");
 	const [durationMinutes, setDurationMinutes] = useState("60");
@@ -151,9 +155,11 @@ export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 					<h3
 						className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 					>
-						Schedule Event
+						{t("events.scheduleEvent")}
 					</h3>
-					<span className="text-xs text-neutral-500">Signed write</span>
+					<span className="text-xs text-neutral-500">
+						{t("events.signedWrite")}
+					</span>
 				</div>
 				{gateMessage ? (
 					<p className="mt-2 text-xs text-neutral-500">{gateMessage}</p>
@@ -161,7 +167,7 @@ export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 				<div className="mt-3 grid gap-2 md:grid-cols-2">
 					<input
 						className={`${inputClass(isDark)} w-full`}
-						placeholder="Title"
+						placeholder={t("events.titlePlaceholder")}
 						type="text"
 						value={title}
 						onChange={(event): void => {
@@ -178,7 +184,7 @@ export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 					/>
 					<input
 						className={`${inputClass(isDark)} w-full`}
-						placeholder="Description"
+						placeholder={t("events.descriptionPlaceholder")}
 						type="text"
 						value={description}
 						onChange={(event): void => {
@@ -207,23 +213,25 @@ export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 						!agentId || createEvent.isPending || !title.trim() || !startAt
 					}
 				>
-					{createEvent.isPending ? "Creating..." : "Create Event"}
+					{createEvent.isPending
+						? t("common.creating")
+						: t("events.createEvent")}
 				</button>
 				{createEvent.isError ? (
 					<p className="mt-2 text-xs text-red-500">
-						{errorMessage(createEvent.error)}
+						{errorMessage(createEvent.error, t("events.requestFailed"))}
 					</p>
 				) : null}
 				{createEvent.isSuccess ? (
 					<p className="mt-2 text-xs text-emerald-500">
-						Created {createEvent.data.eventId}.
+						{t("events.created", { eventId: createEvent.data.eventId })}
 					</p>
 				) : null}
 			</form>
 
 			{isLoading ? (
 				<div className={panelClass(isDark)}>
-					<p className="text-xs text-neutral-500">Loading events...</p>
+					<p className="text-xs text-neutral-500">{t("events.loading")}</p>
 				</div>
 			) : null}
 
@@ -235,7 +243,7 @@ export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 							: "border-red-200 bg-red-50 text-red-600"
 					}`}
 				>
-					Failed to load events
+					{t("events.loadError")}
 					{error instanceof Error ? `: ${error.message}` : ""}
 				</div>
 			) : null}
@@ -248,7 +256,7 @@ export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 							: "border-neutral-200 bg-neutral-50 text-neutral-400"
 					}`}
 				>
-					No events found
+					{t("events.noEvents")}
 				</div>
 			) : null}
 
@@ -279,8 +287,13 @@ export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 								<p
 									className={`mt-0.5 text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 								>
-									{formatDate(event.schedule.startAt)} at{" "}
-									{formatTime(event.schedule.startAt, event.schedule.timezone)}
+									{t("events.dateAtTime", {
+										date: formatDate(event.schedule.startAt),
+										time: formatTime(
+											event.schedule.startAt,
+											event.schedule.timezone
+										),
+									})}
 								</p>
 							</div>
 						</div>
@@ -298,7 +311,7 @@ export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 										<span
 											className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 										>
-											Speakers:
+											{t("events.speakers")}
 										</span>
 										{speakers.map((speaker) => (
 											<span
@@ -313,7 +326,7 @@ export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 								<span
 									className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 								>
-									{event.attendeeCount} attendees
+									{t("events.attendeeCount", { count: event.attendeeCount })}
 								</span>
 							</div>
 							{isUpcoming && (
@@ -326,7 +339,7 @@ export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 											rsvpEvent.mutate({ eventId: event.eventId });
 										}}
 									>
-										RSVP
+										{t("events.rsvp")}
 									</button>
 									<button
 										disabled={!agentId || cancelRsvp.isPending}
@@ -340,7 +353,7 @@ export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 											cancelRsvp.mutate({ eventId: event.eventId });
 										}}
 									>
-										Cancel
+										{t("common.cancel")}
 									</button>
 								</div>
 							)}
@@ -349,10 +362,14 @@ export const Events = ({ isDark }: EventsProperties): FunctionComponent => {
 				);
 			})}
 			{rsvpEvent.isError ? (
-				<p className="text-xs text-red-500">{errorMessage(rsvpEvent.error)}</p>
+				<p className="text-xs text-red-500">
+					{errorMessage(rsvpEvent.error, t("events.requestFailed"))}
+				</p>
 			) : null}
 			{cancelRsvp.isError ? (
-				<p className="text-xs text-red-500">{errorMessage(cancelRsvp.error)}</p>
+				<p className="text-xs text-red-500">
+					{errorMessage(cancelRsvp.error, t("events.requestFailed"))}
+				</p>
 			) : null}
 		</div>
 	);

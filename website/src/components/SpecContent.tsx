@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Markdown from "react-markdown";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 
@@ -18,6 +19,7 @@ export const SpecContent = ({
 	isDark,
 	sectionKey,
 }: SpecContentProps): FunctionComponent => {
+	const { t } = useTranslation();
 	const { data, isLoading } = useQuery({
 		queryKey: ["spec", sectionKey],
 		queryFn: () => fetchSpec(sectionKey),
@@ -28,7 +30,7 @@ export const SpecContent = ({
 			<p
 				className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 			>
-				Loading...
+				{t("common.loading")}
 			</p>
 		);
 	}

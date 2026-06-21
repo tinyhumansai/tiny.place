@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { useCreateEscrow } from "@src/hooks/use-escrow";
@@ -25,6 +26,7 @@ export const CreateEscrowForm = ({
 	clientHandle: string;
 	isDark: boolean;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const createEscrow = useCreateEscrow();
 	const [provider, setProvider] = useState("");
 	const [amount, setAmount] = useState("");
@@ -85,22 +87,23 @@ export const CreateEscrowForm = ({
 			<h3
 				className={`mb-1 text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 			>
-				Hire for Work (Escrow)
+				{t("marketplace.createEscrow.title")}
 			</h3>
 			<p
 				className={`mb-3 text-xs ${isDark ? "text-neutral-500" : "text-neutral-500"}`}
 			>
-				Funds are held in escrow and released when you accept the delivery.
-				Hiring as {clientHandle}.
+				{t("marketplace.createEscrow.subtitle", { handle: clientHandle })}
 			</p>
 
 			<div className="grid grid-cols-2 gap-3">
 				<div className="col-span-2">
-					<label className={labelClass(isDark)}>Provider (@handle)</label>
+					<label className={labelClass(isDark)}>
+						{t("marketplace.createEscrow.provider")}
+					</label>
 					<input
 						required
 						className={inputClass(isDark)}
-						placeholder="@builder or wallet address"
+						placeholder={t("marketplace.createEscrow.providerPlaceholder")}
 						type="text"
 						value={provider}
 						onChange={(event): void => {
@@ -110,7 +113,9 @@ export const CreateEscrowForm = ({
 				</div>
 
 				<div>
-					<label className={labelClass(isDark)}>Amount</label>
+					<label className={labelClass(isDark)}>
+						{t("marketplace.createEscrow.amount")}
+					</label>
 					<input
 						required
 						className={inputClass(isDark)}
@@ -126,7 +131,9 @@ export const CreateEscrowForm = ({
 				</div>
 
 				<div>
-					<label className={labelClass(isDark)}>Asset</label>
+					<label className={labelClass(isDark)}>
+						{t("marketplace.createEscrow.asset")}
+					</label>
 					<select
 						className={selectClass(isDark)}
 						value={asset}
@@ -145,11 +152,13 @@ export const CreateEscrowForm = ({
 				</div>
 
 				<div className="col-span-2">
-					<label className={labelClass(isDark)}>Scope of work</label>
+					<label className={labelClass(isDark)}>
+						{t("marketplace.createEscrow.scope")}
+					</label>
 					<textarea
 						required
 						className={`${inputClass(isDark)} min-h-[60px] resize-none`}
-						placeholder="Describe the work to be delivered..."
+						placeholder={t("marketplace.createEscrow.scopePlaceholder")}
 						rows={2}
 						value={description}
 						onChange={(event): void => {
@@ -160,11 +169,11 @@ export const CreateEscrowForm = ({
 
 				<div className="col-span-2">
 					<label className={labelClass(isDark)}>
-						Deliverables (comma-separated)
+						{t("marketplace.createEscrow.deliverables")}
 					</label>
 					<input
 						className={inputClass(isDark)}
-						placeholder="source code, docs, deployment"
+						placeholder={t("marketplace.createEscrow.deliverablesPlaceholder")}
 						type="text"
 						value={deliverablesInput}
 						onChange={(event): void => {
@@ -174,7 +183,9 @@ export const CreateEscrowForm = ({
 				</div>
 
 				<div>
-					<label className={labelClass(isDark)}>Deadline</label>
+					<label className={labelClass(isDark)}>
+						{t("marketplace.createEscrow.deadline")}
+					</label>
 					<input
 						required
 						className={inputClass(isDark)}
@@ -187,7 +198,9 @@ export const CreateEscrowForm = ({
 				</div>
 
 				<div>
-					<label className={labelClass(isDark)}>Max revisions</label>
+					<label className={labelClass(isDark)}>
+						{t("marketplace.createEscrow.maxRevisions")}
+					</label>
 					<input
 						className={inputClass(isDark)}
 						min="0"
@@ -202,13 +215,16 @@ export const CreateEscrowForm = ({
 
 			{createEscrow.isError && (
 				<p className="mt-2 text-xs text-red-500">
-					{errorMessage(createEscrow.error, "Failed to create escrow")}
+					{errorMessage(
+						createEscrow.error,
+						t("marketplace.createEscrow.error")
+					)}
 				</p>
 			)}
 
 			{createEscrow.isSuccess && (
 				<p className="mt-2 text-xs text-green-500">
-					Work escrow created — track it in the Active tab.
+					{t("marketplace.createEscrow.success")}
 				</p>
 			)}
 
@@ -223,7 +239,9 @@ export const CreateEscrowForm = ({
 					!deadline
 				}
 			>
-				{createEscrow.isPending ? "Creating..." : "Fund Escrow & Hire"}
+				{createEscrow.isPending
+					? t("common.creating")
+					: t("marketplace.createEscrow.submit")}
 			</button>
 		</form>
 	);

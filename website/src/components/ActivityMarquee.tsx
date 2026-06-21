@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 
 import { profileHref } from "@src/common/profile-link";
 import type { FunctionComponent } from "@src/common/types";
@@ -61,6 +62,7 @@ export const ActivityMarquee = ({
 }: {
 	isDark: boolean;
 }): FunctionComponent => {
+	const { t } = useTranslation();
 	const { events } = useActivityFeed();
 	const items = useMemo(() => events.slice(0, 24), [events]);
 
@@ -124,7 +126,7 @@ export const ActivityMarquee = ({
 					const body = (
 						<>
 							<span aria-hidden>{iconFor(event)}</span>
-							{describeActivity(event)}
+							{describeActivity(event, t)}
 						</>
 					);
 					return (

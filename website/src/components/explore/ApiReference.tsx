@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
+
 import type { FunctionComponent } from "@src/common/types";
 import { useSwaggerDocument } from "@src/hooks/use-documentation";
 
@@ -271,6 +273,7 @@ type ApiReferenceProperties = {
 export const ApiReference = ({
 	isDark,
 }: ApiReferenceProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const { data, isError, isLoading } = useSwaggerDocument();
 	const endpointGroups = data
 		? endpointGroupsFromSwagger(data)
@@ -295,26 +298,28 @@ export const ApiReference = ({
 					<span
 						className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 					>
-						{info ? `${String(info.pathCount)} live paths` : "Live Swagger"}
+						{info
+							? t("apiReference.livePaths", { count: info.pathCount })
+							: t("apiReference.liveSwagger")}
 					</span>
 				</div>
 				{info?.version && (
 					<p
 						className={`mt-1 text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 					>
-						Version {info.version}
+						{t("apiReference.version", { version: info.version })}
 					</p>
 				)}
 				{isLoading && (
 					<p
 						className={`mt-2 text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 					>
-						Loading live API reference...
+						{t("apiReference.loading")}
 					</p>
 				)}
 				{isError && (
 					<p className="mt-2 text-xs text-red-500">
-						Failed to load live Swagger. Showing bundled fallback.
+						{t("apiReference.loadError")}
 					</p>
 				)}
 			</div>

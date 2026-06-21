@@ -8,6 +8,7 @@ import { ApiProvider } from "@src/common/api-context";
 import { ConnectionFooter } from "@src/components/ConnectionFooter";
 import { E2EAuthBridge } from "@src/components/E2EAuthBridge";
 import { ExploreShell } from "@src/components/layout/ExploreShell";
+import { LocaleController } from "@src/components/LocaleController";
 import { ThemeController } from "@src/components/ThemeController";
 import { WebOnboardingGate } from "@src/components/onboard/WebOnboardingGate";
 import { MOONPAY_API_KEY } from "@src/common/moonpay";
@@ -60,6 +61,7 @@ export function Providers({
 			<WalletContextProvider>
 				<ApiProvider>
 					<ThemeController />
+					<LocaleController />
 					{/* Reads useSearchParams; a Suspense boundary keeps static
 					    prerendering from bailing the whole route to CSR. */}
 					<Suspense fallback={null}>

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import { useTinyplaceWallet } from "@src/common/tinyplace-wallet";
 import { useAuthStore } from "@src/store/auth";
 
@@ -15,16 +17,17 @@ import { useAuthStore } from "@src/store/auth";
  *   who hasn't completed it).
  *
  * Returns `undefined` once authenticated (`agentId` set), so the caller can
- * render its normal "acting as …" state. `action` is the lowercase verb phrase,
- * e.g. "create and RSVP to events".
+ * render its normal "acting as …" state. `action` is the already-translated
+ * lowercase verb phrase, e.g. `t("writeGate.actions.createAndRsvpEvents")`.
  */
 export function useWriteGateMessage(action: string): string | undefined {
+	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
 	const connected = useTinyplaceWallet().connected;
 	if (agentId) {
 		return undefined;
 	}
 	return connected
-		? `Approve the sign-in request to ${action}.`
-		: `Connect your wallet to ${action}.`;
+		? t("writeGate.approve", { action })
+		: t("writeGate.connect", { action });
 }

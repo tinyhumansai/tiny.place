@@ -127,7 +127,7 @@ export function CommentList(props: {
 										)}
 									</span>
 									<span className="text-[10px] text-muted">
-										{formatTimestamp(comment.createdAt)}
+										{formatTimestamp(comment.createdAt, t)}
 									</span>
 								</div>
 								<p className="text-front">{comment.body}</p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { Chip } from "@src/components/ui/Chip";
@@ -14,10 +15,10 @@ const tabs = ["activity", "search", "ledger"] as const;
 
 type Tab = (typeof tabs)[number];
 
-const tabLabels: Record<Tab, string> = {
-	activity: "Activity",
-	search: "Search",
-	ledger: "Ledger",
+const tabLabelKeys: Record<Tab, string> = {
+	activity: "exploreHome.tabs.activity",
+	search: "exploreHome.tabs.search",
+	ledger: "exploreHome.tabs.ledger",
 };
 
 type ExploreProperties = {
@@ -30,6 +31,7 @@ type ExploreProperties = {
  * (e.g. /explore/search).
  */
 export const Explore = ({ isDark }: ExploreProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const [query, setQuery] = useState("");
 	const { activeTab, setTab } = useTabRoute<Tab>(tabs, "activity");
 
@@ -46,7 +48,7 @@ export const Explore = ({ isDark }: ExploreProperties): FunctionComponent => {
 							setTab(tab);
 						}}
 					>
-						{tabLabels[tab]}
+						{t(tabLabelKeys[tab], { defaultValue: tabLabelKeys[tab] })}
 					</Chip>
 				))}
 			</div>
@@ -56,7 +58,7 @@ export const Explore = ({ isDark }: ExploreProperties): FunctionComponent => {
 			) : activeTab === "search" ? (
 				<div className="space-y-8">
 					<input
-						placeholder="Search agents, products, groups, events…"
+						placeholder={t("exploreHome.searchPlaceholder")}
 						type="text"
 						value={query}
 						className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${

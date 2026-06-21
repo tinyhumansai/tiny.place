@@ -22,6 +22,7 @@ import type { FunctionComponent } from "@src/common/types";
 import { ActivityMarquee } from "@src/components/ActivityMarquee";
 import { ClientOnly } from "@src/components/ClientOnly";
 import { ConnectWalletButton } from "@src/components/ConnectWalletButton";
+import { LanguageSelector } from "@src/components/LanguageSelector";
 import { Sidebar } from "@src/components/layout/Sidebar";
 import {
 	heroImageUrl,
@@ -136,6 +137,7 @@ export const ExploreShell = ({
 						</ClientOnly>
 					</div>
 					<div className="flex shrink-0 items-center gap-2">
+						<LanguageSelector />
 						<ConnectWalletButton />
 					</div>
 				</header>

@@ -4,6 +4,8 @@ import type {
 	LeaderboardCategory,
 	LeaderboardEntry,
 } from "@tinyhumansai/tinyplace";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { ProfileEntityLink } from "@src/components/profile/EntityLink";
@@ -21,14 +23,14 @@ const tabs: Array<LeaderboardCategory> = [
 	"games",
 ];
 
-const tabLabels: Record<LeaderboardCategory, string> = {
-	reputation: "Top Agents",
-	rising: "Rising",
-	groups: "Top Groups",
-	sellers: "Sellers",
-	messages: "Top Messengers",
-	volume: "Top Volume",
-	games: "Games",
+const tabLabelKeys: Record<LeaderboardCategory, string> = {
+	reputation: "leaderboards.tabs.reputation",
+	rising: "leaderboards.tabs.rising",
+	groups: "leaderboards.tabs.groups",
+	sellers: "leaderboards.tabs.sellers",
+	messages: "leaderboards.tabs.messages",
+	volume: "leaderboards.tabs.volume",
+	games: "leaderboards.tabs.games",
 };
 
 const getBadge = (rank: number): string => {
@@ -38,12 +40,12 @@ const getBadge = (rank: number): string => {
 	return "";
 };
 
-const resolveHandle = (entry: LeaderboardEntry): string =>
+const resolveHandle = (entry: LeaderboardEntry, t: TFunction): string =>
 	entry.username ??
 	entry.name ??
 	entry.groupId ??
 	entry.cryptoId?.slice(0, 12) ??
-	"Unknown";
+	t("leaderboards.unknown");
 
 const resolveScore = (
 	entry: LeaderboardEntry,
@@ -60,27 +62,26 @@ const resolveScore = (
 	return String(entry.score ?? entry.transactions ?? 0);
 };
 
-const resolveScoreLabel = (tab: LeaderboardCategory): string => {
-	if (tab === "groups") return "Members";
-	if (tab === "messages") return "Messages";
+const resolveScoreLabel = (tab: LeaderboardCategory, t: TFunction): string => {
+	if (tab === "groups") return t("leaderboards.scoreLabels.members");
+	if (tab === "messages") return t("leaderboards.scoreLabels.messages");
 	if (tab === "volume") return "USDC";
-	if (tab === "sellers") return "Revenue";
-	if (tab === "rising") return "Delta";
-	if (tab === "games") return "Winnings";
-	return "Score";
+	if (tab === "sellers") return t("leaderboards.scoreLabels.revenue");
+	if (tab === "rising") return t("leaderboards.scoreLabels.delta");
+	if (tab === "games") return t("leaderboards.scoreLabels.winnings");
+	return t("leaderboards.scoreLabels.score");
 };
 
 const resolveChange = (entry: LeaderboardEntry): number => entry.delta ?? 0;
 
-const formatUpdatedAt = (iso: string): string => {
+const formatUpdatedAt = (iso: string, t: TFunction): string => {
 	const diffMs = Date.now() - new Date(iso).getTime();
 	const diffMinutes = Math.round(diffMs / 60_000);
-	if (diffMinutes < 1) return "Updated just now";
-	if (diffMinutes === 1) return "Updated 1 minute ago";
-	if (diffMinutes < 60) return `Updated ${String(diffMinutes)} minutes ago`;
+	if (diffMinutes < 1) return t("leaderboards.updatedJustNow");
+	if (diffMinutes < 60)
+		return t("leaderboards.updatedMinutesAgo", { count: diffMinutes });
 	const diffHours = Math.round(diffMinutes / 60);
-	if (diffHours === 1) return "Updated 1 hour ago";
-	return `Updated ${String(diffHours)} hours ago`;
+	return t("leaderboards.updatedHoursAgo", { count: diffHours });
 };
 
 type LeaderboardsProperties = {
@@ -90,6 +91,7 @@ type LeaderboardsProperties = {
 export const Leaderboards = ({
 	isDark,
 }: LeaderboardsProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const { activeTab, setTab } = useTabRoute<LeaderboardCategory>(
 		tabs,
 		"reputation"
@@ -98,7 +100,7 @@ export const Leaderboards = ({
 	const { data, isLoading, isError, error } = useLeaderboard(activeTab);
 
 	const entries = data?.entries ?? [];
-	const scoreLabel = resolveScoreLabel(activeTab);
+	const scoreLabel = resolveScoreLabel(activeTab, t);
 
 	return (
 		<div className="space-y-3">
@@ -112,7 +114,7 @@ export const Leaderboards = ({
 							setTab(tab);
 						}}
 					>
-						{tabLabels[tab]}
+						{t(tabLabelKeys[tab], { defaultValue: tabLabelKeys[tab] })}
 					</Chip>
 				))}
 			</div>
@@ -126,7 +128,7 @@ export const Leaderboards = ({
 					<span
 						className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 					>
-						Loading leaderboard...
+						{t("leaderboards.loading")}
 					</span>
 				</div>
 			)}
@@ -140,7 +142,7 @@ export const Leaderboards = ({
 					<span className="text-xs text-red-500">
 						{error instanceof Error
 							? error.message
-							: "Failed to load leaderboard"}
+							: t("leaderboards.loadError")}
 					</span>
 				</div>
 			)}
@@ -154,7 +156,7 @@ export const Leaderboards = ({
 					<span
 						className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 					>
-						No entries yet
+						{t("leaderboards.noEntries")}
 					</span>
 				</div>
 			)}
@@ -180,7 +182,9 @@ export const Leaderboards = ({
 										isDark ? "text-neutral-500" : "text-neutral-400"
 									}`}
 								>
-									{activeTab === "groups" ? "Group" : "Agent"}
+									{activeTab === "groups"
+										? t("leaderboards.columns.group")
+										: t("leaderboards.columns.agent")}
 								</th>
 								<th
 									className={`px-3 py-2 text-right text-xs font-medium ${
@@ -194,13 +198,13 @@ export const Leaderboards = ({
 										isDark ? "text-neutral-500" : "text-neutral-400"
 									}`}
 								>
-									Change
+									{t("leaderboards.columns.change")}
 								</th>
 							</tr>
 						</thead>
 						<tbody>
 							{entries.map((entry) => {
-								const handle = resolveHandle(entry);
+								const handle = resolveHandle(entry, t);
 								const score = resolveScore(entry, activeTab);
 								const change = resolveChange(entry);
 								const profileTarget =
@@ -272,7 +276,7 @@ export const Leaderboards = ({
 			<p
 				className={`text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 			>
-				{data?.updatedAt ? formatUpdatedAt(data.updatedAt) : ""}
+				{data?.updatedAt ? formatUpdatedAt(data.updatedAt, t) : ""}
 			</p>
 		</div>
 	);

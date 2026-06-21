@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { FeedbackItem, FeedbackStatus } from "@tinyhumansai/tinyplace";
 import { ArrowDownIcon, ArrowUpIcon } from "@heroicons/react/24/outline";
 
@@ -46,8 +47,8 @@ function mutedClass(isDark: boolean): string {
 	return isDark ? "text-neutral-400" : "text-neutral-600";
 }
 
-function errorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : "Request failed.";
+function errorMessage(error: unknown, fallback: string): string {
+	return error instanceof Error ? error.message : fallback;
 }
 
 function formatDate(value: string | undefined): string {
@@ -75,6 +76,7 @@ function FeedbackCard({
 	onVote: (feedbackId: string, vote: "up" | "down") => void;
 	voting: boolean;
 }): React.ReactElement {
+	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
 	const canVote = Boolean(agentId) && feedback.status === "approved";
 
@@ -108,7 +110,9 @@ function FeedbackCard({
 					>
 						{feedback.score}
 					</div>
-					<div className={`text-xs ${mutedClass(isDark)}`}>votes</div>
+					<div className={`text-xs ${mutedClass(isDark)}`}>
+						{t("feedback.votes")}
+					</div>
 				</div>
 			</div>
 			<p className={`mt-3 text-sm ${mutedClass(isDark)}`}>
@@ -129,7 +133,7 @@ function FeedbackCard({
 					}}
 				>
 					<ArrowUpIcon className="h-3.5 w-3.5" />
-					Up {feedback.votesUp}
+					{t("feedback.upvote", { votes: feedback.votesUp })}
 				</button>
 				<button
 					disabled={voting || !canVote}
@@ -144,7 +148,7 @@ function FeedbackCard({
 					}}
 				>
 					<ArrowDownIcon className="h-3.5 w-3.5" />
-					Down {feedback.votesDown}
+					{t("feedback.downvote", { votes: feedback.votesDown })}
 				</button>
 			</div>
 		</article>
@@ -152,6 +156,7 @@ function FeedbackCard({
 }
 
 export const Feedback = ({ isDark }: FeedbackProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const agentId = useAuthStore((state) => state.agentId);
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
@@ -213,16 +218,16 @@ export const Feedback = ({ isDark }: FeedbackProperties): FunctionComponent => {
 					<h2
 						className={`text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 					>
-						Feedback
+						{t("feedback.title")}
 					</h2>
 					<span className={`text-xs ${mutedClass(isDark)}`}>
-						{agentId ?? "wallet required"}
+						{agentId ?? t("feedback.walletRequired")}
 					</span>
 				</div>
 				<div className="grid gap-3 md:grid-cols-[1fr_160px]">
 					<input
 						className={`${inputClass(isDark)} w-full`}
-						placeholder="Title"
+						placeholder={t("feedback.titlePlaceholder")}
 						type="text"
 						value={title}
 						onChange={(event): void => {
@@ -231,7 +236,7 @@ export const Feedback = ({ isDark }: FeedbackProperties): FunctionComponent => {
 					/>
 					<input
 						className={`${inputClass(isDark)} w-full`}
-						placeholder="Category"
+						placeholder={t("feedback.categoryPlaceholder")}
 						type="text"
 						value={category}
 						onChange={(event): void => {
@@ -241,7 +246,7 @@ export const Feedback = ({ isDark }: FeedbackProperties): FunctionComponent => {
 				</div>
 				<textarea
 					className={`${inputClass(isDark)} mt-3 min-h-24 w-full`}
-					placeholder="Describe the issue, request, or improvement"
+					placeholder={t("feedback.descriptionPlaceholder")}
 					value={description}
 					onChange={(event): void => {
 						setDescription(event.target.value);
@@ -258,11 +263,11 @@ export const Feedback = ({ isDark }: FeedbackProperties): FunctionComponent => {
 							!description.trim()
 						}
 					>
-						Submit
+						{t("common.submit")}
 					</button>
 					{createFeedback.isError ? (
 						<p className="text-xs text-red-500">
-							{errorMessage(createFeedback.error)}
+							{errorMessage(createFeedback.error, t("feedback.requestFailed"))}
 						</p>
 					) : null}
 				</div>
@@ -270,11 +275,11 @@ export const Feedback = ({ isDark }: FeedbackProperties): FunctionComponent => {
 
 			<section className="space-y-3">
 				{feedbackQuery.isLoading ? (
-					<p className="text-xs text-neutral-500">Loading feedback...</p>
+					<p className="text-xs text-neutral-500">{t("feedback.loading")}</p>
 				) : null}
 				{feedbackQuery.isError ? (
 					<p className="text-xs text-red-500">
-						{errorMessage(feedbackQuery.error)}
+						{errorMessage(feedbackQuery.error, t("feedback.requestFailed"))}
 					</p>
 				) : null}
 				{(feedbackQuery.data?.feedback ?? []).map((feedback) => (
@@ -294,7 +299,7 @@ export const Feedback = ({ isDark }: FeedbackProperties): FunctionComponent => {
 						<h2
 							className={`mr-auto text-sm font-medium ${isDark ? "text-white" : "text-black"}`}
 						>
-							Admin Queue
+							{t("feedback.adminQueue")}
 						</h2>
 						<select
 							className={inputClass(isDark)}
@@ -326,7 +331,7 @@ export const Feedback = ({ isDark }: FeedbackProperties): FunctionComponent => {
 					<div className="mb-3 grid gap-3 md:grid-cols-2">
 						<input
 							className={`${inputClass(isDark)} w-full`}
-							placeholder="Admin note"
+							placeholder={t("feedback.adminNotePlaceholder")}
 							type="text"
 							value={adminNote}
 							onChange={(event): void => {
@@ -335,7 +340,7 @@ export const Feedback = ({ isDark }: FeedbackProperties): FunctionComponent => {
 						/>
 						<input
 							className={`${inputClass(isDark)} w-full`}
-							placeholder="Merged reference"
+							placeholder={t("feedback.mergedReferencePlaceholder")}
 							type="text"
 							value={mergedReference}
 							onChange={(event): void => {
@@ -369,7 +374,7 @@ export const Feedback = ({ isDark }: FeedbackProperties): FunctionComponent => {
 										handleStatus(feedback.feedbackId);
 									}}
 								>
-									Update
+									{t("feedback.update")}
 								</button>
 							</div>
 						))}

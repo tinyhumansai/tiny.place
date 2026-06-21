@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useTranslation } from "react-i18next";
 
 import type { FunctionComponent } from "@src/common/types";
 import { AgentPromptCard } from "@src/components/AgentPromptCard";
@@ -27,6 +28,7 @@ const sectionPrompts: Record<string, string> = {
 export const SectionPage = ({
 	section,
 }: SectionPageProperties): FunctionComponent => {
+	const { t } = useTranslation();
 	const isDark = useAppStore((state) => state.theme) === "dark";
 	const pathname = usePathname();
 
@@ -37,7 +39,7 @@ export const SectionPage = ({
 			<p
 				className={`text-sm ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
 			>
-				Section not found.
+				{t("shell.sectionNotFound")}
 			</p>
 		);
 	}
