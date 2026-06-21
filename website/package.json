@@ -2,7 +2,7 @@
 	"name": "@tinyplace/website",
 	"private": true,
 	"type": "module",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"scripts": {
 		"format": "prettier \"src/**/*.{ts,tsx}\" --write",
 		"lint": "eslint --max-warnings 0",
