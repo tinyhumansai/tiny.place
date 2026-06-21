@@ -3,6 +3,8 @@ import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
   Comment,
   CommentListResult,
+  CreateCommentRequest,
+  CreatePostRequest,
   Feed,
   FeedQueryParams,
   HomeFeedParams,
@@ -12,6 +14,10 @@ import type {
   PostLikersResult,
   PostListResult,
 } from "../types/index.js";
+import { TinyPlaceValidationError } from "../validation.js";
+
+export const FEED_POST_MAX_BODY_LENGTH = 350;
+export const FEED_COMMENT_MAX_BODY_LENGTH = 350;
 
 /**
  * FeedsApi covers per-identity profile feeds: one feed per wallet, owner-only
@@ -65,10 +71,8 @@ export class FeedsApi {
    * Create a post on the owner's feed. Signed as `handle` (owner-only); the
    * backend rejects posting to a feed the signer does not own.
    */
-  createPost(
-    handle: string,
-    post: { body: string; contentType?: string; postId?: string },
-  ): Promise<Post> {
+  createPost(handle: string, post: CreatePostRequest): Promise<Post> {
+    validateCreatePost(post);
     const body = { ...post, postId: post.postId ?? nextClientId("post") };
     return this.http.postDirectoryAuthAs<Post>(
       `/feeds/${encodeURIComponent(handle)}/posts`,
@@ -94,7 +98,10 @@ export class FeedsApi {
     return this.http
       .get<{
         comments: Array<Comment> | null;
-      }>(`/feeds/${encodeURIComponent(handle)}/posts/${encodeURIComponent(postId)}/comments`, params as Record<string, unknown>)
+      }>(
+        `/feeds/${encodeURIComponent(handle)}/posts/${encodeURIComponent(postId)}/comments`,
+        params as Record<string, unknown>,
+      )
       .then((result) => ({ comments: result.comments ?? [] }));
   }
 
@@ -103,16 +110,13 @@ export class FeedsApi {
     handle: string,
     postId: string,
     author: string,
-    comment: { body: string; commentId?: string },
+    comment: CreateCommentRequest,
   ): Promise<Comment> {
-    const body = {
-      ...comment,
-      commentId: comment.commentId ?? nextClientId("cmt"),
-    };
+    validateCreateComment(comment);
     return this.http.postDirectoryAuthAs<Comment>(
       `/feeds/${encodeURIComponent(handle)}/posts/${encodeURIComponent(postId)}/comments`,
       author,
-      body,
+      comment,
     );
   }
 
@@ -191,6 +195,38 @@ export class FeedsApi {
     return this.wsFactory?.(
       `/feeds/${encodeURIComponent(handle)}/stream${query}`,
     );
+  }
+}
+
+function validateCreatePost(post: CreatePostRequest): void {
+  validateBody("post.body", post.body, FEED_POST_MAX_BODY_LENGTH);
+  if (post.image && post.gifUrl) {
+    throw new TinyPlaceValidationError("post accepts only one media item");
+  }
+  if (post.image) {
+    validateTextField("post.image.data", post.image.data);
+  }
+  if (post.gifUrl !== undefined) {
+    validateTextField("post.gifUrl", post.gifUrl);
+  }
+}
+
+function validateCreateComment(comment: CreateCommentRequest): void {
+  validateBody("comment.body", comment.body, FEED_COMMENT_MAX_BODY_LENGTH);
+}
+
+function validateBody(field: string, value: string, maxLength: number): void {
+  validateTextField(field, value);
+  if (value.length > maxLength) {
+    throw new TinyPlaceValidationError(
+      `${field} must be ${maxLength} characters or fewer`,
+    );
+  }
+}
+
+function validateTextField(field: string, value: string | undefined): void {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new TinyPlaceValidationError(`${field} must be a non-empty string`);
   }
 }
 

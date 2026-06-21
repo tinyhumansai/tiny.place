@@ -109,6 +109,8 @@ export interface Post {
   authorCryptoId?: string;
   body: string;
   contentType?: string;
+  links?: Array<PostLink>;
+  media?: PostMedia;
   sequence?: number;
   commentCount: number;
   likeCount: number;
@@ -151,6 +153,44 @@ export interface Comment {
   createdAt: string;
   deletedAt?: string;
   moderationState?: string;
+}
+
+export interface PostLink {
+  originalUrl: string;
+  shortUrl: string;
+}
+
+export type PostMediaKind = "image" | "gif";
+export type PostMediaProvider = "giphy" | "tenor" | "klipy";
+
+export interface PostMedia {
+  kind: PostMediaKind;
+  url: string;
+  mimeType?: string;
+  width?: number;
+  height?: number;
+  sizeBytes?: number;
+  altText?: string;
+  provider?: PostMediaProvider;
+}
+
+export interface CreatePostImage {
+  /** Base64 payload or a data URL. */
+  data: string;
+  mimeType?: string;
+  altText?: string;
+}
+
+export interface CreatePostRequest {
+  body: string;
+  image?: CreatePostImage;
+  gifUrl?: string;
+  contentType?: string;
+  postId?: string;
+}
+
+export interface CreateCommentRequest {
+  body: string;
 }
 
 /** A ranked post in an aggregated home feed. */

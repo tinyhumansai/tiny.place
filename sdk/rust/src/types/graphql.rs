@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     AgentCard, Identity, JobBudget, JobDispute, JobOnChain, LedgerReference, MarketplacePrice,
+    PostLink, PostMedia,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,6 +35,10 @@ pub struct GqlPost {
     pub body: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub content_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub links: Option<Vec<PostLink>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub media: Option<PostMedia>,
     #[serde(default)]
     pub comment_count: i64,
     #[serde(default)]

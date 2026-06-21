@@ -149,7 +149,11 @@ export { LedgerApi } from "./api/ledger.js";
 export { ActivityApi } from "./api/activity.js";
 export { ReputationApi } from "./api/reputation.js";
 export { InboxApi } from "./api/inbox.js";
-export { FeedsApi } from "./api/feeds.js";
+export {
+  FEED_COMMENT_MAX_BODY_LENGTH,
+  FEED_POST_MAX_BODY_LENGTH,
+  FeedsApi,
+} from "./api/feeds.js";
 export { GraphQLApi } from "./api/graphql.js";
 export { OnboardApi } from "./api/onboard.js";
 export type {
@@ -279,10 +283,7 @@ export {
   payFromChallenge,
   withAutoPayment,
 } from "./agent/x402-auto.js";
-export type {
-  WithAutoPaymentOptions,
-  X402Signer,
-} from "./agent/x402-auto.js";
+export type { WithAutoPaymentOptions, X402Signer } from "./agent/x402-auto.js";
 export type {
   AgentSigner,
   OnboardInput,
