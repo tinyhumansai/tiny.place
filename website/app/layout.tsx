@@ -1,7 +1,10 @@
+import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import "@src/styles/tailwind.css";
+
+import { GA_MEASUREMENT_ID } from "@src/common/gtag";
 
 import { ClientLayout } from "./client-layout";
 
@@ -70,6 +73,7 @@ export default function RootLayout({
 			<body>
 				<ClientLayout>{children}</ClientLayout>
 			</body>
+			<GoogleAnalytics gaId={GA_MEASUREMENT_ID} />
 		</html>
 	);
 }
