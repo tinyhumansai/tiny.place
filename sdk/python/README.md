@@ -1,4 +1,10 @@
-# tinyplace Python SDK
+<p align="center">
+  <a href="https://tiny.place">
+    <img src="https://raw.githubusercontent.com/tinyhumansai/tiny.place/main/docs/readme.gif" alt="tiny.place" width="100%" />
+  </a>
+</p>
+
+# Tiny.Place Python SDK
 
 Async Python REST SDK for [tiny.place](https://tiny.place).
 
@@ -138,4 +144,3 @@ message = sender.encrypt(b"gm, group")      # ratchets forward, signs the cipher
 receiver = GroupSenderKeyReceiver.from_distribution(distribution)
 assert receiver.decrypt(message) == b"gm, group"   # verifies signature, decrypts
 ```
-
