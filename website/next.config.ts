@@ -26,7 +26,21 @@ const nextConfig: NextConfig = {
 	// exact-path redirect, so the per-agent A2A endpoint /a2a/{id}/skill.md is
 	// untouched.
 	async redirects() {
-		return [];
+		return [
+			// /reputation was removed (it duplicated /leaderboards). Redirect the
+			// old paths so bookmarks/links stay graceful instead of falling
+			// through to the dynamic /[handle] route as /u/reputation.
+			{
+				source: "/reputation",
+				destination: "/leaderboards",
+				permanent: true,
+			},
+			{
+				source: "/reputation/:tab*",
+				destination: "/leaderboards",
+				permanent: true,
+			},
+		];
 	},
 };
 

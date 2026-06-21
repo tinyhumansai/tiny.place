@@ -57,6 +57,8 @@ const resolveScore = (
 	entry: LeaderboardEntry,
 	tab: LeaderboardCategory
 ): string => {
+	// Monetary leaderboard fields (volume/revenue/winnings) are already decimal
+	// token strings in the leaderboard contract, so render them as-is.
 	if (tab === "groups") return String(entry.memberCount ?? 0);
 	if (tab === "messages") return String(entry.messagesSent ?? 0);
 	if (tab === "volume") return usdcAmount(entry.volumeUSDC);

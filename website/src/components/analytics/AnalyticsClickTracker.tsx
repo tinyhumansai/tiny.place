@@ -36,9 +36,7 @@ export function AnalyticsClickTracker(): null {
 			if (!(target instanceof Element)) {
 				return;
 			}
-			const element = target.closest<HTMLElement>(
-				"button, [role='button']",
-			);
+			const element = target.closest<HTMLElement>("button, [role='button']");
 			if (!element) {
 				return;
 			}
