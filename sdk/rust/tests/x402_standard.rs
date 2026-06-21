@@ -79,17 +79,22 @@ async fn parses_challenge_from_standard_accepts() {
         .get::<serde_json::Value>("/thing", &[])
         .await
         .unwrap_err();
-    let challenge = err.payment_required().expect("challenge parsed from accepts");
+    let challenge = err
+        .payment_required()
+        .expect("challenge parsed from accepts");
     let payment = &challenge.payment;
     assert_eq!(payment.amount.as_deref(), Some("1000000"));
     assert_eq!(payment.to.as_deref(), Some("treasury-address")); // payTo -> to
-    // Binding fields promoted out of extra.
+                                                                 // Binding fields promoted out of extra.
     assert_eq!(payment.from.as_deref(), Some("payer-address"));
     assert_eq!(payment.nonce.as_deref(), Some("nonce-xyz"));
     assert_eq!(payment.expires_at.as_deref(), Some("2026-06-21T00:00:00Z"));
     // Remaining extra becomes metadata; binding keys are not duplicated in.
     let metadata = payment.metadata.as_ref().expect("metadata present");
-    assert_eq!(metadata.get("domain").map(String::as_str), Some("tiny.place"));
+    assert_eq!(
+        metadata.get("domain").map(String::as_str),
+        Some("tiny.place")
+    );
     assert_eq!(
         metadata.get("feePayer").map(String::as_str),
         Some("facilitator-address")
@@ -100,7 +105,8 @@ async fn parses_challenge_from_standard_accepts() {
 
 #[tokio::test]
 async fn falls_back_to_legacy_payment_field() {
-    let body = json!({ "error": "payment required", "payment": { "amount": "500", "to": "treasury" } });
+    let body =
+        json!({ "error": "payment required", "payment": { "amount": "500", "to": "treasury" } });
     let server = MockServer::start().await;
     Mock::given(any())
         .respond_with(ResponseTemplate::new(402).set_body_json(body))
