@@ -188,6 +188,54 @@ async fn local_signer_defaults_to_siws() {
 }
 
 #[tokio::test]
+async fn siws_token_is_well_formed_and_cached() {
+    use base64::Engine as _;
+
+    let mut signer = LocalSigner::from_seed(&[42u8; 32]).unwrap();
+    let token = signer.siws_signature().expect("SIWS minted by default");
+
+    // 1. Correct `siws:` prefix.
+    let encoded = token
+        .strip_prefix("siws:")
+        .expect("token carries the siws: prefix");
+
+    // 2. The envelope decodes from url-safe (unpadded) base64 to a JSON object
+    //    carrying both `signedMessage` and `signature` (mirroring the Python SDK).
+    let json = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(encoded)
+        .expect("envelope is url-safe base64");
+    let value: serde_json::Value = serde_json::from_slice(&json).unwrap();
+    assert_eq!(value["signatureType"], "ed25519");
+    let message_b64 = value["signedMessage"]
+        .as_str()
+        .expect("envelope has signedMessage");
+    assert!(
+        value["signature"].as_str().is_some(),
+        "envelope has signature"
+    );
+
+    // 3. The SIWS message's domain line is `tiny.place`.
+    let message = base64::engine::general_purpose::STANDARD
+        .decode(message_b64)
+        .unwrap();
+    let text = String::from_utf8(message).unwrap();
+    assert_eq!(
+        text.lines().next().unwrap(),
+        "tiny.place wants you to sign in with your Solana account:"
+    );
+
+    // 4. The token is cached: repeated reads return the identical proof rather
+    //    than re-minting per call.
+    assert_eq!(signer.siws_signature().as_deref(), Some(token.as_str()));
+    assert_eq!(signer.siws_signature(), signer.siws_signature());
+
+    // 5. Explicitly re-minting rotates the cached token (fresh nonce/timestamp).
+    let rotated = signer.mint_siws();
+    assert_ne!(rotated, token);
+    assert_eq!(signer.siws_signature().as_deref(), Some(rotated.as_str()));
+}
+
+#[tokio::test]
 async fn siws_signer_passes_token_through() {
     let signer = SiwsSigner;
 

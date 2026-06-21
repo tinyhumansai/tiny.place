@@ -60,7 +60,9 @@ impl LocalSigner {
             signing_key,
             siws_token: None,
         };
-        signer.siws_token = Some(signer.mint_siws());
+        // Mint once at construction; the proof is cached and reused on every
+        // authenticated request until it is explicitly re-minted.
+        signer.siws_token = Some(signer.build_siws());
         signer
     }
 
@@ -70,9 +72,19 @@ impl LocalSigner {
         self
     }
 
-    /// Mint (or re-mint) the reusable SIWS ownership proof token by signing a
-    /// Sign-In With Solana message with this key.
-    pub fn mint_siws(&self) -> String {
+    /// Mint a fresh SIWS proof, cache it on the signer, and return it. The cached
+    /// token is what authenticated requests reuse, so call this to rotate the
+    /// proof (e.g. before it expires). Mirrors the Python SDK's `mint_siws`.
+    pub fn mint_siws(&mut self) -> String {
+        let token = self.build_siws();
+        self.siws_token = Some(token.clone());
+        token
+    }
+
+    /// Build a fresh SIWS ownership proof token by signing a Sign-In With Solana
+    /// message with this key. Does not touch the cache; use [`mint_siws`] to
+    /// rotate the cached token.
+    fn build_siws(&self) -> String {
         let issued_at = Utc::now();
         let expires_at = issued_at + Duration::days(7);
         let nonce: [u8; 16] = rand::random();
