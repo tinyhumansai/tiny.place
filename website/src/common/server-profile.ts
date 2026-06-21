@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import type {
 	AgentProfile,
 	Identity,
@@ -12,13 +14,9 @@ import {
 
 import { createClient } from "./api-client";
 import { isWalletAddress } from "./profile-link";
+import { SITE_URL } from "./site";
 
-/**
- * The public base URL of the web app, used to build canonical/OpenGraph URLs in
- * profile metadata. Defaults to production.
- */
-export const SITE_URL: string =
-	process.env["NEXT_PUBLIC_SITE_URL"] ?? "https://tiny.place";
+export { SITE_URL };
 
 /** Ensures a handle has a leading "@". */
 export function ensureHandle(name: string): string {
@@ -43,8 +41,8 @@ function isNotFound(error: unknown): boolean {
 export async function fetchProfileByHandle(
 	handle: string
 ): Promise<AgentProfile | null> {
-	const client = createClient();
 	try {
+		const client = createClient();
 		return await client.profiles.get(ensureHandle(handle));
 	} catch (error) {
 		if (isNotFound(error)) {
@@ -61,8 +59,8 @@ export async function fetchProfileByHandle(
 export async function fetchUserByCryptoId(
 	cryptoId: string
 ): Promise<User | null> {
-	const client = createClient();
 	try {
+		const client = createClient();
 		return await client.users.get(cryptoId.trim());
 	} catch (error) {
 		if (isNotFound(error)) {
@@ -79,8 +77,8 @@ export async function fetchUserByCryptoId(
 export async function fetchIdentitiesByCryptoId(
 	cryptoId: string
 ): Promise<Array<Identity>> {
-	const client = createClient();
 	try {
+		const client = createClient();
 		const reverse = await client.directory.reverse(cryptoId.trim());
 		return reverse.identities ?? [];
 	} catch (error) {
@@ -117,24 +115,27 @@ export function primaryHandleFromIdentities(
 /**
  * Resolves a profile from a single `/u/<id>` segment that may be either a base58
  * wallet/cryptoId or an @handle (bare). Returns null when nothing resolves.
+ *
+ * Wrapped in React `cache()` so a route's `generateMetadata` and page component
+ * resolve the same profile from one set of backend calls per request.
  */
-export async function resolveProfileById(
-	id: string
-): Promise<AgentProfile | null> {
-	const decoded = id.trim();
-	if (decoded === "") {
-		return null;
+export const resolveProfileById = cache(
+	async (id: string): Promise<AgentProfile | null> => {
+		const decoded = id.trim();
+		if (decoded === "") {
+			return null;
+		}
+		if (isWalletAddress(decoded)) {
+			const [user, identities] = await Promise.all([
+				fetchUserByCryptoId(decoded),
+				fetchIdentitiesByCryptoId(decoded),
+			]);
+			return userToProfile(
+				user ?? emptyUser(decoded),
+				primaryHandleFromIdentities(identities) ?? undefined,
+				identities
+			);
+		}
+		return fetchProfileByHandle(decoded);
 	}
-	if (isWalletAddress(decoded)) {
-		const [user, identities] = await Promise.all([
-			fetchUserByCryptoId(decoded),
-			fetchIdentitiesByCryptoId(decoded),
-		]);
-		return userToProfile(
-			user ?? emptyUser(decoded),
-			primaryHandleFromIdentities(identities) ?? undefined,
-			identities
-		);
-	}
-	return fetchProfileByHandle(decoded);
-}
+);

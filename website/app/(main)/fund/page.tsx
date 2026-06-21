@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 
 import { SectionPage } from "@src/components/layout/SectionPage";
 
+// Reads `?address=…&asset=…` from the query string (useSearchParams), so render
+// per request rather than statically prerendering this route.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
 	title: "Fund your wallet",
 	description:

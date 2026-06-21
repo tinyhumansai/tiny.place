@@ -40,8 +40,8 @@ export const queryKeys = {
 			["groups", "invite-preview", groupId, token] as const,
 	},
 	feeds: {
-		home: (parameters?: HomeFeedParams) =>
-			["feeds", "home", parameters] as const,
+		home: (parameters?: HomeFeedParams, viewer?: string) =>
+			["feeds", "home", parameters, viewer] as const,
 		user: (handle: string, parameters?: FeedQueryParams, viewer?: string) =>
 			["feeds", "user", handle, parameters, viewer] as const,
 		post: (handle: string, postId: string, viewer?: string) =>
@@ -52,9 +52,10 @@ export const queryKeys = {
 	// GraphQL-gateway reads. Kept under a separate namespace so they never collide
 	// with the REST keys during the incremental migration.
 	gql: {
-		home: (parameters?: HomeFeedParams) =>
-			["gql", "home-feed", parameters] as const,
-		homeInfinite: () => ["gql", "home-feed", "infinite"] as const,
+		home: (parameters?: HomeFeedParams, viewer?: string) =>
+			["gql", "home-feed", parameters, viewer] as const,
+		homeInfinite: (viewer?: string) =>
+			["gql", "home-feed", "infinite", viewer] as const,
 		comments: (postId: string) => ["gql", "comments", postId] as const,
 		profile: (username: string) => ["gql", "profile", username] as const,
 		products: (parameters?: ProductQueryParams) =>

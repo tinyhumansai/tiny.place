@@ -14,6 +14,15 @@ function flagEnabled(value: string | undefined): boolean {
 	return normalized === "1" || normalized === "true" || normalized === "yes";
 }
 
+/** Like {@link flagEnabled} but defaults OFF — for opt-in/not-yet-live features. */
+function flagEnabledDefaultOff(value: string | undefined): boolean {
+	if (!value) {
+		return false;
+	}
+	const normalized = value.trim().toLowerCase();
+	return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
 /** Use the GraphQL gateway for the home feed + comments (the 429 hotspot). */
 export const graphqlFeedEnabled: boolean = flagEnabled(
 	process.env["NEXT_PUBLIC_GRAPHQL_FEED"]
@@ -36,4 +45,15 @@ export const graphqlMarketplaceEnabled: boolean = flagEnabled(
  */
 export const graphqlDirectoryEnabled: boolean = flagEnabled(
 	process.env["NEXT_PUBLIC_GRAPHQL_DIRECTORY"]
+);
+
+/**
+ * Gates the X (Twitter) account-verification flow — the onboarding "Verify X"
+ * step and the profile verification card. Defaults OFF because the feature is
+ * not live yet; set NEXT_PUBLIC_X_VERIFICATION=1 to re-enable once the backend
+ * attestation flow is active. The verified badge is unaffected: it only renders
+ * for already-verified accounts, of which there are none while this is off.
+ */
+export const xVerificationEnabled: boolean = flagEnabledDefaultOff(
+	process.env["NEXT_PUBLIC_X_VERIFICATION"]
 );

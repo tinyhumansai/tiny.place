@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactElement } from "react";
 import type { AgentProfile } from "@tinyhumansai/tinyplace";
 
+import { xVerificationEnabled } from "@src/common/feature-flags";
 import { FollowButton } from "@src/components/profile/FollowButton";
 import { ProfileActivityPanel } from "@src/components/profile/ProfileActivityPanel";
 import { ProfileEditor } from "@src/components/profile/ProfileEditor";
@@ -135,7 +136,7 @@ export function ProfileTabs({
 						isDark={isDark}
 						score={profile.reputation}
 					/>
-					{isOwnProfile && (
+					{isOwnProfile && xVerificationEnabled && (
 						<TwitterVerificationCard
 							agent={profile.username}
 							agentCryptoId={profile.cryptoId}

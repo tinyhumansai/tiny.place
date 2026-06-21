@@ -12,6 +12,7 @@ import {
 } from "@tinyhumansai/tinyplace";
 
 import { createClient, createOnboardClient } from "@src/common/api-client";
+import { xVerificationEnabled } from "@src/common/feature-flags";
 import type { FunctionComponent } from "@src/common/types";
 import { TwitterVerificationCard } from "@src/components/profile/TwitterVerificationCard";
 
@@ -32,12 +33,16 @@ const STEPS: Array<Step> = [
 	{ key: "done", title: "Done" },
 ];
 
+// The "Verify X" step is gated behind xVerificationEnabled (off until the
+// attestation flow is live); when off, the web wizard matches the keyless flow.
 const WEB_STEPS: Array<Step> = [
 	{ key: "email", title: "Email" },
 	{ key: "profile", title: "Profile" },
 	{ key: "fund", title: "Wallet" },
 	{ key: "handle", title: "Identity" },
-	{ key: "twitter", title: "X" },
+	...(xVerificationEnabled
+		? ([{ key: "twitter", title: "X" }] as Array<Step>)
+		: []),
 	{ key: "done", title: "Done" },
 ];
 
@@ -807,7 +812,7 @@ export function WebOnboardWizard({
 					emailDone={emailDone}
 					handleDone={handleDone}
 					profileDone={profileDone}
-					twitterDone={twitterDone}
+					twitterDone={xVerificationEnabled ? twitterDone : undefined}
 					onComplete={() => {
 						router.push(completeHref);
 					}}

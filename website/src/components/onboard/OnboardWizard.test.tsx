@@ -8,6 +8,8 @@ import {
 } from "@tinyhumansai/tinyplace";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type * as FeatureFlags from "@src/common/feature-flags";
+
 import { OnboardWizard, WebOnboardWizard } from "./OnboardWizard";
 
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
@@ -24,6 +26,13 @@ vi.mock("@src/hooks/use-reputation", () => ({
 	useSubmitTwitterAttestation: (): unknown => inertMutation,
 	useTwitterVerificationStatus: (): unknown => ({ data: undefined }),
 }));
+
+// The "Verify X" step is gated off by default (xVerificationEnabled) until the
+// attestation flow is live; force it on here so the step's behaviour is covered.
+vi.mock("@src/common/feature-flags", async (importOriginal) => {
+	const actual = await importOriginal<typeof FeatureFlags>();
+	return { ...actual, xVerificationEnabled: true };
+});
 
 afterEach(() => {
 	window.location.hash = "";

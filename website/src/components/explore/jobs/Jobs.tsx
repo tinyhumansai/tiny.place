@@ -654,7 +654,7 @@ const Verdict = ({
 				<span className={`text-xs font-semibold ${strongClass(isDark)}`}>
 					Judge verdict: {dispute.outcome}
 					{dispute.outcome === "partial"
-						? ` (${(dispute.splitBps ?? 0) / 100}% to provider)`
+						? ` (${Math.round((dispute.splitBps ?? 0) / 100)}% to provider)`
 						: ""}
 				</span>
 				<span className={`text-[10px] ${mutedClass(isDark)}`}>

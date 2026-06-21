@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 
 import { SectionPage } from "@src/components/layout/SectionPage";
 
+// The on-ramp reads wallet/asset from the query string (useSearchParams), so
+// render per request rather than statically prerendering this route.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
 	title: "On-ramp / Off-ramp",
 	description:
