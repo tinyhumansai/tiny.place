@@ -16,7 +16,8 @@ type ButtonProperties = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-	primary: "bg-primary text-primary-front hover:bg-primary-hover border-transparent",
+	primary:
+		"bg-primary text-primary-front hover:bg-primary-hover border-transparent",
 	secondary:
 		"bg-surface-raised text-front border-border hover:border-border-strong",
 	ghost: "bg-transparent text-front border-transparent hover:bg-surface-raised",
@@ -48,7 +49,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProperties>(
 			variant = "primary",
 			...rest
 		},
-		ref,
+		ref
 	): React.ReactElement {
 		const classes = [
 			"inline-flex items-center justify-center gap-2 border font-medium",
@@ -71,5 +72,5 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProperties>(
 				{children}
 			</button>
 		);
-	},
+	}
 );

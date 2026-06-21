@@ -17,12 +17,12 @@ describe("AnalyticsClickTracker", () => {
 			<>
 				<AnalyticsClickTracker />
 				<button type="button">Save profile</button>
-			</>,
+			</>
 		);
 		await userEvent.click(document.querySelector("button")!);
 		expect(trackEvent).toHaveBeenCalledWith(
 			"button_click",
-			expect.objectContaining({ label: "Save profile" }),
+			expect.objectContaining({ label: "Save profile" })
 		);
 	});
 
@@ -31,12 +31,12 @@ describe("AnalyticsClickTracker", () => {
 			<>
 				<AnalyticsClickTracker />
 				<Button analyticsId="register_cta">Register @handle</Button>
-			</>,
+			</>
 		);
 		await userEvent.click(document.querySelector("button")!);
 		expect(trackEvent).toHaveBeenCalledWith(
 			"button_click",
-			expect.objectContaining({ label: "register_cta" }),
+			expect.objectContaining({ label: "register_cta" })
 		);
 	});
 
@@ -45,7 +45,7 @@ describe("AnalyticsClickTracker", () => {
 			<>
 				<AnalyticsClickTracker />
 				<div>not a button</div>
-			</>,
+			</>
 		);
 		await userEvent.click(document.querySelector("div")!);
 		expect(trackEvent).not.toHaveBeenCalled();

@@ -36,7 +36,7 @@ type OpenPanelCall = (...arguments_: Array<unknown>) => void;
  */
 export function trackEvent(
 	name: string,
-	properties?: Record<string, unknown>,
+	properties?: Record<string, unknown>
 ): void {
 	if (typeof window === "undefined") {
 		return;
