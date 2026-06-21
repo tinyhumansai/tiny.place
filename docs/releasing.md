@@ -27,9 +27,9 @@ The `prepare` job bumps only the selected packages
   `vercel pull/build/deploy --prod` and creates a GitHub Release with generated
   notes. **SDK releases do not get GitHub Releases** — only the website does.
 
-Vercel's git auto-deploy is disabled (`vercel.json` → `git.deploymentEnabled:
-false`), so commits to `main` no longer trigger production builds — the website
-ships **only** on a `website-v*` tag (per
+Vercel's git auto-deploy is disabled (`website/vercel.json` →
+`git.deploymentEnabled: false`), so commits to `main` no longer trigger
+production builds — the website ships **only** on a `website-v*` tag (per
 <https://vercel.com/kb/guide/can-you-deploy-based-on-tags-releases-on-vercel>).
 
 > The release run pushes the website tag with `GITHUB_TOKEN`, which by design
