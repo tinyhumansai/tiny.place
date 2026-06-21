@@ -44,7 +44,9 @@ pub const SDK_VERSION: &str = "0.1.0";
 
 pub use client::{TinyPlaceClient, TinyPlaceClientOptions};
 pub use error::{Error, PaymentChallenge, PaymentRequiredChallenge, Result};
-pub use http::{HttpClient, HttpClientOptions, RetryOptions, DEFAULT_TIMEOUT};
+pub use http::{
+    HttpClient, HttpClientOptions, RetryOptions, DEFAULT_TIMEOUT, SDK_CLIENT, SDK_CLIENT_HEADER,
+};
 pub use signer::{LocalSigner, Signer};
 pub use websocket::{TinyPlaceWebSocket, WebSocketConnection, WsAuth};
 
@@ -54,6 +56,7 @@ pub use assets::{
 };
 pub use auth::AdminSigningOptions;
 pub use x402::{
-    build_x402_payment_authorization, build_x402_payment_map, sign_x402_authorization,
-    X402Authorization, X402AuthorizationFields, X402PaymentAuthorizationOptions, X402PaymentMap,
+    build_x402_payment_authorization, build_x402_payment_envelope, build_x402_payment_map,
+    encode_x402_payment_header, sign_x402_authorization, X402Authorization,
+    X402AuthorizationFields, X402PaymentAuthorizationOptions, X402PaymentMap,
 };
