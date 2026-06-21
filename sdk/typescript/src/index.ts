@@ -66,16 +66,20 @@ export type {
   X402PaymentAuthorizationOptions,
   X402PaymentMapOptions,
   X402PaymentMap,
+  X402PaymentEnvelope,
 } from "./x402.js";
 export {
   buildCanonicalMessage,
   buildX402PaymentAuthorization,
   buildX402PaymentMap,
   buildX402PaymentPayload,
+  buildX402PaymentEnvelope,
+  encodeX402PaymentHeader,
   signX402Authorization,
   x402AuthorizationToPaymentMap,
   generateNonce,
 } from "./x402.js";
+export { SDK_VERSION, SDK_CLIENT, HEADER_SDK_CLIENT } from "./version.js";
 
 export {
   buildDelegatedX402PaymentMap,

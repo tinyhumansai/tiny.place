@@ -200,6 +200,72 @@ export function x402AuthorizationToPaymentMap(
   return payment;
 }
 
+/**
+ * The standard x402 v2 PaymentPayload envelope. A migrated SDK (or any standard
+ * x402 client) base64-encodes this and submits it in the `X-PAYMENT` header on
+ * the header-based payment surfaces (e.g. a2a). tiny.place's authorization
+ * signature travels as the scheme-specific `payload`.
+ */
+export interface X402PaymentEnvelope {
+  x402Version: number;
+  accepted: {
+    scheme: X402Scheme;
+    network: string;
+    amount: string;
+    asset: string;
+    payTo: string;
+    maxTimeoutSeconds: number;
+    extra: Record<string, string>;
+  };
+  payload: {
+    signature: string;
+    authorization: Record<string, string>;
+  };
+  extensions: Record<string, never>;
+}
+
+/** Builds the standard x402 v2 PaymentPayload envelope from an authorization. */
+export function buildX402PaymentEnvelope(
+  authorization: X402Authorization,
+): X402PaymentEnvelope {
+  return {
+    x402Version: 2,
+    accepted: {
+      scheme: authorization.scheme,
+      network: authorization.network,
+      amount: authorization.amount,
+      asset: authorization.asset,
+      payTo: authorization.to,
+      maxTimeoutSeconds: 60,
+      extra: { ...(authorization.metadata ?? {}) },
+    },
+    payload: {
+      signature: authorization.signature,
+      authorization: {
+        from: authorization.from,
+        to: authorization.to,
+        value: authorization.amount,
+        nonce: authorization.nonce,
+        ...(authorization.expiresAt
+          ? { validBefore: authorization.expiresAt }
+          : {}),
+      },
+    },
+    extensions: {},
+  };
+}
+
+/**
+ * Encodes an authorization as the base64 `X-PAYMENT` header value (the standard
+ * x402 v2 submission format). Mirrors the backend's x402.ParseInboundPayment.
+ */
+export function encodeX402PaymentHeader(
+  authorization: X402Authorization,
+): string {
+  const json = JSON.stringify(buildX402PaymentEnvelope(authorization));
+  return toBase64(new TextEncoder().encode(json));
+}
+
 function paymentReferences(
   options: X402PaymentReferenceOptions,
 ): X402PaymentMap {

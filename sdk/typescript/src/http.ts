@@ -6,6 +6,7 @@ import {
   type AdminSigningOptions,
 } from "./auth.js";
 import { classifyError, type TinyPlaceErrorCode } from "./errors.js";
+import { HEADER_SDK_CLIENT, SDK_CLIENT } from "./version.js";
 
 export type BodySigner<TBody = any> = (body: TBody) => Promise<TBody> | TBody;
 
@@ -338,6 +339,10 @@ export class HttpClient {
   ): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
+      // Identify this first-party SDK so the backend can serve the legacy x402
+      // challenge shape during the standardization migration; standard clients
+      // omit this header and receive a clean x402 v2 challenge.
+      [HEADER_SDK_CLIENT]: SDK_CLIENT,
       ...(options?.headers ?? {}),
     };
 
@@ -870,19 +875,29 @@ function paymentRequiredFromBody(
 function asPaymentRequiredChallenge(
   value: unknown,
 ): PaymentRequiredChallenge | undefined {
-  if (typeof value !== "object" || value === null || !("payment" in value)) {
+  if (typeof value !== "object" || value === null) {
     return undefined;
   }
+  const error = (value as { error?: unknown }).error;
+  const errorField = typeof error === "string" ? { error } : {};
 
+  // Prefer the standard x402 v2 accepts[] array. tiny.place advertises the
+  // payer-binding fields (from/nonce/expiresAt) under accepts[].extra so the
+  // challenge can be rebuilt from accepts[] alone — no legacy `payment` needed.
+  const fromAccepts = challengeFromAccepts(value);
+  if (fromAccepts) {
+    return { ...errorField, payment: fromAccepts };
+  }
+
+  // Legacy fallback: the non-standard top-level `payment` object. Removed in
+  // Phase 2 once the standard accepts[] path is the only one in the field.
   const payment = (value as { payment?: unknown }).payment;
   if (typeof payment !== "object" || payment === null) {
     return undefined;
   }
-
   const challengePayment = payment as Record<string, unknown>;
-  const error = (value as { error?: unknown }).error;
   return {
-    ...(typeof error === "string" ? { error } : {}),
+    ...errorField,
     payment: {
       ...stringField(challengePayment, "scheme"),
       ...stringField(challengePayment, "network"),
@@ -895,6 +910,54 @@ function asPaymentRequiredChallenge(
       ...stringField(challengePayment, "signature"),
       ...metadataField(challengePayment),
     },
+  };
+}
+
+// challengeFromAccepts maps the first standard x402 v2 accepts[] entry onto the
+// SDK's flat PaymentChallenge. The payer-binding fields (from/nonce/expiresAt)
+// are promoted out of `extra` to the top level; the remainder of `extra`
+// becomes the signed metadata, exactly mirroring the legacy `payment` shape.
+function challengeFromAccepts(
+  value: unknown,
+): PaymentChallenge | undefined {
+  const accepts = (value as { accepts?: unknown }).accepts;
+  if (!Array.isArray(accepts) || accepts.length === 0) {
+    return undefined;
+  }
+  const entry = accepts[0];
+  if (typeof entry !== "object" || entry === null) {
+    return undefined;
+  }
+  const accept = entry as Record<string, unknown>;
+  const extra =
+    typeof accept["extra"] === "object" && accept["extra"] !== null
+      ? (accept["extra"] as Record<string, unknown>)
+      : {};
+
+  const bindingKeys = ["from", "nonce", "expiresAt"] as const;
+  const metadata: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(extra)) {
+    if (typeof raw === "string" && !bindingKeys.includes(key as never)) {
+      metadata[key] = raw;
+    }
+  }
+
+  const binding: Partial<PaymentChallenge> = {};
+  for (const key of bindingKeys) {
+    if (typeof extra[key] === "string") {
+      binding[key] = extra[key] as string;
+    }
+  }
+
+  return {
+    ...stringField(accept, "scheme"),
+    ...stringField(accept, "network"),
+    ...stringField(accept, "asset"),
+    ...stringField(accept, "amount"),
+    // accepts[] names the recipient `payTo`; the SDK challenge calls it `to`.
+    ...(typeof accept["payTo"] === "string" ? { to: accept["payTo"] } : {}),
+    ...binding,
+    ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
   };
 }
 

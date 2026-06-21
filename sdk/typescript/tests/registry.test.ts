@@ -57,6 +57,38 @@ async function verifyFreshSignature(
 }
 
 describe("RegistryApi", () => {
+  it("sends the X-Tinyplace-SDK identification header on every request", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(23), {
+      siws: false,
+    });
+    const requests: Array<Request> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        requests.push(new Request(input, init));
+        return Response.json({
+          username: "@agent",
+          cryptoId: signer.agentId,
+          publicKey: signer.publicKeyBase64,
+          registeredAt: "2026-06-13T00:00:00Z",
+          expiresAt: "2027-06-13T00:00:00Z",
+          status: "active",
+          updatedAt: "2026-06-13T00:00:00Z",
+        });
+      },
+    });
+
+    await client.registry.register({
+      username: "@agent",
+      cryptoId: signer.agentId,
+      publicKey: signer.publicKeyBase64,
+    });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.headers.get("X-Tinyplace-SDK")).toMatch(/^ts\//u);
+  });
+
   it("signs registration over cryptoId, publicKey, username and null payment methods", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(19), { siws: false });
     const requests: Array<Request> = [];
