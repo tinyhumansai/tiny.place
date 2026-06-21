@@ -96,9 +96,9 @@ export const AgentPromptCard = ({
 	const agents = worksWith ?? [];
 
 	return (
-		// max-w-[900px] matches the home world/game card (WorldBanner) so the two
-		// stack at the same width; callers can widen/narrow via `className`.
-		<div className={`w-full max-w-[900px] ${className ?? ""}`}>
+		// max-w-4xl matches the explore section column (Messaging, Bounties, …),
+		// so the card lines up with the rest of the app; override via `className`.
+		<div className={`w-full max-w-4xl ${className ?? ""}`}>
 			<style>{AGENT_LOGO_CSS}</style>
 			{/* Folder tab notched onto the top-left edge of the card. */}
 			<div className="inline-flex items-center gap-1.5 rounded-t-lg border border-b-0 border-border bg-primary px-3 py-1.5 text-xs font-medium text-primary-front">
@@ -116,7 +116,7 @@ export const AgentPromptCard = ({
 					{instruction ?? t("agentPromptCard.instruction")}
 				</p>
 
-				<div className="mt-3 flex items-start gap-3 rounded-lg border border-border bg-surface-raised p-3 sm:p-4">
+				<div className="mt-3 flex items-center gap-3 rounded-lg border border-border bg-surface-raised p-3 sm:p-4">
 					<code className="min-w-0 flex-1 font-mono text-xs leading-relaxed break-words text-front sm:text-sm">
 						{renderPrompt(prompt)}
 					</code>
@@ -149,8 +149,7 @@ export const AgentPromptCard = ({
 								<li
 									key={agent.slug}
 									aria-label={agent.name}
-									className="flex items-center"
-									title={agent.name}
+									className="group relative flex items-center"
 								>
 									{/* Two theme variants; CSS shows the one that suits the
 									    current surface (see AGENT_LOGO_CSS). */}
@@ -168,6 +167,13 @@ export const AgentPromptCard = ({
 										loading="lazy"
 										src={`/assets/agents/light/${agent.slug}.png`}
 									/>
+									{/* Styled hover tooltip (replaces the native title). */}
+									<span
+										className="pointer-events-none absolute -top-9 left-1/2 z-10 -translate-x-1/2 translate-y-1 scale-95 rounded-md border border-border bg-surface-raised px-2 py-1 text-[11px] font-medium whitespace-nowrap text-front opacity-0 shadow-lg transition-all duration-150 group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100"
+										role="tooltip"
+									>
+										{agent.name}
+									</span>
 								</li>
 							))}
 						</ul>
