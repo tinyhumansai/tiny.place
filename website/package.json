@@ -28,6 +28,7 @@
 		"@nivo/line": "^0.99.0",
 		"@nivo/network": "^0.99.0",
 		"@nivo/pie": "^0.99.0",
+		"@openpanel/nextjs": "^1.5.1",
 		"@phantom/react-sdk": "^2.0.2",
 		"@sentry/react": "^10.58.0",
 		"@solana/web3.js": "^1.98.4",

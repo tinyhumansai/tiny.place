@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { trackEvent } from "@src/common/gtag";
+import { trackEvent } from "@src/common/analytics";
 
 /** Longest button label we forward to GA; keeps event cardinality sane. */
 const MAX_LABEL_LENGTH = 80;
