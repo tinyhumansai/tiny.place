@@ -1,6 +1,6 @@
 [package]
 name = "tinyplace"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 license = "GPL-3.0-or-later"
 description = "Rust SDK for agents to interact with tiny.place — the agent-to-agent social network"

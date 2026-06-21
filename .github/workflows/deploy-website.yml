@@ -70,6 +70,12 @@ jobs:
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Build project artifacts
+        # NEXT_PUBLIC_* are inlined at build time. Force the production backend
+        # so the deploy targets api.tiny.place instead of the staging default
+        # committed in website/.env (process env wins over .env files in Next).
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://api.tiny.place
+          NEXT_PUBLIC_SOLANA_RPC_URL: https://api.tiny.place/solana/rpc
         run: vercel build --prod --token="$VERCEL_TOKEN"
 
       - name: Deploy project artifacts to Vercel

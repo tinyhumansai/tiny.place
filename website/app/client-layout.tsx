@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { AnalyticsClickTracker } from "@src/components/analytics/AnalyticsClickTracker";
 import type { FunctionComponent } from "@src/common/types";
 
 import { Providers } from "./providers";
@@ -17,5 +18,10 @@ type ClientLayoutProperties = {
 export const ClientLayout = ({
 	children,
 }: ClientLayoutProperties): FunctionComponent => {
-	return <Providers>{children}</Providers>;
+	return (
+		<>
+			<AnalyticsClickTracker />
+			<Providers>{children}</Providers>
+		</>
+	);
 };
