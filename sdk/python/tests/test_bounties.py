@@ -102,6 +102,59 @@ async def test_bounties_create_with_solana_payment_retries_through_confirmation_
     assert result["bounty"]["status"] == "open"
 
 
+async def test_bounties_create_with_solana_payment_uses_delegated_path_when_fee_payer(
+    monkeypatch,
+) -> None:
+    # When the 402 challenge advertises the facilitator fee payer, the SPL reward
+    # settles gaslessly through the delegated path (delegatedTx), not the direct
+    # payer-pays-gas transfer.
+    signer = LocalSigner.from_seed(bytes([95]) * 32)
+    challenge = {
+        "amount": "5",
+        "to": "EscrowWallet111",
+        "network": SOLANA_MAINNET_NETWORK,
+        "asset": "USDC",
+        "metadata": {"feePayer": "FacilitatorFeePayer111"},
+    }
+    session = FakeSession(
+        [
+            FakeResponse(402, {"payment": challenge}),  # probe
+            FakeResponse(200, {"bountyId": "b1", "status": "open"}),  # funded re-create
+        ]
+    )
+    client = _client(signer, session)
+    captured: dict = {}
+
+    async def fake_delegated(**kwargs):
+        captured.update(kwargs)
+        return {
+            "from": kwargs["from_address"],
+            "amount": kwargs["payment"]["amount"],
+            "to": kwargs["payment"]["to"],
+            "metadata.delegatedTx": "BASE64WIRE",
+        }
+
+    async def fail_direct(**_kwargs):  # the direct path must NOT be taken
+        raise AssertionError("direct execute_solana_x402_payment should not run")
+
+    monkeypatch.setattr("tinyplace.api.bounties.build_delegated_x402_payment_map", fake_delegated)
+    monkeypatch.setattr("tinyplace.api.bounties.execute_solana_x402_payment", fail_direct)
+
+    result = await client.bounties.create_with_solana_payment(
+        {"creator": "CreatorId", "title": "X", "amount": "5", "asset": "USDC"},
+        rpc_url="https://rpc.example",
+        secret_key=bytes([95]) * 32,
+    )
+
+    # The facilitator fee payer from the challenge drove the delegated build.
+    assert captured["fee_payer"] == "FacilitatorFeePayer111"
+    assert captured["from_address"] == "CreatorId"
+    assert captured["payment"]["metadata"]["kind"] == "bounty-fund"
+    create_body = json.loads(session.requests[1]["data"])
+    assert create_body["payment"]["metadata.delegatedTx"] == "BASE64WIRE"
+    assert result["bounty"]["status"] == "open"
+
+
 async def test_bounties_create_with_solana_payment_requires_creator() -> None:
     import pytest
 

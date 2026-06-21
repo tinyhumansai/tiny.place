@@ -9,8 +9,10 @@ from ..http import HttpClient, TinyPlaceError, encode
 from ..signer import Signer
 from ..solana import (
     SOLANA_MAINNET_NETWORK,
+    SOLANA_NATIVE_ASSET,
     SOLANA_USDC_MINT,
     USDC_DECIMALS,
+    build_delegated_x402_payment_map,
     execute_solana_x402_payment,
 )
 from ..types import Json, JsonDict
@@ -63,36 +65,70 @@ class RegistryApi:
         if not amount or not recipient:
             raise ValueError("registration payment challenge is missing amount or recipient")
 
-        execution = await execute_solana_x402_payment(
-            signer=self._signer,
-            rpc_url=rpc_url,
-            secret_key=secret_key,
-            # The registration fee is USDC: default to the USDC mint so a
-            # challenge that names the asset by its SPL mint address (rather than
-            # the literal "USDC" symbol) still settles. Callers override for
-            # devnet / custom deployments.
-            mint=mint or SOLANA_USDC_MINT,
-            decimals=decimals,
-            payment={
-                "scheme": challenge.get("scheme", "exact"),
-                "network": challenge.get("network") or network or SOLANA_MAINNET_NETWORK,
-                "asset": challenge.get("asset") or "USDC",
-                "amount": amount,
-                "from": normalized.get("cryptoId") or self._signer.agent_id,
-                "to": recipient,
-                "nonce": challenge.get("nonce"),
-                "expiresAt": challenge.get("expiresAt"),
-                "metadata": {
-                    **(challenge.get("metadata") or {}),
-                    "identity": normalized["username"],
-                    "purpose": "registration",
+        challenge_metadata = challenge.get("metadata") or {}
+        challenge_network = challenge.get("network") or network or SOLANA_MAINNET_NETWORK
+        # The registration fee is USDC: default to the USDC mint so a challenge
+        # that names the asset by its SPL mint address (rather than the literal
+        # "USDC" symbol) still settles. Callers override for devnet / custom
+        # deployments.
+        challenge_asset = challenge.get("asset") or "USDC"
+        is_native = str(challenge_asset).upper() == SOLANA_NATIVE_ASSET
+        fee_payer = challenge_metadata.get("feePayer")
+        payer_from = normalized.get("cryptoId") or self._signer.agent_id
+        payment_metadata = {
+            **challenge_metadata,
+            "identity": normalized["username"],
+            "purpose": "registration",
+        }
+
+        # The USDC registration fee settles gaslessly through the facilitator: a
+        # payer-signed delegated tx whose fee payer is the facilitator (from the
+        # 402 challenge), so the payer needs no SOL for gas. Native SOL — which
+        # the facilitator cannot settle — falls back to the direct path. Mirrors
+        # the TS SDK's delegated registration flow.
+        on_chain_tx: str | None = None
+        if not is_native and fee_payer:
+            payment_map = await build_delegated_x402_payment_map(
+                signer=self._signer,
+                rpc_url=rpc_url,
+                fee_payer=str(fee_payer),
+                mint=mint or SOLANA_USDC_MINT,
+                decimals=decimals,
+                secret_key=secret_key,
+                from_address=payer_from,
+                payment={
+                    "network": challenge_network,
+                    "asset": challenge_asset,
+                    "amount": amount,
+                    "to": recipient,
+                    "metadata": payment_metadata,
                 },
-                "publicKeyBase64": normalized.get("publicKey"),
-            },
-        )
+            )
+        else:
+            execution = await execute_solana_x402_payment(
+                signer=self._signer,
+                rpc_url=rpc_url,
+                secret_key=secret_key,
+                mint=mint or SOLANA_USDC_MINT,
+                decimals=decimals,
+                payment={
+                    "scheme": challenge.get("scheme", "exact"),
+                    "network": challenge_network,
+                    "asset": challenge_asset,
+                    "amount": amount,
+                    "from": payer_from,
+                    "to": recipient,
+                    "nonce": challenge.get("nonce"),
+                    "expiresAt": challenge.get("expiresAt"),
+                    "metadata": payment_metadata,
+                    "publicKeyBase64": normalized.get("publicKey"),
+                },
+            )
+            payment_map = execution["payment"]
+            on_chain_tx = execution["signature"]
         try:
             identity = await self._register_retrying_payment(
-                {**normalized, "payment": execution["payment"]}, attempts, interval_ms
+                {**normalized, "payment": payment_map}, attempts, interval_ms
             )
         except TinyPlaceError as exc:
             # The payment is already on chain. A 5xx can still come back after
@@ -105,8 +141,8 @@ class RegistryApi:
                 raise
         return {
             "identity": identity,
-            "payment": execution["payment"],
-            "onChainTx": execution["signature"],
+            "payment": payment_map,
+            "onChainTx": on_chain_tx,
         }
 
     async def _recover_registered_identity(

@@ -5,7 +5,13 @@ from typing import Any
 
 from ..http import HttpClient, TinyPlaceError, encode
 from ..signer import Signer
-from ..solana import SOLANA_MAINNET_NETWORK, SOLANA_USDC_MINT, execute_solana_x402_payment
+from ..solana import (
+    SOLANA_MAINNET_NETWORK,
+    SOLANA_NATIVE_ASSET,
+    SOLANA_USDC_MINT,
+    build_delegated_x402_payment_map,
+    execute_solana_x402_payment,
+)
 from ..types import Json, JsonDict, Query
 
 DEFAULT_FUND_ATTEMPTS = 30
@@ -76,6 +82,40 @@ class BountiesApi:
         recipient = challenge.get("to")
         if not amount or not recipient:
             raise ValueError("bounty create challenge is missing amount or recipient")
+        challenge_metadata = challenge.get("metadata") or {}
+        challenge_network = challenge.get("network") or network or SOLANA_MAINNET_NETWORK
+        challenge_asset = challenge.get("asset") or "USDC"
+        is_native = str(challenge_asset).upper() == SOLANA_NATIVE_ASSET
+        fee_payer = challenge_metadata.get("feePayer")
+        # SPL rewards (USDC/CASH) settle gaslessly through the facilitator: build a
+        # payer-signed delegated tx whose fee payer is the facilitator (from the
+        # 402 challenge), so the payer needs no SOL for gas. Native SOL — which the
+        # facilitator cannot settle — falls back to the direct (payer-pays-gas)
+        # path. Mirrors the TS CLI's createAndFundBounty.
+        if not is_native and fee_payer:
+            payment_map = await build_delegated_x402_payment_map(
+                signer=self._signer,
+                rpc_url=rpc_url,
+                fee_payer=str(fee_payer),
+                mint=mint or SOLANA_USDC_MINT,
+                decimals=decimals,
+                secret_key=secret_key,
+                from_address=creator,
+                payment={
+                    "network": challenge_network,
+                    "asset": challenge_asset,
+                    "amount": amount,
+                    "to": recipient,
+                    "metadata": {
+                        **challenge_metadata,
+                        "kind": "bounty-fund",
+                    },
+                },
+            )
+            bounty = await self._create_retrying(
+                {**request, "payment": payment_map}, attempts, interval_ms
+            )
+            return {"bounty": bounty, "payment": {"payment": payment_map}}
         execution = await execute_solana_x402_payment(
             signer=self._signer,
             rpc_url=rpc_url,
@@ -84,15 +124,15 @@ class BountiesApi:
             decimals=decimals,
             payment={
                 "scheme": challenge.get("scheme", "exact"),
-                "network": challenge.get("network") or network or SOLANA_MAINNET_NETWORK,
-                "asset": challenge.get("asset") or "USDC",
+                "network": challenge_network,
+                "asset": challenge_asset,
                 "amount": amount,
                 "from": creator,
                 "to": recipient,
                 "nonce": challenge.get("nonce"),
                 "expiresAt": challenge.get("expiresAt"),
                 "metadata": {
-                    **(challenge.get("metadata") or {}),
+                    **challenge_metadata,
                     "kind": "bounty-fund",
                 },
             },
