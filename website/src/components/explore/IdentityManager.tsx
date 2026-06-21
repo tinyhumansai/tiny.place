@@ -4,7 +4,6 @@ import { useState } from "react";
 
 import type { Identity, IdentityListing } from "@tinyhumansai/tinyplace";
 
-import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import {
 	useAcceptIdentityOffer,
@@ -168,10 +167,7 @@ function IdentityCard({
 					)}
 					{isListed && (
 						<span className="rounded-full bg-blue-600/20 px-2 py-0.5 text-xs font-medium text-blue-400">
-							Listed ·{" "}
-							{listing
-								? formatTokenAmount(listing.price.amount, listing.price.asset)
-								: ""}
+							Listed · {listing?.price.amount} {listing?.price.asset}
 						</span>
 					)}
 				</div>
@@ -465,7 +461,7 @@ function IdentityCard({
 						>
 							<div>
 								<div className={`text-xs font-semibold ${headingClass}`}>
-									{formatTokenAmount(offer.price.amount, offer.price.asset)}
+									{offer.price.amount} {offer.price.asset}
 								</div>
 								<div className={`text-xs ${secondaryClass}`}>
 									from {offer.buyer}

@@ -2,7 +2,6 @@
 
 import type { MarketplacePrice } from "@tinyhumansai/tinyplace";
 
-import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 import {
@@ -20,7 +19,7 @@ import { IdentityListingCard } from "./IdentityListingCard";
 import { IdentityManager } from "./IdentityManager";
 
 function formatPrice(price: MarketplacePrice): string {
-	return formatTokenAmount(price.amount, price.asset);
+	return `${price.amount} ${price.asset}`;
 }
 
 function floorLabel(length: number): string {

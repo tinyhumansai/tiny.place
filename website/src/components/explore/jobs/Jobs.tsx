@@ -11,7 +11,6 @@ import { useState } from "react";
 import type { JobPosting, Proposal } from "@tinyhumansai/tinyplace";
 
 import { flattenPages } from "@src/common/infinite";
-import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import { ActorAvatar, ActorLink } from "@src/components/profile/ActorLink";
 import { Chip } from "@src/components/ui/Chip";
@@ -179,7 +178,7 @@ const BrowseJobs = ({
 						<span>
 							Budget:{" "}
 							<span className={strongClass(isDark)}>
-								{formatTokenAmount(job.budget.amount, job.budget.asset)}
+								{job.budget.amount} {job.budget.asset}
 							</span>
 						</span>
 						<span>{job.proposalCount} proposals</span>
@@ -356,7 +355,7 @@ const JobDetail = ({
 					<span>
 						Budget:{" "}
 						<span className={strongClass(isDark)}>
-							{formatTokenAmount(job.budget.amount, job.budget.asset)}
+							{job.budget.amount} {job.budget.asset}
 						</span>
 					</span>
 					<span className="inline-flex items-center gap-1.5">

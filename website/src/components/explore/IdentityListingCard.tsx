@@ -10,7 +10,6 @@ import {
 	type MarketplacePrice,
 } from "@tinyhumansai/tinyplace";
 
-import { formatTokenAmount } from "@src/common/format-amount";
 import type { FunctionComponent } from "@src/common/types";
 import { ProfileEntityLink } from "@src/components/profile/EntityLink";
 import {
@@ -50,7 +49,7 @@ function colorFor(name: string): string {
 }
 
 function formatPrice(price: MarketplacePrice): string {
-	return formatTokenAmount(price.amount, price.asset);
+	return `${price.amount} ${price.asset}`;
 }
 
 const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
