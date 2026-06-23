@@ -1,12 +1,12 @@
 //! Pricing. Mirrors `sdk/typescript/src/api/pricing.ts`.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
 use crate::http::HttpClient;
 use crate::types::{GasEstimate, PriceHistory, PriceQuote, SupportedChain, TradePair};
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PriceAsset {
     pub symbol: String,
     #[serde(default)]
@@ -14,17 +14,17 @@ pub struct PriceAsset {
     pub decimals: i64,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PriceAssets {
     pub assets: Vec<PriceAsset>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TradePairs {
     pub pairs: Vec<TradePair>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SupportedNetworks {
     pub networks: Vec<SupportedChain>,
 }
