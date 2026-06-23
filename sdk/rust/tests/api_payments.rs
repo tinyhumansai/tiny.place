@@ -1,4 +1,4 @@
-//! Endpoint tests for `PaymentsApi`, `LedgerApi`, and `PricingApi`. Each test
+//! Endpoint tests for `PaymentsApi` and `LedgerApi`. Each test
 //! points the client at a catch-all mock, invokes a method, and asserts the
 //! request method and path. Response bodies are permissive — the goal is to
 //! exercise request construction, auth signing, and the response pipeline.
@@ -8,10 +8,9 @@ mod common;
 use common::*;
 use serde_json::{from_value, json};
 use tinyplace::api::payments::RenewDueParams;
-use tinyplace::api::pricing::{HistoryParams, QuoteParams};
 use tinyplace::types::{
-    LedgerListParams, LedgerVerifyRequest, PaymentBatchFlushRequest, SubscriptionCreateRequest,
-    SubscriptionRenewRequest, X402SettleRequest, X402VerifyRequest, X402VerifyUntilValidOptions,
+    LedgerListParams, LedgerVerifyRequest, SubscriptionCreateRequest, SubscriptionRenewRequest,
+    X402SettleRequest, X402VerifyRequest, X402VerifyUntilValidOptions,
 };
 
 // --- PaymentsApi ---
@@ -179,19 +178,6 @@ async fn payments_renew_due_subscriptions() {
     assert!(req.url.path().contains("/payments/subscriptions/renew-due"));
 }
 
-#[tokio::test]
-async fn payments_flush_batch() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client
-        .payments
-        .flush_batch("batch1", &PaymentBatchFlushRequest::default())
-        .await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "POST");
-    assert!(req.url.path().contains("/payments/batches/batch1/flush"));
-}
-
 // --- LedgerApi ---
 
 #[tokio::test]
@@ -227,66 +213,4 @@ async fn ledger_verify() {
     let req = only_request(&server).await;
     assert_eq!(req.method.as_str(), "POST");
     assert!(req.url.path().contains("/ledger/verify"));
-}
-
-// --- PricingApi ---
-
-#[tokio::test]
-async fn pricing_quote() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.pricing.quote(&QuoteParams::default()).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/pricing/quote"));
-}
-
-#[tokio::test]
-async fn pricing_history() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.pricing.history(&HistoryParams::default()).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/pricing/history"));
-}
-
-#[tokio::test]
-async fn pricing_assets() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.pricing.assets().await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/pricing/assets"));
-}
-
-#[tokio::test]
-async fn pricing_pairs() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.pricing.pairs().await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/pricing/pairs"));
-}
-
-#[tokio::test]
-async fn pricing_networks() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.pricing.networks().await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/pricing/networks"));
-}
-
-#[tokio::test]
-async fn pricing_gas() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.pricing.gas("solana").await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/pricing/gas"));
 }

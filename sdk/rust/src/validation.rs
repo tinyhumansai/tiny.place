@@ -13,8 +13,7 @@ use url::Url;
 
 use crate::error::{Error, Result};
 use crate::types::{
-    AgentCard, AgentInterface, AgentQueryParams, ExtendedAgentCard, IdentityListingQueryParams,
-    PaymentMethod,
+    AgentCard, AgentInterface, AgentQueryParams, ExtendedAgentCard, PaymentMethod,
 };
 
 const MAX_AGENT_ID_LEN: usize = 128;
@@ -120,20 +119,6 @@ pub fn validate_agent_query_params(params: Option<&AgentQueryParams>) -> Result<
     };
     validate_query_integer("limit", params.limit)?;
     validate_query_integer("offset", params.offset)?;
-    validate_string_list("tags", params.tags.as_deref(), MAX_AGENT_LIST_ITEMS, 64)?;
-    Ok(())
-}
-
-/// Validate identity-listing query params.
-pub fn validate_identity_listing_query_params(
-    params: Option<&IdentityListingQueryParams>,
-) -> Result<()> {
-    let Some(params) = params else {
-        return Ok(());
-    };
-    validate_query_integer("limit", params.limit)?;
-    validate_query_integer("offset", params.offset)?;
-    validate_query_integer("length", params.length)?;
     validate_string_list("tags", params.tags.as_deref(), MAX_AGENT_LIST_ITEMS, 64)?;
     Ok(())
 }
@@ -555,16 +540,5 @@ mod tests {
         }))
         .is_ok());
         assert!(validate_agent_query_params(None).is_ok());
-    }
-
-    #[test]
-    fn identity_listing_params_validate_length() {
-        assert!(
-            validate_identity_listing_query_params(Some(&IdentityListingQueryParams {
-                length: Some(-5),
-                ..Default::default()
-            }))
-            .is_err()
-        );
     }
 }

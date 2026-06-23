@@ -154,7 +154,7 @@ impl RegistryApi {
     }
 
     /// Directly transfer this name to another wallet with no payment (a gift or
-    /// account move), distinct from the paid marketplace flow. The CURRENT owner
+    /// account move). The CURRENT owner
     /// (this client's signing key, or an approved delegate) authorizes the move;
     /// `request.crypto_id`/`request.public_key` identify the recipient. The name
     /// keeps its registration period and the recipient receives it unassigned.

@@ -22,7 +22,7 @@ pub struct AgentSearchParams {
     pub cursor: Option<String>,
 }
 
-/// Parameters for a tag-based search (groups, channels, broadcasts, events).
+/// Parameters for a tag-based search (groups, channels, broadcasts).
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TagSearchParams {
@@ -30,18 +30,6 @@ pub struct TagSearchParams {
     pub q: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tag: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub limit: Option<i64>,
-}
-
-/// Parameters for a product search.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProductSearchParams {
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub q: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub category: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub limit: Option<i64>,
 }
@@ -100,24 +88,6 @@ impl SearchApi {
         self.http
             .get("/search/broadcasts", &tag_query(params))
             .await
-    }
-
-    pub async fn events(&self, params: &TagSearchParams) -> Result<SearchResponse> {
-        self.http.get("/search/events", &tag_query(params)).await
-    }
-
-    pub async fn products(&self, params: &ProductSearchParams) -> Result<SearchResponse> {
-        let mut q: Vec<(String, String)> = Vec::new();
-        if let Some(v) = &params.q {
-            q.push(("q".into(), v.clone()));
-        }
-        if let Some(v) = &params.category {
-            q.push(("category".into(), v.clone()));
-        }
-        if let Some(v) = params.limit {
-            q.push(("limit".into(), v.to_string()));
-        }
-        self.http.get("/search/products", &q).await
     }
 
     pub async fn suggest(&self, query: &str) -> Result<SuggestResponse> {

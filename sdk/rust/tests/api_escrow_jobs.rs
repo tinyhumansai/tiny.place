@@ -1,4 +1,4 @@
-//! Endpoint tests for `EscrowApi` and `JobsApi`. Each test points the client at
+//! Endpoint tests for `EscrowApi`. Each test points the client at
 //! a catch-all mock, invokes one public method, and asserts the request method
 //! and path. Response bodies are permissive — the goal is to exercise request
 //! construction, auth signing, and the response pipeline.
@@ -8,10 +8,7 @@ mod common;
 use common::*;
 use serde_json::json;
 use tinyplace::api::escrow::{EscrowArbitrationVote, EscrowDeliveryProof, EscrowEvidenceInput};
-use tinyplace::api::jobs::ProposalQueryParams;
-use tinyplace::types::{
-    EscrowCreateRequest, EscrowQueryParams, JobCreateRequest, JobQueryParams, ProposalCreateRequest,
-};
+use tinyplace::types::{EscrowCreateRequest, EscrowQueryParams};
 
 // --- EscrowApi ---
 
@@ -292,140 +289,4 @@ async fn escrow_dispute_milestone() {
     assert_eq!(req.method.as_str(), "POST");
     assert!(req.url.path().contains("/milestones/"));
     assert!(req.url.path().ends_with("/dispute"));
-}
-
-// --- JobsApi ---
-
-#[tokio::test]
-async fn jobs_list() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.jobs.list(Some(&JobQueryParams::default())).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/jobs"));
-}
-
-#[tokio::test]
-async fn jobs_get() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.jobs.get("job1").await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("job1"));
-}
-
-#[tokio::test]
-async fn jobs_create() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let request: JobCreateRequest = serde_json::from_value(json!({
-        "client": "@me",
-        "title": "Build a thing",
-        "budget": { "amount": "100", "asset": "USDC" }
-    }))
-    .unwrap();
-    let _ = client.jobs.create(&request).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "POST");
-    assert!(req.url.path().contains("/jobs"));
-}
-
-#[tokio::test]
-async fn jobs_cancel() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.jobs.cancel("job1", "@me").await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "POST");
-    assert!(req.url.path().ends_with("/cancel"));
-}
-
-#[tokio::test]
-async fn jobs_apply() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let request: ProposalCreateRequest = serde_json::from_value(json!({
-        "candidate": "@me"
-    }))
-    .unwrap();
-    let _ = client.jobs.apply("job1", &request).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "POST");
-    assert!(req.url.path().ends_with("/proposals"));
-}
-
-#[tokio::test]
-async fn jobs_list_proposals() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client
-        .jobs
-        .list_proposals("job1", "@me", Some(&ProposalQueryParams::default()))
-        .await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().ends_with("/proposals"));
-}
-
-#[tokio::test]
-async fn jobs_get_proposal() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.jobs.get_proposal("job1", "prop1", "@me").await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/proposals/"));
-    assert!(req.url.path().contains("prop1"));
-}
-
-#[tokio::test]
-async fn jobs_shortlist_proposal() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.jobs.shortlist_proposal("job1", "prop1", "@me").await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "POST");
-    assert!(req.url.path().ends_with("/shortlist"));
-}
-
-#[tokio::test]
-async fn jobs_withdraw_proposal() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.jobs.withdraw_proposal("job1", "prop1", "@me").await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "POST");
-    assert!(req.url.path().ends_with("/withdraw"));
-}
-
-#[tokio::test]
-async fn jobs_select() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.jobs.select("job1", "@me", "prop1", None).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "POST");
-    assert!(req.url.path().ends_with("/select"));
-}
-
-#[tokio::test]
-async fn jobs_open_dispute() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.jobs.open_dispute("job1", "@me", "broken").await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "POST");
-    assert!(req.url.path().ends_with("/dispute"));
-}
-
-#[tokio::test]
-async fn jobs_adjudicate_dispute() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.jobs.adjudicate_dispute("job1", "@me").await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "POST");
-    assert!(req.url.path().ends_with("/dispute/adjudicate"));
 }

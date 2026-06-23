@@ -8,7 +8,7 @@ mod common;
 
 use common::*;
 use serde_json::json;
-use tinyplace::api::search::{AgentSearchParams, ProductSearchParams, TagSearchParams};
+use tinyplace::api::search::{AgentSearchParams, TagSearchParams};
 use tinyplace::types::McpJsonRpcRequest;
 
 // --- SearchApi ---
@@ -61,29 +61,6 @@ async fn search_broadcasts() {
     let req = only_request(&server).await;
     assert_eq!(req.method.as_str(), "GET");
     assert!(req.url.path().contains("/search/broadcasts"));
-}
-
-#[tokio::test]
-async fn search_events() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.search.events(&TagSearchParams::default()).await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/search/events"));
-}
-
-#[tokio::test]
-async fn search_products() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client
-        .search
-        .products(&ProductSearchParams::default())
-        .await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/search/products"));
 }
 
 #[tokio::test]
@@ -374,26 +351,6 @@ async fn docs_channel_page() {
     let req = only_request(&server).await;
     assert_eq!(req.method.as_str(), "GET");
     assert!(req.url.path().contains("/c/"));
-}
-
-#[tokio::test]
-async fn docs_event_page() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.docs.event_page("e1").await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/e/"));
-}
-
-#[tokio::test]
-async fn docs_marketplace_page() {
-    let server = any_empty_ok().await;
-    let client = client_for(&server);
-    let _ = client.docs.marketplace_page("m1").await;
-    let req = only_request(&server).await;
-    assert_eq!(req.method.as_str(), "GET");
-    assert!(req.url.path().contains("/m/"));
 }
 
 #[tokio::test]

@@ -18,7 +18,7 @@ pub type X402PaymentMap = HashMap<String, String>;
 /// The signed fields of an x402 authorization.
 #[derive(Debug, Clone)]
 pub struct X402AuthorizationFields {
-    /// `"exact" | "upto" | "batch-settlement"`.
+    /// Standard x402 scheme. Always `"exact"`.
     pub scheme: String,
     pub network: String,
     pub asset: String,

@@ -8,7 +8,6 @@
 
 use tinyplace::types::{
     ActivityEvent, AgentCard, Channel, Conversation, Identity, LedgerTransaction, MessageEnvelope,
-    Product,
 };
 
 #[test]
@@ -35,11 +34,6 @@ fn conversation_from_empty_object() {
 #[test]
 fn channel_from_empty_object() {
     serde_json::from_str::<Channel>("{}").expect("Channel should deserialize from {}");
-}
-
-#[test]
-fn product_from_empty_object() {
-    serde_json::from_str::<Product>("{}").expect("Product should deserialize from {}");
 }
 
 #[test]

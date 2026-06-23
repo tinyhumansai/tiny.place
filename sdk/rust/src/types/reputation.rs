@@ -344,7 +344,6 @@ pub type LeaderboardPeriod = String;
 pub type LeaderboardCategory = String;
 pub type GroupLeaderboardSort = String;
 pub type SellerLeaderboardSort = String;
-pub type GameLeaderboardSort = String;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -396,17 +395,4 @@ pub struct SellerLeaderboardQueryParams {
     pub category: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub sort: Option<SellerLeaderboardSort>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GameLeaderboardQueryParams {
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub limit: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub offset: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub period: Option<LeaderboardPeriod>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub sort: Option<GameLeaderboardSort>,
 }

@@ -205,7 +205,7 @@ async fn siws_signer_passes_token_through() {
         &signer,
         "wallet-public-key",
         "GET",
-        "/marketplace/stream",
+        "/directory/stream",
         "",
     )
     .await

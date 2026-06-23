@@ -72,27 +72,6 @@ async fn ws_stream_query_params_are_included() {
 }
 
 #[tokio::test]
-async fn ws_lottery_stream_url() {
-    let client = client("https://api.example.com", false);
-    let url = client.lottery.stream().signed_url().await.unwrap();
-    assert_eq!(url, "wss://api.example.com/lottery/stream");
-}
-
-#[tokio::test]
-async fn ws_rooms_stream_url() {
-    let client = client("https://api.example.com", false);
-    let url = client.rooms.stream("r1").signed_url().await.unwrap();
-    assert_eq!(url, "wss://api.example.com/rooms/r1/stream");
-}
-
-#[tokio::test]
-async fn ws_rooms_stream_encodes_id() {
-    let client = client("https://api.example.com", false);
-    let url = client.rooms.stream("a b/c").signed_url().await.unwrap();
-    assert_eq!(url, "wss://api.example.com/rooms/a%20b%2Fc/stream");
-}
-
-#[tokio::test]
 async fn ws_connect_recv_send_close_round_trip() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();

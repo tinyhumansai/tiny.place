@@ -5,13 +5,12 @@ use serde::{Deserialize, Serialize};
 use crate::error::Result;
 use crate::http::HttpClient;
 use crate::types::{
-    AgentCard, AgentQueryParams, AgentSearchResponse, DirectoryIdentityListingsResponse,
-    ExtendedAgentCard, IdentityListingQueryParams, ResolveResponse, ReverseResponse,
+    AgentCard, AgentQueryParams, AgentSearchResponse, ExtendedAgentCard, ResolveResponse,
+    ReverseResponse,
 };
 use crate::util::encode;
 use crate::validation::{
     validate_agent_card, validate_agent_query_params, validate_extended_agent_card,
-    validate_identity_listing_query_params,
 };
 
 /// Response wrapper for [`DirectoryApi::list_agents`].
@@ -127,15 +126,6 @@ impl DirectoryApi {
         Ok(())
     }
 
-    pub async fn list_identities(
-        &self,
-        params: Option<&IdentityListingQueryParams>,
-    ) -> Result<DirectoryIdentityListingsResponse> {
-        validate_identity_listing_query_params(params)?;
-        let query = params.map(identity_query_to_query).unwrap_or_default();
-        self.http.get("/directory/identities", &query).await
-    }
-
     pub async fn resolve(&self, name: &str) -> Result<ResolveResponse> {
         self.http
             .get(&format!("/directory/resolve/{}", encode(name)), &[])
@@ -207,46 +197,6 @@ fn agent_query_to_query(params: &AgentQueryParams) -> Vec<(String, String)> {
     }
     if let Some(v) = &params.encryption_key {
         query.push(("encryptionKey".into(), v.clone()));
-    }
-    if let Some(v) = params.limit {
-        query.push(("limit".into(), v.to_string()));
-    }
-    if let Some(v) = params.offset {
-        query.push(("offset".into(), v.to_string()));
-    }
-    query
-}
-
-fn identity_query_to_query(params: &IdentityListingQueryParams) -> Vec<(String, String)> {
-    let mut query: Vec<(String, String)> = Vec::new();
-    if let Some(v) = &params.q {
-        query.push(("q".into(), v.clone()));
-    }
-    if let Some(v) = &params.tag {
-        query.push(("tag".into(), v.clone()));
-    }
-    if let Some(tags) = &params.tags {
-        for tag in tags {
-            query.push(("tags".into(), tag.clone()));
-        }
-    }
-    if let Some(v) = &params.category {
-        query.push(("category".into(), v.clone()));
-    }
-    if let Some(v) = &params.seller {
-        query.push(("seller".into(), v.clone()));
-    }
-    if let Some(v) = &params.min_price {
-        query.push(("minPrice".into(), v.clone()));
-    }
-    if let Some(v) = &params.max_price {
-        query.push(("maxPrice".into(), v.clone()));
-    }
-    if let Some(v) = &params.sort_by {
-        query.push(("sortBy".into(), v.clone()));
-    }
-    if let Some(v) = params.length {
-        query.push(("length".into(), v.to_string()));
     }
     if let Some(v) = params.limit {
         query.push(("limit".into(), v.to_string()));

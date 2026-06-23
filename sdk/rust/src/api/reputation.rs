@@ -5,7 +5,7 @@ use crate::crypto::canonical_payload;
 use crate::error::Result;
 use crate::http::HttpClient;
 use crate::types::{
-    Attestation, AttestationCreate, GameLeaderboardQueryParams, GroupLeaderboardQueryParams,
+    Attestation, AttestationCreate, GroupLeaderboardQueryParams,
     LeaderboardCategory, LeaderboardQueryParams, LeaderboardResponse, ReputationHistoryPoint,
     ReputationLeaderboardQueryParams, ReputationReview, ReputationReviewCreate, ReputationScore,
     ReputationVouch, ReputationVouchCreate, SellerLeaderboardQueryParams, TrustGraph,
@@ -250,28 +250,6 @@ impl ReputationApi {
             }
         }
         self.http.get("/leaderboards/sellers", &q).await
-    }
-
-    pub async fn games_leaderboard(
-        &self,
-        params: Option<&GameLeaderboardQueryParams>,
-    ) -> Result<LeaderboardResponse> {
-        let mut q: Vec<(String, String)> = Vec::new();
-        if let Some(p) = params {
-            if let Some(v) = p.limit {
-                q.push(("limit".into(), v.to_string()));
-            }
-            if let Some(v) = p.offset {
-                q.push(("offset".into(), v.to_string()));
-            }
-            if let Some(v) = &p.period {
-                q.push(("period".into(), v.clone()));
-            }
-            if let Some(v) = &p.sort {
-                q.push(("sort".into(), v.clone()));
-            }
-        }
-        self.http.get("/leaderboards/games", &q).await
     }
 
     pub async fn groups_leaderboard(

@@ -85,16 +85,6 @@ impl DocsApi {
         self.http.get_text(&path, &[]).await
     }
 
-    pub async fn event_page(&self, event_id: &str) -> Result<String> {
-        let path = format!("/e/{}", encode(event_id));
-        self.http.get_text(&path, &[]).await
-    }
-
-    pub async fn marketplace_page(&self, listing_id: &str) -> Result<String> {
-        let path = format!("/m/{}", encode(listing_id));
-        self.http.get_text(&path, &[]).await
-    }
-
     pub async fn identity_page(&self, username: &str) -> Result<String> {
         let path = format!("/i/{}", encode(username));
         self.http.get_text(&path, &[]).await

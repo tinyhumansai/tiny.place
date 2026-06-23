@@ -50,7 +50,7 @@ pub struct PaymentIntent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct X402VerifyRequest {
-    /// `"exact" | "upto" | "batch-settlement"`.
+    /// Standard x402 scheme. Always `"exact"`.
     #[serde(default)]
     pub scheme: String,
     #[serde(default)]
@@ -129,10 +129,6 @@ pub struct X402SettleRequest {
     pub reference: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub shielded: Option<bool>,
-    /// Base64 legacy Solana transaction built and session-signed by the client
-    /// (delegate authority), with the fee-payer slot left for the facilitator.
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub delegated_tx: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -145,71 +141,12 @@ pub struct X402SettleResponse {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub on_chain_tx: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub batch_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub status: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub error: Option<String>,
     /// Additional fields (`[key: string]: unknown`).
     #[serde(flatten, default)]
     pub extra: HashMap<String, serde_json::Value>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PaymentBatchFlushRequest {
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub limit: Option<i64>,
-}
-
-/// `"flushed" | "failed"`.
-pub type PaymentBatchFlushStatus = String;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PaymentBatchFlush {
-    #[serde(default)]
-    pub flush_id: String,
-    #[serde(default)]
-    pub batch_id: String,
-    #[serde(default)]
-    pub status: PaymentBatchFlushStatus,
-    #[serde(default)]
-    pub item_count: i64,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub item_ids: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub gross_amount: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub fee_amount: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub net_amount: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub asset: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub network: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub fee_ledger_tx_ids: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub parent_ledger_tx_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub on_chain_tx: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub error: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub metadata: Option<HashMap<String, String>>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub created_at: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub updated_at: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub completed_at: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PaymentBatchFlushResponse {
-    pub flush: PaymentBatchFlush,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

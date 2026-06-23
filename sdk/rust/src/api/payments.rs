@@ -1,4 +1,4 @@
-//! Payment facilitator: x402 verify/settle, subscriptions, batches. Mirrors
+//! Payment facilitator: x402 verify/settle, subscriptions. Mirrors
 //! `sdk/typescript/src/api/payments.ts` (REST surface only).
 //!
 //! On-chain Solana settlement execution (`settleWithSolanaPayment` and the
@@ -12,10 +12,9 @@ use serde::{Deserialize, Serialize};
 use crate::error::Result;
 use crate::http::HttpClient;
 use crate::types::{
-    DueRenewalResult, PaymentBatchFlushRequest, PaymentBatchFlushResponse, Subscription,
-    SubscriptionCreateRequest, SubscriptionRenewRequest, SubscriptionRenewResponse, SupportedChain,
-    X402SettleRequest, X402SettleResponse, X402VerifyRequest, X402VerifyResponse,
-    X402VerifyUntilValidOptions,
+    DueRenewalResult, Subscription, SubscriptionCreateRequest, SubscriptionRenewRequest,
+    SubscriptionRenewResponse, SupportedChain, X402SettleRequest, X402SettleResponse,
+    X402VerifyRequest, X402VerifyResponse, X402VerifyUntilValidOptions,
 };
 use crate::util::encode;
 
@@ -40,8 +39,6 @@ struct SettleBody<'a> {
     reference: &'a Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     shielded: &'a Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    delegated_tx: &'a Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -126,13 +123,12 @@ impl PaymentsApi {
             fee_quote_id: &request.fee_quote_id,
             reference: &request.reference,
             shielded: &request.shielded,
-            delegated_tx: &request.delegated_tx,
         };
         self.http.post("/payments/settle", Some(&body)).await
     }
 
     /// Fetch the facilitator's base58 account, which the client must set as the
-    /// fee payer when building a delegated transfer.
+    /// fee payer when building the on-chain transfer it signs.
     pub async fn facilitator(&self) -> Result<FacilitatorAccount> {
         self.http.get("/payments/facilitator", &[]).await
     }
@@ -205,15 +201,5 @@ impl PaymentsApi {
         self.http
             .post_admin("/payments/subscriptions/renew-due", params)
             .await
-    }
-
-    /// Admin: flush a payment batch.
-    pub async fn flush_batch(
-        &self,
-        batch_id: &str,
-        request: &PaymentBatchFlushRequest,
-    ) -> Result<PaymentBatchFlushResponse> {
-        let path = format!("/payments/batches/{}/flush", encode(batch_id));
-        self.http.post_admin(&path, Some(request)).await
     }
 }
