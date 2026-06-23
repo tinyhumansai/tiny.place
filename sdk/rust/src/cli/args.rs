@@ -19,11 +19,11 @@ pub struct Cli {
     pub format: OutputFormat,
 
     /// Shorthand for `--format json`.
-    #[arg(long, global = true)]
+    #[arg(long, global = true, conflicts_with_all = ["md", "format"])]
     pub json: bool,
 
     /// Shorthand for `--format md`.
-    #[arg(long, global = true)]
+    #[arg(long, global = true, conflicts_with_all = ["json", "format"])]
     pub md: bool,
 
     /// Override the API endpoint (else $TINYPLACE_ENDPOINT, config, or default).
