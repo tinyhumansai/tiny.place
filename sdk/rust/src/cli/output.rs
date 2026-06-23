@@ -28,7 +28,7 @@ fn redact(value: Value) -> Value {
         Value::Object(map) => Value::Object(
             map.into_iter()
                 .map(|(key, val)| {
-                    if val.is_string() && is_sensitive_key(&key) {
+                    if is_sensitive_key(&key) {
                         (key, Value::String("[redacted]".into()))
                     } else {
                         (key, redact(val))
@@ -102,5 +102,12 @@ mod tests {
         assert!(out.contains("[redacted]"), "got: {out}");
         assert!(!out.contains("abcd"), "got: {out}");
         assert!(out.contains("https://x"), "got: {out}");
+    }
+
+    #[test]
+    fn redacts_sensitive_nested_values() {
+        let out = render(&json!({"secretKey": {"value": "abcd"}}), OutputFormat::Json);
+        assert!(out.contains("[redacted]"), "got: {out}");
+        assert!(!out.contains("abcd"), "got: {out}");
     }
 }
