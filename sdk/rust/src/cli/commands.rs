@@ -193,6 +193,7 @@ mod tests {
     async fn pricing_networks_renders_array() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
+            .and(path("/pricing/networks"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "networks": [] })))
             .mount(&server)
             .await;
@@ -213,6 +214,7 @@ mod tests {
     async fn sdk_http_error_maps_to_sdk_error_code() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
+            .and(path("/registry/names/ghost"))
             .respond_with(ResponseTemplate::new(404).set_body_json(json!({ "error": "nope" })))
             .mount(&server)
             .await;
