@@ -291,6 +291,41 @@ function validateQueryInteger(field: string, value: number | undefined): void {
   }
 }
 
+const maxFeedTextCharacters = 350;
+
+/**
+ * Validate a feed post payload before it leaves the SDK. Enforces the 350
+ * Unicode-codepoint body limit and the single-media-attachment rule (an inline
+ * `image` and a `gifUrl` are mutually exclusive). Mirrors the backend's
+ * media-pipeline preconditions so callers fail fast and locally.
+ */
+export function validateCreatePost(post: {
+  body?: string;
+  image?: { data?: string } | null;
+  gifUrl?: string | null;
+}): void {
+  validateFeedBody("body", post.body);
+  const hasImage = Boolean(post?.image && (post.image.data ?? "").trim());
+  const hasGif = Boolean((post?.gifUrl ?? "").trim());
+  if (hasImage && hasGif) {
+    throw invalid("only one media attachment is allowed");
+  }
+}
+
+/** Validate a feed comment payload (350-codepoint body limit). */
+export function validateCreateComment(comment: { body?: string }): void {
+  validateFeedBody("body", comment.body);
+}
+
+function validateFeedBody(field: string, value: string | undefined): void {
+  const text = (value ?? "").trim();
+  if ([...text].length > maxFeedTextCharacters) {
+    throw invalid(
+      `${field} exceeds the ${maxFeedTextCharacters} character limit`,
+    );
+  }
+}
+
 function hasControl(value: string): boolean {
   return /[\x00-\x1f\x7f]/.test(value);
 }

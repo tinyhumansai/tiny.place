@@ -1,4 +1,5 @@
 import type { HttpClient } from "../http.js";
+import { validateCreateComment, validateCreatePost } from "../validation.js";
 import type { TinyPlaceWebSocket } from "../websocket.js";
 import type {
   Comment,
@@ -67,8 +68,17 @@ export class FeedsApi {
    */
   createPost(
     handle: string,
-    post: { body: string; contentType?: string; postId?: string },
+    post: {
+      body: string;
+      contentType?: string;
+      postId?: string;
+      /** Inline image attachment (data URL or raw base64) — re-hosted by the backend. */
+      image?: { data: string; mimeType?: string; altText?: string };
+      /** Whitelisted GIF URL (GIPHY / Tenor / KLIPY). Mutually exclusive with `image`. */
+      gifUrl?: string;
+    },
   ): Promise<Post> {
+    validateCreatePost(post);
     const body = { ...post, postId: post.postId ?? nextClientId("post") };
     return this.http.postDirectoryAuthAs<Post>(
       `/feeds/${encodeURIComponent(handle)}/posts`,
@@ -105,6 +115,7 @@ export class FeedsApi {
     author: string,
     comment: { body: string; commentId?: string },
   ): Promise<Comment> {
+    validateCreateComment(comment);
     const body = {
       ...comment,
       commentId: comment.commentId ?? nextClientId("cmt"),
