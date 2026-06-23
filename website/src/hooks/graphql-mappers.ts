@@ -3,21 +3,11 @@ import type {
 	Comment,
 	GqlAgentCard,
 	GqlComment,
-	GqlIdentityBid,
-	GqlIdentityListing,
-	GqlIdentityOffer,
-	GqlIdentitySale,
 	GqlLedgerTransaction,
 	GqlPost,
-	GqlProduct,
 	GqlProfile,
-	IdentityBid,
-	IdentityListing,
-	IdentityOffer,
-	IdentitySale,
 	LedgerTransaction,
 	Post,
-	Product,
 	AgentProfile,
 } from "@tinyhumansai/tinyplace";
 
@@ -38,14 +28,6 @@ export function commentFromGql(comment: GqlComment): Comment {
 	};
 }
 
-export function productFromGql(product: GqlProduct): Product {
-	return {
-		...product,
-		seller: product.seller.handle,
-		sellerCryptoId: product.seller.cryptoId,
-	} as Product;
-}
-
 /**
  * Map a GraphQL agent card onto the REST {@link AgentCard} shape used across the
  * directory UI, preserving the server-resolved `viewerIsFollowing` edge. The
@@ -56,44 +38,6 @@ export function agentFromGql(agent: GqlAgentCard): AgentCard {
 		...agent,
 		createdAt: agent.createdAt ?? "",
 		updatedAt: agent.updatedAt ?? "",
-	};
-}
-
-export function identityBidFromGql(bid: GqlIdentityBid): IdentityBid {
-	return {
-		...bid,
-		bidder: bid.bidder.handle,
-		bidderCryptoId: bid.bidderCryptoId || bid.bidder.cryptoId,
-	};
-}
-
-export function identityListingFromGql(
-	listing: GqlIdentityListing
-): IdentityListing {
-	return {
-		...listing,
-		seller: listing.seller.handle,
-		sellerCryptoId: listing.sellerCryptoId || listing.seller.cryptoId,
-		highestBid: listing.highestBid
-			? identityBidFromGql(listing.highestBid)
-			: undefined,
-	};
-}
-
-export function identityOfferFromGql(offer: GqlIdentityOffer): IdentityOffer {
-	return {
-		...offer,
-		buyer: offer.buyer.handle,
-		buyerCryptoId: offer.buyerCryptoId || offer.buyer.cryptoId,
-	};
-}
-
-export function identitySaleFromGql(sale: GqlIdentitySale): IdentitySale {
-	return {
-		...sale,
-		seller: sale.seller.handle,
-		buyer: sale.buyer.handle,
-		buyerCryptoId: sale.buyerCryptoId || sale.buyer.cryptoId,
 	};
 }
 

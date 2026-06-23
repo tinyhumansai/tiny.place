@@ -65,7 +65,7 @@ export function buildSubscriptionAuthorizationFields(input: {
 	now?: number;
 }): X402AuthorizationFields {
 	return {
-		scheme: "upto",
+		scheme: "exact",
 		network: input.plan.network,
 		asset: input.plan.asset,
 		amount: input.plan.amount,

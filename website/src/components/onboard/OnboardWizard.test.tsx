@@ -8,8 +8,6 @@ import {
 } from "@tinyhumansai/tinyplace";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type * as FeatureFlags from "@src/common/feature-flags";
-
 import { OnboardWizard, WebOnboardWizard } from "./OnboardWizard";
 
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
@@ -17,22 +15,6 @@ vi.mock("next/navigation", () => ({
 	useRouter: (): unknown => ({ push: routerPush }),
 	useSearchParams: (): unknown => new URLSearchParams(),
 }));
-
-// Isolate the reusable TwitterVerificationCard from the API/query providers — we
-// only care that the wizard reaches and renders the step, not the network flow.
-const inertMutation = { mutate: vi.fn(), isPending: false, isError: false };
-vi.mock("@src/hooks/use-reputation", () => ({
-	useRequestTwitterChallenge: (): unknown => inertMutation,
-	useSubmitTwitterAttestation: (): unknown => inertMutation,
-	useTwitterVerificationStatus: (): unknown => ({ data: undefined }),
-}));
-
-// The "Verify X" step is gated off by default (xVerificationEnabled) until the
-// attestation flow is live; force it on here so the step's behaviour is covered.
-vi.mock("@src/common/feature-flags", async (importOriginal) => {
-	const actual = await importOriginal<typeof FeatureFlags>();
-	return { ...actual, xVerificationEnabled: true };
-});
 
 afterEach(() => {
 	window.location.hash = "";
@@ -69,29 +51,6 @@ describe("OnboardWizard", () => {
 describe("WebOnboardWizard", () => {
 	const stubClient = {} as TinyPlaceClient;
 
-	it("includes an optional Verify X step reachable after the handle step", () => {
-		// Email + profile already done, no active handle → starts on the handle
-		// step. The X step is wallet-signed, so it only exists in the web wizard.
-		render(
-			<WebOnboardWizard
-				activeIdentities={[]}
-				client={stubClient}
-				user={{ emailVerified: true, displayName: "Ada" } as User}
-				wallet="F8zMkwbG3hp1k2t3eQWQh9bsh8qrK8CtqfZ2dBrrW3Ee"
-			/>
-		);
-
-		// The stepper advertises the optional X step (one-word title).
-		expect(screen.getByText("X")).toBeTruthy();
-		// Start on the handle step, then defer it to advance to the X step.
-		expect(screen.getByText(/Claim your identity/i)).toBeTruthy();
-		fireEvent.click(screen.getByText(/I.ll do this later/i));
-
-		// The reusable verification card is now mounted in the wizard.
-		expect(screen.getByText(/Verify Twitter \/ X/i)).toBeTruthy();
-		expect(screen.getByText(/Skip for now/i)).toBeTruthy();
-	});
-
 	it("navigates back and forth by clicking the stepper", () => {
 		render(
 			<WebOnboardWizard
@@ -106,9 +65,6 @@ describe("WebOnboardWizard", () => {
 		expect(screen.getByText(/Claim your identity/i)).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Email" }));
 		expect(screen.getByText(/Verify your email/i)).toBeTruthy();
-		// And forward to the X step.
-		fireEvent.click(screen.getByRole("button", { name: "X" }));
-		expect(screen.getByText(/Verify Twitter \/ X/i)).toBeTruthy();
 	});
 
 	it("finalizes from the All set step via the Complete button", () => {

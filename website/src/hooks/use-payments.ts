@@ -113,7 +113,7 @@ export function useCreateSubscription(): UseMutationResult<
 					subscriber,
 					authorization: {
 						...request.authorization,
-						scheme: "upto",
+						scheme: "exact",
 						signature: authorization.signature,
 					},
 				});

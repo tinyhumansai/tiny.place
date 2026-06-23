@@ -10,12 +10,6 @@ import {
 } from "@tinyhumansai/tinyplace";
 
 import { createClient } from "@src/common/api-client";
-import {
-	buildPayerSignedTransferTx,
-	resolveSplAsset,
-	X402_DELEGATED_TX_METADATA_KEY,
-} from "@src/common/delegated-payment";
-import { primarySolanaRpcUrl } from "@src/common/solana-rpc";
 import { SiwsProofSigner } from "@src/common/siws-auth";
 import { WalletSigner } from "@src/common/wallet-signer";
 import {
@@ -121,38 +115,7 @@ export async function signX402ChallengePaymentMap(
 		...options,
 		signer,
 	});
-	const payment = x402AuthorizationToPaymentMap(signedPayment);
-
-	// Standard PayAI x402: the PAYER (connected wallet) signs the transfer
-	// transaction directly; PayAI is the fee payer and co-signs/broadcasts at
-	// settle time. Build it from the challenge — the fee payer is advertised in
-	// metadata.feePayer — and carry it as metadata.delegatedTx. The backend routes
-	// any payment bearing it to the facilitator and accepts the signed tx as the
-	// payment proof. Requires a session wallet whose connected wallet can sign
-	// transactions; SPL assets only (PayAI cannot settle native SOL).
-	const feePayer = payment["metadata.feePayer"];
-	const asset = resolveSplAsset(payment["asset"]);
-	const payee = payment["to"] ?? "";
-	const payer = payment["from"] ?? "";
-	if (
-		feePayer &&
-		asset &&
-		payee &&
-		payer &&
-		(signer instanceof WalletSigner || signer instanceof SiwsProofSigner) &&
-		signer.walletSignTransaction
-	) {
-		const delegatedTx = await buildPayerSignedTransferTx({
-			rpcUrl: primarySolanaRpcUrl(),
-			feePayer,
-			payer,
-			payee,
-			amount: payment["amount"] ?? "",
-			mint: asset.mint,
-			decimals: asset.decimals,
-			signTransaction: signer.walletSignTransaction,
-		});
-		payment[`metadata.${X402_DELEGATED_TX_METADATA_KEY}`] = delegatedTx;
-	}
-	return payment;
+	// Standard x402 (exact scheme): the signed authorization is flattened to the
+	// payment map and resubmitted. No tiny.place delegated-transaction extension.
+	return x402AuthorizationToPaymentMap(signedPayment);
 }

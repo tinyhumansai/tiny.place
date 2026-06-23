@@ -62,7 +62,7 @@ describe("buildSubscriptionAuthorizationFields", () => {
 		expect(fields.expiresAt).not.toBe("");
 		expect(Number.isNaN(Date.parse(fields.expiresAt))).toBe(false);
 		expect(Date.parse(fields.expiresAt)).toBeGreaterThan(now);
-		expect(fields.scheme).toBe("upto");
+		expect(fields.scheme).toBe("exact");
 		expect(fields.nonce).toBe("subscription:sub_create:authorization");
 	});
 

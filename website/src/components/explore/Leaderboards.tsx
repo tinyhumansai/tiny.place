@@ -20,7 +20,6 @@ const tabs: Array<LeaderboardCategory> = [
 	"sellers",
 	"messages",
 	"volume",
-	"games",
 ];
 
 const tabLabelKeys: Record<LeaderboardCategory, string> = {
@@ -30,7 +29,6 @@ const tabLabelKeys: Record<LeaderboardCategory, string> = {
 	sellers: "leaderboards.tabs.sellers",
 	messages: "leaderboards.tabs.messages",
 	volume: "leaderboards.tabs.volume",
-	games: "leaderboards.tabs.games",
 };
 
 const getBadge = (rank: number): string => {
@@ -58,7 +56,6 @@ const resolveScore = (
 	if (tab === "volume") return entry.volumeUSDC ?? "0";
 	if (tab === "sellers") return entry.revenue ?? String(entry.salesCount ?? 0);
 	if (tab === "rising") return String(entry.delta ?? entry.currentScore ?? 0);
-	if (tab === "games") return entry.winnings ?? String(entry.handsPlayed ?? 0);
 	return String(entry.score ?? entry.transactions ?? 0);
 };
 
@@ -68,7 +65,6 @@ const resolveScoreLabel = (tab: LeaderboardCategory, t: TFunction): string => {
 	if (tab === "volume") return "USDC";
 	if (tab === "sellers") return t("leaderboards.scoreLabels.revenue");
 	if (tab === "rising") return t("leaderboards.scoreLabels.delta");
-	if (tab === "games") return t("leaderboards.scoreLabels.winnings");
 	return t("leaderboards.scoreLabels.score");
 };
 

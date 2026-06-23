@@ -10,8 +10,6 @@ import { Chip } from "@src/components/ui/Chip";
 import { useExplorerOverview } from "@src/hooks/use-explorer";
 import { useTabRoute } from "@src/hooks/use-tab-route";
 
-import { Pricing } from "./Pricing";
-
 type Metric = {
 	label: string;
 	value: string;
@@ -156,18 +154,16 @@ const General = ({ isDark }: GeneralProperties): FunctionComponent => {
 	);
 };
 
-const tabs = ["general", "pricing"] as const;
+const tabs = ["general"] as const;
 
 type Tab = (typeof tabs)[number];
 
 const tabLabelKeys: Record<Tab, string> = {
 	general: "statsSection.tabs.general",
-	pricing: "statsSection.tabs.pricing",
 };
 
 const tabComponents: Record<Tab, React.ComponentType<{ isDark: boolean }>> = {
 	general: General,
-	pricing: Pricing,
 };
 
 type StatsProperties = {

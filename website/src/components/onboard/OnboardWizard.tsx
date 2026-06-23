@@ -13,17 +13,12 @@ import {
 } from "@tinyhumansai/tinyplace";
 
 import { createClient, createOnboardClient } from "@src/common/api-client";
-import { xVerificationEnabled } from "@src/common/feature-flags";
 import type { FunctionComponent } from "@src/common/types";
-import { TwitterVerificationCard } from "@src/components/profile/TwitterVerificationCard";
 
-type StepKey = "email" | "profile" | "handle" | "twitter" | "fund" | "done";
+type StepKey = "email" | "profile" | "handle" | "fund" | "done";
 
 type Step = { key: StepKey; titleKey: string };
 
-// The grant-driven CLI onboarding is keyless, so it omits the "Verify X" step:
-// a Twitter/X attestation needs a wallet signature the bearer grant cannot
-// produce. Wallet-connected web onboarding (WEB_STEPS) includes it.
 // Fund the wallet before claiming an identity: registration is a paid x402 flow,
 // so the wallet needs a balance first.
 const STEPS: Array<Step> = [
@@ -34,18 +29,7 @@ const STEPS: Array<Step> = [
 	{ key: "done", titleKey: "onboard.stepDone" },
 ];
 
-// The "Verify X" step is gated behind xVerificationEnabled (off until the
-// attestation flow is live); when off, the web wizard matches the keyless flow.
-const WEB_STEPS: Array<Step> = [
-	{ key: "email", titleKey: "onboard.stepEmail" },
-	{ key: "profile", titleKey: "onboard.stepProfile" },
-	{ key: "fund", titleKey: "onboard.stepWallet" },
-	{ key: "handle", titleKey: "onboard.stepIdentity" },
-	...(xVerificationEnabled
-		? ([{ key: "twitter", titleKey: "onboard.stepTwitter" }] as Array<Step>)
-		: []),
-	{ key: "done", titleKey: "onboard.stepDone" },
-];
+const WEB_STEPS: Array<Step> = STEPS;
 
 const fieldClass =
 	"w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-front placeholder:text-muted focus:border-primary focus:outline-none";
@@ -441,42 +425,6 @@ function HandleStep({
 	);
 }
 
-function TwitterStep({
-	agent,
-	agentCryptoId,
-	onDone,
-	onVerified,
-}: {
-	agent: string;
-	agentCryptoId: string;
-	onDone: () => void;
-	onVerified: () => void;
-}): ReactElement {
-	const { t } = useTranslation();
-	const [verified, setVerified] = useState(false);
-	return (
-		<div className="flex flex-col gap-3">
-			<TwitterVerificationCard
-				agent={agent}
-				agentCryptoId={agentCryptoId}
-				onVerified={() => {
-					setVerified(true);
-					onVerified();
-				}}
-			/>
-			<div className="flex items-center gap-2">
-				<button
-					className={verified ? primaryButtonClass : ghostButtonClass}
-					type="button"
-					onClick={onDone}
-				>
-					{verified ? t("onboard.continue") : t("onboard.skipForNow")}
-				</button>
-			</div>
-		</div>
-	);
-}
-
 function FundStep({
 	wallet,
 	onDone,
@@ -720,18 +668,9 @@ export function WebOnboardWizard({
 	);
 	const [emailCompleted, setEmailCompleted] = useState(false);
 	const [profileCompleted, setProfileCompleted] = useState(false);
-	const [twitterDone, setTwitterDone] = useState(false);
 	const emailDone = hasVerifiedEmail(user) || emailCompleted;
 	const profileDone = hasProfile(user) || profileCompleted;
 	const handleDone = hasActiveIdentity(activeIdentities);
-
-	// The attestation's `agent` mirrors the profile card: the active @handle when
-	// claimed, otherwise the wallet cryptoId (resolved server-side via the agent
-	// card published in the profile step). `wallet` is the base58 cryptoId.
-	const activeHandle = activeIdentities?.find(
-		(identity) => identity.status === "active"
-	)?.username;
-	const twitterAgent = activeHandle ?? wallet;
 
 	const advance = (from: StepKey): void => {
 		const index = WEB_STEPS.findIndex((entry) => entry.key === from);
@@ -765,7 +704,6 @@ export function WebOnboardWizard({
 					email: emailDone,
 					handle: handleDone,
 					profile: profileDone,
-					twitter: twitterDone,
 				}}
 				onSelect={setStep}
 			/>
@@ -801,19 +739,6 @@ export function WebOnboardWizard({
 				/>
 			) : null}
 
-			{step === "twitter" ? (
-				<TwitterStep
-					agent={twitterAgent}
-					agentCryptoId={wallet}
-					onDone={() => {
-						advance("twitter");
-					}}
-					onVerified={() => {
-						setTwitterDone(true);
-					}}
-				/>
-			) : null}
-
 			{step === "fund" ? (
 				<FundStep
 					wallet={wallet}
@@ -828,7 +753,6 @@ export function WebOnboardWizard({
 					emailDone={emailDone}
 					handleDone={handleDone}
 					profileDone={profileDone}
-					twitterDone={xVerificationEnabled ? twitterDone : undefined}
 					onComplete={() => {
 						router.push(completeHref);
 					}}

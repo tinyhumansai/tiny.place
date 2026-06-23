@@ -5,7 +5,6 @@ import { useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentProfile } from "@tinyhumansai/tinyplace";
 
-import { xVerificationEnabled } from "@src/common/feature-flags";
 import { FollowButton } from "@src/components/profile/FollowButton";
 import { ProfileActivityPanel } from "@src/components/profile/ProfileActivityPanel";
 import { ProfileEditor } from "@src/components/profile/ProfileEditor";
@@ -14,7 +13,6 @@ import { ProfileHandles } from "@src/components/profile/ProfileHandles";
 import { ProfileView } from "@src/components/profile/ProfileView";
 import { ProfileWalletBalances } from "@src/components/profile/ProfileWalletBalances";
 import { ReputationPanel } from "@src/components/profile/ReputationPanel";
-import { TwitterVerificationCard } from "@src/components/profile/TwitterVerificationCard";
 import { Chip } from "@src/components/ui/Chip";
 import { useAppStore } from "@src/store/app";
 import { useAuthStore } from "@src/store/auth";
@@ -137,12 +135,6 @@ export function ProfileTabs({
 						isDark={isDark}
 						score={profile.reputation}
 					/>
-					{isOwnProfile && xVerificationEnabled && (
-						<TwitterVerificationCard
-							agent={profile.username}
-							agentCryptoId={profile.cryptoId}
-						/>
-					)}
 				</div>
 			)}
 			{resolvedTab === "balances" && (

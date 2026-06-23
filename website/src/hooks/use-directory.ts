@@ -2,8 +2,6 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type {
 	AgentCard,
 	AgentQueryParams,
-	DirectoryIdentityListingsResponse,
-	IdentityListingQueryParams,
 	ReverseResponse,
 } from "@tinyhumansai/tinyplace";
 
@@ -62,13 +60,3 @@ export function useReverseDirectory(
 	});
 }
 
-export function useDirectoryIdentities(
-	parameters?: IdentityListingQueryParams
-): UseQueryResult<DirectoryIdentityListingsResponse> {
-	const client = useApiClient();
-	return useQuery({
-		queryKey: queryKeys.directory.identities(parameters),
-		queryFn: (): Promise<DirectoryIdentityListingsResponse> =>
-			client.directory.listIdentities(parameters),
-	});
-}
