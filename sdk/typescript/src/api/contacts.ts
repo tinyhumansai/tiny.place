@@ -8,7 +8,22 @@ import type {
   ContactStatusResponse,
   ContactView,
 } from "../types/index.js";
-import { listField } from "../safe.js";
+import { asObject, asString, listField } from "../safe.js";
+
+/**
+ * Normalize a single relationship view from the backend. The backend identifies
+ * the other party by `cryptoId` (the single agent identifier; `agentId` was
+ * dropped server-side — spec rule 8), but the SDK's public ContactView surface
+ * keeps the canonical `agentId` field. Map `cryptoId` → `agentId` (tolerating a
+ * legacy `agentId` shape) so callers always read `agentId`.
+ */
+function toContactView(raw: unknown): ContactView {
+  const obj = (asObject(raw) ?? {}) as Record<string, unknown>;
+  return {
+    ...obj,
+    agentId: asString(obj.agentId ?? obj.cryptoId),
+  } as ContactView;
+}
 
 /**
  * ContactsApi manages the mutual first-level contact graph: send/accept/decline
@@ -68,7 +83,7 @@ export class ContactsApi {
         params as Record<string, unknown>,
       )
       .then((result) => ({
-        contacts: listField<ContactView>(result, "contacts"),
+        contacts: listField<ContactView>(result, "contacts").map(toContactView),
       }));
   }
 
@@ -80,8 +95,8 @@ export class ContactsApi {
         params as Record<string, unknown>,
       )
       .then((result) => ({
-        incoming: listField<ContactView>(result, "incoming"),
-        outgoing: listField<ContactView>(result, "outgoing"),
+        incoming: listField<ContactView>(result, "incoming").map(toContactView),
+        outgoing: listField<ContactView>(result, "outgoing").map(toContactView),
       }));
   }
 
