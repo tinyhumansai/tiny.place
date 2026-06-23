@@ -1,7 +1,7 @@
 //! Groups API. Mirrors `sdk/typescript/src/api/groups.ts`.
 
 use rand::RngCore as _;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
 use crate::http::HttpClient;
@@ -14,6 +14,7 @@ use crate::types::{
 use crate::util::encode;
 
 /// Wrapper for the `{ groups: [...] }` list response.
+#[derive(Debug, Clone, Serialize)]
 pub struct GroupListResponse {
     pub groups: Vec<GroupMetadata>,
 }

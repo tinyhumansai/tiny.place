@@ -178,13 +178,13 @@ jobs:
         working-directory: sdk/rust
 
       - name: Clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --all-targets --features cli -- -D warnings
         working-directory: sdk/rust
 
       - name: Build
-        run: cargo build --all-targets
+        run: cargo build --all-targets --features cli
         working-directory: sdk/rust
 
       - name: Test
-        run: cargo test
+        run: cargo test --features cli
         working-directory: sdk/rust
