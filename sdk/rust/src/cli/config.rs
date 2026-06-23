@@ -63,6 +63,17 @@ fn pick_endpoint(
         .to_string()
 }
 
+/// `$TINYPLACE_SECRET_KEY` then the config file. Blank/whitespace values are
+/// ignored, so an empty export doesn't shadow a configured key.
+fn pick_secret(env: Option<&str>, file: Option<&str>) -> Option<String> {
+    [env, file]
+        .into_iter()
+        .flatten()
+        .map(str::trim)
+        .find(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
 fn decode_seed_hex(hex: &str) -> Result<[u8; 32], String> {
     let hex = hex.trim();
     if hex.len() != 64 {
@@ -90,11 +101,12 @@ pub fn resolve(cli_endpoint: Option<&str>) -> Result<Resolved, String> {
         file.endpoint.as_deref(),
     );
 
-    let seed = std::env::var("TINYPLACE_SECRET_KEY")
-        .ok()
-        .or(file.secret_key)
-        .map(|hex| decode_seed_hex(&hex))
-        .transpose()?;
+    let seed = pick_secret(
+        std::env::var("TINYPLACE_SECRET_KEY").ok().as_deref(),
+        file.secret_key.as_deref(),
+    )
+    .map(|hex| decode_seed_hex(&hex))
+    .transpose()?;
 
     Ok(Resolved {
         endpoint,
@@ -140,6 +152,15 @@ mod tests {
             pick_endpoint(Some("   "), Some("https://env"), None, None),
             "https://env"
         );
+    }
+
+    #[test]
+    fn secret_precedence_ignores_blank() {
+        assert_eq!(pick_secret(Some("aa"), Some("bb")).as_deref(), Some("aa"));
+        // A blank env export must fall back to the config key, not block it.
+        assert_eq!(pick_secret(Some("   "), Some("bb")).as_deref(), Some("bb"));
+        assert_eq!(pick_secret(Some(""), None), None);
+        assert_eq!(pick_secret(None, None), None);
     }
 
     #[test]
