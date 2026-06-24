@@ -14,6 +14,7 @@ import {
 } from "../x402.js";
 import {
   executeSolanaX402Payment,
+  isLikelyMintAddress,
   SOLANA_MAINNET_NETWORK,
   SOLANA_USDC_MINT,
   type SolanaX402PaymentExecution,
@@ -161,9 +162,22 @@ export class RegistryApi {
       throw new Error("registration payment requires amount and recipient");
     }
 
+    // Resolve the SPL mint. An explicit option always wins. Otherwise, when the
+    // 402 challenge advertises the mint ADDRESS directly in `asset` (the x402
+    // exact-scheme shape — e.g. a localnet "USDC" mint), let
+    // executeSolanaPayment resolve the mint from that asset so a non-mainnet
+    // challenge drives a transfer of the advertised mint. Fall back to the
+    // mainnet USDC mint only when the challenge asset is a symbol ("USDC") or
+    // absent, preserving mainnet behavior.
+    const challengeAsset = options.asset ?? challenge?.asset;
+    const resolvedMint =
+      options.mint ??
+      (challengeAsset && isLikelyMintAddress(challengeAsset)
+        ? undefined
+        : SOLANA_USDC_MINT);
     const payment = await executeSolanaX402Payment({
       ...options,
-      mint: options.mint ?? SOLANA_USDC_MINT,
+      mint: resolvedMint,
       signer: this.signingKey,
       payment: {
         scheme: "exact",
