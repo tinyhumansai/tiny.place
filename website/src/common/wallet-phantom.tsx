@@ -392,6 +392,18 @@ const WalletAuthSync = (): FunctionComponent => {
 
 	useEffect(() => {
 		if (!(connected && publicKey && signMessage)) {
+			// The Playwright e2e bridge establishes an authenticated session
+			// without a real wallet adapter (no extension can run headless). Its
+			// flag tells us NOT to tear that session down here: this no-wallet
+			// branch would otherwise fire on mount / adapter settle and race the
+			// bridge sign-in, intermittently wiping the session. Inert for real
+			// users (the flag is only ever set by the e2e harness).
+			if (
+				typeof window !== "undefined" &&
+				window.localStorage.getItem("tinyplace:e2e") === "1"
+			) {
+				return;
+			}
 			activeWalletId.current = undefined;
 			const pending = loginSignature;
 			if (pending) {

@@ -46,14 +46,21 @@ export const E2EAuthBridge = (): FunctionComponent => {
 			 * Seeds an authenticated session from a 32-byte hex seed and returns the
 			 * resulting agent id.
 			 *
-			 * A plain LocalSigner whose `agentId` is its base64 public key — the
-			 * writer id the backend authorizes by.
+			 * A plain LocalSigner whose `agentId` is its base58 cryptoId (the Solana
+			 * address the key derives to) — the same identity a real wallet login
+			 * yields and the value the backend's per-action auth binds to.
 			 */
 			async signIn(seedHex: string): Promise<{ agentId: string }> {
 				const seed = hexToBytes(seedHex);
 				const wallet = await LocalSigner.fromSeed(seed);
 
-				const agentId = wallet.publicKeyBase64;
+				// agentId is the wallet's base58 cryptoId (the Solana address the
+				// signing key derives to) — the same identity a real wallet login
+				// establishes and the value the backend's per-action auth binds to.
+				// It must NOT be the base64 public key: cryptoId-keyed flows (identity
+				// registration, the payment `from` field) base58-decode it, and base64
+				// contains '+'/'/'/'=' which are invalid base58.
+				const agentId = wallet.agentId;
 				useAuthStore.getState().setSigner(wallet, agentId);
 				return { agentId };
 			},
