@@ -6,6 +6,13 @@ import {
 	TransactionInstruction,
 } from "@solana/web3.js";
 
+// web3.js depends on the `buffer` polyfill (Transaction.serialize() returns a
+// Buffer), but Next's client bundle does not expose `Buffer` as a global and the
+// package is not hoisted for direct import. So this module never calls the global
+// `Buffer` constructor: instruction data is a Uint8Array (web3.js reads it as
+// bytes, and Buffer is a Uint8Array subtype) and base64 is taken via the Buffer
+// instance that serialize() returns (an instance method, not the global ctor).
+
 /** SPL Token program. */
 const TOKEN_PROGRAM_ID = new PublicKey(
 	"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
@@ -79,7 +86,10 @@ function transferCheckedInstruction(options: {
 			{ pubkey: options.destination, isSigner: false, isWritable: true },
 			{ pubkey: options.owner, isSigner: true, isWritable: false },
 		],
-		data: Buffer.from(data),
+		// web3.js stores data as bytes; a Uint8Array works at runtime (Buffer is a
+		// Uint8Array subtype). Cast for the typed `Buffer` field without invoking the
+		// (browser-absent) global Buffer constructor.
+		data: data as Buffer,
 	});
 }
 
@@ -119,9 +129,9 @@ export async function buildDelegatedTransfer(
 	const signed = await options.signTransaction(transaction);
 	// requireAllSignatures: false — the facilitator's fee-payer signature is added
 	// server-side by CDP. verifySignatures: false for the same reason.
-	const serialized = signed.serialize({
-		requireAllSignatures: false,
-		verifySignatures: false,
-	});
-	return Buffer.from(serialized).toString("base64");
+	// serialize() returns a Buffer (web3.js's bundled buffer polyfill); toString is
+	// an instance method, so no reliance on a global Buffer.
+	return signed
+		.serialize({ requireAllSignatures: false, verifySignatures: false })
+		.toString("base64");
 }
