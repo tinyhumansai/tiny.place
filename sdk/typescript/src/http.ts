@@ -93,6 +93,10 @@ export class TinyPlaceError extends Error {
 export interface PaymentRequiredChallenge {
   error?: string;
   payment: PaymentChallenge;
+  /** The x402 protocol version of a standard `accepts[]` challenge (e.g. 2). */
+  x402Version?: number;
+  /** The canonical URL of the payable resource, from a standard challenge. */
+  resource?: string;
 }
 
 export interface PaymentChallenge {
@@ -100,11 +104,28 @@ export interface PaymentChallenge {
   network?: string;
   asset?: string;
   amount?: string;
+  /**
+   * The paying agent. The standard x402 `accepts[]` challenge does not carry a
+   * payer field, so this is undefined against a standard backend; callers
+   * default it to their own signer (`challenge.from || signer.agentId`).
+   */
   from?: string;
+  /**
+   * The recipient address the payment settles to. Maps from a standard
+   * challenge's `payTo`.
+   */
   to?: string;
   nonce?: string;
   expiresAt?: string;
   signature?: string;
+  /**
+   * The facilitator fee payer the client sets when building a payer-signed
+   * transfer. From a standard challenge this is the entry's `extra.feePayer`,
+   * surfaced here (and mirrored into `metadata.feePayer`) for the client.
+   */
+  feePayer?: string;
+  /** The authorization validity window (seconds), from a standard challenge. */
+  maxTimeoutSeconds?: number;
   metadata?: Record<string, string>;
 }
 
@@ -870,17 +891,87 @@ function paymentRequiredFromBody(
 function asPaymentRequiredChallenge(
   value: unknown,
 ): PaymentRequiredChallenge | undefined {
-  if (typeof value !== "object" || value === null || !("payment" in value)) {
+  if (typeof value !== "object" || value === null) {
     return undefined;
   }
 
-  const payment = (value as { payment?: unknown }).payment;
+  // Prefer the STANDARD x402 v2 shape (top-level `accepts[]`) — the only shape
+  // backend-v2 emits. Fall back to the legacy tiny.place `payment{}` shape so
+  // older backends (and the header variant) keep working.
+  return (
+    standardPaymentRequiredChallenge(value as Record<string, unknown>) ??
+    legacyPaymentRequiredChallenge(value as Record<string, unknown>)
+  );
+}
+
+/**
+ * Parse a STANDARD x402 v2 402 challenge: `{ x402Version, error, resource,
+ * accepts: [{ scheme, network, asset, amount|maxAmountRequired, payTo,
+ * maxTimeoutSeconds, extra: { feePayer } }] }`. We read the first `accepts`
+ * entry and map it onto the SDK's `PaymentChallenge` (`payTo`→`to`,
+ * `extra.feePayer`→`feePayer`+`metadata.feePayer`). The standard challenge
+ * carries no payer field, so `from` is left undefined for callers to default.
+ */
+function standardPaymentRequiredChallenge(
+  value: Record<string, unknown>,
+): PaymentRequiredChallenge | undefined {
+  const accepts = value["accepts"];
+  if (!Array.isArray(accepts) || accepts.length === 0) {
+    return undefined;
+  }
+  const entry = accepts[0];
+  if (typeof entry !== "object" || entry === null) {
+    return undefined;
+  }
+  const requirement = entry as Record<string, unknown>;
+
+  const payment: PaymentChallenge = {
+    ...stringField(requirement, "scheme"),
+    ...stringField(requirement, "network"),
+    ...stringField(requirement, "asset"),
+    // Accept either `amount` (canonical x402 v2) or `maxAmountRequired`.
+    ...amountField(requirement),
+    ...stringField(requirement, "payTo", "to"),
+    ...stringField(requirement, "nonce"),
+    ...stringField(requirement, "expiresAt"),
+    ...numberField(requirement, "maxTimeoutSeconds"),
+  };
+
+  const extra =
+    typeof requirement["extra"] === "object" && requirement["extra"] !== null
+      ? (requirement["extra"] as Record<string, unknown>)
+      : undefined;
+  const feePayer =
+    extra && typeof extra["feePayer"] === "string"
+      ? extra["feePayer"]
+      : undefined;
+  if (feePayer) {
+    payment.feePayer = feePayer;
+    payment.metadata = { ...(payment.metadata ?? {}), feePayer };
+  }
+
+  const error = value["error"];
+  const x402Version = value["x402Version"];
+  const resource = resourceUrl(value["resource"]);
+  return {
+    ...(typeof error === "string" ? { error } : {}),
+    ...(typeof x402Version === "number" ? { x402Version } : {}),
+    ...(resource ? { resource } : {}),
+    payment,
+  };
+}
+
+/** Parse the legacy tiny.place `{ error?, payment: {...} }` 402 shape. */
+function legacyPaymentRequiredChallenge(
+  value: Record<string, unknown>,
+): PaymentRequiredChallenge | undefined {
+  const payment = value["payment"];
   if (typeof payment !== "object" || payment === null) {
     return undefined;
   }
 
   const challengePayment = payment as Record<string, unknown>;
-  const error = (value as { error?: unknown }).error;
+  const error = value["error"];
   return {
     ...(typeof error === "string" ? { error } : {}),
     payment: {
@@ -893,16 +984,52 @@ function asPaymentRequiredChallenge(
       ...stringField(challengePayment, "nonce"),
       ...stringField(challengePayment, "expiresAt"),
       ...stringField(challengePayment, "signature"),
+      ...stringField(challengePayment, "feePayer"),
       ...metadataField(challengePayment),
     },
   };
 }
 
+/** `amount` (canonical v2), falling back to `maxAmountRequired`. */
+function amountField(
+  source: Record<string, unknown>,
+): Partial<PaymentChallenge> {
+  if (typeof source["amount"] === "string") {
+    return { amount: source["amount"] };
+  }
+  if (typeof source["maxAmountRequired"] === "string") {
+    return { amount: source["maxAmountRequired"] };
+  }
+  return {};
+}
+
+function numberField(
+  source: Record<string, unknown>,
+  key: "maxTimeoutSeconds",
+): Partial<PaymentChallenge> {
+  return typeof source[key] === "number" ? { [key]: source[key] } : {};
+}
+
+function resourceUrl(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { url?: unknown }).url === "string"
+  ) {
+    return (value as { url: string }).url;
+  }
+  return undefined;
+}
+
 function stringField(
   source: Record<string, unknown>,
-  key: keyof PaymentChallenge,
+  key: string,
+  target: keyof PaymentChallenge = key as keyof PaymentChallenge,
 ): Partial<PaymentChallenge> {
-  return typeof source[key] === "string" ? { [key]: source[key] } : {};
+  return typeof source[key] === "string" ? { [target]: source[key] } : {};
 }
 
 function metadataField(

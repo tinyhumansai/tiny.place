@@ -25,6 +25,58 @@ describe("TinyPlaceError self-classification", () => {
     expect(error.paymentRequired?.payment.amount).toBe("1000");
   });
 
+  it("parses a STANDARD x402 v2 accepts[] 402 challenge", () => {
+    // The shape backend-v2 emits: top-level x402Version/error/resource plus a
+    // single `exact`-scheme accepts[] entry (payTo/amount, optional extra.feePayer).
+    const error = new TinyPlaceError(402, {
+      x402Version: 2,
+      error: "payment required",
+      resource: { url: "/registry/names/@alice", mimeType: "application/json" },
+      accepts: [
+        {
+          scheme: "exact",
+          network: "solana",
+          asset: "USDC",
+          amount: "1000000",
+          payTo: "TREASURYxyz",
+          maxTimeoutSeconds: 60,
+          extra: { feePayer: "FEEPAYERabc" },
+        },
+      ],
+    });
+    expect(error.code).toBe("payment_required");
+    const challenge = error.paymentRequired;
+    expect(challenge?.x402Version).toBe(2);
+    expect(challenge?.resource).toBe("/registry/names/@alice");
+    expect(challenge?.payment.scheme).toBe("exact");
+    expect(challenge?.payment.network).toBe("solana");
+    expect(challenge?.payment.asset).toBe("USDC");
+    expect(challenge?.payment.amount).toBe("1000000");
+    // payTo maps onto the SDK's `to`; the standard challenge has no payer.
+    expect(challenge?.payment.to).toBe("TREASURYxyz");
+    expect(challenge?.payment.from).toBeUndefined();
+    expect(challenge?.payment.maxTimeoutSeconds).toBe(60);
+    // extra.feePayer is surfaced on the challenge and mirrored into metadata.
+    expect(challenge?.payment.feePayer).toBe("FEEPAYERabc");
+    expect(challenge?.payment.metadata?.feePayer).toBe("FEEPAYERabc");
+  });
+
+  it("reads amount from maxAmountRequired in an accepts[] entry", () => {
+    const error = new TinyPlaceError(402, {
+      x402Version: 2,
+      accepts: [
+        {
+          scheme: "exact",
+          network: "solana",
+          asset: "USDC",
+          maxAmountRequired: "2500000",
+          payTo: "TREASURYxyz",
+        },
+      ],
+    });
+    expect(error.paymentRequired?.payment.amount).toBe("2500000");
+  });
+
   it("serializes via toJSON with the recovery fields", () => {
     const error = new TinyPlaceError(404, { error: "missing" });
     const json = error.toJSON();
