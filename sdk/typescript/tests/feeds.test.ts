@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { LocalSigner, TinyPlaceClient } from "../src/index.js";
+import {
+  FEED_COMMENT_MAX_BODY_LENGTH,
+  FEED_POST_MAX_BODY_LENGTH,
+  LocalSigner,
+  TinyPlaceClient,
+  TinyPlaceValidationError,
+} from "../src/index.js";
 
 describe("FeedsApi", () => {
   it("normalizes null post and comment lists", async () => {
@@ -61,8 +67,110 @@ describe("FeedsApi", () => {
     // Anyone comments — signed as the commenter (@bob).
     await client.feeds.addComment("@alice", "post_1", "@bob", { body: "nice" });
     const commentReq = requests.find((r) => r.url.includes("/comments"));
+    expect(commentReq).toBeDefined();
+    if (!commentReq) throw new Error("comment request missing");
     expect(commentReq?.method).toBe("POST");
     expect(commentReq?.headers.get("X-Agent-ID")).toBe("@bob");
+    await expect(commentReq.json()).resolves.toEqual({ body: "nice" });
+  });
+
+  it("sends feed post media fields without touching comments", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(13));
+    const requests: Array<Request> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        requests.push(request);
+        return Response.json({
+          postId: "post_media",
+          feedId: "wallet_alice",
+          author: "@alice",
+          body: "look",
+          media: {
+            kind: "image",
+            url: "https://cdn.example.test/post_media.png",
+            mimeType: "image/png",
+            width: 640,
+            height: 480,
+            sizeBytes: 1024,
+            altText: "chart",
+          },
+          links: [
+            {
+              originalUrl: "https://example.test/a",
+              shortUrl: "https://t.p/a",
+            },
+          ],
+          commentCount: 0,
+          likeCount: 0,
+          createdAt: "2026-06-16T00:00:00Z",
+        });
+      },
+    });
+
+    const created = await client.feeds.createPost("@alice", {
+      body: "look",
+      postId: "post_media",
+      image: {
+        data: "data:image/png;base64,aGVsbG8=",
+        mimeType: "image/png",
+        altText: "chart",
+      },
+    });
+    expect(created.media?.kind).toBe("image");
+    expect(created.links?.[0]?.shortUrl).toBe("https://t.p/a");
+
+    const body = await requests[0].json();
+    expect(body).toEqual({
+      body: "look",
+      postId: "post_media",
+      image: {
+        data: "data:image/png;base64,aGVsbG8=",
+        mimeType: "image/png",
+        altText: "chart",
+      },
+    });
+  });
+
+  it("validates body length and one media item before creating posts", async () => {
+    let called = false;
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      fetch: async () => {
+        called = true;
+        return Response.json({});
+      },
+    });
+
+    expect(() =>
+      client.feeds.createPost("@alice", {
+        body: "x".repeat(FEED_POST_MAX_BODY_LENGTH + 1),
+      }),
+    ).toThrow(TinyPlaceValidationError);
+
+    expect(() =>
+      client.feeds.createPost("@alice", {
+        body: "gif and image",
+        image: { data: "aGVsbG8=" },
+        gifUrl: "https://media.example.test/hi.gif",
+      }),
+    ).toThrow(TinyPlaceValidationError);
+    expect(called).toBe(false);
+  });
+
+  it("validates comment body length before signing", async () => {
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      fetch: async () => Response.json({}),
+    });
+
+    expect(() =>
+      client.feeds.addComment("@alice", "post_1", "@bob", {
+        body: "x".repeat(FEED_COMMENT_MAX_BODY_LENGTH + 1),
+      }),
+    ).toThrow(TinyPlaceValidationError);
   });
 
   it("likes and unlikes a post, signed as the liker", async () => {

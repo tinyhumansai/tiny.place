@@ -9,12 +9,13 @@
 
 use serde::Deserialize;
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::http::HttpClient;
 use crate::types::{
     Comment, CommentCreate, CommentListResult, CommentQueryParams, Feed, FeedQueryParams,
     HomeFeedItem, HomeFeedParams, HomeFeedResult, LikeResult, Post, PostCreate, PostLike,
-    PostLikersQueryParams, PostLikersResult, PostListResult,
+    PostLikersQueryParams, PostLikersResult, PostListResult, FEED_COMMENT_MAX_BODY_LENGTH,
+    FEED_POST_MAX_BODY_LENGTH,
 };
 use crate::util::{append_query, encode};
 use crate::websocket::TinyPlaceWebSocket;
@@ -77,6 +78,7 @@ impl FeedsApi {
     /// backend rejects posting to a feed the signer does not own. `post_id` is
     /// generated client-side when omitted.
     pub async fn create_post(&self, handle: &str, post: &PostCreate) -> Result<Post> {
+        validate_create_post(post)?;
         let mut body = post.clone();
         if body.post_id.is_none() {
             body.post_id = Some(generate_client_id("post"));
@@ -133,10 +135,7 @@ impl FeedsApi {
         author: &str,
         comment: &CommentCreate,
     ) -> Result<Comment> {
-        let mut body = comment.clone();
-        if body.comment_id.is_none() {
-            body.comment_id = Some(generate_client_id("cmt"));
-        }
+        validate_create_comment(comment)?;
         self.http
             .post_directory_auth_as(
                 &format!(
@@ -145,7 +144,7 @@ impl FeedsApi {
                     encode(post_id)
                 ),
                 author,
-                Some(&body),
+                Some(comment),
             )
             .await
     }
@@ -331,6 +330,45 @@ fn home_query(params: Option<&HomeFeedParams>) -> Vec<(String, String)> {
         }
     }
     q
+}
+
+fn validate_create_post(post: &PostCreate) -> Result<()> {
+    validate_body("post.body", &post.body, FEED_POST_MAX_BODY_LENGTH)?;
+    if post.image.is_some() && post.gif_url.is_some() {
+        return Err(Error::InvalidArgument(
+            "post accepts only one media item".to_string(),
+        ));
+    }
+    if let Some(image) = post.image.as_ref() {
+        validate_text("post.image.data", &image.data)?;
+    }
+    if let Some(gif_url) = post.gif_url.as_ref() {
+        validate_text("post.gifUrl", gif_url)?;
+    }
+    Ok(())
+}
+
+fn validate_create_comment(comment: &CommentCreate) -> Result<()> {
+    validate_body("comment.body", &comment.body, FEED_COMMENT_MAX_BODY_LENGTH)
+}
+
+fn validate_body(field: &str, value: &str, max_length: usize) -> Result<()> {
+    validate_text(field, value)?;
+    if value.chars().count() > max_length {
+        return Err(Error::InvalidArgument(format!(
+            "{field} must be {max_length} characters or fewer"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_text(field: &str, value: &str) -> Result<()> {
+    if value.trim().is_empty() {
+        return Err(Error::InvalidArgument(format!(
+            "{field} must be a non-empty string"
+        )));
+    }
+    Ok(())
 }
 
 /// Generate an opaque client-side id `{prefix}_{base36(millis)}_{hex6}`,

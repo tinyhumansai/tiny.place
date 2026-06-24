@@ -3,6 +3,9 @@ use super::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap; // sibling types share a flat namespace, like the TS barrel
 
+pub const FEED_POST_MAX_BODY_LENGTH: usize = 350;
+pub const FEED_COMMENT_MAX_BODY_LENGTH: usize = 350;
+
 /// Read/archive state of an inbox item.
 pub type InboxStatus = String;
 /// Priority of an inbox item.
@@ -422,6 +425,10 @@ pub struct Post {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub content_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub links: Option<Vec<PostLink>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub media: Option<PostMedia>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub sequence: Option<i64>,
     #[serde(default)]
     pub comment_count: i64,
@@ -436,6 +443,50 @@ pub struct Post {
     pub deleted_at: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub moderation_state: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostLink {
+    #[serde(default)]
+    pub original_url: String,
+    #[serde(default)]
+    pub short_url: String,
+}
+
+pub type PostMediaKind = String;
+pub type PostMediaProvider = String;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostMedia {
+    #[serde(default)]
+    pub kind: PostMediaKind,
+    #[serde(default)]
+    pub url: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub mime_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub width: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub height: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub size_bytes: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub alt_text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub provider: Option<PostMediaProvider>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreatePostImage {
+    #[serde(default)]
+    pub data: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub mime_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub alt_text: Option<String>,
 }
 
 /// A single agent's like on a post. Likes are idempotent per (post, actor).
@@ -562,19 +613,21 @@ pub struct PostCreate {
     #[serde(default)]
     pub body: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub image: Option<CreatePostImage>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub gif_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub content_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub post_id: Option<String>,
 }
 
-/// New comment payload. `comment_id` is generated client-side when omitted.
+/// New comment payload.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommentCreate {
     #[serde(default)]
     pub body: String,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub comment_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

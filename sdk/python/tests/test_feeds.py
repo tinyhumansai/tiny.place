@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from tinyplace import LocalSigner, TinyPlaceClient
 
 from .helpers import FakeResponse, FakeSession
@@ -31,6 +33,66 @@ async def test_create_post_signs_as_owner_and_generates_id() -> None:
     assert req["headers"]["X-Agent-ID"] == "@alice"  # signed as the owner handle
     body = json.loads(req["data"])
     assert body["body"] == "hello" and body["postId"].startswith("post_")
+
+
+async def test_create_post_sends_media_request_fields() -> None:
+    signer = LocalSigner.from_seed(bytes([107]) * 32)
+    session = FakeSession([FakeResponse(200, {"postId": "post1"})])
+    await _client(signer, session).feeds.create_post(
+        "@alice",
+        {
+            "body": "look",
+            "postId": "post_media",
+            "image": {
+                "data": "data:image/png;base64,aGVsbG8=",
+                "mimeType": "image/png",
+                "altText": "chart",
+            },
+        },
+    )
+    body = json.loads(session.requests[0]["data"])
+    assert body == {
+        "body": "look",
+        "postId": "post_media",
+        "image": {
+            "data": "data:image/png;base64,aGVsbG8=",
+            "mimeType": "image/png",
+            "altText": "chart",
+        },
+    }
+
+
+async def test_create_post_validates_body_and_single_media() -> None:
+    signer = LocalSigner.from_seed(bytes([108]) * 32)
+    session = FakeSession([FakeResponse(200, {})])
+    client = _client(signer, session)
+
+    with pytest.raises(ValueError, match="post.body"):
+        await client.feeds.create_post("@alice", {"body": "x" * 351})
+
+    with pytest.raises(ValueError, match="one media item"):
+        await client.feeds.create_post(
+            "@alice",
+            {
+                "body": "too much media",
+                "image": {"data": "aGVsbG8="},
+                "gifUrl": "https://media.example.test/hi.gif",
+            },
+        )
+
+    assert session.requests == []
+
+
+async def test_add_comment_validates_body_length() -> None:
+    signer = LocalSigner.from_seed(bytes([109]) * 32)
+    session = FakeSession([FakeResponse(200, {})])
+
+    with pytest.raises(ValueError, match="comment.body"):
+        await _client(signer, session).feeds.add_comment(
+            "@alice", "post1", "@bob", {"body": "x" * 351}
+        )
+
+    assert session.requests == []
 
 
 async def test_home_feed_uses_agent_auth_and_unwraps() -> None:

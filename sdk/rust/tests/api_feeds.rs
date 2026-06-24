@@ -1,12 +1,12 @@
 //! Feeds API tests. Mirror the TypeScript SDK's feeds coverage: path + query
 //! construction, null-collection coalescing (`null` → `[]`), directory-auth
-//! actor wiring, client-side id generation, and the home-feed count fallback.
+//! actor wiring, post client-side id generation, and the home-feed count fallback.
 
 mod common;
 
 use common::*;
 use serde_json::{json, Value};
-use tinyplace::types::{CommentCreate, FeedQueryParams, PostCreate};
+use tinyplace::types::{CommentCreate, CreatePostImage, FeedQueryParams, PostCreate};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 
@@ -116,6 +116,7 @@ async fn create_post_signs_as_owner_and_round_trips_explicit_id() {
         body: "hello world".to_string(),
         content_type: Some("text/plain".to_string()),
         post_id: Some("p-explicit".to_string()),
+        ..Default::default()
     };
     let created = client.feeds.create_post("alice", &post).await.unwrap();
     assert_eq!(created.post_id, "p-explicit");
@@ -129,6 +130,92 @@ async fn create_post_signs_as_owner_and_round_trips_explicit_id() {
     assert_eq!(body["body"], "hello world");
     assert_eq!(body["contentType"], "text/plain");
     assert_eq!(body["postId"], "p-explicit");
+}
+
+#[tokio::test]
+async fn create_post_sends_media_request_fields_and_reads_media_response() {
+    let server = wiremock::MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/feeds/alice/posts"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "postId": "p-media",
+            "feedId": "wallet-a",
+            "author": "alice",
+            "body": "look",
+            "links": [{
+                "originalUrl": "https://example.test/a",
+                "shortUrl": "https://t.p/a"
+            }],
+            "media": {
+                "kind": "image",
+                "url": "https://cdn.example.test/p-media.png",
+                "mimeType": "image/png",
+                "width": 640,
+                "height": 480,
+                "sizeBytes": 1024,
+                "altText": "chart"
+            },
+            "commentCount": 0,
+            "likeCount": 0,
+            "createdAt": "2026-01-01T00:00:00Z"
+        })))
+        .mount(&server)
+        .await;
+    let client = client_for(&server);
+
+    let post = PostCreate {
+        body: "look".to_string(),
+        post_id: Some("p-media".to_string()),
+        image: Some(CreatePostImage {
+            data: "data:image/png;base64,aGVsbG8=".to_string(),
+            mime_type: Some("image/png".to_string()),
+            alt_text: Some("chart".to_string()),
+        }),
+        ..Default::default()
+    };
+    let created = client.feeds.create_post("alice", &post).await.unwrap();
+    assert_eq!(created.media.unwrap().kind, "image");
+    assert_eq!(created.links.unwrap()[0].short_url, "https://t.p/a");
+
+    let req = only_request(&server).await;
+    let body: Value = serde_json::from_slice(&req.body).unwrap();
+    assert_eq!(body["image"]["data"], "data:image/png;base64,aGVsbG8=");
+    assert_eq!(body["image"]["mimeType"], "image/png");
+    assert_eq!(body["image"]["altText"], "chart");
+}
+
+#[tokio::test]
+async fn create_post_validates_body_and_single_media_before_request() {
+    let server = any_ok(json!({})).await;
+    let client = client_for(&server);
+
+    let long_post = PostCreate {
+        body: "x".repeat(351),
+        ..Default::default()
+    };
+    let err = client
+        .feeds
+        .create_post("alice", &long_post)
+        .await
+        .unwrap_err();
+    assert!(err.to_string().contains("post.body"));
+
+    let double_media = PostCreate {
+        body: "too much media".to_string(),
+        image: Some(CreatePostImage {
+            data: "aGVsbG8=".to_string(),
+            ..Default::default()
+        }),
+        gif_url: Some("https://media.example.test/hi.gif".to_string()),
+        ..Default::default()
+    };
+    let err = client
+        .feeds
+        .create_post("alice", &double_media)
+        .await
+        .unwrap_err();
+    assert!(err.to_string().contains("one media item"));
+    assert_eq!(server.received_requests().await.unwrap().len(), 0);
 }
 
 #[tokio::test]
@@ -163,7 +250,7 @@ async fn create_post_generates_client_id_when_omitted() {
 }
 
 #[tokio::test]
-async fn add_comment_signs_as_author_and_generates_id() {
+async fn add_comment_signs_as_author_and_sends_body_only() {
     let server = any_ok(json!({
         "commentId": "x",
         "postId": "p1",
@@ -190,7 +277,25 @@ async fn add_comment_signs_as_author_and_generates_id() {
     assert_eq!(req.headers.get("x-agent-id").unwrap(), "@bob");
     let body: Value = serde_json::from_slice(&req.body).unwrap();
     assert_eq!(body["body"], "nice");
-    assert!(body["commentId"].as_str().unwrap().starts_with("cmt_"));
+    assert!(body.get("commentId").is_none());
+}
+
+#[tokio::test]
+async fn add_comment_validates_body_length_before_request() {
+    let server = any_ok(json!({})).await;
+    let client = client_for(&server);
+    let comment = CommentCreate {
+        body: "x".repeat(351),
+        ..Default::default()
+    };
+
+    let err = client
+        .feeds
+        .add_comment("alice", "p1", "@bob", &comment)
+        .await
+        .unwrap_err();
+    assert!(err.to_string().contains("comment.body"));
+    assert_eq!(server.received_requests().await.unwrap().len(), 0);
 }
 
 #[tokio::test]

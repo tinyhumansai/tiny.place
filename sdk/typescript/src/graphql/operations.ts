@@ -45,6 +45,20 @@ const POST_FIELDS = `
   feedId
   body
   contentType
+  links {
+    originalUrl
+    shortUrl
+  }
+  media {
+    kind
+    url
+    mimeType
+    width
+    height
+    sizeBytes
+    altText
+    provider
+  }
   commentCount
   likeCount
   createdAt
@@ -183,6 +197,20 @@ export const HOME_FEED_QUERY = `
           feedId
           body
           contentType
+          links {
+            originalUrl
+            shortUrl
+          }
+          media {
+            kind
+            url
+            mimeType
+            width
+            height
+            sizeBytes
+            altText
+            provider
+          }
           commentCount
           likeCount
           createdAt

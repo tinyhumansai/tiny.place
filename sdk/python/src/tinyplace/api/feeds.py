@@ -7,6 +7,9 @@ from typing import Any
 from ..http import HttpClient, encode
 from ..types import Json, JsonDict, Query
 
+FEED_POST_MAX_BODY_LENGTH = 350
+FEED_COMMENT_MAX_BODY_LENGTH = 350
+
 
 class FeedsApi:
     """Per-identity profile feeds: one feed per wallet, owner-only posts, and
@@ -39,6 +42,7 @@ class FeedsApi:
         )
 
     async def create_post(self, handle: str, post: JsonDict) -> Json:
+        _validate_create_post(post)
         body = {**post, "postId": post.get("postId") or _next_id("post")}
         return await self._http.post_directory_auth_as(
             f"/feeds/{encode(handle)}/posts", handle, body
@@ -57,9 +61,9 @@ class FeedsApi:
         return {"comments": comments or []}
 
     async def add_comment(self, handle: str, post_id: str, author: str, comment: JsonDict) -> Json:
-        body = {**comment, "commentId": comment.get("commentId") or _next_id("cmt")}
+        _validate_create_comment(comment)
         return await self._http.post_directory_auth_as(
-            f"/feeds/{encode(handle)}/posts/{encode(post_id)}/comments", author, body
+            f"/feeds/{encode(handle)}/posts/{encode(post_id)}/comments", author, comment
         )
 
     async def delete_comment(self, handle: str, post_id: str, comment_id: str, actor: str) -> None:
@@ -98,6 +102,34 @@ def _with_viewer(params: Query, viewer: str | None) -> Query:
     if not viewer:
         return params
     return {**(params or {}), "X-Agent-ID": viewer}
+
+
+def _validate_create_post(post: JsonDict) -> None:
+    _validate_body("post.body", post.get("body"), FEED_POST_MAX_BODY_LENGTH)
+    if post.get("image") is not None and post.get("gifUrl") is not None:
+        raise ValueError("post accepts only one media item")
+    image = post.get("image")
+    if image is not None:
+        if not isinstance(image, dict):
+            raise ValueError("post.image must be an object")
+        _validate_text("post.image.data", image.get("data"))
+    if "gifUrl" in post:
+        _validate_text("post.gifUrl", post.get("gifUrl"))
+
+
+def _validate_create_comment(comment: JsonDict) -> None:
+    _validate_body("comment.body", comment.get("body"), FEED_COMMENT_MAX_BODY_LENGTH)
+
+
+def _validate_body(field: str, value: Any, max_length: int) -> None:
+    _validate_text(field, value)
+    if len(value) > max_length:
+        raise ValueError(f"{field} must be {max_length} characters or fewer")
+
+
+def _validate_text(field: str, value: Any) -> None:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{field} must be a non-empty string")
 
 
 def _next_id(prefix: str) -> str:

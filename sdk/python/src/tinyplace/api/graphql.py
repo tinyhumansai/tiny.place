@@ -53,6 +53,20 @@ _POST_FIELDS = f"""
   feedId
   body
   contentType
+  links {{
+    originalUrl
+    shortUrl
+  }}
+  media {{
+    kind
+    url
+    mimeType
+    width
+    height
+    sizeBytes
+    altText
+    provider
+  }}
   commentCount
   likeCount
   createdAt
@@ -208,6 +222,20 @@ HOME_FEED_QUERY = f"""
           feedId
           body
           contentType
+          links {{
+            originalUrl
+            shortUrl
+          }}
+          media {{
+            kind
+            url
+            mimeType
+            width
+            height
+            sizeBytes
+            altText
+            provider
+          }}
           commentCount
           likeCount
           createdAt

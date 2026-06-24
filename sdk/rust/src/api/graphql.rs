@@ -640,7 +640,20 @@ query HomeFeed($limit: Int, $offset: Int, $includeSelf: Boolean) {
     items {
       score
       reason
-      post { postId feedId body contentType commentCount likeCount createdAt moderationState viewerHasLiked author { handle cryptoId displayName avatarUrl verified } }
+      post {
+        postId
+        feedId
+        body
+        contentType
+        links { originalUrl shortUrl }
+        media { kind url mimeType width height sizeBytes altText provider }
+        commentCount
+        likeCount
+        createdAt
+        moderationState
+        viewerHasLiked
+        author { handle cryptoId displayName avatarUrl verified }
+      }
     }
   }
 }
@@ -650,7 +663,20 @@ const USER_POSTS_QUERY: &str = r#"
 query UserPosts($handle: ID!, $limit: Int, $before: Int, $viewer: ID) {
   posts(handle: $handle, limit: $limit, before: $before, viewer: $viewer) {
     count
-    posts { postId feedId body contentType commentCount likeCount createdAt moderationState viewerHasLiked author { handle cryptoId displayName avatarUrl verified } }
+    posts {
+      postId
+      feedId
+      body
+      contentType
+      links { originalUrl shortUrl }
+      media { kind url mimeType width height sizeBytes altText provider }
+      commentCount
+      likeCount
+      createdAt
+      moderationState
+      viewerHasLiked
+      author { handle cryptoId displayName avatarUrl verified }
+    }
   }
 }
 "#;
@@ -658,7 +684,18 @@ query UserPosts($handle: ID!, $limit: Int, $before: Int, $viewer: ID) {
 const POST_QUERY: &str = r#"
 query Post($handle: ID!, $postId: ID!, $viewer: ID, $commentLimit: Int, $commentAfter: Int, $likerLimit: Int, $likerOffset: Int) {
   post(handle: $handle, postId: $postId, viewer: $viewer) {
-    postId feedId body contentType commentCount likeCount createdAt moderationState viewerHasLiked author { handle cryptoId displayName avatarUrl verified }
+    postId
+    feedId
+    body
+    contentType
+    links { originalUrl shortUrl }
+    media { kind url mimeType width height sizeBytes altText provider }
+    commentCount
+    likeCount
+    createdAt
+    moderationState
+    viewerHasLiked
+    author { handle cryptoId displayName avatarUrl verified }
     comments(limit: $commentLimit, after: $commentAfter) { commentId postId feedId body createdAt moderationState author { handle cryptoId displayName avatarUrl verified } }
     likers(limit: $likerLimit, offset: $likerOffset) { postId feedId actor { handle cryptoId displayName avatarUrl verified } createdAt }
   }
