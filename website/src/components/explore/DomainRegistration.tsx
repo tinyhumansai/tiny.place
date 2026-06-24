@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { PublicKey } from "@solana/web3.js";
 
 import {
 	TinyPlaceError,
@@ -21,6 +22,11 @@ import { createClient } from "@src/common/api-client";
 import { queryKeys } from "@src/common/query-keys";
 import { assertValidX402Challenge } from "@src/common/x402-challenge";
 import { signX402ChallengePaymentMap } from "@src/common/auth-payment";
+import { buildDelegatedTransfer } from "@src/common/delegated-transfer";
+import {
+	useTinyplaceConnection,
+	useTinyplaceWallet,
+} from "@src/common/tinyplace-wallet";
 import {
 	MIN_HANDLE_LENGTH,
 	useHandleAvailability,
@@ -78,6 +84,12 @@ export const DomainRegistration = ({
 	// the wallet.
 	const signer = useAuthStore((state) => state.signer);
 	const agentId = useAuthStore((state) => state.agentId);
+	// The connected wallet's transaction signer. The standard x402 Solana "exact"
+	// settlement needs the payer to partially sign a TransferChecked (its own USDC
+	// moves) with CDP as fee payer; the session signer only does signMessage, so
+	// we reach for the wallet adapter's signTransaction here.
+	const { publicKey: walletPublicKey, signTransaction } = useTinyplaceWallet();
+	const solanaConnection = useTinyplaceConnection();
 	const client = useMemo(() => createClient(signer), [signer]);
 	const confirmX402 = useOptionalX402Confirm();
 	const queryClient = useQueryClient();
@@ -159,6 +171,26 @@ export const DomainRegistration = ({
 							payment: challengePayment,
 							signer,
 						});
+						// Standard x402 Solana settlement: the facilitator (CDP) advertises a
+						// feePayer in the challenge and settles a client-built, partially-signed
+						// TransferChecked. Build it with the wallet (its own USDC moves, CDP
+						// fee-pays + broadcasts server-side) and carry it as metadata.delegatedTx.
+						// Skipped when the challenge has no feePayer (custodial/native flows) or
+						// the wallet can't sign transactions — the backend then guides the client.
+						const feePayer = challengePayment.metadata?.["feePayer"];
+						if (feePayer && signTransaction && walletPublicKey) {
+							const delegatedTx = await buildDelegatedTransfer({
+								connection: solanaConnection,
+								payer: walletPublicKey,
+								feePayer: new PublicKey(feePayer),
+								mint: new PublicKey(challengePayment.asset),
+								decimals: 6,
+								amount: BigInt(challengePayment.amount),
+								treasury: new PublicKey(challengePayment.to),
+								signTransaction,
+							});
+							payment["metadata.delegatedTx"] = delegatedTx;
+						}
 						return client.registry.register({ ...request, payment });
 					};
 					return confirmX402
