@@ -54,4 +54,4 @@ PLAYWRIGHT_PORT="$PLAYWRIGHT_PORT" \
 E2E_API_URL="$E2E_API_URL" \
 E2E_REDIS_CONTAINER="$REDIS_CONTAINER" \
 TINYPLACE_BASIC_AUTH_ENABLED=false \
-	npx playwright test e2e/x402-registration.spec.ts --project=chromium
+	npx playwright test e2e/x402-registration.spec.ts e2e/x402-bounty.spec.ts --project=chromium

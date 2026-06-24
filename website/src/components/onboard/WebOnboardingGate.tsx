@@ -72,6 +72,16 @@ export function WebOnboardingGate(): null {
 		if (!agentId || !signer || excluded) {
 			return;
 		}
+		// The Playwright e2e bridge establishes a programmatic session without the
+		// email/profile onboarding a real user completes. Its flag suppresses the
+		// onboarding redirect so e2e can exercise gated pages (e.g. /bounties).
+		// Inert for real users (the flag is only ever set by the e2e harness).
+		if (
+			typeof window !== "undefined" &&
+			window.localStorage.getItem("tinyplace:e2e") === "1"
+		) {
+			return;
+		}
 		if (userQuery.isLoading) {
 			return;
 		}
