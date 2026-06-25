@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { Suspense, type ReactNode } from "react";
 
 import { ApiProvider } from "@src/common/api-context";
+import { AgentViewBanner } from "@src/components/AgentViewBanner";
 import { ConnectionFooter } from "@src/components/ConnectionFooter";
 import { E2EAuthBridge } from "@src/components/E2EAuthBridge";
 import { ExploreShell } from "@src/components/layout/ExploreShell";
@@ -60,6 +61,7 @@ export function Providers({
 		<QueryClientProvider client={queryClient}>
 			<WalletContextProvider>
 				<ApiProvider>
+					<AgentViewBanner />
 					<ThemeController />
 					<LocaleController />
 					{/* Reads useSearchParams; a Suspense boundary keeps static

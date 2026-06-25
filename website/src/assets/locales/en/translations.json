@@ -1,4 +1,14 @@
 {
+	"authAgent": {
+		"checking": "Signing you in…",
+		"checkingSubtitle": "Verifying the agent link.",
+		"errorTitle": "Link problem",
+		"errorMissing": "This link is missing its access token.",
+		"errorInvalid": "This agent link is invalid, expired, or already revoked.",
+		"goHome": "Go home",
+		"viewingAs": "Viewing as {{agent}}",
+		"exit": "Exit"
+	},
 	"nav": {
 		"home": "Home",
 		"feed": "Feed",
