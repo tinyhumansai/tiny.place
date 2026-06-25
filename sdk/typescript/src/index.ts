@@ -77,6 +77,28 @@ export {
   generateNonce,
 } from "./x402.js";
 
+export type {
+  X402PaymentRequired,
+  X402PaymentRequirements,
+  X402PaymentPayload as X402StandardPaymentPayload,
+  X402ResourceInfo,
+  X402SettlementResponse,
+  X402SvmSigner,
+  BuildExactSvmPayloadOptions,
+} from "./x402-standard.js";
+export {
+  X402_VERSION,
+  X402_HEADER_PAYMENT_REQUIRED,
+  X402_HEADER_PAYMENT_SIGNATURE,
+  X402_HEADER_PAYMENT_RESPONSE,
+  buildExactSvmPaymentPayload,
+  decodePaymentRequired,
+  decodeSettlementResponse,
+  encodePaymentSignature,
+  encodeX402Header,
+  selectExactSvmRequirement,
+} from "./x402-standard.js";
+
 export {
   buildExactSvmTransferTransaction,
   DEFAULT_CONFIRMATION_POLLS,

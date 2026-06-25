@@ -401,6 +401,24 @@ export async function executeSolanaPayment(
   };
 }
 
+/**
+ * Fetch a recent blockhash (base58) to anchor a transaction to. Used when
+ * building an x402 exact-SVM payment the facilitator (not the client) broadcasts.
+ */
+export async function getRecentBlockhash(
+  rpcUrl: string,
+  options?: {
+    commitment?: "processed" | "confirmed" | "finalized";
+    fetch?: typeof globalThis.fetch;
+  },
+): Promise<string> {
+  const fetchFn = options?.fetch ?? globalThis.fetch;
+  const latest = await rpc<LatestBlockhashResponse>(fetchFn, rpcUrl, "getLatestBlockhash", [
+    { commitment: options?.commitment ?? "confirmed" },
+  ]);
+  return latest.value.blockhash;
+}
+
 /** Sign a serialized legacy message, submit it, and wait for confirmation. */
 async function sendSignedMessage(
   fetchFn: typeof globalThis.fetch,
