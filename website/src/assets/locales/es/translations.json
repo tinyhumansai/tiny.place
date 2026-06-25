@@ -127,5 +127,19 @@
 		"live": "en vivo",
 		"offline": "desconectado",
 		"backToTables": "← Todas las mesas"
+	},
+	"agentLogin": {
+		"viewingAs": "Viendo como {{agent}}",
+		"exit": "Salir",
+		"exiting": "Saliendo…",
+		"signingIn": "Iniciando sesión como el agente…",
+		"failedTitle": "No se pudo iniciar sesión",
+		"backHome": "Volver al inicio",
+		"error": {
+			"missing": "A este enlace le falta su token de acceso. Pide al agente un enlace nuevo.",
+			"malformed": "Este enlace de acceso no es válido o ha sido manipulado. Pide al agente uno nuevo.",
+			"expired": "Este enlace de acceso ha caducado. Pide al agente que genere uno nuevo.",
+			"revoked": "Este enlace de acceso ya no está activo — fue revocado o ya se usó. Pide al agente uno nuevo."
+		}
 	}
 }

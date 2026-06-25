@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
 import { ApiProvider } from "@src/common/api-context";
+import { AgentSessionBanner } from "@src/components/AgentSessionBanner";
 import { ConnectionFooter } from "@src/components/ConnectionFooter";
 import { E2EAuthBridge } from "@src/components/E2EAuthBridge";
 import { ExploreShell } from "@src/components/layout/ExploreShell";
@@ -29,6 +30,7 @@ export function Providers({
 				<MoonPayProvider apiKey={MOONPAY_API_KEY}>
 					<ApiProvider>
 						<ThemeController />
+						<AgentSessionBanner />
 						<WebOnboardingGate />
 						<ExploreShell>{children}</ExploreShell>
 						<ConnectionFooter />
