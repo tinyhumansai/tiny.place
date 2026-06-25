@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import inspect
 import json
 import random
 from dataclasses import dataclass
@@ -12,7 +13,17 @@ import aiohttp
 
 from .auth import AdminSigningOptions, sign_admin_request, sign_directory_write, sign_request
 from .signer import Signer
+from .solana import RpcRequest
 from .types import Headers, Json, JsonDict, Query
+from .x402_standard import (
+    X402_HEADER_PAYMENT_REQUIRED,
+    X402_HEADER_PAYMENT_RESPONSE,
+    X402_HEADER_PAYMENT_SIGNATURE,
+    build_exact_svm_payment_payload,
+    decode_payment_required,
+    decode_settlement_response,
+    encode_payment_signature,
+)
 
 AuthInvalidHook = Callable[[int, Json], None]
 
@@ -81,6 +92,29 @@ class PaymentRequiredChallenge:
     error: str | None = None
 
 
+@dataclass(frozen=True)
+class X402PayerConfig:
+    """Configures automatic settlement of standard x402 v2 (HTTP 402) challenges.
+
+    When set on the client, any request that returns 402 with a
+    ``PAYMENT-REQUIRED`` header offering a Solana ``exact`` method is retried once
+    with a ``PAYMENT-SIGNATURE`` header carrying a partially-signed
+    ``TransferChecked`` (the facilitator co-signs as fee payer and broadcasts).
+    This is the standard transport — no separate verify/settle calls and no flat
+    signed-message body. Mirrors the TS ``X402PayerConfig``.
+    """
+
+    #: The payer's Solana secret key (32-byte seed or 64-byte keypair).
+    secret_key: str | bytes
+    #: The Solana RPC URL used to fetch a recent blockhash for the transfer.
+    rpc_url: str
+    #: Optional callback invoked with each successful settlement (decoded
+    #: ``PAYMENT-RESPONSE``). May be sync or async.
+    on_settled: Callable[[dict[str, Any]], Any] | None = None
+    #: Optional RPC override (used in tests; defaults to an aiohttp RPC client).
+    rpc_request: RpcRequest | None = None
+
+
 class TinyPlaceError(Exception):
     def __init__(
         self,
@@ -110,6 +144,7 @@ class HttpClient:
         on_auth_invalid: AuthInvalidHook | None = None,
         timeout: float | None = None,
         retry: RetryOptions | None = None,
+        x402_payer: X402PayerConfig | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.signer = signer
@@ -121,6 +156,7 @@ class HttpClient:
         self._on_auth_invalid = on_auth_invalid
         self._timeout = DEFAULT_TIMEOUT if timeout is None else timeout
         self._retry = retry or RetryOptions()
+        self._x402_payer = x402_payer
 
     async def close(self) -> None:
         if self._session and self._owns_session:
@@ -249,6 +285,79 @@ class HttpClient:
         headers: Headers | None = None,
         response_type: str = "json",
     ) -> Json:
+        try:
+            return await self._send(
+                method,
+                path,
+                query=query,
+                body=body,
+                auth=auth,
+                actor=actor,
+                headers=headers,
+                response_type=response_type,
+            )
+        except TinyPlaceError as error:
+            # Standard x402: a 402 carrying a PAYMENT-REQUIRED challenge is settled
+            # inline by retrying the SAME request once with a PAYMENT-SIGNATURE header.
+            paid_headers = await self._attach_x402_payment(error, headers)
+            if paid_headers is None:
+                raise
+            return await self._send(
+                method,
+                path,
+                query=query,
+                body=body,
+                auth=auth,
+                actor=actor,
+                headers=paid_headers,
+                response_type=response_type,
+            )
+
+    async def _attach_x402_payment(
+        self, error: TinyPlaceError, headers: Headers | None
+    ) -> Headers | None:
+        """Build the Solana ``exact`` PaymentPayload for a payable 402 and return
+        request headers with a ``PAYMENT-SIGNATURE`` attached for a single retry.
+
+        Returns ``None`` when there is no payer configured, the error is not a
+        payable 402, a payment was already attached, or the challenge offers no
+        Solana exact method — so the caller re-raises the original error.
+        """
+        if (
+            self._x402_payer is None
+            or error.status != 402
+            or (headers or {}).get(X402_HEADER_PAYMENT_SIGNATURE) is not None
+        ):
+            return None
+        challenge = decode_payment_required(
+            error.headers.get(X402_HEADER_PAYMENT_REQUIRED)
+            or error.headers.get(X402_HEADER_PAYMENT_REQUIRED.lower())
+        )
+        if challenge is None:
+            return None
+        payload = await build_exact_svm_payment_payload(
+            challenge=challenge,
+            secret_key=self._x402_payer.secret_key,
+            rpc_url=self._x402_payer.rpc_url,
+            rpc_request=self._x402_payer.rpc_request,
+        )
+        return {
+            **(headers or {}),
+            X402_HEADER_PAYMENT_SIGNATURE: encode_payment_signature(payload),
+        }
+
+    async def _send(
+        self,
+        method: str,
+        path: str,
+        *,
+        query: Query = None,
+        body: Json = None,
+        auth: str | None = None,
+        actor: str | None = None,
+        headers: Headers | None = None,
+        response_type: str = "json",
+    ) -> Json:
         query_string = _build_query(query)
         request_uri = f"{path}{query_string}"
         url = f"{self.base_url}{request_uri}"
@@ -297,6 +406,18 @@ class HttpClient:
                     continue
                 await self._raise_error(path, response)
             break
+
+        # Surface a standard x402 settlement (PAYMENT-RESPONSE) to the payer hook.
+        if self._x402_payer is not None and self._x402_payer.on_settled is not None:
+            response_headers = getattr(response, "headers", None) or {}
+            settlement = decode_settlement_response(
+                response_headers.get(X402_HEADER_PAYMENT_RESPONSE)
+                or response_headers.get(X402_HEADER_PAYMENT_RESPONSE.lower())
+            )
+            if settlement is not None:
+                result = self._x402_payer.on_settled(settlement)
+                if inspect.isawaitable(result):
+                    await result
 
         if response.status == 204:
             return None

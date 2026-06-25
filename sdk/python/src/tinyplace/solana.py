@@ -3,9 +3,11 @@ from __future__ import annotations
 import asyncio
 import base64
 import re
+import secrets
 from typing import Any, Awaitable, Callable
 
 import aiohttp
+from nacl.signing import SigningKey
 from solders.hash import Hash
 from solders.instruction import AccountMeta, Instruction
 from solders.keypair import Keypair
@@ -28,6 +30,16 @@ USDC_DECIMALS = 6
 SOLANA_NATIVE_DECIMALS = 9
 # Mainnet wrapped-SOL (WSOL) SPL mint.
 SOLANA_WSOL_MINT = "So11111111111111111111111111111111111111112"
+# The ComputeBudget program (sets the compute unit limit + price).
+SOLANA_COMPUTE_BUDGET_PROGRAM_ID = "ComputeBudget111111111111111111111111111111"
+# The SPL Memo program — the exact-SVM scheme requires a Memo for tx uniqueness.
+SOLANA_MEMO_PROGRAM_ID = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+# The SPL Associated Token Account program (derives a wallet's canonical ATA).
+SOLANA_ASSOCIATED_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+# Default compute unit limit for the facilitator transfer (matches the TS SDK / web app).
+FACILITATOR_COMPUTE_UNIT_LIMIT = 40_000
+# Default compute unit price in microlamports/CU (well under the 5,000,000 cap).
+FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS = "1"
 
 _BASE58_MINT_PATTERN = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$")
 
@@ -348,3 +360,193 @@ def _aiohttp_rpc_request(rpc_url: str) -> RpcRequest:
         return payload.get("result")
 
     return request
+
+
+# ---------------------------------------------------------------------------
+# Standard x402 v2 exact-SVM transport: ATA derivation + partially-signed
+# TransferChecked transaction. Mirrors the TS SDK's ``solana.ts``.
+# ---------------------------------------------------------------------------
+
+
+def derive_associated_token_address(
+    owner: str,
+    mint: str,
+    token_program: str = SOLANA_TOKEN_PROGRAM_ID,
+) -> str:
+    """Derive the canonical Associated Token Account address for ``owner``/``mint``.
+
+    Matches the destination ATA the x402 exact-SVM facilitator derives from
+    ``payTo``+``asset`` when verifying, so the client must transfer to exactly
+    this account. Mirrors the TS ``deriveAssociatedTokenAddress`` and the Go
+    facilitator: a PDA over ``[owner, tokenProgram, mint]`` under the SPL ATA
+    program. ``solders.Pubkey.find_program_address`` runs Solana's exact
+    off-curve (sha256 + curve25519 decompress) bump search.
+    """
+    address, _bump = Pubkey.find_program_address(
+        [
+            bytes(Pubkey.from_string(owner)),
+            bytes(Pubkey.from_string(token_program)),
+            bytes(Pubkey.from_string(mint)),
+        ],
+        Pubkey.from_string(SOLANA_ASSOCIATED_TOKEN_PROGRAM_ID),
+    )
+    return str(address)
+
+
+def _short_vec(value: int) -> bytes:
+    """Encode ``value`` as a Solana compact-u16 (shortvec) length prefix."""
+    out = bytearray()
+    current = value
+    while True:
+        byte = current & 0x7F
+        current >>= 7
+        if current > 0:
+            byte |= 0x80
+        out.append(byte)
+        if current == 0:
+            break
+    return bytes(out)
+
+
+def _encode_instruction(
+    program_id_index: int, account_indexes: list[int], data: bytes
+) -> bytes:
+    """Encode one compiled instruction: programIdIndex, account indexes, data."""
+    return (
+        bytes([program_id_index])
+        + _short_vec(len(account_indexes))
+        + bytes(account_indexes)
+        + _short_vec(len(data))
+        + data
+    )
+
+
+def _random_memo_nonce() -> str:
+    """A random >=16-byte hex memo nonce (the exact-SVM uniqueness requirement)."""
+    return secrets.token_hex(16)
+
+
+def build_exact_svm_transfer_transaction(
+    *,
+    secret_key: str | bytes,
+    fee_payer: str,
+    pay_to: str,
+    mint: str,
+    amount: str,
+    decimals: int,
+    recent_blockhash: str,
+    memo: str | None = None,
+    source_token_account: str | None = None,
+    compute_unit_limit: int = FACILITATOR_COMPUTE_UNIT_LIMIT,
+    compute_unit_price_micro_lamports: str = FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS,
+) -> dict[str, str]:
+    """Build the x402 ``exact`` payment transaction for Solana (SVM).
+
+    Per ``scheme_exact_svm.md``: a legacy transaction with the static fast-path
+    instruction layout ``[SetComputeUnitLimit, SetComputeUnitPrice,
+    TransferChecked, Memo]``, fee payer = the facilitator's ``extra.feePayer``
+    (account index 0, left UNSIGNED for the facilitator to co-sign), the payer
+    signing only as the transfer authority. The destination is the ATA derived
+    from ``pay_to``+``mint``; the transfer amount equals the required amount
+    exactly.
+
+    Returns a dict with the base64 ``transaction`` (partially signed),
+    ``from`` (authority), ``sourceTokenAccount``, ``destinationTokenAccount``,
+    and the embedded ``memo``. The client does NOT broadcast it — the facilitator
+    co-signs as fee payer and submits it. Mirrors the TS
+    ``buildExactSvmTransferTransaction``.
+    """
+    amount_int = _validate_amount(amount)
+    keypair = _keypair_from_secret(secret_key)
+    seed_bytes = bytes(keypair.secret())
+    authority = str(keypair.pubkey())
+
+    if authority == fee_payer:
+        # Fee-payer isolation: the sponsor must not be the transfer authority/source.
+        raise ValueError("x402 exact-SVM: fee payer must differ from the paying authority")
+
+    source = source_token_account or derive_associated_token_address(authority, mint)
+    destination = derive_associated_token_address(pay_to, mint)
+    memo_value = memo if (memo and memo.strip()) else _random_memo_nonce()
+
+    # Account layout (signers first, then writable non-signers, then readonly
+    # non-signers). The fee payer MUST be index 0; the authority is a readonly
+    # signer; the token accounts are writable non-signers; mint + programs are
+    # readonly non-signers.
+    account_keys = [
+        fee_payer,  # 0: writable signer (fee payer)
+        authority,  # 1: readonly signer (transfer authority)
+        source,  # 2: writable non-signer
+        destination,  # 3: writable non-signer
+        mint,  # 4: readonly non-signer
+        SOLANA_TOKEN_PROGRAM_ID,  # 5: readonly non-signer
+        SOLANA_COMPUTE_BUDGET_PROGRAM_ID,  # 6: readonly non-signer
+        SOLANA_MEMO_PROGRAM_ID,  # 7: readonly non-signer
+    ]
+    # header: 2 required signatures, 1 readonly signed (authority), 4 readonly
+    # unsigned (mint, token, compute-budget, memo programs).
+    header = bytes([2, 1, 4])
+
+    compute_limit_data = bytes([2]) + int(compute_unit_limit).to_bytes(4, "little")
+    compute_price_data = bytes([3]) + int(compute_unit_price_micro_lamports).to_bytes(
+        8, "little"
+    )
+    transfer_data = (
+        bytes([12]) + amount_int.to_bytes(8, "little") + bytes([decimals & 0xFF])
+    )
+    memo_data = memo_value.encode("utf-8")
+
+    message = (
+        header
+        + _short_vec(len(account_keys))
+        + b"".join(decode_base58(key) for key in account_keys)
+        + decode_base58(recent_blockhash)
+        + _short_vec(4)
+        # SetComputeUnitLimit (program 6, no accounts)
+        + _encode_instruction(6, [], compute_limit_data)
+        # SetComputeUnitPrice (program 6, no accounts)
+        + _encode_instruction(6, [], compute_price_data)
+        # TransferChecked (program 5): source, mint, destination, authority
+        + _encode_instruction(5, [2, 4, 3, 1], transfer_data)
+        # Memo (program 7, no accounts)
+        + _encode_instruction(7, [], memo_data)
+    )
+
+    # Sign only as the authority (signatures[1]); leave the fee payer slot
+    # (signatures[0]) zeroed for the facilitator to fill before broadcasting.
+    authority_signature = bytes(SigningKey(seed_bytes).sign(message).signature)
+    empty_fee_payer_signature = bytes(64)
+    transaction = (
+        _short_vec(2) + empty_fee_payer_signature + authority_signature + message
+    )
+
+    return {
+        "transaction": base64.b64encode(transaction).decode("ascii"),
+        "from": authority,
+        "sourceTokenAccount": source,
+        "destinationTokenAccount": destination,
+        "memo": memo_value,
+    }
+
+
+async def get_recent_blockhash(
+    rpc_url: str,
+    *,
+    commitment: str = "confirmed",
+    rpc_request: RpcRequest | None = None,
+) -> str:
+    """Fetch a recent blockhash (base58) to anchor a transaction to.
+
+    Used when building an x402 exact-SVM payment the facilitator (not the client)
+    broadcasts. Mirrors the TS ``getRecentBlockhash``.
+    """
+    request = rpc_request or _aiohttp_rpc_request(rpc_url)
+    latest = await request("getLatestBlockhash", [{"commitment": commitment}])
+    return str(latest["value"]["blockhash"])
+
+
+def _validate_amount(amount: str) -> int:
+    trimmed = str(amount).strip()
+    if not trimmed.isdigit() or int(trimmed) <= 0:
+        raise ValueError(f"Solana payment amount must be a positive integer: {amount}")
+    return int(trimmed)
