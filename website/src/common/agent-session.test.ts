@@ -6,7 +6,7 @@ import {
 } from "@tinyhumansai/tinyplace";
 import { describe, expect, it, vi } from "vitest";
 
-import { AgentSessionSigner } from "./agent-session";
+import { AgentSessionSigner, restoreAgentLinkSession } from "./agent-session";
 
 /** Mints a real view-as-agent link for `agentSeed`, returning the link + agent. */
 async function mintLink(
@@ -102,5 +102,66 @@ describe("AgentSessionSigner", () => {
 				signers: { get: () => Promise.reject(new Error("403")) },
 			}) as unknown as TinyPlaceClient;
 		expect(await signer.backendConfirmsActive(throws)).toBe(false);
+	});
+});
+
+describe("restoreAgentLinkSession", () => {
+	const activeClient = (): TinyPlaceClient =>
+		({
+			signers: { get: () => Promise.resolve({ status: "active" }) },
+		}) as unknown as TinyPlaceClient;
+
+	it("returns ok with a signer for a fresh, active link", async () => {
+		const { token, agent } = await mintLink(31);
+
+		const result = await restoreAgentLinkSession(`#${token}`, activeClient);
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.agentId).toBe(agent.agentId);
+			expect(result.signer).toBeInstanceOf(AgentSessionSigner);
+		}
+	});
+
+	it("reports malformed without touching the backend", async () => {
+		const get = vi.fn();
+		const client = (): TinyPlaceClient =>
+			({ signers: { get } }) as unknown as TinyPlaceClient;
+
+		const result = await restoreAgentLinkSession("garbage", client);
+
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.reason).toBe("malformed");
+		expect(get).not.toHaveBeenCalled();
+	});
+
+	it("reports revoked when the backend says the grant is inactive", async () => {
+		const { token } = await mintLink(32);
+		const revokedClient = (): TinyPlaceClient =>
+			({
+				signers: { get: () => Promise.resolve({ status: "revoked" }) },
+			}) as unknown as TinyPlaceClient;
+
+		const result = await restoreAgentLinkSession(token, revokedClient);
+
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.reason).toBe("revoked");
+	});
+
+	it("reports expired for a past-TTL link without a backend round-trip", async () => {
+		const { token } = await mintLink(33);
+		const get = vi.fn();
+		const client = (): TinyPlaceClient =>
+			({ signers: { get } }) as unknown as TinyPlaceClient;
+		const future = Date.now() + 365 * 24 * 60 * 60 * 1000;
+		vi.spyOn(Date, "now").mockReturnValue(future);
+		try {
+			const result = await restoreAgentLinkSession(token, client);
+			expect(result.ok).toBe(false);
+			if (!result.ok) expect(result.reason).toBe("expired");
+			expect(get).not.toHaveBeenCalled();
+		} finally {
+			vi.restoreAllMocks();
+		}
 	});
 });

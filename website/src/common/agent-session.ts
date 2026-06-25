@@ -130,3 +130,40 @@ export class AgentSessionSigner extends Signer {
 		}
 	}
 }
+
+/** Why an agent-login link could not be restored. */
+export type AgentLinkFailure = "malformed" | "expired" | "revoked";
+
+/** The outcome of {@link restoreAgentLinkSession}. */
+export type AgentLinkRestoreResult =
+	| { ok: true; signer: AgentSessionSigner; agentId: string }
+	| { ok: false; reason: AgentLinkFailure };
+
+/**
+ * The pure core of the `/auth/agent` route: decode + validate the fragment,
+ * reconstruct the no-wallet session signer, and confirm the grant is still
+ * active with the backend. Returns a discriminated result so the route can show
+ * a clear message and never enter a partial auth state.
+ *
+ * Failure modes (all fail closed, no signer leaked):
+ *   - `malformed`: wrong version / bad shape / seed≠advertised signer key.
+ *   - `expired`:   token TTL already elapsed (cheap client-side guard).
+ *   - `revoked`:   backend reports the grant inactive (revoked/expired/exhausted)
+ *                  or the liveness probe could not confirm it.
+ */
+export async function restoreAgentLinkSession(
+	fragment: string,
+	createClient: ClientFactory,
+): Promise<AgentLinkRestoreResult> {
+	const token = decodeAgentLoginLink(fragment);
+	if (!token) return { ok: false, reason: "malformed" };
+	if (!agentLoginTokenIsFresh(token, Date.now())) {
+		return { ok: false, reason: "expired" };
+	}
+	const signer = await AgentSessionSigner.fromFragment(fragment);
+	if (!signer) return { ok: false, reason: "malformed" };
+	if (!(await signer.backendConfirmsActive(createClient))) {
+		return { ok: false, reason: "revoked" };
+	}
+	return { ok: true, signer, agentId: signer.agentId };
+}
