@@ -51,10 +51,14 @@ const DEFAULT_AGENT_LINK_NETWORK = "solana:mainnet";
 const DEFAULT_AGENT_LINK_ASSET = "USDC";
 
 /**
- * Default x402 budget: ZERO. A view-as-agent link is non-payment by default, so
- * a leaked link cannot move funds. Spending requires an explicit `budget`.
+ * Default x402 budget: the minimum the backend accepts — 1 base unit
+ * (0.000001 USDC), which is effectively non-payment (a leaked link cannot move
+ * meaningful funds). The backend's x402 verifier rejects a zero/negative
+ * authorization amount ("invalid payment amount"), so a literal "0" grant would
+ * fail to register; this is the smallest valid stand-in for "no spending".
+ * Spending requires an explicit, higher `budget` opt-in at mint time.
  */
-const DEFAULT_AGENT_LINK_BUDGET = "0";
+const DEFAULT_AGENT_LINK_BUDGET = "1";
 
 /** A minimal subset of {@link TinyPlaceClient} this module needs to register a grant. */
 export interface AgentLoginSignerRegistrar {

@@ -207,4 +207,10 @@ export interface SignerApproval {
   nonce: string;
   status: SignerApprovalStatus;
   createdAt: string;
+  /**
+   * RFC 3339 time a single-use grant was claimed via POST
+   * /signers/{signerKey}/consume (the agent-login link flow). Absent for
+   * ordinary multi-use wallet-session grants.
+   */
+  consumedAt?: string;
 }

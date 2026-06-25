@@ -29,4 +29,17 @@ export class SignersApi {
       `/signers/${encodeURIComponent(signerKey)}${query}`,
     );
   }
+
+  /**
+   * Atomically claims a single-use grant (the agent-login "view-as-agent" link
+   * flow): the backend returns the grant on the first call and a 409 on every
+   * replay, so a leaked link can be redeemed at most once. Must be called by a
+   * client whose signer IS the session key being consumed (the link holder),
+   * since the backend authenticates the claim against that key.
+   */
+  consume(signerKey: string): Promise<SignerApproval> {
+    return this.http.postDirectoryAuth<SignerApproval>(
+      `/signers/${encodeURIComponent(signerKey)}/consume`,
+    );
+  }
 }

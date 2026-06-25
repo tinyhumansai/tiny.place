@@ -83,14 +83,16 @@ describe("agent login link (view-as-agent)", () => {
     expect(grant.nonce).toBe(link.decoded.approvalNonce);
   });
 
-  it("defaults to a ZERO payment budget (leaked-link funds safety)", async () => {
+  it("defaults to a minimal (effectively zero) payment budget (leaked-link funds safety)", async () => {
     const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(7));
     const client = recordingRegistrar();
 
     const link = await createAgentLoginLink({ signer, client });
 
-    expect(link.decoded.budget).toBe("0");
-    expect(client.approved[0]!.amount).toBe("0");
+    // 1 base unit (0.000001 USDC) — the smallest the backend accepts; a literal
+    // "0" is rejected by the x402 verifier. Effectively non-payment.
+    expect(link.decoded.budget).toBe("1");
+    expect(client.approved[0]!.amount).toBe("1");
   });
 
   it("honors an explicit non-zero budget opt-in", async () => {
