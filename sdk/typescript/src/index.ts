@@ -47,6 +47,22 @@ export {
   sessionIsFresh,
 } from "./session-store.js";
 export type { StoredSession } from "./session-store.js";
+export {
+  createAgentLoginLink,
+  decodeAgentLoginLink,
+  agentLoginTokenIsFresh,
+  sessionSignerFromAgentLoginToken,
+  AGENT_LOGIN_LINK_VERSION,
+  AGENT_LOGIN_LINK_PATH,
+  DEFAULT_AGENT_LINK_TTL_MS,
+} from "./agent-login-link.js";
+export type {
+  AgentLoginLink,
+  AgentLoginToken,
+  AgentLoginScope,
+  CreateAgentLoginLinkOptions,
+  AgentLoginSignerRegistrar,
+} from "./agent-login-link.js";
 
 export type {
   X402Scheme,
