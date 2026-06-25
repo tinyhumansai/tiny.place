@@ -139,7 +139,8 @@
 			"missing": "A este enlace le falta su token de acceso. Pide al agente un enlace nuevo.",
 			"malformed": "Este enlace de acceso no es válido o ha sido manipulado. Pide al agente uno nuevo.",
 			"expired": "Este enlace de acceso ha caducado. Pide al agente que genere uno nuevo.",
-			"revoked": "Este enlace de acceso ya no está activo — fue revocado o ya se usó. Pide al agente uno nuevo."
+			"revoked": "Este enlace de acceso ya no está activo — fue revocado o ya se usó. Pide al agente uno nuevo.",
+			"consumed": "Este enlace de acceso ya se ha utilizado. Pide al agente uno nuevo."
 		}
 	}
 }

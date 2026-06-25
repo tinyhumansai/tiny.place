@@ -129,31 +129,60 @@ export class AgentSessionSigner extends Signer {
 			return false;
 		}
 	}
+
+	/**
+	 * Claims the single-use link grant: the backend marks it consumed on the
+	 * first call and rejects every replay (409), so a leaked link can be redeemed
+	 * at most once. Signs the request with the session key (the link holder's
+	 * credential). Returns true on the first successful claim, false if the link
+	 * was already used / inactive — the route must fail closed on false.
+	 */
+	public async consumeLink(createClient: ClientFactory): Promise<boolean> {
+		try {
+			const client: TinyPlaceClient = createClient(this);
+			await client.signers.consume(this.token.signerKey);
+			return true;
+		} catch {
+			return false;
+		}
+	}
 }
 
 /** Why an agent-login link could not be restored. */
-export type AgentLinkFailure = "malformed" | "expired" | "revoked";
+export type AgentLinkFailure = "malformed" | "expired" | "revoked" | "consumed";
 
 /** The outcome of {@link restoreAgentLinkSession}. */
 export type AgentLinkRestoreResult =
 	| { ok: true; signer: AgentSessionSigner; agentId: string }
 	| { ok: false; reason: AgentLinkFailure };
 
+/** Options for {@link restoreAgentLinkSession}. */
+export interface RestoreAgentLinkOptions {
+	/**
+	 * Consume the link as single-use (default true): the backend marks the grant
+	 * consumed on first open and rejects replays, so a leaked link can be redeemed
+	 * at most once. Set false only where single-use is not wanted.
+	 */
+	singleUse?: boolean;
+}
+
 /**
  * The pure core of the `/auth/agent` route: decode + validate the fragment,
- * reconstruct the no-wallet session signer, and confirm the grant is still
- * active with the backend. Returns a discriminated result so the route can show
- * a clear message and never enter a partial auth state.
+ * reconstruct the no-wallet session signer, confirm the grant is active, and
+ * (by default) consume it single-use. Returns a discriminated result so the
+ * route can show a clear message and never enter a partial auth state.
  *
  * Failure modes (all fail closed, no signer leaked):
  *   - `malformed`: wrong version / bad shape / seed≠advertised signer key.
  *   - `expired`:   token TTL already elapsed (cheap client-side guard).
  *   - `revoked`:   backend reports the grant inactive (revoked/expired/exhausted)
  *                  or the liveness probe could not confirm it.
+ *   - `consumed`:  the single-use link was already redeemed (replay blocked).
  */
 export async function restoreAgentLinkSession(
 	fragment: string,
 	createClient: ClientFactory,
+	options?: RestoreAgentLinkOptions,
 ): Promise<AgentLinkRestoreResult> {
 	const token = decodeAgentLoginLink(fragment);
 	if (!token) return { ok: false, reason: "malformed" };
@@ -164,6 +193,13 @@ export async function restoreAgentLinkSession(
 	if (!signer) return { ok: false, reason: "malformed" };
 	if (!(await signer.backendConfirmsActive(createClient))) {
 		return { ok: false, reason: "revoked" };
+	}
+	// Single-use: claim the link so it can't be replayed. A failed claim (already
+	// used / inactive) fails closed.
+	if (options?.singleUse !== false) {
+		if (!(await signer.consumeLink(createClient))) {
+			return { ok: false, reason: "consumed" };
+		}
 	}
 	return { ok: true, signer, agentId: signer.agentId };
 }

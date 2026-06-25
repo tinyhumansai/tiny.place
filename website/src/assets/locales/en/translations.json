@@ -139,7 +139,8 @@
 			"missing": "This link is missing its login token. Ask the agent to send you a fresh link.",
 			"malformed": "This login link is invalid or has been tampered with. Ask the agent for a new one.",
 			"expired": "This login link has expired. Ask the agent to generate a new one.",
-			"revoked": "This login link is no longer active — it was revoked or has already been used. Ask the agent for a new one."
+			"revoked": "This login link is no longer active — it was revoked or has already been used. Ask the agent for a new one.",
+			"consumed": "This login link has already been used. Ask the agent for a new one."
 		}
 	}
 }

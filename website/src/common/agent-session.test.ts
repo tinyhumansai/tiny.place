@@ -106,21 +106,55 @@ describe("AgentSessionSigner", () => {
 });
 
 describe("restoreAgentLinkSession", () => {
-	const activeClient = (): TinyPlaceClient =>
-		({
-			signers: { get: () => Promise.resolve({ status: "active" }) },
-		}) as unknown as TinyPlaceClient;
-
-	it("returns ok with a signer for a fresh, active link", async () => {
+	it("returns ok with a signer for a fresh, active link and consumes it", async () => {
 		const { token, agent } = await mintLink(31);
+		const consume = vi.fn(() => Promise.resolve({ status: "active" }));
+		const client = (): TinyPlaceClient =>
+			({
+				signers: { get: () => Promise.resolve({ status: "active" }), consume },
+			}) as unknown as TinyPlaceClient;
 
-		const result = await restoreAgentLinkSession(`#${token}`, activeClient);
+		const result = await restoreAgentLinkSession(`#${token}`, client);
 
 		expect(result.ok).toBe(true);
 		if (result.ok) {
 			expect(result.agentId).toBe(agent.agentId);
 			expect(result.signer).toBeInstanceOf(AgentSessionSigner);
 		}
+		// Single-use: the link was claimed exactly once.
+		expect(consume).toHaveBeenCalledTimes(1);
+	});
+
+	it("skips consume when singleUse is false", async () => {
+		const { token } = await mintLink(34);
+		const consume = vi.fn();
+		const client = (): TinyPlaceClient =>
+			({
+				signers: { get: () => Promise.resolve({ status: "active" }), consume },
+			}) as unknown as TinyPlaceClient;
+
+		const result = await restoreAgentLinkSession(token, client, {
+			singleUse: false,
+		});
+
+		expect(result.ok).toBe(true);
+		expect(consume).not.toHaveBeenCalled();
+	});
+
+	it("reports consumed when the single-use claim fails (replay blocked)", async () => {
+		const { token } = await mintLink(35);
+		const client = (): TinyPlaceClient =>
+			({
+				signers: {
+					get: () => Promise.resolve({ status: "active" }),
+					consume: () => Promise.reject(new Error("409 link already used")),
+				},
+			}) as unknown as TinyPlaceClient;
+
+		const result = await restoreAgentLinkSession(token, client);
+
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.reason).toBe("consumed");
 	});
 
 	it("reports malformed without touching the backend", async () => {
