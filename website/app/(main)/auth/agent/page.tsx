@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -24,13 +24,22 @@ export default function AgentAuthPage(): FunctionComponent {
 	const { t } = useTranslation();
 	const setLinkSession = useAuthStore((state) => state.setLinkSession);
 	const [error, setError] = useState<string | undefined>(undefined);
+	// Run the token exchange exactly once. The effect must NOT re-run on t/router
+	// identity changes (i18n init churns `t`): a second run would read the
+	// already-stripped hash and clobber a valid session with "missing token", and
+	// an abort-on-rerun cleanup would cancel the in-flight redeem. Guard + no
+	// cleanup keeps it single-shot.
+	const handledRef = useRef(false);
 
 	useEffect(() => {
-		let active = true;
+		if (handledRef.current) {
+			return;
+		}
+		handledRef.current = true;
 
 		const raw = readGrantFragment(window.location.hash);
-		// Strip the token from the address bar/history before anything else, so it
-		// is never left visible or re-shareable from this tab.
+		// Strip the token from the address bar/history immediately, so it is never
+		// left visible or re-shareable from this tab.
 		window.history.replaceState(
 			null,
 			"",
@@ -39,30 +48,19 @@ export default function AgentAuthPage(): FunctionComponent {
 
 		if (!raw) {
 			setError(t("authAgent.errorMissing"));
-			return (): void => {
-				active = false;
-			};
+			return;
 		}
 
-		void (async (): Promise<void> => {
-			try {
-				const grant = await resolveAgentViewGrant(raw, createClient().onboard);
-				if (!active) {
-					return;
-				}
+		resolveAgentViewGrant(raw, createClient().onboard)
+			.then((grant) => {
 				setLinkSession(grant, grant.wallet);
 				router.replace("/explore");
-			} catch {
-				if (active) {
-					setError(t("authAgent.errorInvalid"));
-				}
-			}
-		})();
-
-		return (): void => {
-			active = false;
-		};
-	}, [router, setLinkSession, t]);
+			})
+			.catch(() => {
+				setError(t("authAgent.errorInvalid"));
+			});
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	return (
 		<div className="mx-auto flex min-h-[40vh] max-w-md flex-col items-center justify-center gap-3 px-6 text-center">
