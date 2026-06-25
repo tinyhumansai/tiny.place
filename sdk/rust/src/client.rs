@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use crate::auth::AdminSigningOptions;
 use crate::error::Result;
-use crate::http::{AuthInvalidHook, HttpClient, HttpClientOptions, RetryOptions};
+use crate::http::{AuthInvalidHook, HttpClient, HttpClientOptions, RetryOptions, X402PayerConfig};
 use crate::signer::Signer;
 
 use crate::api::a2a::A2AApi;
@@ -60,6 +60,9 @@ pub struct TinyPlaceClientOptions {
     /// Retry-with-backoff policy for transient failures (network errors,
     /// 5xx/429). Defaults to retrying idempotent reads twice.
     pub retry: RetryOptions,
+    /// Enables automatic settlement of standard x402 (HTTP 402) challenges by
+    /// retrying the request with a partially-signed Solana `exact` transfer.
+    pub x402_payer: Option<X402PayerConfig>,
 }
 
 /// The tiny.place API client. Each public field is an API namespace; the client
@@ -110,6 +113,7 @@ impl TinyPlaceClient {
             on_auth_invalid: options.on_auth_invalid,
             timeout: options.timeout,
             retry: options.retry,
+            x402_payer: options.x402_payer,
         });
 
         Self {

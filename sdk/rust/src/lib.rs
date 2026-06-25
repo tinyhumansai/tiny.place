@@ -30,10 +30,12 @@ pub mod error;
 pub mod http;
 pub mod signal;
 pub mod signer;
+pub mod solana;
 pub mod util;
 pub mod validation;
 pub mod websocket;
 pub mod x402;
+pub mod x402_standard;
 
 pub mod api;
 pub mod client;
@@ -44,9 +46,18 @@ pub const SDK_VERSION: &str = "0.1.0";
 
 pub use client::{TinyPlaceClient, TinyPlaceClientOptions};
 pub use error::{Error, PaymentChallenge, PaymentRequiredChallenge, Result};
-pub use http::{HttpClient, HttpClientOptions, RetryOptions, DEFAULT_TIMEOUT};
+pub use http::{HttpClient, HttpClientOptions, RetryOptions, X402PayerConfig, DEFAULT_TIMEOUT};
 pub use signer::{LocalSigner, Signer};
+pub use solana::{
+    build_exact_svm_transfer_transaction, derive_associated_token_address, get_recent_blockhash,
+    ExactSvmTransfer, ExactSvmTransferOptions, SOLANA_MAINNET_NETWORK,
+};
 pub use websocket::{TinyPlaceWebSocket, WebSocketConnection, WsAuth};
+pub use x402_standard::{
+    build_exact_svm_payment_payload, decode_payment_required, decode_settlement_response,
+    encode_payment_signature, select_exact_svm_requirement, X402PaymentPayload,
+    X402PaymentRequired, X402PaymentRequirements, X402SettlementResponse,
+};
 
 pub use assets::{
     is_likely_mint_address, resolve_solana_asset, solana_asset_symbol, SolanaAsset,

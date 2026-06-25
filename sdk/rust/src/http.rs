@@ -77,6 +77,40 @@ use crate::auth::{
 use crate::error::{Error, PaymentChallenge, PaymentRequiredChallenge, Result};
 use crate::signer::Signer;
 use crate::websocket::{TinyPlaceWebSocket, WsAuth};
+use crate::x402_standard::{
+    build_exact_svm_payment_payload, decode_payment_required, decode_settlement_response,
+    encode_payment_signature, BuildExactSvmPayloadOptions, X402SettlementResponse,
+    X402_HEADER_PAYMENT_RESPONSE, X402_HEADER_PAYMENT_SIGNATURE,
+};
+
+/// Callback invoked with each successful x402 settlement (decoded
+/// `PAYMENT-RESPONSE` header).
+pub type X402SettledHook = Arc<dyn Fn(&X402SettlementResponse) + Send + Sync>;
+
+/// Configures automatic settlement of standard x402 v2 (HTTP 402) challenges.
+/// When set, any request that returns 402 with a `PAYMENT-REQUIRED` header
+/// offering a Solana `exact` method is retried once with a `PAYMENT-SIGNATURE`
+/// header carrying a partially-signed `TransferChecked` (the facilitator
+/// co-signs as fee payer and broadcasts). This is the standard transport — no
+/// separate verify/settle calls and no flat signed-message body.
+#[derive(Clone)]
+pub struct X402PayerConfig {
+    /// The payer's Solana secret key (32-byte seed or 64-byte keypair).
+    pub secret_key: Vec<u8>,
+    /// The Solana RPC URL used to fetch a recent blockhash for the transfer.
+    pub rpc_url: String,
+    /// Invoked with each successful settlement (decoded `PAYMENT-RESPONSE`).
+    pub on_settled: Option<X402SettledHook>,
+}
+
+impl std::fmt::Debug for X402PayerConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("X402PayerConfig")
+            .field("rpc_url", &self.rpc_url)
+            .field("on_settled", &self.on_settled.is_some())
+            .finish_non_exhaustive()
+    }
+}
 
 /// A list of query parameters. Arrays are expressed as repeated keys.
 pub type Query = [(String, String)];
@@ -125,6 +159,9 @@ pub struct HttpClientOptions {
     pub timeout: Option<Duration>,
     /// Retry-with-backoff policy for transient failures.
     pub retry: RetryOptions,
+    /// Enables automatic settlement of standard x402 (HTTP 402) challenges. When
+    /// unset, a 402 surfaces as an [`Error::Http`] for the caller to handle.
+    pub x402_payer: Option<X402PayerConfig>,
 }
 
 /// The shared HTTP client. Cheap to clone (everything is `Arc`-backed).
@@ -142,6 +179,7 @@ struct HttpClientInner {
     admin: AdminSigningOptions,
     on_auth_invalid: Option<AuthInvalidHook>,
     retry: RetryOptions,
+    x402_payer: Option<X402PayerConfig>,
 }
 
 impl HttpClient {
@@ -164,6 +202,7 @@ impl HttpClient {
                 admin: options.admin,
                 on_auth_invalid: options.on_auth_invalid,
                 retry: options.retry,
+                x402_payer: options.x402_payer,
             }),
         }
     }
@@ -220,6 +259,31 @@ impl HttpClient {
         directory_actor: Option<&str>,
         extra_headers: &[(String, String)],
     ) -> Result<Response> {
+        self.execute_inner(
+            method,
+            path,
+            query,
+            body_str,
+            auth,
+            directory_actor,
+            extra_headers,
+            false,
+        )
+        .await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn execute_inner(
+        &self,
+        method: Method,
+        path: &str,
+        query: &Query,
+        body_str: Option<String>,
+        auth: Auth,
+        directory_actor: Option<&str>,
+        extra_headers: &[(String, String)],
+        x402_attempted: bool,
+    ) -> Result<Response> {
         let query_string = build_query(query);
         let request_uri = format!("{path}{query_string}");
         let url = format!("{}{request_uri}", self.inner.base_url);
@@ -255,6 +319,7 @@ impl HttpClient {
             match builder.send().await {
                 Ok(response) => {
                     if response.status().is_success() {
+                        self.notify_x402_settled(&response);
                         return Ok(response);
                     }
                     let status = response.status().as_u16();
@@ -267,6 +332,30 @@ impl HttpClient {
                         attempt += 1;
                         sleep(wait).await;
                         continue;
+                    }
+                    // Standard x402: a 402 carrying a PAYMENT-REQUIRED header is
+                    // settled inline by retrying the SAME request once with a
+                    // PAYMENT-SIGNATURE header.
+                    if status == 402 && !x402_attempted && self.inner.x402_payer.is_some() {
+                        if let Some(signature_header) = self.build_x402_signature(&response).await?
+                        {
+                            let mut next_headers = extra_headers.to_vec();
+                            next_headers.push((
+                                X402_HEADER_PAYMENT_SIGNATURE.to_string(),
+                                signature_header,
+                            ));
+                            return Box::pin(self.execute_inner(
+                                method,
+                                path,
+                                query,
+                                Some(body),
+                                auth,
+                                directory_actor,
+                                &next_headers,
+                                true,
+                            ))
+                            .await;
+                        }
                     }
                     return Err(self.error_from_response(path, response).await);
                 }
@@ -340,6 +429,56 @@ impl HttpClient {
             }
         }
         Ok(())
+    }
+
+    /// Surface a standard x402 settlement (`PAYMENT-RESPONSE` header) to the
+    /// payer's `on_settled` hook, when both are present.
+    fn notify_x402_settled(&self, response: &Response) {
+        let Some(payer) = &self.inner.x402_payer else {
+            return;
+        };
+        let Some(hook) = &payer.on_settled else {
+            return;
+        };
+        let header = response
+            .headers()
+            .get(X402_HEADER_PAYMENT_RESPONSE)
+            .or_else(|| response.headers().get("payment-response"))
+            .and_then(|value| value.to_str().ok());
+        if let Some(encoded) = header {
+            if let Some(settlement) = decode_settlement_response(encoded) {
+                hook(&settlement);
+            }
+        }
+    }
+
+    /// Decode a 402 response's `PAYMENT-REQUIRED` header and, if it offers a
+    /// Solana `exact` method, build the base64 `PAYMENT-SIGNATURE` header value
+    /// (a partially-signed transfer). Returns `None` when there is no payable
+    /// challenge so the caller falls through to normal error handling.
+    async fn build_x402_signature(&self, response: &Response) -> Result<Option<String>> {
+        let Some(payer) = &self.inner.x402_payer else {
+            return Ok(None);
+        };
+        let encoded = response
+            .headers()
+            .get("payment-required")
+            .and_then(|value| value.to_str().ok());
+        let Some(encoded) = encoded else {
+            return Ok(None);
+        };
+        let Some(challenge) = decode_payment_required(encoded) else {
+            return Ok(None);
+        };
+        let payload = build_exact_svm_payment_payload(BuildExactSvmPayloadOptions {
+            challenge: &challenge,
+            secret_key: payer.secret_key.clone(),
+            rpc_url: payer.rpc_url.clone(),
+            decimals: None,
+            client: &self.inner.client,
+        })
+        .await?;
+        Ok(Some(encode_payment_signature(&payload)?))
     }
 
     async fn error_from_response(&self, path: &str, response: Response) -> Error {
