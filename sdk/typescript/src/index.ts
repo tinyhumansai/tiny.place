@@ -43,6 +43,8 @@ export type {
   AuthHeaders,
   DirectoryWriteHeaders,
   OnboardGrantCredential,
+  OnboardHandoffMinter,
+  AgentViewLink,
 } from "./auth.js";
 export {
   buildAuthHeader,
@@ -53,6 +55,8 @@ export {
   signFreshCanonicalPayload,
   mintOnboardGrant,
   parseOnboardGrant,
+  createAgentViewLink,
+  VIEW_SCOPE,
 } from "./auth.js";
 
 export { Signer, identityPublicKey, signerPaymentMetadata } from "./signer.js";
@@ -279,10 +283,7 @@ export {
   payFromChallenge,
   withAutoPayment,
 } from "./agent/x402-auto.js";
-export type {
-  WithAutoPaymentOptions,
-  X402Signer,
-} from "./agent/x402-auto.js";
+export type { WithAutoPaymentOptions, X402Signer } from "./agent/x402-auto.js";
 export type {
   AgentSigner,
   OnboardInput,

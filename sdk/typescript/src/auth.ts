@@ -93,7 +93,12 @@ export async function mintOnboardGrant(
 ): Promise<OnboardGrantCredential> {
   const wallet = key.agentId;
   const expiresAt = new Date(Date.now() + ttlMs).toISOString();
-  const claims = { wallet, ownerPublicKey: ownerPublicKeyBase64, scope, expiresAt };
+  const claims = {
+    wallet,
+    ownerPublicKey: ownerPublicKeyBase64,
+    scope,
+    expiresAt,
+  };
   const payload = canonicalPayload("onboard.grant", {
     expiresAt,
     ownerPublicKey: ownerPublicKeyBase64,
@@ -124,6 +129,87 @@ export function parseOnboardGrant(
   const grant = trimmed.slice(separator + 1).trim();
   if (!wallet || !grant.startsWith(ONBOARD_TOKEN_PREFIX)) return undefined;
   return onboardCredential(wallet, grant, ownerPublicKeyFromToken(grant));
+}
+
+/** The read-only capability scope an agent-view link grants (mirrors the
+ * backend `onboardgrant.ViewScope`). */
+export const VIEW_SCOPE = "session.view";
+
+/** Default lifetime of an agent-view link: short, since a leaked URL is the
+ * threat model (the backend caps onboarding-grant TTL at 7 days regardless). */
+const DEFAULT_VIEW_TTL_MS = 15 * 60 * 1000;
+
+/** Minimal shape of the handoff minter (satisfied by `client.onboard`): stashes
+ * a grant fragment behind a short opaque token for a clean URL. */
+export interface OnboardHandoffMinter {
+  createHandoff(grant: string): Promise<{ token: string; expiresAt: string }>;
+}
+
+/** A minted "view-as-agent" link (#190). */
+export interface AgentViewLink {
+  /** The full link, e.g. `https://tiny.place/auth/agent#grant=<token>`. */
+  readonly url: string;
+  /** The fragment value carried in the link: a short handoff token when stashed,
+   * else the whole `<wallet>:og1.…` grant. */
+  readonly token: string;
+  /** ISO timestamp at which the underlying grant expires. */
+  readonly expiresAt: string;
+}
+
+/**
+ * Mint a "view-as-agent" link an agent hands its human owner so they can browse
+ * the web app **as the agent** — no wallet, no private key — under a scoped,
+ * short-TTL, read-only grant (issue #190).
+ *
+ * The agent signs a `session.view` bearer onboard grant with its identity key;
+ * if a `handoff` minter is provided the grant is stashed behind a short token for
+ * a clean URL (falling back to embedding the whole grant if the handoff call
+ * fails). The token rides in the URL **fragment** so it never reaches a server
+ * log. The web app reads it at `/auth/agent`, replays the grant as a key-less
+ * client, and renders the agent's own (read-only) surfaces.
+ */
+export async function createAgentViewLink(
+  key: SigningKey,
+  options?: {
+    ownerPublicKey?: string;
+    baseUrl?: string;
+    ttlMs?: number;
+    handoff?: OnboardHandoffMinter;
+    path?: string;
+  },
+): Promise<AgentViewLink> {
+  const ownerPublicKey =
+    options?.ownerPublicKey ??
+    (key as SigningKey & { publicKeyBase64?: string }).publicKeyBase64;
+  if (!ownerPublicKey) {
+    throw new Error("createAgentViewLink requires the agent's public key");
+  }
+  const ttlMs = options?.ttlMs ?? DEFAULT_VIEW_TTL_MS;
+  const expiresAt = new Date(Date.now() + ttlMs).toISOString();
+  const grant = await mintOnboardGrant(
+    key,
+    ownerPublicKey,
+    [VIEW_SCOPE],
+    ttlMs,
+  );
+
+  let token = grant.fragmentValue();
+  if (options?.handoff) {
+    try {
+      const stashed = await options.handoff.createHandoff(
+        grant.fragmentValue(),
+      );
+      if (stashed?.token) token = stashed.token;
+    } catch {
+      // Backend predates the handoff endpoint or is unreachable: fall back to
+      // embedding the whole grant in the fragment — the web app accepts either.
+    }
+  }
+
+  const base = (options?.baseUrl ?? "https://tiny.place").replace(/\/+$/, "");
+  const path = options?.path ?? "/auth/agent";
+  const url = `${base}${path}#grant=${encodeURIComponent(token)}`;
+  return { url, token, expiresAt };
 }
 
 export interface AuthHeaders {
