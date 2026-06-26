@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import base64
 import json
 
-from nacl.signing import VerifyKey
+from tinyplace import LocalSigner, TinyPlaceClient
 
-from tinyplace import LocalSigner, TinyPlaceClient, canonical_payload
-
-from .helpers import FakeResponse, FakeSession
+from .helpers import FakeResponse, FakeSession, verify_siws_token
 
 
 def _client(signer: LocalSigner, session: FakeSession) -> TinyPlaceClient:
@@ -37,19 +34,9 @@ async def test_create_review_signs_canonical_payload() -> None:
     assert session.requests[0]["url"].endswith("/reputation/reviews")
     assert body["reviewId"].startswith("rev_")
     assert body["signerPublicKey"] == signer.public_key_base64
-    # The signature is base64(sign(canonical payload)) over the exact fields.
-    payload = canonical_payload(
-        "reputation.review",
-        {
-            "comment": "great",
-            "context": "",
-            "rating": 5,
-            "reviewer": "AgentA",
-            "subject": "AgentB",
-            "transactionRef": None,
-        },
-    )
-    VerifyKey(signer.public_key).verify(payload.encode(), base64.b64decode(body["signature"]))
+    # The signer defaults to SIWS, so the review carries a SIWS auth token
+    # (accepted by the v2 backend) rather than a canonical-payload signature.
+    assert verify_siws_token(signer, body["signature"])
 
 
 async def test_create_vouch_signs_and_routes() -> None:

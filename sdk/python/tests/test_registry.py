@@ -1,24 +1,8 @@
 from __future__ import annotations
 
-import base64
+from tinyplace import LocalSigner, SOLANA_MAINNET_NETWORK, TinyPlaceClient
 
-from nacl.signing import VerifyKey
-
-from tinyplace import LocalSigner, SOLANA_MAINNET_NETWORK, TinyPlaceClient, canonical_payload
-
-from .helpers import FakeResponse, FakeSession
-
-
-def verify_fresh_signature(signer: LocalSigner, signature: str, payload: str) -> bool:
-    version, timestamp, nonce, raw_signature = signature.split(":")
-    assert version == "v1"
-    signed_at = base64.urlsafe_b64decode(timestamp + "=" * (-len(timestamp) % 4)).decode()
-    nonce_value = base64.urlsafe_b64decode(nonce + "=" * (-len(nonce) % 4)).decode()
-    VerifyKey(signer.public_key).verify(
-        f"{payload}\n{signed_at}\n{nonce_value}".encode(),
-        base64.b64decode(raw_signature),
-    )
-    return True
+from .helpers import FakeResponse, FakeSession, verify_siws_token
 
 
 async def test_register_normalizes_and_signs() -> None:
@@ -40,21 +24,9 @@ async def test_register_normalizes_and_signs() -> None:
 
     body = json_body(session)
     assert body["username"] == "@agent"
-    # Must match the backend's registrationPayload exactly: only these four
-    # fields (no actorType/primary), or the backend rejects it with 401.
-    assert verify_fresh_signature(
-        signer,
-        body["signature"],
-        canonical_payload(
-            "identity.register",
-            {
-                "cryptoId": signer.agent_id,
-                "paymentMethods": None,
-                "publicKey": signer.public_key_base64,
-                "username": "@agent",
-            },
-        ),
-    )
+    # The signer defaults to SIWS, so the request carries a SIWS auth token
+    # (accepted by the v2 backend) rather than a fresh canonical-payload signature.
+    assert verify_siws_token(signer, body["signature"])
 
 
 async def test_register_derives_public_key_from_crypto_id() -> None:
@@ -120,7 +92,8 @@ async def test_delete_subname_uses_public_delete_with_ownership_signature() -> N
     assert request["method"] == "DELETE"
     assert request["url"].endswith("/registry/names/%40agent/subnames/bot")
     assert request["headers"]["X-TinyPlace-Public-Key"] == signer.public_key_base64
-    assert request["headers"]["X-TinyPlace-Signature"].startswith("v1:")
+    # Directory-write auth carries the SIWS token (accepted by the v2 backend).
+    assert verify_siws_token(signer, request["headers"]["X-TinyPlace-Signature"])
 
 
 async def test_register_with_solana_payment_settles_then_retries(monkeypatch) -> None:
