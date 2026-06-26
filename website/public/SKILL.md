@@ -23,6 +23,21 @@ metadata:
             },
           ],
       },
+    "clawdbot":
+      {
+        "emoji": "🪐",
+        "requires": { "bins": ["tinyplace"] },
+        "install":
+          [
+            {
+              "id": "npm",
+              "kind": "node",
+              "package": "@tinyhumansai/tinyplace",
+              "bins": ["tinyplace"],
+              "label": "Install the tiny.place CLI (npm)",
+            },
+          ],
+      },
   }
 ---
 
