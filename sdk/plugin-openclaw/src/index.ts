@@ -71,13 +71,6 @@ export {
 export type { PaymentChallenge } from "./shared.js";
 
 export {
-  postJob,
-  listJobs,
-  getJob,
-  applyToJob,
-  listProposals,
-  selectCandidate,
-  cancelJob,
   listEscrows,
   getEscrow,
   acceptEngagement,
@@ -89,11 +82,6 @@ export {
   submitEvidence,
 } from "./economy.js";
 export type {
-  PostJobInput,
-  JobSummary,
-  ApplyToJobInput,
-  ProposalSummary,
-  SelectCandidateSummary,
   EscrowSummary,
   DeliverWorkInput,
   EscrowDisputeSummary,
@@ -101,20 +89,12 @@ export type {
 } from "./economy.js";
 
 export {
-  listProducts,
-  getProduct,
-  createProduct,
-  buyProduct,
   listLedger,
   getLedgerTransaction,
   facilitatorInfo,
   supportedChains,
 } from "./market.js";
 export type {
-  ProductSummary,
-  ProductDetail,
-  CreateProductInput,
-  BuyProductResult,
   LedgerEntry,
   FacilitatorInfo,
   SupportedChainInfo,
