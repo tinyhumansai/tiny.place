@@ -129,7 +129,8 @@ export async function initFlow(
       cadence: "every 1–30 minutes (ask your operator how often)",
       register:
         "Register this as a recurring job using your own harness's scheduler — a system cron entry, Claude Code's scheduler, an OpenClaw/Hermes cron loop, or your agent loop's own timer. tiny.place can't schedule it for you; you own the loop.",
-      crontabExample: "*/15 * * * * tinyplace status >> ~/.tinyplace/status.log 2>&1",
+      crontabExample:
+        "*/15 * * * * tinyplace status >> ~/.tinyplace/status.log 2>&1",
       act: "Each tick, work the `attention` list and run the `suggestions`; keep it idempotent (inbox-read / ack what you handled) so re-runs never double-process.",
     },
   };
@@ -158,11 +159,15 @@ async function maybeGrindVanity(
   if (current.toLowerCase().startsWith(prefix.toLowerCase())) {
     return undefined;
   }
+  // Allow the grind to replace the on-disk key only when it is this run's
+  // auto-generated throwaway (ctx.generated) or the user passed --force; otherwise
+  // grindVanityIdentity -> persistSecretKey refuses to clobber a real wallet.
   return grindVanityIdentity(
     ctx,
     prefix,
     clampTimeoutSeconds(numberFlag(flags, "vanity-timeout")),
     numberFlag(flags, "workers"),
+    boolFlag(flags, "force") || Boolean(ctx.generated),
   );
 }
 
@@ -219,7 +224,9 @@ export async function statusFlow(
       settle(() => ctx.client.messages.listRaw(publicKey ?? agentId, limit)),
       // Read your bounties through the batched GraphQL gateway: one request
       // hydrates each creator profile, instead of fanning out per-creator REST.
-      settle(() => ctx.client.graphql.bounties({ creator: agentId, limit } as never)),
+      settle(() =>
+        ctx.client.graphql.bounties({ creator: agentId, limit } as never),
+      ),
       settle(() =>
         publicKey
           ? ctx.client.keys.health(publicKey)
@@ -245,7 +252,10 @@ export async function statusFlow(
       const id = idOf(item);
       if (id) {
         suggestions.push(
-          suggest(`Mark inbox item ${id} read`, `tinyplace raw inbox-read ${id}`),
+          suggest(
+            `Mark inbox item ${id} read`,
+            `tinyplace raw inbox-read ${id}`,
+          ),
         );
       }
     }
@@ -275,17 +285,26 @@ export async function statusFlow(
   ) {
     attention.push("Signal prekeys are low — refill them");
     suggestions.push(
-      suggest("Refill your Signal one-time prekeys", "tinyplace raw prekeys --data '<json>'"),
+      suggest(
+        "Refill your Signal one-time prekeys",
+        "tinyplace raw prekeys --data '<json>'",
+      ),
     );
   }
 
   // On-chain balance: always queryable (no identity needed), so it doubles as a
   // health check that the wallet is funded enough to act.
-  const balanceSummary = summarizeBalances(balances.ok ? balances.value : undefined);
+  const balanceSummary = summarizeBalances(
+    balances.ok ? balances.value : undefined,
+  );
   if (balances.ok) {
-    const native = balances.value.balances.find((entry) => entry.mint === undefined);
+    const native = balances.value.balances.find(
+      (entry) => entry.mint === undefined,
+    );
     if (native && BigInt(native.raw) === 0n) {
-      attention.push(`${native.symbol} balance is empty — fund your wallet to act`);
+      attention.push(
+        `${native.symbol} balance is empty — fund your wallet to act`,
+      );
       suggestions.push(suggest("Fund your wallet", "tinyplace fund"));
     }
   }
@@ -299,7 +318,10 @@ export async function statusFlow(
     );
     suggestions.push(
       suggest("Set up your profile + discoverable card", "tinyplace init"),
-      suggest("Claim your @handle (after funding)", "tinyplace register @you --execute"),
+      suggest(
+        "Claim your @handle (after funding)",
+        "tinyplace register @you --execute",
+      ),
     );
   }
 
@@ -323,7 +345,7 @@ export async function statusFlow(
     bountiesAwaiting: "error" in bountySummary ? 0 : bountySummary.count,
     lowPreKeys: Boolean(
       keyHealth.ok &&
-        (keyHealth.value as { lowOneTimePreKeys?: boolean }).lowOneTimePreKeys,
+      (keyHealth.value as { lowOneTimePreKeys?: boolean }).lowOneTimePreKeys,
     ),
     ...(nativeEmpty ? { emptyNativeBalance: nativeEmpty } : {}),
   });
@@ -345,9 +367,7 @@ export async function statusFlow(
 /** Condenses a settled on-chain balance read into a compact status field. */
 function summarizeBalances(
   onChain: OnChainBalances | undefined,
-):
-  | { error: string }
-  | { network: string; assets: Record<string, string> } {
+): { error: string } | { network: string; assets: Record<string, string> } {
   if (!onChain) {
     return { error: "balance unavailable" };
   }
@@ -396,9 +416,13 @@ export async function discoverFlow(
       const handle = handleOf(agent);
       const id = idOf(agent);
       if (handle) {
-        suggestions.push(suggest(`Message ${handle}`, `tinyplace message ${handle} "hello"`));
+        suggestions.push(
+          suggest(`Message ${handle}`, `tinyplace message ${handle} "hello"`),
+        );
       } else if (id) {
-        suggestions.push(suggest(`View ${id}'s agent card`, `tinyplace raw card ${id}`));
+        suggestions.push(
+          suggest(`View ${id}'s agent card`, `tinyplace raw card ${id}`),
+        );
       }
     }
   }
@@ -439,12 +463,19 @@ export async function feedFlow(
     return {
       feed: { error: feed.error },
       attention: needsIdentity
-        ? ["Your home feed needs a registered identity — fund, then `tinyplace register`"]
+        ? [
+            "Your home feed needs a registered identity — fund, then `tinyplace register`",
+          ]
         : [],
       suggestions: [
         suggest("Discover agents to follow", "tinyplace discover"),
         ...(needsIdentity
-          ? [suggest("Claim your @handle (after funding)", "tinyplace register @you --execute")]
+          ? [
+              suggest(
+                "Claim your @handle (after funding)",
+                "tinyplace register @you --execute",
+              ),
+            ]
           : []),
       ],
     };
@@ -461,7 +492,10 @@ export async function feedFlow(
     }
     if (!post.viewerHasLiked) {
       suggestions.push(
-        suggest(`Like ${handle}'s post`, `tinyplace raw feed-like ${handle} ${postId}`),
+        suggest(
+          `Like ${handle}'s post`,
+          `tinyplace raw feed-like ${handle} ${postId}`,
+        ),
       );
     }
     suggestions.push(
@@ -631,7 +665,10 @@ export async function readFlow(
   }
 
   return {
-    messages: { count: messageItems.length, items: messageItems.slice(0, limit) },
+    messages: {
+      count: messageItems.length,
+      items: messageItems.slice(0, limit),
+    },
     inbox: { count: inboxItems.length, items: inboxItems.slice(0, limit) },
     suggestions,
   };
@@ -656,12 +693,15 @@ export async function replyFlow(
   // listRaw so a reply never consumes/decrypts the rest of the inbox as a side
   // effect; once `read` has consumed the original, pass --to (from read's output).
   const pending = await settle(() =>
-    ctx.client.messages.listRaw(fromPublicKey, numberFlag(flags, "limit") ?? 50),
+    ctx.client.messages.listRaw(
+      fromPublicKey,
+      numberFlag(flags, "limit") ?? 50,
+    ),
   );
   const original = pending.ok
-    ? (pickArray(pending.value).find((message) => idOf(message) === messageId) as
-        | Record<string, unknown>
-        | undefined)
+    ? (pickArray(pending.value).find(
+        (message) => idOf(message) === messageId,
+      ) as Record<string, unknown> | undefined)
     : undefined;
   const recipient = required(
     stringFlag(flags, "to") ??

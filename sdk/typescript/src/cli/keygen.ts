@@ -8,7 +8,13 @@ import { ed25519 } from "@noble/curves/ed25519.js";
 import { TinyPlaceClient } from "../client.js";
 import { publicKeyToSolanaAddress } from "../crypto.js";
 import { LocalSigner } from "../local-signer.js";
-import { bytesToHex, hexToBytes, numberFlag, requiredFlag } from "./args.js";
+import {
+  boolFlag,
+  bytesToHex,
+  hexToBytes,
+  numberFlag,
+  requiredFlag,
+} from "./args.js";
 import { signalStoreFor } from "./context.js";
 import type { CliContext, Flags } from "./types.js";
 
@@ -85,7 +91,12 @@ export function generateVanityWallet(
     return { ...hit, matched: true };
   }
   const seed = randomSeed();
-  return { seedHex: bytesToHex(seed), address: addressForSeed(seed), attempts: 0, matched: false };
+  return {
+    seedHex: bytesToHex(seed),
+    address: addressForSeed(seed),
+    attempts: 0,
+    matched: false,
+  };
 }
 
 /** How many grind workers to spawn by default — every core, leaving one for the main thread. */
@@ -105,10 +116,16 @@ export async function grindVanityParallel(
   options: { timeoutMs: number; workers?: number },
 ): Promise<VanityHit | null> {
   const needle = prefix.toLowerCase();
-  const workerCount = Math.max(1, Math.floor(options.workers ?? defaultWorkerCount()));
+  const workerCount = Math.max(
+    1,
+    Math.floor(options.workers ?? defaultWorkerCount()),
+  );
   const workerUrl = new URL("./keygen-worker.js", import.meta.url);
   if (workerCount === 1 || !existsSync(fileURLToPath(workerUrl))) {
-    return grindVanity(prefix, { timeoutMs: options.timeoutMs, now: () => Date.now() });
+    return grindVanity(prefix, {
+      timeoutMs: options.timeoutMs,
+      now: () => Date.now(),
+    });
   }
 
   return new Promise<VanityHit | null>((resolve) => {
@@ -142,7 +159,12 @@ export async function grindVanityParallel(
         // Couldn't spawn — if none of them can, drop to the single-threaded grind.
         errored += 1;
         if (errored === workerCount && !settled) {
-          settle(grindVanity(prefix, { timeoutMs: options.timeoutMs, now: () => Date.now() }));
+          settle(
+            grindVanity(prefix, {
+              timeoutMs: options.timeoutMs,
+              now: () => Date.now(),
+            }),
+          );
         }
         continue;
       }
@@ -152,7 +174,12 @@ export async function grindVanityParallel(
         // A dead worker shouldn't abort the others; only give up if all die.
         errored += 1;
         if (errored === workerCount && !settled) {
-          settle(grindVanity(prefix, { timeoutMs: options.timeoutMs, now: () => Date.now() }));
+          settle(
+            grindVanity(prefix, {
+              timeoutMs: options.timeoutMs,
+              now: () => Date.now(),
+            }),
+          );
         }
       });
     }
@@ -169,12 +196,20 @@ export async function generateVanityWalletParallel(
     return { ...hit, matched: true };
   }
   const seed = randomSeed();
-  return { seedHex: bytesToHex(seed), address: addressForSeed(seed), attempts: 0, matched: false };
+  return {
+    seedHex: bytesToHex(seed),
+    address: addressForSeed(seed),
+    attempts: 0,
+    matched: false,
+  };
 }
 
 /** Clamps a requested grind budget to the supported [1, 60]s window. */
 export function clampTimeoutSeconds(requested: number | undefined): number {
-  return Math.min(MAX_TIMEOUT_SECONDS, Math.max(1, requested ?? MAX_TIMEOUT_SECONDS));
+  return Math.min(
+    MAX_TIMEOUT_SECONDS,
+    Math.max(1, requested ?? MAX_TIMEOUT_SECONDS),
+  );
 }
 
 export interface VanityIdentity {
@@ -199,6 +234,7 @@ export async function grindVanityIdentity(
   prefix: string,
   timeoutSeconds: number,
   workers?: number,
+  force = false,
 ): Promise<VanityIdentity> {
   validateVanityPrefix(prefix);
   const timeoutMs = clampTimeoutSeconds(timeoutSeconds) * 1000;
@@ -209,7 +245,7 @@ export async function grindVanityIdentity(
     workers: workerCount,
   });
   const seconds = Math.round((Date.now() - startedAt) / 100) / 10;
-  await persistSecretKey(ctx.env, wallet.seedHex);
+  await persistSecretKey(ctx.env, wallet.seedHex, { force });
   const signer = await LocalSigner.fromSeed(hexToBytes(wallet.seedHex));
   const client = new TinyPlaceClient({
     baseUrl: ctx.baseUrl,
@@ -229,23 +265,39 @@ export async function grindVanityIdentity(
   };
 }
 
-export async function runKeygen(ctx: CliContext, flags: Flags): Promise<unknown> {
+export async function runKeygen(
+  ctx: CliContext,
+  flags: Flags,
+): Promise<unknown> {
   const prefix = requiredFlag(flags, "vanity");
   validateVanityPrefix(prefix);
   const timeoutSeconds = clampTimeoutSeconds(numberFlag(flags, "timeout"));
   const timeoutMs = timeoutSeconds * 1000;
-  const workers = Math.max(1, Math.floor(numberFlag(flags, "workers") ?? defaultWorkerCount()));
+  const workers = Math.max(
+    1,
+    Math.floor(numberFlag(flags, "workers") ?? defaultWorkerCount()),
+  );
+
+  // Never silently destroy a real wallet: persist refuses to overwrite an
+  // existing saved key unless --force, or unless the on-disk key is the throwaway
+  // this run just auto-generated (ctx.generated).
+  const force = boolFlag(flags, "force") || Boolean(ctx.generated);
 
   const startedAt = Date.now();
-  const wallet = await generateVanityWalletParallel(prefix, { timeoutMs, workers });
+  const wallet = await generateVanityWalletParallel(prefix, {
+    timeoutMs,
+    workers,
+  });
   const seconds = Math.round((Date.now() - startedAt) / 100) / 10;
 
-  await persistSecretKey(ctx.env, wallet.seedHex);
+  await persistSecretKey(ctx.env, wallet.seedHex, { force });
   return {
     wallet: wallet.address,
     prefix,
     matched: wallet.matched,
-    ...(wallet.matched ? { attempts: wallet.attempts } : { fallbackRandom: true }),
+    ...(wallet.matched
+      ? { attempts: wallet.attempts }
+      : { fallbackRandom: true }),
     seconds,
     workers,
     saved: true,
@@ -257,8 +309,33 @@ export async function runKeygen(ctx: CliContext, flags: Flags): Promise<unknown>
   };
 }
 
-async function persistSecretKey(env: Record<string, string | undefined>, secretKey: string): Promise<void> {
-  const configPath = env.TINYPLACE_CONFIG ?? join(homedir(), ".tinyplace", "config.json");
+/**
+ * Thrown when persisting a freshly generated key would overwrite an existing
+ * saved wallet and `--force` was not given. Surfaced to the user as a CLI error.
+ */
+export class WalletExistsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "WalletExistsError";
+  }
+}
+
+/**
+ * Persists the identity key to the CLI config. By default it REFUSES to
+ * overwrite an existing, different saved key — overwriting would permanently
+ * destroy that wallet (and its @handles/funds). Callers pass `force` only when
+ * the user explicitly asked (`--force`) or when the on-disk key is the throwaway
+ * the same invocation just auto-generated (`ctx.generated`). Re-running `keygen`
+ * or `init --vanity` on a real wallet therefore fails loudly instead of
+ * silently clobbering it (the incident this guards against).
+ */
+async function persistSecretKey(
+  env: Record<string, string | undefined>,
+  secretKey: string,
+  options: { force?: boolean } = {},
+): Promise<void> {
+  const configPath =
+    env.TINYPLACE_CONFIG ?? join(homedir(), ".tinyplace", "config.json");
   let existing: Record<string, unknown> = {};
   try {
     const parsed = JSON.parse(await readFile(configPath, "utf8")) as unknown;
@@ -268,6 +345,31 @@ async function persistSecretKey(env: Record<string, string | undefined>, secretK
   } catch {
     // No existing config — start fresh.
   }
+
+  const current = existing.secretKey;
+  if (
+    !options.force &&
+    typeof current === "string" &&
+    current.trim() !== "" &&
+    current !== secretKey
+  ) {
+    let wallet = "";
+    try {
+      wallet = addressForSeed(hexToBytes(current));
+    } catch {
+      // Can't derive the address (unexpected key format) — still refuse; show the path.
+    }
+    throw new WalletExistsError(
+      `Refusing to overwrite the existing wallet${wallet ? ` (${wallet})` : ""} saved at ${configPath}. ` +
+        "Replacing it would PERMANENTLY destroy that key — and any @handles or funds it holds. " +
+        "Back up that file first, then re-run with --force to replace it.",
+    );
+  }
+
   await mkdir(dirname(configPath), { recursive: true });
-  await writeFile(configPath, `${JSON.stringify({ ...existing, secretKey }, null, 2)}\n`, { mode: 0o600 });
+  await writeFile(
+    configPath,
+    `${JSON.stringify({ ...existing, secretKey }, null, 2)}\n`,
+    { mode: 0o600 },
+  );
 }
