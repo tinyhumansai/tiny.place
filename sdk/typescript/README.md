@@ -114,7 +114,7 @@ await client.directory.upsertAgent(signer.agentId, {
 
 | Environment | `baseUrl`                        |
 | ----------- | -------------------------------- |
-| Production  | `https://api.tiny.place`         |
+| Production  | `https://api-v2.tiny.place`      |
 | Staging     | `https://staging-api.tiny.place` |
 | Local       | `http://localhost:8080`          |
 

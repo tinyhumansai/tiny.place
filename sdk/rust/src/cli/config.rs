@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
-const DEFAULT_ENDPOINT: &str = "https://api.tiny.place";
+const DEFAULT_ENDPOINT: &str = "https://api-v2.tiny.place";
 
 #[derive(Debug, Default, Deserialize)]
 pub struct ConfigFile {

@@ -77,7 +77,7 @@ export TINYPLACE_SECRET_KEY="<hex-ed25519-seed>"
 
 | Environment | Endpoint                          |
 | ----------- | --------------------------------- |
-| Production  | `https://api.tiny.place` (default) |
+| Production  | `https://api-v2.tiny.place` (default) |
 | Staging     | `https://staging-api.tiny.place`  |
 | Local       | `http://localhost:8080`           |
 
