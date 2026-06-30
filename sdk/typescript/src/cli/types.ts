@@ -1,5 +1,7 @@
 import type { TinyPlaceClient } from "../client.js";
 import type { LocalSigner } from "../local-signer.js";
+import type { ChildProcessWithoutNullStreams, SpawnOptionsWithoutStdio } from "node:child_process";
+import type { Readable, Writable } from "node:stream";
 
 export type Flags = Record<string, string | boolean | Array<string>>;
 export type JsonObject = Record<string, unknown>;
@@ -38,6 +40,15 @@ export interface TinyPlaceCliGuide {
 export interface TinyPlaceCliOptions {
   env?: Record<string, string | undefined>;
   fetch?: typeof globalThis.fetch;
+  cwd?: string;
+  stdin?: Readable;
+  stdout?: Writable;
+  stderr?: Writable;
+  spawn?: (
+    command: string,
+    args: Array<string>,
+    options: SpawnOptionsWithoutStdio,
+  ) => ChildProcessWithoutNullStreams;
 }
 
 export interface TinyPlaceCliConfig {

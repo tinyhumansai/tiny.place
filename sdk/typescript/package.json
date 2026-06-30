@@ -48,6 +48,7 @@
   "dependencies": {
     "@noble/curves": "^2.2.0",
     "@noble/hashes": "^2.2.0",
+    "@opentui/core": "0.4.2",
     "@sentry/node": "^10.58.0"
   }
 }

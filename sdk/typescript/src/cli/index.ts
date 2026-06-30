@@ -11,6 +11,7 @@ import {
   buildHelp,
   rawCommands,
 } from "./commands.js";
+import { runCodexCommand } from "./codex.js";
 import { makeContext } from "./context.js";
 import { formatResult, redactSecrets, resolveFormat } from "./format.js";
 import {
@@ -77,6 +78,7 @@ const NOTICE_SKIP_COMMANDS = new Set([
   "update",
   "upgrade",
   "help",
+  "codex",
   "--help",
   "-v",
   "--version",
@@ -132,6 +134,23 @@ async function dispatchCli(
     parsed.command === "--help"
   ) {
     return { code: 0, stdout: HELP, stderr: "" };
+  }
+  if (parsed.command === "codex") {
+    try {
+      return await runCodexCommand(argv.slice(1), options);
+    } catch (error) {
+      return {
+        code: 1,
+        stdout: "",
+        stderr: `${JSON.stringify(
+          {
+            error: error instanceof Error ? error.message : String(error),
+          },
+          null,
+          2,
+        )}\n`,
+      };
+    }
   }
 
   try {

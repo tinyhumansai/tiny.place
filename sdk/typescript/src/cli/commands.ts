@@ -182,6 +182,13 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
       "Grind + save a vanity wallet across CPU cores (case-insensitive, ≤60s, random fallback).",
     usage: "--vanity <prefix> [--timeout <s>] [--workers <n>]",
   },
+  {
+    name: "codex",
+    capability: "maintenance",
+    description:
+      "Run Codex through a tiny.place terminal proxy and stream TUI input/output into time-bucketed envelopes.",
+    usage: "[--tinyplace-out <dir>] [--tinyplace-scope folder|session] [--tinyplace-bucket minute|hour|day] [--] <codex-args...>",
+  },
   // ── Raw SDK commands. ──
   {
     name: "onboard",
