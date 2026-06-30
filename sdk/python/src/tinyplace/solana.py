@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import json
 import re
 import secrets
 from typing import Any, Awaitable, Callable
@@ -26,8 +27,14 @@ SOLANA_NATIVE_ASSET = "SOL"
 # explicit mint instead.
 SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 SOLANA_TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+# The ComputeBudget program (sets the compute unit limit + price).
+SOLANA_COMPUTE_BUDGET_PROGRAM_ID = "ComputeBudget111111111111111111111111111111"
 USDC_DECIMALS = 6
 SOLANA_NATIVE_DECIMALS = 9
+# Default compute unit limit for the facilitator transfer (matches the web app).
+FACILITATOR_COMPUTE_UNIT_LIMIT = 40_000
+# Default compute unit price in microlamports/CU (well under the 5,000,000 cap).
+FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS = "1"
 # Mainnet wrapped-SOL (WSOL) SPL mint.
 SOLANA_WSOL_MINT = "So11111111111111111111111111111111111111112"
 # The ComputeBudget program (sets the compute unit limit + price).
@@ -232,6 +239,251 @@ async def execute_solana_x402_payment(
         },
     )
     return {**execution, "payment": payment_map}
+
+
+async def build_payer_signed_delegated_tx(
+    *,
+    rpc_url: str,
+    fee_payer: str,
+    payee: str,
+    amount: str,
+    mint: str,
+    decimals: int,
+    secret_key: str | bytes,
+    source_token_account: str | None = None,
+    destination_token_account: str | None = None,
+    compute_unit_limit: int = FACILITATOR_COMPUTE_UNIT_LIMIT,
+    compute_unit_price_micro_lamports: str = FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS,
+    rpc_request: RpcRequest | None = None,
+) -> str:
+    """Build the gasless (facilitator fee-paid) x402 "exact" Solana transfer and
+    partially sign it with the agent's keypair.
+
+    The transaction is ``[SetComputeUnitLimit, SetComputeUnitPrice,
+    TransferChecked]`` with the facilitator (``fee_payer``) as account 0 (the fee
+    payer) and the agent as the transfer authority (a read-only second signer).
+    Only the agent signature is filled; the fee-payer signature slot is left zeroed
+    for the facilitator to co-sign and broadcast at settle time. Returns the base64
+    wire transaction to attach as the x402 payment's ``metadata.delegatedTx``.
+
+    The payee's destination token account must already exist — the exact scheme
+    forbids ATA creation in the payment transaction. Mirrors the TS SDK's
+    ``buildPayerSignedDelegatedTx``.
+    """
+    keypair = _keypair_from_secret(secret_key)
+    payer = str(keypair.pubkey())
+    normalized_amount = _normalized_amount(amount)
+    request = rpc_request or _aiohttp_rpc_request(rpc_url)
+
+    source = source_token_account or await _find_token_account(
+        request, owner=payer, mint=mint, minimum_amount=normalized_amount
+    )
+    destination = destination_token_account or await _find_token_account(
+        request, owner=payee, mint=mint
+    )
+    latest = await request("getLatestBlockhash", [{"commitment": "confirmed"}])
+
+    message = _two_signer_facilitator_message(
+        fee_payer=fee_payer,
+        authority=payer,
+        source_token_account=source,
+        destination_token_account=destination,
+        mint=mint,
+        amount=normalized_amount,
+        decimals=decimals,
+        compute_unit_limit=compute_unit_limit,
+        compute_unit_price_micro_lamports=compute_unit_price_micro_lamports,
+        blockhash=latest["value"]["blockhash"],
+    )
+    # Sign as the authority (signer index 1). The fee-payer slot (index 0) is left
+    # empty for the facilitator to fill at settle time.
+    authority_signature = bytes(keypair.sign_message(message))
+    empty_fee_payer_signature = b"\x00" * 64
+    wire = _short_vec(2) + empty_fee_payer_signature + authority_signature + message
+    return base64.b64encode(wire).decode("ascii")
+
+
+def build_delegated_x402_envelope(
+    *,
+    network: str,
+    amount: str,
+    asset_mint: str,
+    pay_to: str,
+    fee_payer: str,
+    transaction: str,
+    max_timeout_seconds: int = 60,
+) -> dict[str, Any]:
+    """Build the standard x402 v2 ``PaymentPayload`` envelope for a sponsored
+    (gasless SPL) Solana ``exact`` payment.
+
+    The partially-signed wire transaction travels in ``payload.transaction``; the
+    facilitator fee payer is advertised in ``accepted.extra.feePayer``. ``asset``
+    is the on-chain SPL **mint** (base58), not a symbol. This is the standard
+    envelope the backend reads from the ``PAYMENT-SIGNATURE`` header — there is no
+    proprietary ``metadata.delegatedTx``.
+    """
+    return {
+        "x402Version": 2,
+        "accepted": {
+            "scheme": "exact",
+            "network": str(network),
+            "amount": str(amount),
+            "asset": str(asset_mint),
+            "payTo": str(pay_to),
+            "maxTimeoutSeconds": max_timeout_seconds,
+            "extra": {"feePayer": str(fee_payer)},
+        },
+        "payload": {"transaction": str(transaction)},
+    }
+
+
+def encode_delegated_x402_header(envelope: dict[str, Any]) -> str:
+    """Encode a sponsored-payment envelope as the ``PAYMENT-SIGNATURE`` header
+    value: standard base64 (with padding) of the UTF-8 JSON of the envelope.
+    """
+    raw = json.dumps(envelope, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return base64.b64encode(raw).decode("ascii")
+
+
+async def build_delegated_x402_payment_header(
+    *,
+    rpc_url: str,
+    fee_payer: str,
+    payment: dict[str, Any],
+    mint: str,
+    decimals: int,
+    secret_key: str | bytes,
+    source_token_account: str | None = None,
+    destination_token_account: str | None = None,
+    compute_unit_limit: int = FACILITATOR_COMPUTE_UNIT_LIMIT,
+    compute_unit_price_micro_lamports: str = FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS,
+    rpc_request: RpcRequest | None = None,
+) -> str:
+    """Build the agent-signed facilitator transfer and wrap it into the standard
+    x402 v2 ``PAYMENT-SIGNATURE`` header value.
+
+    Given a parsed 402 ``payment`` challenge (``network``/``asset``/``amount``/
+    ``to``) plus the facilitator ``fee_payer``, the resolved SPL ``mint`` and the
+    payer's ``secret_key``/``rpc_url``, this returns the base64-encoded standard
+    envelope to submit in the :data:`~tinyplace.x402.X402_PAYMENT_HEADER` header,
+    with **no** ``payment`` field in the request body. Replaces the proprietary
+    ``build_delegated_x402_payment_map`` (which carried the tx under
+    ``metadata.delegatedTx``).
+    """
+    wire = await build_payer_signed_delegated_tx(
+        rpc_url=rpc_url,
+        fee_payer=fee_payer,
+        payee=str(payment["to"]),
+        amount=str(payment["amount"]),
+        mint=mint,
+        decimals=decimals,
+        secret_key=secret_key,
+        source_token_account=source_token_account,
+        destination_token_account=destination_token_account,
+        compute_unit_limit=compute_unit_limit,
+        compute_unit_price_micro_lamports=compute_unit_price_micro_lamports,
+        rpc_request=rpc_request,
+    )
+    envelope = build_delegated_x402_envelope(
+        network=str(payment["network"]),
+        amount=str(payment["amount"]),
+        # The envelope advertises the on-chain SPL mint, not the challenge symbol.
+        asset_mint=mint,
+        pay_to=str(payment["to"]),
+        fee_payer=str(fee_payer),
+        transaction=wire,
+    )
+    return encode_delegated_x402_header(envelope)
+
+
+def _two_signer_facilitator_message(
+    *,
+    fee_payer: str,
+    authority: str,
+    source_token_account: str,
+    destination_token_account: str,
+    mint: str,
+    amount: str,
+    decimals: int,
+    compute_unit_limit: int,
+    compute_unit_price_micro_lamports: str,
+    blockhash: str,
+) -> bytes:
+    """Serialize a two-signer legacy message for the facilitator transfer.
+
+    Account ordering follows Solana's rules: writable signers, then read-only
+    signers, then writable non-signers, then read-only non-signers. The fee payer
+    must be account 0; the transfer authority is a read-only signer at index 1.
+    Mirrors the TS SDK's ``twoSignerFacilitatorMessage``.
+    """
+    # 0: feePayer (writable signer), 1: authority (read-only signer),
+    # 2: source, 3: destination (writable non-signers),
+    # 4: mint, 5: token program, 6: compute budget program (read-only non-signers).
+    account_keys = [
+        fee_payer,
+        authority,
+        source_token_account,
+        destination_token_account,
+        mint,
+        SOLANA_TOKEN_PROGRAM_ID,
+        SOLANA_COMPUTE_BUDGET_PROGRAM_ID,
+    ]
+    header = bytes([2, 1, 3])
+
+    # SetComputeUnitLimit: u8 discriminant (2) + u32 LE limit.
+    compute_limit_data = bytes([2]) + int(compute_unit_limit).to_bytes(4, "little")
+    # SetComputeUnitPrice: u8 discriminant (3) + u64 LE microlamports.
+    compute_price_data = bytes([3]) + int(compute_unit_price_micro_lamports).to_bytes(8, "little")
+    # TransferChecked: u8 discriminant (12) + u64 LE amount + u8 decimals.
+    transfer_data = bytes([12]) + int(amount).to_bytes(8, "little") + bytes([decimals & 0xFF])
+
+    parts = [
+        header,
+        _short_vec(len(account_keys)),
+        *[decode_base58(key) for key in account_keys],
+        decode_base58(blockhash),
+        # Three instructions.
+        _short_vec(3),
+        # ComputeBudget SetComputeUnitLimit (program index 6, no accounts).
+        bytes([6]),
+        _short_vec(0),
+        _short_vec(len(compute_limit_data)),
+        compute_limit_data,
+        # ComputeBudget SetComputeUnitPrice (program index 6, no accounts).
+        bytes([6]),
+        _short_vec(0),
+        _short_vec(len(compute_price_data)),
+        compute_price_data,
+        # Token TransferChecked (program index 5): source, mint, dest, authority.
+        bytes([5]),
+        _short_vec(4),
+        bytes([2, 4, 3, 1]),
+        _short_vec(len(transfer_data)),
+        transfer_data,
+    ]
+    return b"".join(parts)
+
+
+def _short_vec(value: int) -> bytes:
+    """Encode an unsigned integer as a Solana compact-u16 (shortvec) length."""
+    out = bytearray()
+    current = value
+    while True:
+        byte = current & 0x7F
+        current >>= 7
+        if current > 0:
+            byte |= 0x80
+        out.append(byte)
+        if current == 0:
+            break
+    return bytes(out)
+
+
+def _normalized_amount(amount: str) -> str:
+    trimmed = str(amount).strip()
+    if not trimmed.isdigit() or int(trimmed) <= 0:
+        raise ValueError(f"Solana payment amount must be a positive integer: {amount}")
+    return trimmed
 
 
 async def _send_transaction(rpc_request: RpcRequest, tx: Transaction, commitment: str) -> str:

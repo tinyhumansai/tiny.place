@@ -9,6 +9,7 @@ import type {
   BountySubmissionCreateRequest,
 } from "../types/index.js";
 import { listField } from "../safe.js";
+import { X402_PAYMENT_HEADER } from "../x402.js";
 
 // BountiesApi covers the bounty platform: create + fund in one x402 flow (the
 // reward into escrow), browse, submit a URL, comment for free, run the
@@ -31,11 +32,20 @@ export class BountiesApi {
     return this.http.get<Bounty>(`/bounties/${encodeURIComponent(bountyId)}`);
   }
 
-  create(request: BountyCreateRequest): Promise<Bounty> {
+  /**
+   * Create a bounty. When `paymentHeader` is supplied (the standard x402 v2 SVM
+   * `PAYMENT-SIGNATURE` envelope from {@link buildDelegatedX402PaymentHeader}),
+   * it settles the reward gaslessly through the facilitator — the partially
+   * signed SPL transfer rides in the header and the body carries NO `payment`
+   * field.
+   */
+  create(request: BountyCreateRequest, paymentHeader?: string): Promise<Bounty> {
     return this.http.postDirectoryAuthAs<Bounty>(
       "/bounties",
       request.creator ?? "",
       request,
+      undefined,
+      paymentHeader ? { [X402_PAYMENT_HEADER]: paymentHeader } : undefined,
     );
   }
 

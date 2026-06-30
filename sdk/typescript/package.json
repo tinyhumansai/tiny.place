@@ -37,10 +37,13 @@
     }
   },
   "scripts": {
+    "gen:version": "node scripts/gen-version.mjs",
+    "prebuild": "node scripts/gen-version.mjs",
     "build": "tsc",
     "cli:ts": "node --no-warnings --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' src/cli.ts",
     "lint": "tsc --noEmit",
     "postinstall": "node scripts/fix-node-pty.mjs",
+    "pretest": "node scripts/gen-version.mjs",
     "test": "vitest run",
     "test:staging": "RUN_STAGING=1 vitest run tests/staging.test.ts"
   },

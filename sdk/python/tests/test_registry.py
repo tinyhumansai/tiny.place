@@ -123,20 +123,48 @@ async def test_delete_subname_uses_public_delete_with_ownership_signature() -> N
     assert request["headers"]["X-TinyPlace-Signature"].startswith("v1:")
 
 
-async def test_register_with_solana_payment_settles_then_retries(monkeypatch) -> None:
+def _challenge_accepts(challenge: dict) -> dict:
+    """Wrap a flat challenge dict in a canonical x402 v2 ``accepts[0]`` body.
+
+    The backend no longer emits a legacy top-level ``payment`` field or
+    ``metadata.feePayer`` — the SDK parses ``accepts[0]`` (``network``/``amount``/
+    ``asset``-mint/``payTo``/``extra.feePayer``).
+    """
+    metadata = dict(challenge.get("metadata") or {})
+    fee_payer = challenge.get("feePayer") or metadata.get("feePayer")
+    extra = {k: v for k, v in metadata.items() if k != "feePayer"}
+    if fee_payer:
+        extra["feePayer"] = fee_payer
+    return {
+        "error": challenge.get("error"),
+        "accepts": [
+            {
+                "scheme": "exact",
+                "network": challenge["network"],
+                "amount": challenge["amount"],
+                "asset": challenge["asset"],
+                "payTo": challenge["to"],
+                "extra": extra,
+            }
+        ],
+    }
+
+
+_FEE_PAYER = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
+
+
+async def test_register_with_solana_payment_submits_header_then_retries(monkeypatch) -> None:
     signer = LocalSigner.from_seed(bytes([22]) * 32)
     challenge = {
         "amount": "10000000",
         "to": "Recipient1111111111111111111111111111111111",
         "network": SOLANA_MAINNET_NETWORK,
         "asset": "USDC",
-        "nonce": "n1",
-        "expiresAt": "2026-06-13T00:00:00Z",
-        "metadata": {"feeQuoteId": "q1"},
+        "feePayer": _FEE_PAYER,
     }
     session = FakeSession(
         [
-            FakeResponse(402, {"error": "payment required", "payment": challenge}),
+            FakeResponse(402, _challenge_accepts(challenge)),
             FakeResponse(200, {"username": "@agent", "cryptoId": signer.agent_id}),
         ]
     )
@@ -148,14 +176,13 @@ async def test_register_with_solana_payment_settles_then_retries(monkeypatch) ->
 
     captured: dict = {}
 
-    async def fake_execute(**kwargs):
+    async def fake_header(**kwargs):
         captured.update(kwargs)
-        return {
-            "signature": "onchain-sig",
-            "payment": {"scheme": "exact", "amount": kwargs["payment"]["amount"], "signature": "sig"},
-        }
+        return "ENCODED-ENVELOPE"
 
-    monkeypatch.setattr("tinyplace.api.registry.execute_solana_x402_payment", fake_execute)
+    monkeypatch.setattr(
+        "tinyplace.api.registry.build_delegated_x402_payment_header", fake_header
+    )
 
     result = await client.register_domain_with_solana_payment(
         "agent",
@@ -164,16 +191,20 @@ async def test_register_with_solana_payment_settles_then_retries(monkeypatch) ->
         network=SOLANA_MAINNET_NETWORK,
     )
 
-    # Paid the challenge's exact amount to its recipient, tagged for registration.
+    # The header builder paid the challenge's exact amount to its recipient with
+    # the facilitator fee payer from accepts[].extra.feePayer.
     assert captured["payment"]["amount"] == "10000000"
     assert captured["payment"]["to"] == challenge["to"]
-    assert captured["payment"]["metadata"]["purpose"] == "registration"
-    assert captured["payment"]["metadata"]["identity"] == "@agent"
-    # The retried registration carried the signed payment map.
+    assert captured["fee_payer"] == _FEE_PAYER
+    # The retried registration carried the PAYMENT-SIGNATURE header and NO body
+    # payment map.
+    retry = session.requests[1]
+    assert retry["headers"]["PAYMENT-SIGNATURE"] == "ENCODED-ENVELOPE"
     retry_body = json_body_at(session, 1)
-    assert retry_body["payment"]["signature"] == "sig"
+    assert "payment" not in retry_body
     assert retry_body["username"] == "@agent"
-    assert result["onChainTx"] == "onchain-sig"
+    assert result["paymentHeader"] == "ENCODED-ENVELOPE"
+    assert result["onChainTx"] is None
 
 
 async def test_register_with_solana_payment_decodes_header_challenge_and_defaults_mint(
@@ -190,9 +221,13 @@ async def test_register_with_solana_payment_decodes_header_challenge_and_default
         "to": "Recipient1111111111111111111111111111111111",
         "network": SOLANA_MAINNET_NETWORK,
         "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-        "nonce": "n2",
+        "feePayer": _FEE_PAYER,
     }
-    header = _b64.urlsafe_b64encode(_json.dumps({"payment": challenge}).encode()).decode().rstrip("=")
+    header = (
+        _b64.urlsafe_b64encode(_json.dumps(_challenge_accepts(challenge)).encode())
+        .decode()
+        .rstrip("=")
+    )
     session = FakeSession(
         [
             FakeResponse(402, "", headers={"X-Payment-Required": header}),
@@ -207,21 +242,23 @@ async def test_register_with_solana_payment_decodes_header_challenge_and_default
 
     captured: dict = {}
 
-    async def fake_execute(**kwargs):
+    async def fake_header(**kwargs):
         captured.update(kwargs)
-        return {"signature": "sig", "payment": {"signature": "s"}}
+        return "ENCODED-ENVELOPE"
 
-    monkeypatch.setattr("tinyplace.api.registry.execute_solana_x402_payment", fake_execute)
+    monkeypatch.setattr(
+        "tinyplace.api.registry.build_delegated_x402_payment_header", fake_header
+    )
 
     result = await client.register_domain_with_solana_payment(
         "agent", rpc_url="https://rpc.example", secret_key=bytes([23]) * 32
     )
 
-    # Header-only challenge was decoded, and the USDC mint defaulted even though
-    # the asset was the mint address rather than "USDC".
+    # Header-only challenge was decoded from accepts[0], and the USDC mint
+    # defaulted even though the asset was the mint address rather than "USDC".
     assert captured["payment"]["amount"] == "10000000"
     assert captured["mint"] == "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-    assert result["onChainTx"] == "sig"
+    assert result["paymentHeader"] == "ENCODED-ENVELOPE"
 
 
 async def test_register_with_solana_payment_recovers_on_server_error(monkeypatch) -> None:
@@ -231,10 +268,11 @@ async def test_register_with_solana_payment_recovers_on_server_error(monkeypatch
         "to": "Recipient1111111111111111111111111111111111",
         "network": SOLANA_MAINNET_NETWORK,
         "asset": "USDC",
+        "feePayer": _FEE_PAYER,
     }
     session = FakeSession(
         [
-            FakeResponse(402, {"payment": challenge}),  # challenge probe
+            FakeResponse(402, _challenge_accepts(challenge)),  # challenge probe
             FakeResponse(500, {"error": "boom"}),  # paid retry: 5xx after persisting
             FakeResponse(200, {"available": False, "identity": {"username": "@agent"}}),  # get()
         ]
@@ -245,10 +283,12 @@ async def test_register_with_solana_payment_recovers_on_server_error(monkeypatch
         session=session,  # type: ignore[arg-type]
     )
 
-    async def fake_execute(**kwargs):
-        return {"signature": "sig", "payment": {}}
+    async def fake_header(**kwargs):
+        return "ENCODED-ENVELOPE"
 
-    monkeypatch.setattr("tinyplace.api.registry.execute_solana_x402_payment", fake_execute)
+    monkeypatch.setattr(
+        "tinyplace.api.registry.build_delegated_x402_payment_header", fake_header
+    )
 
     result = await client.register_domain_with_solana_payment(
         "agent", rpc_url="https://rpc.example", secret_key=bytes([24]) * 32
@@ -257,7 +297,7 @@ async def test_register_with_solana_payment_recovers_on_server_error(monkeypatch
     # The handle was created despite the 5xx, so recovery returns it instead of
     # failing (which would risk a second payment on retry).
     assert result["identity"]["username"] == "@agent"
-    assert result["onChainTx"] == "sig"
+    assert result["paymentHeader"] == "ENCODED-ENVELOPE"
 
 
 def json_body(session: FakeSession) -> dict:

@@ -15,6 +15,7 @@ import {
   encodePaymentSignature,
   type X402SettlementResponse,
 } from "./x402-standard.js";
+import { HEADER_SDK_CLIENT, SDK_CLIENT } from "./version.js";
 
 export type BodySigner<TBody = any> = (body: TBody) => Promise<TBody> | TBody;
 
@@ -446,6 +447,10 @@ export class HttpClient {
   ): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
+      // Identify this first-party SDK so the backend can serve the legacy x402
+      // challenge shape during the standardization migration; standard clients
+      // omit this header and receive a clean x402 v2 challenge.
+      [HEADER_SDK_CLIENT]: SDK_CLIENT,
       ...(options?.headers ?? {}),
     };
 
@@ -751,12 +756,14 @@ export class HttpClient {
     actor: string,
     body?: unknown,
     signBody?: BodySigner,
+    headers?: Record<string, string>,
   ): Promise<T> {
     return this.request<T>("POST", path, {
       body,
       directoryAuth: true,
       directoryActor: actor,
       signBody,
+      ...(headers ? { headers } : {}),
     });
   }
 
@@ -995,7 +1002,6 @@ function asPaymentRequiredChallenge(
   if (typeof value !== "object" || value === null) {
     return undefined;
   }
-
   // Prefer the STANDARD x402 v2 shape (top-level `accepts[]`) — the only shape
   // backend-v2 emits. Fall back to the legacy tiny.place `payment{}` shape so
   // older backends (and the header variant) keep working.
@@ -1042,21 +1048,33 @@ function standardPaymentRequiredChallenge(
     typeof requirement["extra"] === "object" && requirement["extra"] !== null
       ? (requirement["extra"] as Record<string, unknown>)
       : undefined;
-  const feePayer =
-    extra && typeof extra["feePayer"] === "string"
-      ? extra["feePayer"]
-      : undefined;
-  if (feePayer) {
-    payment.feePayer = feePayer;
-    payment.metadata = { ...(payment.metadata ?? {}), feePayer };
-  }
-  // The standard requirement has no top-level `nonce`; flows that bind a payment
-  // to a server-side scope (e.g. tiny.place escrow funding `escrow:<id>:fund`)
-  // carry it in `extra.nonce`. Surface it on the challenge so the client can sign
-  // the matching authorization. An explicit top-level `nonce` (non-standard but
-  // tolerated) still wins.
-  if (!payment.nonce && extra && typeof extra["nonce"] === "string") {
-    payment.nonce = extra["nonce"];
+  if (extra) {
+    const metadata: Record<string, string> = {};
+    for (const [key, raw] of Object.entries(extra)) {
+      if (
+        typeof raw === "string" &&
+        key !== "from" &&
+        key !== "nonce" &&
+        key !== "expiresAt"
+      ) {
+        metadata[key] = raw;
+      }
+    }
+    if (!payment.from && typeof extra["from"] === "string") {
+      payment.from = extra["from"];
+    }
+    if (!payment.nonce && typeof extra["nonce"] === "string") {
+      payment.nonce = extra["nonce"];
+    }
+    if (!payment.expiresAt && typeof extra["expiresAt"] === "string") {
+      payment.expiresAt = extra["expiresAt"];
+    }
+    if (typeof extra["feePayer"] === "string") {
+      payment.feePayer = extra["feePayer"];
+    }
+    if (Object.keys(metadata).length > 0) {
+      payment.metadata = metadata;
+    }
   }
 
   const error = value["error"];
@@ -1074,15 +1092,15 @@ function standardPaymentRequiredChallenge(
 function legacyPaymentRequiredChallenge(
   value: Record<string, unknown>,
 ): PaymentRequiredChallenge | undefined {
+  const error = value["error"];
+  const errorField = typeof error === "string" ? { error } : {};
   const payment = value["payment"];
   if (typeof payment !== "object" || payment === null) {
     return undefined;
   }
-
   const challengePayment = payment as Record<string, unknown>;
-  const error = value["error"];
   return {
-    ...(typeof error === "string" ? { error } : {}),
+    ...errorField,
     payment: {
       ...stringField(challengePayment, "scheme"),
       ...stringField(challengePayment, "network"),

@@ -1,8 +1,8 @@
 //! Identity registry API. Mirrors `sdk/typescript/src/api/registry.ts`.
 //!
-//! On-chain Solana registration helpers (`registerWithSolanaPayment` and
-//! friends) are intentionally omitted from this Rust port; only the plain REST
-//! methods are provided.
+//! Includes the **delegated (gasless facilitator)** Solana registration flow
+//! ([`RegistryApi::register_with_solana_payment`]); the direct on-chain
+//! settlement helpers (`registerWithExistingSolanaPayment`) remain TS-only.
 
 use serde::Serialize;
 
@@ -10,6 +10,10 @@ use crate::auth::sign_fresh_canonical_payload;
 use crate::crypto::{canonical_payload, crypto_id_to_public_key_base64};
 use crate::error::Result;
 use crate::http::HttpClient;
+use crate::solana::{
+    build_delegated_payment_header_from_challenge, payment_challenge,
+    ChallengeDelegatedPaymentOptions, RpcRequest,
+};
 use crate::types::{
     ActorType, AvailabilityResponse, Identity, IdentityClaimRequest, IdentityExport,
     IdentityTransferRequest, PaymentMethod, ProfileVisibility, ProfileVisibilityUpdate,
@@ -48,6 +52,29 @@ pub struct RegisterRequest {
     pub signature: Option<String>,
 }
 
+/// Options for funding identity registration through the delegated (gasless
+/// facilitator) Solana settlement path. The fee payer and payment terms are read
+/// from the 402 challenge; only the SPL transfer details and RPC transport are
+/// supplied. Identity registration is USDC-only.
+pub struct SolanaRegistrationPaymentOptions {
+    /// The agent's Solana secret key (32-byte seed or 64-byte key); signs the
+    /// SPL `TransferChecked` as the transfer authority.
+    pub secret_key: Vec<u8>,
+    /// Token decimals (USDC = 6). Defaults to 6.
+    pub decimals: Option<u8>,
+    /// JSON-RPC transport for blockhash + token-account lookups. When omitted, a
+    /// direct reqwest transport against `rpc_url` is used.
+    pub rpc: Option<RpcRequest>,
+    /// Solana RPC URL used to build the default transport when `rpc` is unset.
+    pub rpc_url: Option<String>,
+    /// Override the SPL mint (defaults to the challenge `asset`).
+    pub mint: Option<String>,
+    /// Override the payer's source token account (defaults to the agent's ATA).
+    pub source_token_account: Option<String>,
+    /// Override the payee's destination token account (defaults to its ATA).
+    pub destination_token_account: Option<String>,
+}
+
 /// The identity registry: register, look up, and manage `@handle` names.
 #[derive(Clone)]
 pub struct RegistryApi {
@@ -81,6 +108,72 @@ impl RegistryApi {
 
         self.http
             .post_public::<Identity, RegisterRequest>("/registry/names", Some(&request))
+            .await
+    }
+
+    /// Register a name funded via the **standard x402 sponsored (gasless
+    /// facilitator)** Solana settlement path. Mirrors the TS/Python flow: the
+    /// first call (no payment) returns the 402 challenge, from which the
+    /// facilitator fee payer (`accepts[].extra.feePayer`, surfaced on the parsed
+    /// challenge as `metadata.feePayer`) and payment terms are read; this builds
+    /// the payer-signed `[ComputeUnitLimit, ComputeUnitPrice, TransferChecked]`
+    /// transaction (fee payer = facilitator, agent = transfer authority), wraps
+    /// it in the standard x402 `PaymentPayload` envelope, and re-posts the signed
+    /// registration with the envelope in the `PAYMENT-SIGNATURE` header (no body
+    /// `payment` map) to settle the registration fee. USDC-only.
+    pub async fn register_with_solana_payment(
+        &self,
+        request: RegisterRequest,
+        options: SolanaRegistrationPaymentOptions,
+    ) -> Result<Identity> {
+        // A signer is required to sign the registration body on the funded call.
+        let signer = self.http.signer().ok_or_else(|| {
+            crate::error::Error::Signing("a signer is required for a Solana payment".into())
+        })?;
+        let mut request = request;
+        request.username = normalize_handle(&request.username);
+        if request.public_key.is_none() && !request.crypto_id.is_empty() {
+            request.public_key = Some(crypto_id_to_public_key_base64(&request.crypto_id)?);
+        }
+        // The registration payload is re-signed on each call, so the signature
+        // must not be carried across the challenge fetch.
+        request.signature = None;
+
+        // First call without payment to receive the 402 challenge.
+        let challenge = match self.register(request.clone()).await {
+            Ok(identity) => return Ok(identity),
+            Err(error) => payment_challenge(error)?,
+        };
+
+        // Build the standard PAYMENT-SIGNATURE header from the challenge.
+        let (header_name, header_value) = build_delegated_payment_header_from_challenge(
+            &challenge,
+            ChallengeDelegatedPaymentOptions {
+                secret_key: options.secret_key,
+                decimals: options.decimals,
+                rpc: options.rpc,
+                rpc_url: options.rpc_url,
+                mint: options.mint,
+                source_token_account: options.source_token_account,
+                destination_token_account: options.destination_token_account,
+            },
+        )
+        .await?;
+
+        // Re-post the signed registration with the payment in the header and NO
+        // body `payment` map.
+        let mut funded = request;
+        funded.payment = None;
+        let payload = registration_signature_payload(&funded);
+        funded.signature = Some(sign_fresh_canonical_payload(signer.as_ref(), &payload).await?);
+
+        let headers: crate::auth::Headers = vec![(header_name, header_value)];
+        self.http
+            .post_public_with_headers::<Identity, RegisterRequest>(
+                "/registry/names",
+                Some(&funded),
+                &headers,
+            )
             .await
     }
 

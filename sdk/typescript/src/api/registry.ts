@@ -9,13 +9,16 @@ import {
 } from "../http.js";
 import {
   buildX402PaymentMap,
+  X402_PAYMENT_HEADER,
   type X402PaymentMap,
   type X402PaymentMapOptions,
 } from "../x402.js";
 import {
+  buildDelegatedX402PaymentHeader,
   executeSolanaX402Payment,
   isLikelyMintAddress,
   SOLANA_MAINNET_NETWORK,
+  SOLANA_NATIVE_ASSET,
   SOLANA_USDC_MINT,
   type SolanaX402PaymentExecution,
   type SolanaX402PaymentExecutionOptions,
@@ -62,8 +65,10 @@ export interface RegisterRequest {
   signature?: string;
 }
 
-export interface SolanaRegistrationPaymentOptions
-  extends Omit<SolanaX402PaymentExecutionOptions, "payment" | "signer"> {
+export interface SolanaRegistrationPaymentOptions extends Omit<
+  SolanaX402PaymentExecutionOptions,
+  "payment" | "signer"
+> {
   amount?: string;
   to?: string;
   asset?: string;
@@ -77,21 +82,57 @@ export interface SolanaRegistrationPaymentOptions
   registrationRetryErrors?: Array<string>;
 }
 
-export interface SolanaRegistrationResult {
-  identity: Identity;
-  payment: SolanaX402PaymentExecution;
+/**
+ * The standard x402 v2 SVM "exact" delegated payment for the gasless sponsored
+ * path: the agent-signed SPL transfer is submitted in the `PAYMENT-SIGNATURE`
+ * header (`paymentHeader`, base64 of the {@link X402SvmPaymentEnvelope}), not as
+ * a request-body payment map. The facilitator co-signs as fee payer and
+ * broadcasts, so there is no client-side on-chain signature to surface.
+ */
+export interface DelegatedRegistrationPayment {
+  delegated: true;
+  /** The base64 `PAYMENT-SIGNATURE` envelope submitted with the registration. */
+  paymentHeader: string;
 }
 
-export interface SolanaRegistrationFailure extends Error {
-  registrationPayment?: SolanaX402PaymentExecution | X402PaymentMap;
+export interface SolanaRegistrationResult {
+  identity: Identity;
+  /**
+   * The settled x402 payment. The gasless delegated path (the default for SPL
+   * assets such as USDC, when the challenge advertises a facilitator fee payer)
+   * yields a {@link DelegatedRegistrationPayment} carrying the standard
+   * `PAYMENT-SIGNATURE` envelope (no client-broadcast signature); the direct
+   * native-SOL path yields a {@link SolanaX402PaymentExecution} that also
+   * carries the on-chain `signature`.
+   */
+  payment: SolanaX402PaymentExecution | DelegatedRegistrationPayment;
+  /**
+   * The on-chain transaction signature, present only on the direct native-SOL
+   * path (the facilitator broadcasts the delegated transfer, so the gasless
+   * path has no client-side signature to surface).
+   */
   onChainTx?: string;
 }
 
-export interface SolanaRegistrationProofOptions
-  extends Partial<Pick<
+export interface SolanaRegistrationFailure extends Error {
+  registrationPayment?:
+    | SolanaX402PaymentExecution
+    | DelegatedRegistrationPayment;
+  onChainTx?: string;
+}
+
+export interface SolanaRegistrationProofOptions extends Partial<
+  Pick<
     X402PaymentMapOptions,
-    "amount" | "asset" | "network" | "nonce" | "expiresAt" | "expiresInMs" | "metadata"
-  >> {
+    | "amount"
+    | "asset"
+    | "network"
+    | "nonce"
+    | "expiresAt"
+    | "expiresInMs"
+    | "metadata"
+  >
+> {
   onChainTx: string;
   to?: string;
   registrationAttempts?: number;
@@ -118,10 +159,18 @@ export class RegistryApi {
     private readonly signingKey?: SigningKey,
   ) {}
 
-  async register(request: RegisterRequest): Promise<Identity> {
+  async register(
+    request: RegisterRequest,
+    paymentHeader?: string,
+  ): Promise<Identity> {
     request = normalizeRegisterRequest(request);
 
     const headers: Record<string, string> = {};
+    // Standard x402 v2: the sponsored SPL transfer rides in the
+    // PAYMENT-SIGNATURE header; the request body carries NO `payment` field.
+    if (paymentHeader) {
+      headers[X402_PAYMENT_HEADER] = paymentHeader;
+    }
     if (this.signingKey && !request.signature) {
       // Present the signing key so the backend can authorize a delegated hot
       // session key: it verifies the signature against this key, then checks the
@@ -162,57 +211,90 @@ export class RegistryApi {
       throw new Error("registration payment requires amount and recipient");
     }
 
-    // Resolve the SPL mint. An explicit option always wins. Otherwise, when the
-    // 402 challenge advertises the mint ADDRESS directly in `asset` (the x402
-    // exact-scheme shape — e.g. a localnet "USDC" mint), let
-    // executeSolanaPayment resolve the mint from that asset so a non-mainnet
-    // challenge drives a transfer of the advertised mint. Fall back to the
-    // mainnet USDC mint only when the challenge asset is a symbol ("USDC") or
-    // absent, preserving mainnet behavior.
-    const challengeAsset = options.asset ?? challenge?.asset;
+    const network =
+      options.network ?? challenge?.network ?? SOLANA_MAINNET_NETWORK;
+    const asset = options.asset ?? challenge?.asset ?? "USDC";
+    const metadata: Record<string, string> = {
+      ...challenge?.metadata,
+      identity: normalizedRequest.username,
+      purpose: "registration",
+      ...options.metadata,
+    };
+    const isNative = asset.trim().toUpperCase() === SOLANA_NATIVE_ASSET;
+    const feePayer = metadata["feePayer"];
     const resolvedMint =
-      options.mint ??
-      (challengeAsset && isLikelyMintAddress(challengeAsset)
-        ? undefined
-        : SOLANA_USDC_MINT);
-    const payment = await executeSolanaX402Payment({
-      ...options,
-      mint: resolvedMint,
-      signer: this.signingKey,
-      payment: {
-        scheme: "exact",
-        network: options.network ?? challenge?.network ?? SOLANA_MAINNET_NETWORK,
-        asset: options.asset ?? challenge?.asset ?? "USDC",
-        amount,
-        from: normalizedRequest.cryptoId,
-        to,
-        nonce:
-          options.nonce ??
-          challenge?.nonce ??
-          generateRegistrationNonce(normalizedRequest.username),
-        expiresAt: options.expiresAt ?? challenge?.expiresAt,
-        expiresInMs: options.expiresInMs,
-        metadata: {
-          ...challenge?.metadata,
-          identity: normalizedRequest.username,
-          purpose: "registration",
-          ...options.metadata,
+      options.mint ?? (isLikelyMintAddress(asset) ? asset : SOLANA_USDC_MINT);
+
+    // The USDC registration fee settles gaslessly through the facilitator: a
+    // payer-signed delegated tx whose fee payer is the facilitator (from the
+    // 402 challenge's metadata.feePayer), so the wallet needs no SOL for gas.
+    // This mirrors the bounty-funding flow and the Python/Rust SDKs. Native SOL
+    // — which the facilitator cannot settle — falls back to the direct path,
+    // where the wallet pays its own gas and broadcasts the transfer itself.
+    let payment: SolanaX402PaymentExecution | DelegatedRegistrationPayment;
+    let paymentMap: X402PaymentMap | undefined;
+    let paymentHeader: string | undefined;
+    let onChainTx: string | undefined;
+    if (!isNative && feePayer) {
+      // Standard x402 v2 SVM "exact": the agent-signed SPL transfer is encoded
+      // into the PAYMENT-SIGNATURE header (payload.transaction); the register
+      // body carries NO `payment` field. The facilitator co-signs as fee payer
+      // and broadcasts, so the wallet needs no SOL for gas.
+      paymentHeader = await buildDelegatedX402PaymentHeader({
+        secretKey: options.secretKey,
+        rpcUrl: options.rpcUrl,
+        feePayer,
+        mint: resolvedMint,
+        decimals: options.decimals ?? 6,
+        ...(options.sourceTokenAccount
+          ? { sourceTokenAccount: options.sourceTokenAccount }
+          : {}),
+        ...(options.destinationTokenAccount
+          ? { destinationTokenAccount: options.destinationTokenAccount }
+          : {}),
+        ...(options.fetch ? { fetch: options.fetch } : {}),
+        payment: { network, asset, amount, to, metadata },
+      });
+      payment = { delegated: true, paymentHeader };
+    } else {
+      const execution = await executeSolanaX402Payment({
+        ...options,
+        mint: options.mint ?? SOLANA_USDC_MINT,
+        signer: this.signingKey,
+        payment: {
+          scheme: "exact",
+          network,
+          asset,
+          amount,
+          from: normalizedRequest.cryptoId,
+          to,
+          nonce:
+            options.nonce ??
+            challenge?.nonce ??
+            generateRegistrationNonce(normalizedRequest.username),
+          expiresAt: options.expiresAt ?? challenge?.expiresAt,
+          expiresInMs: options.expiresInMs,
+          metadata,
+          publicKeyBase64: normalizedRequest.publicKey,
         },
-        publicKeyBase64: normalizedRequest.publicKey,
-      },
-    });
+      });
+      payment = execution;
+      paymentMap = execution.payment;
+      onChainTx = execution.signature;
+    }
+
     let identity: Identity;
     try {
-      identity = await this.registerWithPaymentMap(
+      identity = await this.submitRegistration(
         normalizedRequest,
-        payment.payment,
+        { paymentMap, paymentHeader },
         options,
       );
     } catch (error) {
       throw attachRegistrationPayment(error, payment);
     }
 
-    return { identity, payment };
+    return { identity, payment, ...(onChainTx ? { onChainTx } : {}) };
   }
 
   async registerWithExistingSolanaPayment(
@@ -220,7 +302,9 @@ export class RegistryApi {
     options: SolanaRegistrationProofOptions,
   ): Promise<SolanaRegistrationProofResult> {
     if (!this.signingKey) {
-      throw new Error("registerWithExistingSolanaPayment requires a signing key");
+      throw new Error(
+        "registerWithExistingSolanaPayment requires a signing key",
+      );
     }
 
     const normalizedRequest = normalizeRegisterRequest(request);
@@ -260,9 +344,9 @@ export class RegistryApi {
     });
     let identity: Identity;
     try {
-      identity = await this.registerWithPaymentMap(
+      identity = await this.submitRegistration(
         normalizedRequest,
-        payment,
+        { paymentMap: payment },
         options,
       );
     } catch (error) {
@@ -286,24 +370,34 @@ export class RegistryApi {
     throw new Error("registration did not return a payment challenge");
   }
 
-  private async registerWithPaymentMap(
+  /**
+   * Submit the signed registration, settling its fee. The sponsored x402 v2 SVM
+   * path carries the SPL transfer in the `PAYMENT-SIGNATURE` header
+   * (`paymentHeader`) with NO body `payment`; the native-SOL / existing-tx path
+   * carries a body `payment` map. Exactly one of the two is set.
+   */
+  private async submitRegistration(
     request: RegisterRequest,
-    payment: X402PaymentMap,
+    proof: { paymentMap?: X402PaymentMap; paymentHeader?: string },
     options: {
       registrationAttempts?: number;
       registrationIntervalMs?: number;
       registrationRetryErrors?: Array<string>;
     },
   ): Promise<Identity> {
+    const body: RegisterRequest = proof.paymentMap
+      ? { ...request, payment: proof.paymentMap }
+      : request;
     try {
-      return await this.registerRetryingPayment({
-        ...request,
-        payment,
-      }, {
-        attempts: options.registrationAttempts,
-        intervalMs: options.registrationIntervalMs,
-        retryErrors: options.registrationRetryErrors,
-      });
+      return await this.registerRetryingPayment(
+        body,
+        {
+          attempts: options.registrationAttempts,
+          intervalMs: options.registrationIntervalMs,
+          retryErrors: options.registrationRetryErrors,
+        },
+        proof.paymentHeader,
+      );
     } catch (error) {
       const recovered = await this.createdIdentityAfterRegistrationError(
         request.username,
@@ -511,17 +605,17 @@ export class RegistryApi {
       intervalMs?: number;
       retryErrors?: Array<string>;
     },
+    paymentHeader?: string,
   ): Promise<Identity> {
     const attempts = options.attempts ?? DEFAULT_REGISTRATION_ATTEMPTS;
-    const intervalMs =
-      options.intervalMs ?? DEFAULT_REGISTRATION_INTERVAL_MS;
+    const intervalMs = options.intervalMs ?? DEFAULT_REGISTRATION_INTERVAL_MS;
     const retryErrors =
       options.retryErrors ?? DEFAULT_REGISTRATION_RETRY_ERRORS;
     let lastError: unknown;
 
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       try {
-        return await this.register(request);
+        return await this.register(request, paymentHeader);
       } catch (error) {
         lastError = error;
         if (!isRetryablePaymentError(error, retryErrors)) {
@@ -590,19 +684,29 @@ function paymentErrorMessage(body: unknown): string {
 
 function attachRegistrationPayment(
   error: unknown,
-  payment: SolanaX402PaymentExecution | X402PaymentMap,
+  payment: SolanaX402PaymentExecution | DelegatedRegistrationPayment | X402PaymentMap,
 ): unknown {
   if (typeof error === "object" && error !== null) {
     const failure = error as SolanaRegistrationFailure;
-    failure.registrationPayment = payment;
-    failure.onChainTx = registrationPaymentTx(payment);
+    failure.registrationPayment = payment as
+      | SolanaX402PaymentExecution
+      | DelegatedRegistrationPayment;
+    const tx = registrationPaymentTx(payment);
+    if (tx) {
+      failure.onChainTx = tx;
+    }
   }
   return error;
 }
 
 function registrationPaymentTx(
-  payment: SolanaX402PaymentExecution | X402PaymentMap,
+  payment: SolanaX402PaymentExecution | DelegatedRegistrationPayment | X402PaymentMap,
 ): string | undefined {
+  // The sponsored delegated path has no client-side on-chain signature (the
+  // facilitator broadcasts), so there is no tx to surface.
+  if ("delegated" in payment) {
+    return undefined;
+  }
   if (
     "payment" in payment &&
     "signature" in payment &&
@@ -611,7 +715,9 @@ function registrationPaymentTx(
     return payment.signature;
   }
   const paymentMap = payment as X402PaymentMap;
-  return paymentMap["onChainTx"] ?? paymentMap["tx"] ?? paymentMap["transaction"];
+  return (
+    paymentMap["onChainTx"] ?? paymentMap["tx"] ?? paymentMap["transaction"]
+  );
 }
 
 function normalizeRegisterRequest(request: RegisterRequest): RegisterRequest {

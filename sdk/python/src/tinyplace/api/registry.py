@@ -11,9 +11,10 @@ from ..solana import (
     SOLANA_MAINNET_NETWORK,
     SOLANA_USDC_MINT,
     USDC_DECIMALS,
-    execute_solana_x402_payment,
+    build_delegated_x402_payment_header,
 )
 from ..types import Json, JsonDict
+from ..x402 import X402_PAYMENT_HEADER
 
 DEFAULT_REGISTRATION_ATTEMPTS = 30
 DEFAULT_REGISTRATION_INTERVAL_MS = 3000
@@ -25,14 +26,15 @@ class RegistryApi:
         self._http = http
         self._signer = signer
 
-    async def register(self, request: JsonDict) -> Json:
+    async def register(self, request: JsonDict, *, payment_header: str | None = None) -> Json:
         request = _normalize_register_request(request)
         if self._signer and not request.get("signature"):
             request["signature"] = await sign_fresh_canonical_payload(
                 self._signer,
                 _registration_signature_payload(request),
             )
-        return await self._http.post_public("/registry/names", request)
+        headers = {X402_PAYMENT_HEADER: payment_header} if payment_header else None
+        return await self._http.post_public("/registry/names", request, headers=headers)
 
     async def register_with_solana_payment(
         self,
@@ -46,13 +48,16 @@ class RegistryApi:
         attempts: int = DEFAULT_REGISTRATION_ATTEMPTS,
         interval_ms: int = DEFAULT_REGISTRATION_INTERVAL_MS,
     ) -> JsonDict:
-        """Register ``request``, settling the x402 fee with an on-chain Solana payment.
+        """Register ``request``, settling the x402 fee with a sponsored Solana payment.
 
-        Probes the registration to read the 402 payment challenge, executes the
-        SPL/USDC (or native-SOL) transfer on chain, then retries the
-        registration with the signed x402 payment map attached — polling through
-        the brief window where the chain hasn't yet confirmed the transfer.
-        Mirrors the TS SDK's ``registerWithSolanaPayment``.
+        Probes the registration to read the canonical x402 v2 402 challenge
+        (``accepts[0]``: ``network``/``amount``/``asset``-mint/``payTo``/
+        ``extra.feePayer``), builds the partially-signed SPL ``TransferChecked``
+        whose fee payer is the facilitator (so the payer needs no SOL for gas),
+        wraps it in the standard ``PaymentPayload`` envelope, and submits it via
+        the ``PAYMENT-SIGNATURE`` header — with **no** ``payment`` field in the
+        request body. Polls through the brief window where the chain hasn't yet
+        confirmed the transfer. Mirrors the TS SDK's ``registerWithSolanaPayment``.
         """
         if self._signer is None:
             raise ValueError("register_with_solana_payment requires a signer")
@@ -63,50 +68,54 @@ class RegistryApi:
         if not amount or not recipient:
             raise ValueError("registration payment challenge is missing amount or recipient")
 
-        execution = await execute_solana_x402_payment(
-            signer=self._signer,
+        challenge_metadata = challenge.get("metadata") or {}
+        challenge_network = challenge.get("network") or network or SOLANA_MAINNET_NETWORK
+        # The registration fee is USDC: default to the USDC mint so a challenge
+        # that names the asset by its SPL mint address (rather than the literal
+        # "USDC" symbol) still settles. Callers override for devnet / custom
+        # deployments.
+        challenge_asset = challenge.get("asset") or "USDC"
+        fee_payer = challenge_metadata.get("feePayer")
+        if not fee_payer:
+            raise ValueError(
+                "registration payment challenge is missing the facilitator fee payer "
+                "(accepts[].extra.feePayer)"
+            )
+
+        # The USDC registration fee settles gaslessly through the facilitator: a
+        # payer-signed delegated SPL transfer whose fee payer is the facilitator
+        # (from the 402 challenge), wrapped in the standard x402 v2 envelope and
+        # carried in the PAYMENT-SIGNATURE header — no body ``payment`` map and
+        # no proprietary ``metadata.delegatedTx``.
+        payment_header = await build_delegated_x402_payment_header(
             rpc_url=rpc_url,
-            secret_key=secret_key,
-            # The registration fee is USDC: default to the USDC mint so a
-            # challenge that names the asset by its SPL mint address (rather than
-            # the literal "USDC" symbol) still settles. Callers override for
-            # devnet / custom deployments.
+            fee_payer=str(fee_payer),
             mint=mint or SOLANA_USDC_MINT,
             decimals=decimals,
+            secret_key=secret_key,
             payment={
-                "scheme": challenge.get("scheme", "exact"),
-                "network": challenge.get("network") or network or SOLANA_MAINNET_NETWORK,
-                "asset": challenge.get("asset") or "USDC",
+                "network": challenge_network,
+                "asset": challenge_asset,
                 "amount": amount,
-                "from": normalized.get("cryptoId") or self._signer.agent_id,
                 "to": recipient,
-                "nonce": challenge.get("nonce"),
-                "expiresAt": challenge.get("expiresAt"),
-                "metadata": {
-                    **(challenge.get("metadata") or {}),
-                    "identity": normalized["username"],
-                    "purpose": "registration",
-                },
-                "publicKeyBase64": normalized.get("publicKey"),
             },
         )
         try:
             identity = await self._register_retrying_payment(
-                {**normalized, "payment": execution["payment"]}, attempts, interval_ms
+                normalized, payment_header, attempts, interval_ms
             )
         except TinyPlaceError as exc:
             # The payment is already on chain. A 5xx can still come back after
             # the identity was persisted, so check whether the handle now exists
             # before failing — re-driving the flow would otherwise risk paying
-            # twice. Re-raise (with the payment attached) only if it truly wasn't
-            # created.
+            # twice. Re-raise only if it truly wasn't created.
             identity = await self._recover_registered_identity(normalized["username"], exc)
             if identity is None:
                 raise
         return {
             "identity": identity,
-            "payment": execution["payment"],
-            "onChainTx": execution["signature"],
+            "paymentHeader": payment_header,
+            "onChainTx": None,
         }
 
     async def _recover_registered_identity(
@@ -133,12 +142,12 @@ class RegistryApi:
         raise ValueError("registration did not return a payment challenge")
 
     async def _register_retrying_payment(
-        self, request: JsonDict, attempts: int, interval_ms: int
+        self, request: JsonDict, payment_header: str, attempts: int, interval_ms: int
     ) -> Json:
         attempts = max(1, attempts)
         for attempt in range(attempts):
             try:
-                return await self.register(request)
+                return await self.register(request, payment_header=payment_header)
             except TinyPlaceError as exc:
                 if attempt == attempts - 1 or not _should_retry_registration(exc):
                     raise

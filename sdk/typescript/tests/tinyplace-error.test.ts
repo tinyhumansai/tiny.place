@@ -25,40 +25,50 @@ describe("TinyPlaceError self-classification", () => {
     expect(error.paymentRequired?.payment.amount).toBe("1000");
   });
 
-  it("parses a STANDARD x402 v2 accepts[] 402 challenge", () => {
-    // The shape backend-v2 emits: top-level x402Version/error/resource plus a
-    // single `exact`-scheme accepts[] entry (payTo/amount, optional extra.feePayer).
+  it("parses the challenge from the standard x402 v2 accepts[] array", () => {
     const error = new TinyPlaceError(402, {
-      x402Version: 2,
       error: "payment required",
-      resource: { url: "/registry/names/@alice", mimeType: "application/json" },
+      x402Version: 2,
+      resource: { url: "https://tiny.place" },
       accepts: [
         {
           scheme: "exact",
-          network: "solana",
-          asset: "USDC",
+          network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
           amount: "1000000",
-          payTo: "TREASURYxyz",
+          asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          payTo: "treasury-address",
           maxTimeoutSeconds: 60,
-          extra: { feePayer: "FEEPAYERabc" },
+          extra: {
+            domain: "tiny.place",
+            feePayer: "facilitator-address",
+            from: "payer-address",
+            nonce: "nonce-xyz",
+            expiresAt: "2026-06-21T00:00:00Z",
+          },
         },
       ],
+      extensions: {},
     });
     expect(error.code).toBe("payment_required");
-    const challenge = error.paymentRequired;
-    expect(challenge?.x402Version).toBe(2);
-    expect(challenge?.resource).toBe("/registry/names/@alice");
-    expect(challenge?.payment.scheme).toBe("exact");
-    expect(challenge?.payment.network).toBe("solana");
-    expect(challenge?.payment.asset).toBe("USDC");
-    expect(challenge?.payment.amount).toBe("1000000");
-    // payTo maps onto the SDK's `to`; the standard challenge has no payer.
-    expect(challenge?.payment.to).toBe("TREASURYxyz");
-    expect(challenge?.payment.from).toBeUndefined();
-    expect(challenge?.payment.maxTimeoutSeconds).toBe(60);
-    // extra.feePayer is surfaced on the challenge and mirrored into metadata.
-    expect(challenge?.payment.feePayer).toBe("FEEPAYERabc");
-    expect(challenge?.payment.metadata?.feePayer).toBe("FEEPAYERabc");
+    const payment = error.paymentRequired?.payment;
+    expect(payment?.amount).toBe("1000000");
+    expect(payment?.asset).toBe("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+    // payTo is mapped to `to`.
+    expect(payment?.to).toBe("treasury-address");
+    // Binding fields are promoted out of `extra` to the top level.
+    expect(payment?.from).toBe("payer-address");
+    expect(payment?.nonce).toBe("nonce-xyz");
+    expect(payment?.expiresAt).toBe("2026-06-21T00:00:00Z");
+    // The remaining extra becomes the signed metadata; binding keys are not
+    // duplicated into it (they would corrupt the canonical signing message).
+    expect(payment?.metadata?.["domain"]).toBe("tiny.place");
+    expect(payment?.metadata?.["feePayer"]).toBe("facilitator-address");
+    expect(payment?.metadata?.["nonce"]).toBeUndefined();
+    expect(payment?.metadata?.["from"]).toBeUndefined();
+    expect(payment?.feePayer).toBe("facilitator-address");
+    expect(error.paymentRequired?.x402Version).toBe(2);
+    expect(error.paymentRequired?.resource).toBe("https://tiny.place");
+    expect(payment?.maxTimeoutSeconds).toBe(60);
   });
 
   it("reads amount from maxAmountRequired in an accepts[] entry", () => {
@@ -75,6 +85,15 @@ describe("TinyPlaceError self-classification", () => {
       ],
     });
     expect(error.paymentRequired?.payment.amount).toBe("2500000");
+  });
+
+  it("falls back to the legacy payment field when accepts[] is absent", () => {
+    const error = new TinyPlaceError(402, {
+      error: "payment required",
+      payment: { amount: "500", asset: "USDC", to: "treasury" },
+    });
+    expect(error.paymentRequired?.payment.amount).toBe("500");
+    expect(error.paymentRequired?.payment.to).toBe("treasury");
   });
 
   it("serializes via toJSON with the recovery fields", () => {

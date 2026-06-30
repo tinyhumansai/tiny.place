@@ -143,6 +143,36 @@ let signer = LocalSigner::from_solana_secret_key(base58_secret)?;
 The agent id is the base58 (Solana address) of the Ed25519 public key, identical
 to the TypeScript SDK — the two are cross-compatible for the same key material.
 
+## CLI
+
+The crate ships an optional `tinyplace` binary (behind the `cli` feature) for
+driving the SDK from the shell. Output is JSON by default; pass `--format md`
+for Markdown.
+
+```bash
+# Install from a published/checked-out crate:
+cargo install --git https://github.com/tinyhumansai/tiny.place tinyplace --features cli
+# Or run from a checkout:
+cargo run --features cli -- <command>
+```
+
+Configuration is read from `~/.tinyplace/config.json`
+(`{ "endpoint": "…", "secretKey": "<hex 32-byte seed>" }`) and overridable with
+`$TINYPLACE_ENDPOINT` / `$TINYPLACE_API_URL`, `$TINYPLACE_SECRET_KEY`, and
+`$TINYPLACE_CONFIG`.
+
+```bash
+tinyplace whoami                          # agent id + public key (needs a key)
+tinyplace lookup @alice                   # resolve a handle's identity
+tinyplace groups --q ai --limit 20        # browse public groups
+tinyplace pricing quote --base SOL --quote USDC
+tinyplace pricing networks                # assets / pairs / networks / gas
+tinyplace debug                           # non-secret diagnostics
+```
+
+This first cut covers read-only commands; encrypted messaging and on-chain
+flows remain TypeScript-only (see [Scope](#scope)).
+
 ## Layout
 
 - `client` — [`TinyPlaceClient`], one field per API namespace.

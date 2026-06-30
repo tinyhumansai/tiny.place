@@ -200,6 +200,161 @@ export function x402AuthorizationToPaymentMap(
   return payment;
 }
 
+/**
+ * The canonical x402 v2 submission header. A migrated SDK (or any standard x402
+ * client) base64-encodes the {@link X402PaymentEnvelope} and submits it in this
+ * header. The legacy `X-PAYMENT` header is still accepted by the backend for
+ * backwards compatibility.
+ */
+export const X402_PAYMENT_HEADER = "PAYMENT-SIGNATURE";
+
+/**
+ * The standard x402 v2 PaymentPayload envelope. A migrated SDK (or any standard
+ * x402 client) base64-encodes this and submits it in the
+ * {@link X402_PAYMENT_HEADER} (`PAYMENT-SIGNATURE`) header on the header-based
+ * payment surfaces (e.g. a2a). tiny.place's authorization signature travels as
+ * the scheme-specific `payload`.
+ */
+export interface X402PaymentEnvelope {
+  x402Version: number;
+  accepted: {
+    scheme: X402Scheme;
+    network: string;
+    amount: string;
+    asset: string;
+    payTo: string;
+    maxTimeoutSeconds: number;
+    extra: Record<string, string>;
+  };
+  payload: {
+    signature: string;
+    authorization: Record<string, string>;
+  };
+  extensions: Record<string, never>;
+}
+
+/** Builds the standard x402 v2 PaymentPayload envelope from an authorization. */
+export function buildX402PaymentEnvelope(
+  authorization: X402Authorization,
+): X402PaymentEnvelope {
+  return {
+    x402Version: 2,
+    accepted: {
+      scheme: authorization.scheme,
+      network: authorization.network,
+      amount: authorization.amount,
+      asset: authorization.asset,
+      payTo: authorization.to,
+      maxTimeoutSeconds: 60,
+      extra: { ...(authorization.metadata ?? {}) },
+    },
+    payload: {
+      signature: authorization.signature,
+      authorization: {
+        from: authorization.from,
+        to: authorization.to,
+        value: authorization.amount,
+        nonce: authorization.nonce,
+        ...(authorization.expiresAt
+          ? { validBefore: authorization.expiresAt }
+          : {}),
+      },
+    },
+    extensions: {},
+  };
+}
+
+/**
+ * Encodes an authorization as the base64 {@link X402_PAYMENT_HEADER}
+ * (`PAYMENT-SIGNATURE`) header value — the standard x402 v2 submission format.
+ * Mirrors the backend's x402.ParseInboundPayment.
+ */
+export function encodeX402PaymentHeader(
+  authorization: X402Authorization,
+): string {
+  const json = JSON.stringify(buildX402PaymentEnvelope(authorization));
+  return toBase64(new TextEncoder().encode(json));
+}
+
+/**
+ * Inputs to a standard x402 v2 SVM (Solana) "exact" PaymentPayload envelope —
+ * everything is read off the parsed 402 challenge plus the partially-signed
+ * transaction. `assetMint` is the on-chain SPL mint (base58), NOT a symbol.
+ */
+export interface X402SvmPaymentEnvelopeOptions {
+  network: string;
+  amount: string;
+  /** The on-chain SPL mint (base58) — not a symbol like "USDC". */
+  assetMint: string;
+  payTo: string;
+  /** The facilitator's fee-payer pubkey (from the challenge `metadata.feePayer`). */
+  feePayer: string;
+  /** The base64 partially-signed Solana transaction. */
+  transaction: string;
+  maxTimeoutSeconds?: number;
+}
+
+/**
+ * The standard x402 v2 PaymentPayload envelope for the SVM (Solana) "exact"
+ * scheme. Unlike {@link X402PaymentEnvelope} (the EVM-style envelope whose
+ * `payload` is `{signature, authorization}`), the SVM scheme carries the whole
+ * partially-signed transaction in `payload.transaction`, and the facilitator's
+ * fee payer travels in `accepted.extra.feePayer`. base64-encoded into the
+ * {@link X402_PAYMENT_HEADER} (`PAYMENT-SIGNATURE`) header.
+ */
+export interface X402SvmPaymentEnvelope {
+  x402Version: number;
+  accepted: {
+    scheme: X402Scheme;
+    network: string;
+    amount: string;
+    asset: string;
+    payTo: string;
+    maxTimeoutSeconds: number;
+    extra: { feePayer: string };
+  };
+  payload: {
+    transaction: string;
+  };
+}
+
+/**
+ * Builds the standard x402 v2 SVM "exact" PaymentPayload envelope from a 402
+ * challenge's fields and the partially-signed transaction.
+ */
+export function buildX402SvmPaymentEnvelope(
+  options: X402SvmPaymentEnvelopeOptions,
+): X402SvmPaymentEnvelope {
+  return {
+    x402Version: 2,
+    accepted: {
+      scheme: "exact",
+      network: options.network,
+      amount: options.amount,
+      asset: options.assetMint,
+      payTo: options.payTo,
+      maxTimeoutSeconds: options.maxTimeoutSeconds ?? 60,
+      extra: { feePayer: options.feePayer },
+    },
+    payload: {
+      transaction: options.transaction,
+    },
+  };
+}
+
+/**
+ * Encodes a standard x402 v2 SVM "exact" envelope as the base64
+ * {@link X402_PAYMENT_HEADER} (`PAYMENT-SIGNATURE`) header value — standard
+ * base64 (with padding) of the UTF-8 JSON. This is the sponsored Solana
+ * payment's submission format; the request body carries no `payment` field.
+ */
+export function encodeX402SvmPaymentHeader(
+  options: X402SvmPaymentEnvelopeOptions,
+): string {
+  const json = JSON.stringify(buildX402SvmPaymentEnvelope(options));
+  return toBase64(new TextEncoder().encode(json));
+}
+
 function paymentReferences(
   options: X402PaymentReferenceOptions,
 ): X402PaymentMap {

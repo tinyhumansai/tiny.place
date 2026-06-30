@@ -1,13 +1,14 @@
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 
-import type { SigningKey } from "./auth.js";
 import type { X402AuthorizationFields } from "./x402.js";
 import {
   buildX402PaymentMap,
+  encodeX402SvmPaymentHeader,
   type X402PaymentMap,
   type X402PaymentMapOptions,
 } from "./x402.js";
+import type { SigningKey } from "./auth.js";
 
 export const SOLANA_MAINNET_NETWORK =
   "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
@@ -387,7 +388,7 @@ export async function executeSolanaPayment(
     message,
     seed,
     commitment,
-      polls,
+    polls,
   );
 
   return {
@@ -413,9 +414,12 @@ export async function getRecentBlockhash(
   },
 ): Promise<string> {
   const fetchFn = options?.fetch ?? globalThis.fetch;
-  const latest = await rpc<LatestBlockhashResponse>(fetchFn, rpcUrl, "getLatestBlockhash", [
-    { commitment: options?.commitment ?? "confirmed" },
-  ]);
+  const latest = await rpc<LatestBlockhashResponse>(
+    fetchFn,
+    rpcUrl,
+    "getLatestBlockhash",
+    [{ commitment: options?.commitment ?? "confirmed" }],
+  );
   return latest.value.blockhash;
 }
 
@@ -658,12 +662,199 @@ function randomMemoNonce(): string {
     .join("");
 }
 
+export interface PayerSignedDelegatedTxOptions {
+  rpcUrl: string;
+  /** The facilitator's fee-payer pubkey (from the 402 challenge `metadata.feePayer`). */
+  feePayer: string;
+  /** The payee/recipient owner address (the challenge `to` / `payTo`). */
+  payee: string;
+  /** Amount in the asset's base units. */
+  amount: string;
+  /** The SPL mint to transfer. */
+  mint: string;
+  /** Token decimals (USDC/CASH = 6). */
+  decimals: number;
+  /** The agent's Solana secret key (32-byte seed or 64-byte key); signs as the transfer authority. */
+  secretKey: string | Uint8Array;
+  /** Overrides the payer's source token account (defaults to an RPC lookup of the agent's ATA). */
+  sourceTokenAccount?: string;
+  /** Overrides the payee's destination token account (defaults to an RPC lookup). */
+  destinationTokenAccount?: string;
+  computeUnitLimit?: number;
+  computeUnitPriceMicroLamports?: string;
+  fetch?: typeof globalThis.fetch;
+}
+
+/**
+ * Builds a standard x402 "exact" Solana payment for an autonomous agent and
+ * partially signs it with the agent's keypair. This legacy helper preserves the
+ * pre-memo delegated transfer shape used by the gasless registration/bounty
+ * flows: `[SetComputeUnitLimit, SetComputeUnitPrice, TransferChecked]`, with the
+ * facilitator as fee payer and the agent as transfer authority.
+ */
+export async function buildPayerSignedDelegatedTx(
+  options: PayerSignedDelegatedTxOptions,
+): Promise<string> {
+  const secretKey = solanaSecretKeyBytes(options.secretKey);
+  const seed = secretKey.slice(0, 32);
+  const publicKey = ed25519.getPublicKey(seed);
+  if (secretKey.length === 64 && !bytesEqual(publicKey, secretKey.slice(32))) {
+    throw new Error("Solana secret key public key does not match seed");
+  }
+  const payer = encodeBase58(publicKey);
+  const amount = normalizedAmount(options.amount);
+  const fetchFn = options.fetch ?? globalThis.fetch;
+
+  const sourceTokenAccount =
+    options.sourceTokenAccount ??
+    (await findTokenAccount({
+      fetchFn,
+      rpcUrl: options.rpcUrl,
+      owner: payer,
+      mint: options.mint,
+      minimumAmount: amount,
+    }));
+  const destinationTokenAccount =
+    options.destinationTokenAccount ??
+    (await findTokenAccount({
+      fetchFn,
+      rpcUrl: options.rpcUrl,
+      owner: options.payee,
+      mint: options.mint,
+    }));
+
+  const latest = await rpc<LatestBlockhashResponse>(
+    fetchFn,
+    options.rpcUrl,
+    "getLatestBlockhash",
+    [{ commitment: "confirmed" }],
+  );
+
+  const message = twoSignerFacilitatorMessage({
+    feePayer: options.feePayer,
+    authority: payer,
+    sourceTokenAccount,
+    destinationTokenAccount,
+    mint: options.mint,
+    amount,
+    decimals: options.decimals,
+    computeUnitLimit: options.computeUnitLimit ?? FACILITATOR_COMPUTE_UNIT_LIMIT,
+    computeUnitPriceMicroLamports:
+      options.computeUnitPriceMicroLamports ??
+      FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS,
+    recentBlockhash: latest.value.blockhash,
+  });
+
+  const authoritySignature = ed25519.sign(message, seed);
+  const emptyFeePayerSignature = new Uint8Array(64);
+  const wire = concatBytes(
+    shortVec(2),
+    emptyFeePayerSignature,
+    authoritySignature,
+    message,
+  );
+  return bytesToBase64(wire);
+}
+
+function twoSignerFacilitatorMessage(options: {
+  feePayer: string;
+  authority: string;
+  sourceTokenAccount: string;
+  destinationTokenAccount: string;
+  mint: string;
+  amount: string;
+  decimals: number;
+  computeUnitLimit: number;
+  computeUnitPriceMicroLamports: string;
+  recentBlockhash: string;
+}): Uint8Array {
+  const accountKeys = [
+    options.feePayer,
+    options.authority,
+    options.sourceTokenAccount,
+    options.destinationTokenAccount,
+    options.mint,
+    SOLANA_TOKEN_PROGRAM_ID,
+    SOLANA_COMPUTE_BUDGET_PROGRAM_ID,
+  ];
+  const header = new Uint8Array([2, 1, 3]);
+
+  const computeLimitData = new Uint8Array(5);
+  computeLimitData[0] = 2;
+  writeU32Le(computeLimitData, 1, options.computeUnitLimit);
+  const computePriceData = new Uint8Array(9);
+  computePriceData[0] = 3;
+  writeU64Le(computePriceData, 1, BigInt(options.computeUnitPriceMicroLamports));
+  const transferData = new Uint8Array(10);
+  transferData[0] = 12;
+  writeU64Le(transferData, 1, BigInt(options.amount));
+  transferData[9] = options.decimals;
+
+  return concatBytes(
+    header,
+    shortVec(accountKeys.length),
+    ...accountKeys.map((key) => decodeBase58(key)),
+    decodeBase58(options.recentBlockhash),
+    shortVec(3),
+    encodeInstruction(6, [], computeLimitData),
+    encodeInstruction(6, [], computePriceData),
+    encodeInstruction(5, [2, 4, 3, 1], transferData),
+  );
+}
+
+export interface DelegatedX402PaymentHeaderOptions
+  extends Omit<PayerSignedDelegatedTxOptions, "payee" | "amount" | "feePayer"> {
+  /** The payment requirements parsed from the 402 challenge. */
+  payment: Pick<
+    X402AuthorizationFields,
+    "network" | "asset" | "amount" | "to"
+  > & { metadata?: Record<string, string> };
+  /**
+   * The facilitator's fee-payer pubkey. Defaults to the challenge's
+   * `payment.metadata.feePayer` (equivalently `accepts[].extra.feePayer`).
+   */
+  feePayer?: string;
+}
+
+/**
+ * Builds the agent-signed facilitator transfer and encodes it into the standard
+ * x402 v2 SVM "exact" `PAYMENT-SIGNATURE` header value (the partially-signed
+ * transaction in `payload.transaction`, the fee payer in
+ * `accepted.extra.feePayer`). Replaces the proprietary `metadata.delegatedTx`
+ * payment map — the sponsored register/bounty flows attach this header and send
+ * NO `payment` field in the request body. The `asset` echoed in the envelope is
+ * the on-chain SPL mint used to build the transaction.
+ */
+export async function buildDelegatedX402PaymentHeader(
+  options: DelegatedX402PaymentHeaderOptions,
+): Promise<string> {
+  const feePayer = options.feePayer ?? options.payment.metadata?.["feePayer"];
+  if (!feePayer) {
+    throw new Error(
+      "delegated payment requires a facilitator fee payer (challenge metadata.feePayer)",
+    );
+  }
+  const wire = await buildPayerSignedDelegatedTx({
+    ...options,
+    feePayer,
+    amount: options.payment.amount,
+    payee: options.payment.to,
+  });
+  return encodeX402SvmPaymentHeader({
+    network: options.payment.network,
+    amount: options.payment.amount,
+    assetMint: options.mint,
+    payTo: options.payment.to,
+    feePayer,
+    transaction: wire,
+  });
+}
+
 function writeU32Le(target: Uint8Array, offset: number, value: number): void {
   for (let index = 0; index < 4; index += 1) {
     target[offset + index] = (value >>> (index * 8)) & 0xff;
   }
 }
-
 
 async function findTokenAccount(options: {
   fetchFn: typeof globalThis.fetch;

@@ -112,6 +112,11 @@ impl std::fmt::Debug for X402PayerConfig {
     }
 }
 
+/// The request header first-party SDKs send to identify themselves.
+pub const SDK_CLIENT_HEADER: &str = "X-Tinyplace-SDK";
+/// Value of [`SDK_CLIENT_HEADER`] for this Rust SDK (`rust/<crate version>`).
+pub const SDK_CLIENT: &str = concat!("rust/", env!("CARGO_PKG_VERSION"));
+
 /// A list of query parameters. Arrays are expressed as repeated keys.
 pub type Query = [(String, String)];
 
@@ -295,8 +300,12 @@ impl HttpClient {
         loop {
             // Re-sign on every attempt so retries carry a fresh timestamp/nonce
             // and are never rejected as a replay.
-            let mut headers: Headers =
-                vec![("Content-Type".to_string(), "application/json".to_string())];
+            let mut headers: Headers = vec![
+                ("Content-Type".to_string(), "application/json".to_string()),
+                // Identify this first-party SDK so the backend serves the legacy
+                // x402 challenge shape during the standardization migration.
+                (SDK_CLIENT_HEADER.to_string(), SDK_CLIENT.to_string()),
+            ];
             headers.extend(extra_headers.iter().cloned());
             self.apply_auth(
                 &mut headers,
@@ -733,6 +742,45 @@ impl HttpClient {
             .await
     }
 
+    /// POST without backend auth, threading `extra_headers` (e.g. the standard
+    /// x402 `PAYMENT-SIGNATURE` payment header) and parsing the response body.
+    pub async fn post_public_with_headers<T: DeserializeOwned, B: Serialize>(
+        &self,
+        path: &str,
+        body: Option<&B>,
+        headers: &Headers,
+    ) -> Result<T> {
+        let body = Self::body_string(body)?;
+        let response = self
+            .execute(Method::POST, path, &[], body, Auth::None, None, headers)
+            .await?;
+        self.parse(response).await
+    }
+
+    /// POST with directory auth as `actor`, threading `extra_headers` (e.g. the
+    /// standard x402 `PAYMENT-SIGNATURE` payment header) and parsing the response.
+    pub async fn post_directory_auth_as_with_headers<T: DeserializeOwned, B: Serialize>(
+        &self,
+        path: &str,
+        actor: &str,
+        body: Option<&B>,
+        headers: &Headers,
+    ) -> Result<T> {
+        let body = Self::body_string(body)?;
+        let response = self
+            .execute(
+                Method::POST,
+                path,
+                &[],
+                body,
+                Auth::Directory,
+                Some(actor),
+                headers,
+            )
+            .await?;
+        self.parse(response).await
+    }
+
     pub async fn post_agent_auth<T: DeserializeOwned, B: Serialize>(
         &self,
         path: &str,
@@ -1020,16 +1068,73 @@ fn payment_required_from_body(body: &serde_json::Value) -> Option<PaymentRequire
 }
 
 fn as_payment_required(value: &serde_json::Value) -> Option<PaymentRequiredChallenge> {
+    let error = value
+        .get("error")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+
+    // Prefer the standard x402 v2 accepts[] array. tiny.place advertises the
+    // payer-binding fields (from/nonce/expiresAt) under accepts[].extra so the
+    // challenge can be rebuilt from accepts[] alone.
+    if let Some(payment) = payment_challenge_from_accepts(value) {
+        return Some(PaymentRequiredChallenge { error, payment });
+    }
+
+    // Legacy fallback: the non-standard top-level `payment` object. Removed in
+    // Phase 2 once the standard accepts[] path is the only one in the field.
     let payment = value.get("payment")?;
     if !payment.is_object() {
         return None;
     }
     let payment: PaymentChallenge = serde_json::from_value(payment.clone()).ok()?;
-    let error = value
-        .get("error")
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
     Some(PaymentRequiredChallenge { error, payment })
+}
+
+/// Map the first standard x402 v2 `accepts[]` entry onto a [`PaymentChallenge`].
+/// The binding fields (`from`/`nonce`/`expiresAt`) are promoted out of `extra`;
+/// the rest of `extra` becomes the signed metadata, mirroring the legacy shape.
+fn payment_challenge_from_accepts(value: &serde_json::Value) -> Option<PaymentChallenge> {
+    let entry = value.get("accepts")?.as_array()?.first()?;
+    if !entry.is_object() {
+        return None;
+    }
+
+    let string_field = |key: &str| entry.get(key).and_then(|v| v.as_str()).map(str::to_string);
+    let extra = entry.get("extra").and_then(|v| v.as_object());
+    let extra_field = |key: &str| {
+        extra
+            .and_then(|map| map.get(key))
+            .and_then(|v| v.as_str())
+            .map(str::to_string)
+    };
+
+    let binding_keys = ["from", "nonce", "expiresAt"];
+    let metadata: HashMap<String, String> = extra
+        .map(|map| {
+            map.iter()
+                .filter(|(key, _)| !binding_keys.contains(&key.as_str()))
+                .filter_map(|(key, raw)| raw.as_str().map(|v| (key.clone(), v.to_string())))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    Some(PaymentChallenge {
+        scheme: string_field("scheme"),
+        network: string_field("network"),
+        asset: string_field("asset"),
+        amount: string_field("amount"),
+        // accepts[] names the recipient `payTo`; the challenge calls it `to`.
+        to: string_field("payTo"),
+        from: extra_field("from"),
+        nonce: extra_field("nonce"),
+        expires_at: extra_field("expiresAt"),
+        signature: None,
+        metadata: if metadata.is_empty() {
+            None
+        } else {
+            Some(metadata)
+        },
+    })
 }
 
 fn base64_url_decode(value: &str) -> Option<Vec<u8>> {

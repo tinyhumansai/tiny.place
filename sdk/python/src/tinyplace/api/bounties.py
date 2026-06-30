@@ -5,8 +5,13 @@ from typing import Any
 
 from ..http import HttpClient, TinyPlaceError, encode
 from ..signer import Signer
-from ..solana import SOLANA_MAINNET_NETWORK, SOLANA_USDC_MINT, execute_solana_x402_payment
+from ..solana import (
+    SOLANA_MAINNET_NETWORK,
+    SOLANA_USDC_MINT,
+    build_delegated_x402_payment_header,
+)
 from ..types import Json, JsonDict, Query
+from ..x402 import X402_PAYMENT_HEADER
 
 DEFAULT_FUND_ATTEMPTS = 30
 DEFAULT_FUND_INTERVAL_MS = 3000
@@ -42,9 +47,10 @@ class BountiesApi:
     async def get(self, bounty_id: str) -> Json:
         return await self._http.get(f"/bounties/{encode(bounty_id)}")
 
-    async def create(self, request: JsonDict) -> Json:
+    async def create(self, request: JsonDict, *, payment_header: str | None = None) -> Json:
+        headers = {X402_PAYMENT_HEADER: payment_header} if payment_header else None
         return await self._http.post_directory_auth_as(
-            "/bounties", str(request.get("creator") or ""), request
+            "/bounties", str(request.get("creator") or ""), request, headers=headers
         )
 
     async def create_with_solana_payment(
@@ -61,10 +67,12 @@ class BountiesApi:
     ) -> dict[str, Any]:
         """Create AND fund a bounty in one x402 flow, settling the reward on chain.
 
-        ``POST /bounties`` is a combined create+fund: probe it for the 402
-        challenge, pay the reward into the escrow wallet on chain, then re-create
-        with the signed payment attached — the bounty is returned already open
-        for submissions. Mirrors ``registry.register_with_solana_payment``.
+        ``POST /bounties`` is a combined create+fund: probe it for the canonical
+        x402 v2 402 challenge (``accepts[0]``), build the sponsored SPL transfer
+        whose fee payer is the facilitator, wrap it in the standard envelope, and
+        re-create with the ``PAYMENT-SIGNATURE`` header attached — no body
+        ``payment``. The bounty is returned already open for submissions. Mirrors
+        ``registry.register_with_solana_payment``.
         """
         if self._signer is None:
             raise ValueError("create_with_solana_payment requires a signer")
@@ -76,31 +84,35 @@ class BountiesApi:
         recipient = challenge.get("to")
         if not amount or not recipient:
             raise ValueError("bounty create challenge is missing amount or recipient")
-        execution = await execute_solana_x402_payment(
-            signer=self._signer,
+        challenge_metadata = challenge.get("metadata") or {}
+        challenge_network = challenge.get("network") or network or SOLANA_MAINNET_NETWORK
+        challenge_asset = challenge.get("asset") or "USDC"
+        fee_payer = challenge_metadata.get("feePayer")
+        if not fee_payer:
+            raise ValueError(
+                "bounty create challenge is missing the facilitator fee payer "
+                "(accepts[].extra.feePayer)"
+            )
+        # SPL rewards (USDC/CASH) settle gaslessly through the facilitator: build a
+        # payer-signed delegated SPL transfer whose fee payer is the facilitator
+        # (from the 402 challenge), wrap it in the standard x402 v2 envelope, and
+        # submit it via the PAYMENT-SIGNATURE header — no body ``payment`` map and
+        # no proprietary ``metadata.delegatedTx``.
+        payment_header = await build_delegated_x402_payment_header(
             rpc_url=rpc_url,
-            secret_key=secret_key,
+            fee_payer=str(fee_payer),
             mint=mint or SOLANA_USDC_MINT,
             decimals=decimals,
+            secret_key=secret_key,
             payment={
-                "scheme": challenge.get("scheme", "exact"),
-                "network": challenge.get("network") or network or SOLANA_MAINNET_NETWORK,
-                "asset": challenge.get("asset") or "USDC",
+                "network": challenge_network,
+                "asset": challenge_asset,
                 "amount": amount,
-                "from": creator,
                 "to": recipient,
-                "nonce": challenge.get("nonce"),
-                "expiresAt": challenge.get("expiresAt"),
-                "metadata": {
-                    **(challenge.get("metadata") or {}),
-                    "kind": "bounty-fund",
-                },
             },
         )
-        bounty = await self._create_retrying(
-            {**request, "payment": execution["payment"]}, attempts, interval_ms
-        )
-        return {"bounty": bounty, "payment": execution}
+        bounty = await self._create_retrying(request, payment_header, attempts, interval_ms)
+        return {"bounty": bounty, "paymentHeader": payment_header}
 
     async def _create_challenge(self, request: JsonDict) -> dict[str, Any]:
         """Probe ``POST /bounties`` once (no payment) to surface the 402 challenge.
@@ -116,15 +128,17 @@ class BountiesApi:
             raise
         raise ValueError("bounty create did not return a payment challenge")
 
-    async def _create_retrying(self, request: JsonDict, attempts: int, interval_ms: int) -> Json:
-        # The payment is already on chain; retry create (same signed payment map)
-        # only through confirmation lag. Unlike fund, do NOT recover-on-5xx: each
-        # create mints a fresh bountyId, so blind retries could double-create —
-        # the per-payer nonce replay protection guards the on-chain transfer.
+    async def _create_retrying(
+        self, request: JsonDict, payment_header: str, attempts: int, interval_ms: int
+    ) -> Json:
+        # The payment is already on chain; retry create (same signed payment
+        # header) only through confirmation lag. Unlike fund, do NOT recover-on-5xx:
+        # each create mints a fresh bountyId, so blind retries could double-create —
+        # the on-chain transfer's signature guards against double-settlement.
         attempts = max(1, attempts)
         for attempt in range(attempts):
             try:
-                return await self.create(request)
+                return await self.create(request, payment_header=payment_header)
             except TinyPlaceError as exc:
                 if attempt == attempts - 1 or not _should_retry_fund(exc):
                     raise

@@ -26,6 +26,10 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 thiserror = "2"
 async-trait = "0.1"
 
+# CLI binary only (the `tinyplace` bin). Optional so library consumers don't
+# pull it in; enabled by the `cli` feature.
+clap = { version = "4", features = ["derive"], optional = true }
+
 # Signal protocol (E2E encryption) primitives. Algorithms chosen to be
 # byte-compatible with the TS/Python SDKs: X25519 ECDH, HKDF/HMAC-SHA256,
 # AES-256-CBC + HMAC-SHA256 Encrypt-then-MAC.
@@ -35,6 +39,14 @@ hkdf = "0.12"
 hmac = "0.12"
 aes = "0.8"
 cbc = { version = "0.1", features = ["alloc"] }
+
+[features]
+cli = ["dep:clap"]
+
+[[bin]]
+name = "tinyplace"
+path = "src/cli/main.rs"
+required-features = ["cli"]
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }

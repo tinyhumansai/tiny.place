@@ -5,6 +5,8 @@ import {
   buildX402PaymentAuthorization,
   buildX402PaymentMap,
   buildX402PaymentPayload,
+  encodeX402PaymentHeader,
+  X402_PAYMENT_HEADER,
   signX402Authorization,
   x402AuthorizationToPaymentMap,
   type SigningKey,
@@ -82,6 +84,43 @@ describe("x402 helpers", () => {
       "metadata.publicKey": "public-key",
       "metadata.purpose": "registration",
     });
+  });
+
+  it("encodes a standard x402 v2 X-PAYMENT envelope", () => {
+    const authorization: X402Authorization = {
+      scheme: "exact",
+      network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      amount: "1000000",
+      from: payerAddress,
+      to: "treasury",
+      nonce: "pay_test",
+      expiresAt: "2026-06-21T00:00:00Z",
+      signature: "v1:ts:nonce:sig",
+      metadata: { domain: "tiny.place", feePayer: "facilitator" },
+    };
+
+    const header = encodeX402PaymentHeader(authorization);
+    // Decodes to a standard v2 PaymentPayload the backend parser accepts.
+    const decoded = JSON.parse(
+      new TextDecoder().decode(
+        Uint8Array.from(atob(header), (c) => c.charCodeAt(0)),
+      ),
+    );
+    expect(decoded.x402Version).toBe(2);
+    expect(decoded.accepted.payTo).toBe("treasury");
+    expect(decoded.accepted.amount).toBe("1000000");
+    expect(decoded.accepted.extra.feePayer).toBe("facilitator");
+    expect(decoded.payload.signature).toBe("v1:ts:nonce:sig");
+    expect(decoded.payload.authorization.from).toBe(payerAddress);
+    expect(decoded.payload.authorization.value).toBe("1000000");
+    expect(decoded.payload.authorization.validBefore).toBe(
+      "2026-06-21T00:00:00Z",
+    );
+  });
+
+  it("exposes the canonical x402 v2 submission header", () => {
+    expect(X402_PAYMENT_HEADER).toBe("PAYMENT-SIGNATURE");
   });
 
   it("keeps metadata sorted in canonical signing messages", () => {

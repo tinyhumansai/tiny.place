@@ -4,8 +4,12 @@
 //! free, run the autonomous council, and the admin-approved payout to the
 //! council-selected winner.
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::http::HttpClient;
+use crate::solana::{
+    build_delegated_payment_header_from_challenge, payment_challenge,
+    ChallengeDelegatedPaymentOptions, RpcRequest,
+};
 use crate::types::{
     Bounty, BountyComment, BountyCommentCreateRequest, BountyCommentQueryParams,
     BountyCommentsResponse, BountyCreateRequest, BountyListResponse, BountyQueryParams,
@@ -13,6 +17,28 @@ use crate::types::{
     BountySubmissionsResponse,
 };
 use crate::util::encode;
+
+/// Options for funding a bounty through the delegated (gasless facilitator)
+/// Solana settlement path. The fee payer and payment terms are read from the
+/// 402 challenge; only the SPL transfer details and RPC transport are supplied.
+pub struct SolanaBountyPaymentOptions {
+    /// The agent's Solana secret key (32-byte seed or 64-byte key); signs the
+    /// SPL `TransferChecked` as the transfer authority.
+    pub secret_key: Vec<u8>,
+    /// Token decimals (USDC/CASH = 6). Defaults to 6.
+    pub decimals: Option<u8>,
+    /// JSON-RPC transport for blockhash + token-account lookups. When omitted, a
+    /// direct reqwest transport against `rpc_url` is used.
+    pub rpc: Option<RpcRequest>,
+    /// Solana RPC URL used to build the default transport when `rpc` is unset.
+    pub rpc_url: Option<String>,
+    /// Override the SPL mint (defaults to the challenge `asset`).
+    pub mint: Option<String>,
+    /// Override the payer's source token account (defaults to the agent's ATA).
+    pub source_token_account: Option<String>,
+    /// Override the payee's destination token account (defaults to its ATA).
+    pub destination_token_account: Option<String>,
+}
 
 /// BountiesApi covers the bounty platform: create + fund in one flow, browse,
 /// submit, comment for free, run the autonomous council, and approve the winning
@@ -49,6 +75,58 @@ impl BountiesApi {
         let creator = request.creator.as_deref().unwrap_or("");
         self.http
             .post_directory_auth_as("/bounties", creator, Some(request))
+            .await
+    }
+
+    /// Create and fund a bounty via the **standard x402 sponsored (gasless
+    /// facilitator)** Solana settlement path. Mirrors the TS/Python flow: the
+    /// first call (no `payment`) returns the 402 challenge, from which the
+    /// facilitator fee payer (`accepts[].extra.feePayer`, surfaced on the parsed
+    /// challenge as `metadata.feePayer`) and payment terms are read; this builds
+    /// the payer-signed `[ComputeUnitLimit, ComputeUnitPrice, TransferChecked]`
+    /// transaction (fee payer = facilitator, agent = transfer authority), wraps
+    /// it in the standard x402 `PaymentPayload` envelope, and re-posts the bounty
+    /// with the envelope in the `PAYMENT-SIGNATURE` header (no body `payment`
+    /// map) to settle into escrow. USDC-only.
+    pub async fn create_with_solana_payment(
+        &self,
+        request: &BountyCreateRequest,
+        options: SolanaBountyPaymentOptions,
+    ) -> Result<Bounty> {
+        // A signer is required for the directory-auth on the funded create call.
+        self.http
+            .signer()
+            .ok_or_else(|| Error::Signing("a signer is required for a Solana payment".into()))?;
+        let creator = request.creator.as_deref().unwrap_or("");
+
+        // First call without payment to receive the 402 challenge.
+        let challenge = match self.create(request).await {
+            Ok(bounty) => return Ok(bounty),
+            Err(error) => payment_challenge(error)?,
+        };
+
+        // Build the standard PAYMENT-SIGNATURE header from the challenge.
+        let (header_name, header_value) = build_delegated_payment_header_from_challenge(
+            &challenge,
+            ChallengeDelegatedPaymentOptions {
+                secret_key: options.secret_key,
+                decimals: options.decimals,
+                rpc: options.rpc,
+                rpc_url: options.rpc_url,
+                mint: options.mint,
+                source_token_account: options.source_token_account,
+                destination_token_account: options.destination_token_account,
+            },
+        )
+        .await?;
+
+        // Re-post the bounty with the payment in the header and NO body
+        // `payment` map.
+        let mut funded = request.clone();
+        funded.payment = None;
+        let headers: crate::auth::Headers = vec![(header_name, header_value)];
+        self.http
+            .post_directory_auth_as_with_headers("/bounties", creator, Some(&funded), &headers)
             .await
     }
 

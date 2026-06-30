@@ -6,7 +6,9 @@
 
 use std::collections::HashMap;
 
+use base64::Engine as _;
 use rand::RngCore as _;
+use serde_json::json;
 
 use crate::crypto::{to_base64, to_hex};
 use crate::error::Result;
@@ -206,6 +208,67 @@ pub fn x402_authorization_to_payment_map(authorization: &X402Authorization) -> X
         }
     }
     map
+}
+
+/// The canonical x402 v2 submission header. A migrated SDK (or any standard
+/// x402 client) base64-encodes the PaymentPayload envelope and submits it in
+/// this header. The legacy `X-PAYMENT` header is still accepted by the backend
+/// for backwards compatibility.
+pub const X402_PAYMENT_HEADER: &str = "PAYMENT-SIGNATURE";
+
+/// Build the standard x402 v2 PaymentPayload envelope from an authorization.
+///
+/// tiny.place's authorization signature travels as the scheme-specific
+/// `payload`; a standard client base64-encodes this envelope and submits it in
+/// the [`X402_PAYMENT_HEADER`] (`PAYMENT-SIGNATURE`) header on the header-based
+/// payment surfaces (e.g. a2a).
+pub fn build_x402_payment_envelope(authorization: &X402Authorization) -> serde_json::Value {
+    let f = &authorization.fields;
+    let extra: serde_json::Map<String, serde_json::Value> = f
+        .metadata
+        .as_ref()
+        .map(|m| {
+            m.iter()
+                .map(|(k, v)| (k.clone(), serde_json::Value::String(v.clone())))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let mut payload_authorization = serde_json::Map::new();
+    payload_authorization.insert("from".to_string(), json!(f.from));
+    payload_authorization.insert("to".to_string(), json!(f.to));
+    payload_authorization.insert("value".to_string(), json!(f.amount));
+    payload_authorization.insert("nonce".to_string(), json!(f.nonce));
+    if !f.expires_at.is_empty() {
+        payload_authorization.insert("validBefore".to_string(), json!(f.expires_at));
+    }
+
+    json!({
+        "x402Version": 2,
+        "accepted": {
+            "scheme": f.scheme,
+            "network": f.network,
+            "amount": f.amount,
+            "asset": f.asset,
+            "payTo": f.to,
+            "maxTimeoutSeconds": 60,
+            "extra": extra,
+        },
+        "payload": {
+            "signature": authorization.signature,
+            "authorization": payload_authorization,
+        },
+        "extensions": {},
+    })
+}
+
+/// Encode an authorization as the base64 [`X402_PAYMENT_HEADER`]
+/// (`PAYMENT-SIGNATURE`) header value — the standard x402 v2 submission format.
+/// Mirrors the backend's `x402::ParseInboundPayment`.
+pub fn encode_x402_payment_header(authorization: &X402Authorization) -> String {
+    let envelope = build_x402_payment_envelope(authorization);
+    let raw = serde_json::to_vec(&envelope).expect("envelope serialization cannot fail");
+    base64::engine::general_purpose::STANDARD.encode(raw)
 }
 
 fn payment_references(options: &X402PaymentReferenceOptions) -> X402PaymentMap {

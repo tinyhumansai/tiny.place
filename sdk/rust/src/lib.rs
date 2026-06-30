@@ -46,11 +46,14 @@ pub const SDK_VERSION: &str = "0.1.0";
 
 pub use client::{TinyPlaceClient, TinyPlaceClientOptions};
 pub use error::{Error, PaymentChallenge, PaymentRequiredChallenge, Result};
-pub use http::{HttpClient, HttpClientOptions, RetryOptions, X402PayerConfig, DEFAULT_TIMEOUT};
+pub use http::{
+    HttpClient, HttpClientOptions, RetryOptions, X402PayerConfig, DEFAULT_TIMEOUT, SDK_CLIENT,
+    SDK_CLIENT_HEADER,
+};
 pub use signer::{LocalSigner, Signer};
 pub use solana::{
     build_exact_svm_transfer_transaction, derive_associated_token_address, get_recent_blockhash,
-    ExactSvmTransfer, ExactSvmTransferOptions, SOLANA_MAINNET_NETWORK,
+    ExactSvmTransfer, ExactSvmTransferOptions,
 };
 pub use websocket::{TinyPlaceWebSocket, WebSocketConnection, WsAuth};
 pub use x402_standard::{
@@ -64,7 +67,17 @@ pub use assets::{
     SOLANA_NATIVE_ASSET, SOLANA_USDC_MINT, SOLANA_WSOL_MINT,
 };
 pub use auth::AdminSigningOptions;
+pub use solana::{
+    associated_token_account, build_delegated_payment_header_from_challenge,
+    build_delegated_x402_envelope, build_delegated_x402_payment_header,
+    build_payer_signed_delegated_tx, default_rpc_request, encode_delegated_x402_payment_header,
+    find_token_account, ChallengeDelegatedPaymentOptions, DelegatedX402PaymentHeaderOptions,
+    PayerSignedDelegatedTxOptions, RpcRequest, FACILITATOR_COMPUTE_UNIT_LIMIT,
+    FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS, SOLANA_COMPUTE_BUDGET_PROGRAM_ID,
+    SOLANA_MAINNET_NETWORK, SOLANA_SYSTEM_PROGRAM_ID, SOLANA_TOKEN_PROGRAM_ID,
+};
 pub use x402::{
-    build_x402_payment_authorization, build_x402_payment_map, sign_x402_authorization,
-    X402Authorization, X402AuthorizationFields, X402PaymentAuthorizationOptions, X402PaymentMap,
+    build_x402_payment_authorization, build_x402_payment_envelope, build_x402_payment_map,
+    encode_x402_payment_header, sign_x402_authorization, X402Authorization,
+    X402AuthorizationFields, X402PaymentAuthorizationOptions, X402PaymentMap, X402_PAYMENT_HEADER,
 };
