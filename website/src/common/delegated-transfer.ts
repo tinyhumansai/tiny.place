@@ -106,7 +106,8 @@ export async function buildDelegatedTransfer(
 ): Promise<string> {
 	const source = associatedTokenAddress(options.payer, options.mint);
 	const destination = associatedTokenAddress(options.treasury, options.mint);
-	const { blockhash } = await options.connection.getLatestBlockhash("confirmed");
+	const { blockhash } =
+		await options.connection.getLatestBlockhash("confirmed");
 
 	const transaction = new Transaction();
 	transaction.feePayer = options.feePayer;
