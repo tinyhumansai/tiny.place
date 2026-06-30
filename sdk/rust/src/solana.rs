@@ -147,6 +147,7 @@ pub async fn build_payer_signed_delegated_tx(
             .compute_unit_price_micro_lamports
             .unwrap_or(FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS),
         recent_blockhash: &recent_blockhash,
+        memo: "",
     })?;
 
     // Sign as the authority (signer index 1). The fee-payer slot (index 0) is
@@ -405,6 +406,10 @@ struct FacilitatorMessage<'a> {
     compute_unit_limit: u32,
     compute_unit_price_micro_lamports: u64,
     recent_blockhash: &'a str,
+    /// SPL Memo embedded for tx uniqueness. The exact-SVM scheme requires it (the
+    /// facilitator rejects a transfer whose memo doesn't match the server-supplied
+    /// `extra.memo`). An empty string emits no Memo instruction.
+    memo: &'a str,
 }
 
 /// Serialize a two-signer legacy message for the facilitator transfer. Account
@@ -412,10 +417,12 @@ struct FacilitatorMessage<'a> {
 /// then writable non-signers, then read-only non-signers. The fee payer must be
 /// account 0; the transfer authority is a read-only signer at index 1.
 fn two_signer_facilitator_message(options: &FacilitatorMessage<'_>) -> Result<Vec<u8>> {
+    let has_memo = !options.memo.is_empty();
     // 0: feePayer (writable signer), 1: authority (read-only signer),
     // 2: source, 3: destination (writable non-signers),
-    // 4: mint, 5: token program, 6: compute budget program (read-only non-signers).
-    let account_keys = [
+    // 4: mint, 5: token program, 6: compute budget program[, 7: memo program]
+    // (read-only non-signers).
+    let mut account_keys = vec![
         options.fee_payer,
         options.authority,
         options.source_token_account,
@@ -424,10 +431,12 @@ fn two_signer_facilitator_message(options: &FacilitatorMessage<'_>) -> Result<Ve
         SOLANA_TOKEN_PROGRAM_ID,
         SOLANA_COMPUTE_BUDGET_PROGRAM_ID,
     ];
-    // Header: 2 required signatures, 0 readonly-signed accounts? No — the
-    // authority is a read-only SIGNED account, so readonly-signed = 1; the last
-    // three keys are readonly-unsigned = 3.
-    let header = [2u8, 1u8, 3u8];
+    if has_memo {
+        account_keys.push(SOLANA_MEMO_PROGRAM_ID);
+    }
+    // 2 required signatures; the authority is the lone read-only SIGNED account;
+    // the trailing mint + program keys are read-only unsigned (3, or 4 with memo).
+    let header = [2u8, 1u8, if has_memo { 4u8 } else { 3u8 }];
 
     // SetComputeUnitLimit: u8 discriminant (2) + u32 LE limit.
     let mut compute_limit_data = Vec::with_capacity(5);
@@ -452,8 +461,9 @@ fn two_signer_facilitator_message(options: &FacilitatorMessage<'_>) -> Result<Ve
         message.extend_from_slice(&decode_pubkey(key)?);
     }
     message.extend_from_slice(&blockhash);
-    // Three instructions.
-    message.extend_from_slice(&short_vec(3));
+    // Instructions: [SetComputeUnitLimit, SetComputeUnitPrice, TransferChecked]
+    // plus a trailing Memo when one is supplied.
+    message.extend_from_slice(&short_vec(if has_memo { 4 } else { 3 }));
     // ComputeBudget SetComputeUnitLimit (program index 6, no accounts).
     message.push(6);
     message.extend_from_slice(&short_vec(0));
@@ -470,6 +480,13 @@ fn two_signer_facilitator_message(options: &FacilitatorMessage<'_>) -> Result<Ve
     message.extend_from_slice(&[2u8, 4u8, 3u8, 1u8]);
     message.extend_from_slice(&short_vec(transfer_data.len() as u32));
     message.extend_from_slice(&transfer_data);
+    // SPL Memo (program index 7, no accounts): the memo string is the instruction data.
+    if has_memo {
+        message.push(7);
+        message.extend_from_slice(&short_vec(0));
+        message.extend_from_slice(&short_vec(options.memo.len() as u32));
+        message.extend_from_slice(options.memo.as_bytes());
+    }
     Ok(message)
 }
 
@@ -687,6 +704,7 @@ pub fn build_exact_svm_transfer_transaction(
     }
 
     let amount = normalized_amount(&options.amount)?;
+    let memo = options.memo.clone().unwrap_or_default();
     let source_token_account = options
         .source_token_account
         .unwrap_or_else(|| associated_token_account(&authority, &options.mint).unwrap_or_default());
@@ -706,6 +724,7 @@ pub fn build_exact_svm_transfer_transaction(
             .compute_unit_price_micro_lamports
             .unwrap_or(FACILITATOR_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS),
         recent_blockhash: &options.recent_blockhash,
+        memo: &memo,
     })?;
     let authority_signature = signing_key.sign(&message).to_bytes();
     let mut wire = Vec::with_capacity(2 + 64 + 64 + message.len());
@@ -718,7 +737,7 @@ pub fn build_exact_svm_transfer_transaction(
         from: authority,
         source_token_account,
         destination_token_account,
-        memo: options.memo.unwrap_or_default(),
+        memo,
     })
 }
 

@@ -23,6 +23,7 @@ pub mod mcp;
 pub mod messages;
 pub mod moderation;
 pub mod payments;
+pub mod pricing;
 pub mod profiles;
 pub mod registry;
 pub mod reputation;

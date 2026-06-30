@@ -249,15 +249,10 @@ async fn siws_signer_passes_token_through() {
     )
     .await
     .unwrap();
-    let query = sign_directory_write_query(
-        &signer,
-        "wallet-public-key",
-        "GET",
-        "/directory/stream",
-        "",
-    )
-    .await
-    .unwrap();
+    let query =
+        sign_directory_write_query(&signer, "wallet-public-key", "GET", "/directory/stream", "")
+            .await
+            .unwrap();
     let canonical = sign_fresh_canonical_payload(&signer, "{}").await.unwrap();
 
     assert!(request[0]

@@ -12,9 +12,7 @@ use std::collections::HashMap;
 use url::Url;
 
 use crate::error::{Error, Result};
-use crate::types::{
-    AgentCard, AgentInterface, AgentQueryParams, ExtendedAgentCard, PaymentMethod,
-};
+use crate::types::{AgentCard, AgentInterface, AgentQueryParams, ExtendedAgentCard, PaymentMethod};
 
 const MAX_AGENT_ID_LEN: usize = 128;
 const MAX_AGENT_NAME_LEN: usize = 120;

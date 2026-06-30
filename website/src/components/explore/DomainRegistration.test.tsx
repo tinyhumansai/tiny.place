@@ -74,6 +74,28 @@ vi.mock("./x402-confirm", () => ({
 	useOptionalX402Confirm: (): typeof confirmX402 => confirmX402,
 }));
 
+// The component reads the wallet adapter (for the standard delegated-tx path); in
+// these tests no adapter is connected, so the wallet is null and the component
+// uses the legacy signed-payment-map path exercised below.
+vi.mock("@src/common/tinyplace-wallet", () => ({
+	useTinyplaceWallet: (): {
+		connected: boolean;
+		connecting: boolean;
+		disconnect: () => Promise<void>;
+		openConnectModal: () => void;
+		publicKey: null;
+		signTransaction: undefined;
+	} => ({
+		connected: false,
+		connecting: false,
+		disconnect: async (): Promise<void> => {},
+		openConnectModal: (): void => {},
+		publicKey: null,
+		signTransaction: undefined,
+	}),
+	useTinyplaceConnection: (): Record<string, never> => ({}),
+}));
+
 function renderRegistration(): void {
 	const queryClient = new QueryClient({
 		defaultOptions: { mutations: { retry: false }, queries: { retry: false } },

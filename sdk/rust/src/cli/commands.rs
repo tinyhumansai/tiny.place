@@ -1,3 +1,10 @@
+// The generic `to_value(client.x.method().await?)` helpers below trip the
+// edition-2024 never-type-fallback forward-compat lint: the `?` lets `!` fall
+// back to `()`, which is correct under this crate's 2021 edition. Suppress it
+// here until the crate migrates to edition 2024 (which will require explicit
+// type annotations at these call sites).
+#![allow(dependency_on_unit_never_type_fallback)]
+
 use std::sync::Arc;
 
 use serde::Serialize;

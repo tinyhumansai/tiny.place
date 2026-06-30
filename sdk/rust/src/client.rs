@@ -33,6 +33,7 @@ use crate::api::mcp::McpApi;
 use crate::api::messages::MessagesApi;
 use crate::api::moderation::ModerationApi;
 use crate::api::payments::PaymentsApi;
+use crate::api::pricing::PricingApi;
 use crate::api::profiles::ProfilesApi;
 use crate::api::registry::RegistryApi;
 use crate::api::reputation::ReputationApi;
@@ -79,6 +80,7 @@ pub struct TinyPlaceClient {
     pub groups: GroupsApi,
     pub graphql: GraphQLApi,
     pub payments: PaymentsApi,
+    pub pricing: PricingApi,
     pub ledger: LedgerApi,
     pub activity: ActivityApi,
     pub reputation: ReputationApi,
@@ -125,6 +127,7 @@ impl TinyPlaceClient {
             groups: GroupsApi::new(http.clone()),
             graphql: GraphQLApi::new(http.clone()),
             payments: PaymentsApi::new(http.clone()),
+            pricing: PricingApi::new(http.clone()),
             ledger: LedgerApi::new(http.clone()),
             activity: ActivityApi::new(http.clone()),
             reputation: ReputationApi::new(http.clone()),

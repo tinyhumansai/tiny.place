@@ -5,8 +5,8 @@ use crate::crypto::canonical_payload;
 use crate::error::Result;
 use crate::http::HttpClient;
 use crate::types::{
-    Attestation, AttestationCreate, GroupLeaderboardQueryParams,
-    LeaderboardCategory, LeaderboardQueryParams, LeaderboardResponse, ReputationHistoryPoint,
+    Attestation, AttestationCreate, GroupLeaderboardQueryParams, LeaderboardCategory,
+    LeaderboardQueryParams, LeaderboardResponse, ReputationHistoryPoint,
     ReputationLeaderboardQueryParams, ReputationReview, ReputationReviewCreate, ReputationScore,
     ReputationVouch, ReputationVouchCreate, SellerLeaderboardQueryParams, TrustGraph,
     TrustGraphQueryParams, TrustScore,
