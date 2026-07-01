@@ -412,7 +412,12 @@ const WalletAuthSync = (): FunctionComponent => {
 					setLoginSignature(null);
 				});
 			}
-			clearSession();
+			// A read-only view-as-agent link session (#190) is established without a
+			// wallet by design; the wallet sync must not clear it when no wallet is
+			// connected. Only a wallet-derived session is cleared here.
+			if (!useAuthStore.getState().onboardGrant) {
+				clearSession();
+			}
 			return;
 		}
 		activeWalletId.current = publicKey.toBase58();

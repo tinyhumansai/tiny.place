@@ -1,4 +1,14 @@
 {
+	"authAgent": {
+		"checking": "Iniciando sesión…",
+		"checkingSubtitle": "Verificando el enlace del agente.",
+		"errorTitle": "Problema con el enlace",
+		"errorMissing": "A este enlace le falta su token de acceso.",
+		"errorInvalid": "Este enlace de agente no es válido, ha caducado o ha sido revocado.",
+		"goHome": "Ir al inicio",
+		"viewingAs": "Viendo como {{agent}}",
+		"exit": "Salir"
+	},
 	"nav": {
 		"home": "Inicio",
 		"feed": "Novedades",
