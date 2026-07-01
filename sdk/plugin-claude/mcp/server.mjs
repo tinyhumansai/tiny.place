@@ -12,10 +12,12 @@
 // The MCP process is long-lived for the whole Claude Code session, so the
 // listener and the active-wallet selection persist across turns.
 
+import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync, existsSync, chmodSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -138,6 +140,41 @@ function enqueueInbound(address, msg) {
   }
 }
 
+// ── server-side auto-responder trigger ───────────────────────────────────────
+// The MCP server is a daemon that keeps draining the relay whether the Claude UI
+// is idle or busy — so it, not the Stop hook, is what can react to inbound mail on
+// an IDLE session (the channel push does not wake an idle session). On each newly
+// enqueued DM it spawns the same dispatch.mjs the Stop hook runs, targeted at THIS
+// agent. ON by default — an idle agent has no other way to surface pending mail;
+// disable with TINYPLACE_AUTORESPOND=off or the `autorespond` tool.
+const PLUGIN_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+let autorespondOff = process.env.TINYPLACE_AUTORESPOND === "off";
+function autorespondEnabled() {
+  return !autorespondOff && !process.env.TINYPLACE_SEND_ONLY;
+}
+let dispatchPending = false;
+function maybeSpawnResponder() {
+  if (!autorespondEnabled() || dispatchPending || !session) return;
+  // Coalesce: one dispatch per drain burst — dispatch.mjs atomically claims the
+  // whole queued batch, so a single spawn covers every message just enqueued.
+  dispatchPending = true;
+  const { name, address } = session;
+  setTimeout(() => {
+    dispatchPending = false;
+    try {
+      spawn("node", [join(PLUGIN_ROOT, "hooks", "dispatch.mjs")], {
+        detached: true,
+        stdio: "ignore",
+        // Target THIS agent explicitly so it works with multiple sessions (the
+        // Stop-hook path still falls back to the active-state file).
+        env: { ...process.env, TINYPLACE_DISPATCH_ADDRESS: address, TINYPLACE_DISPATCH_WALLET: name },
+      }).unref();
+    } catch {
+      // best-effort; the Stop hook remains a backup trigger
+    }
+  }, 250);
+}
+
 // Reply correlation: an auto-reply embeds the id of the message it answers as a
 // header right after the auto tag, so the querying side can match a reply to its
 // specific sent message (check_reply). Both markers live INSIDE the encrypted
@@ -224,6 +261,7 @@ async function drain() {
   session.draining = true;
   try {
     const messages = await readMessages(session.client, session.signer);
+    let enqueuedAny = false;
     for (const rawMsg of messages) {
       // Parse the control header up front so BOTH paths see clean text and the
       // in_reply_to correlation id: the waiter path (send_and_wait / check_reply)
@@ -243,9 +281,14 @@ async function drain() {
         // itself an auto-reply — enqueue it for the Stop-hook auto-responder.
         session.buffer.push(msg);
         void pushToChannel(msg);
-        if (!auto) enqueueInbound(session.address, msg);
+        if (!auto) {
+          enqueueInbound(session.address, msg);
+          enqueuedAny = true;
+        }
       }
     }
+    // Daemon trigger: react to new mail even when the Claude UI is idle.
+    if (enqueuedAny) maybeSpawnResponder();
   } catch {
     // Relay hiccup / nothing to read — try again on the next tick.
   } finally {
@@ -543,6 +586,7 @@ server.registerTool(
       wsConnected: Boolean(session.ws),
       sendOnly: Boolean(process.env.TINYPLACE_SEND_ONLY?.trim()),
       apiUrlFromEnv: process.env.TINYPLACE_API_URL ?? process.env.TINYPLACE_ENDPOINT ?? null,
+      autorespond: autorespondEnabled() ? "on" : "off",
     });
   },
 );
@@ -658,6 +702,23 @@ server.registerTool(
     } catch (e) {
       return fail(String(e?.message ?? e));
     }
+  },
+);
+
+server.registerTool(
+  "autorespond",
+  {
+    title: "Toggle the auto-responder",
+    description:
+      "Turn the autonomous auto-responder on or off for this session (default ON). When on, inbound DMs are answered by a background responder even while the session is idle. Pass no argument to just report the current state.",
+    inputSchema: {
+      state: z.enum(["on", "off", "status"]).optional().describe("on, off, or status (default)."),
+    },
+  },
+  async ({ state }) => {
+    if (state === "on") autorespondOff = false;
+    else if (state === "off") autorespondOff = true;
+    return ok({ autorespond: autorespondEnabled() ? "on" : "off", sendOnly: Boolean(process.env.TINYPLACE_SEND_ONLY) });
   },
 );
 

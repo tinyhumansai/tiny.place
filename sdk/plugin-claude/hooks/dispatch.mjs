@@ -43,7 +43,11 @@ function readActive(sessionId) {
   return null;
 }
 
-const active = readActive(readSessionId());
+// The MCP server (server-side trigger) targets a specific agent via env; the
+// Stop-hook path falls back to the active-state file keyed by session id.
+const active = process.env.TINYPLACE_DISPATCH_ADDRESS
+  ? { address: process.env.TINYPLACE_DISPATCH_ADDRESS, wallet: process.env.TINYPLACE_DISPATCH_WALLET ?? "" }
+  : readActive(readSessionId());
 if (!active?.address) process.exit(0);
 
 const queueDir = join(QUEUE_DIR, encodeURIComponent(active.address));
