@@ -70,6 +70,51 @@ async function createWallet(name) {
   saveWallets(wallets);
 }
 
+// Base58 decode (Solana secret-key / cryptoId encoding), inline to avoid a dep.
+const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function base58Decode(str) {
+  let num = 0n;
+  for (const ch of str) {
+    const idx = BASE58.indexOf(ch);
+    if (idx === -1) throw new Error(`invalid base58 character '${ch}'`);
+    num = num * 58n + BigInt(idx);
+  }
+  const bytes = [];
+  while (num > 0n) { bytes.unshift(Number(num % 256n)); num /= 256n; }
+  for (const ch of str) { if (ch === "1") bytes.unshift(0); else break; }
+  return Uint8Array.from(bytes);
+}
+
+// Extract the 32-byte Ed25519 seed from whatever the user pastes: a base58 Solana
+// secret key (32 or 64 bytes), a Solana id.json array, or a 64-hex-char seed.
+function parseSecretToSeed(input) {
+  const s = input.trim();
+  if (/^[0-9a-fA-F]{64}$/.test(s)) return hexToBytes(s); // already a 32-byte seed
+  const bytes = s.startsWith("[") ? Uint8Array.from(JSON.parse(s)) : base58Decode(s);
+  if (bytes.length !== 32 && bytes.length !== 64) {
+    throw new Error(`secret key must be 32 or 64 bytes (got ${bytes.length})`);
+  }
+  return bytes.slice(0, 32);
+}
+
+// Import an existing wallet into the store, deriving the same {address, publicKey}
+// the plugin rebuilds via fromSeed. Same seed → same identity as the source wallet.
+async function importWallet(name, secretInput) {
+  const wallets = loadWallets();
+  if (wallets.some((w) => w.name === name)) throw new Error(`A wallet named '${name}' already exists.`);
+  const seed = parseSecretToSeed(secretInput);
+  const signer = await LocalSigner.fromSeed(seed);
+  wallets.push({
+    name,
+    address: signer.agentId,
+    publicKey: signer.publicKeyBase64,
+    secretKey: Buffer.from(seed).toString("hex"),
+    createdAt: new Date().toISOString(),
+  });
+  saveWallets(wallets);
+  return { address: signer.agentId, publicKey: signer.publicKeyBase64 };
+}
+
 // ── tiny ANSI helpers ────────────────────────────────────────────────────────
 const C = {
   reset: "\x1b[0m",
@@ -166,6 +211,24 @@ async function registerFlow(wallet) {
   await prompt("\n  Press enter to continue…");
 }
 
+async function importFlow() {
+  clear();
+  process.stdout.write(`  ${C.dim}Import an existing wallet — paste a base58 Solana secret key, a Solana${C.reset}\n`);
+  process.stdout.write(`  ${C.dim}id.json array, or a 32-byte seed in hex.${C.reset}\n`);
+  process.stdout.write(`  ${C.yellow}The secret is stored locally (0600) and is echoed as you type.${C.reset}\n\n`);
+  const name = await prompt("  Name for this wallet (e.g. main): ");
+  if (!name) return;
+  const secret = await prompt("  Secret (base58 / id.json / seed-hex): ");
+  if (!secret) return;
+  try {
+    const imported = await importWallet(name, secret);
+    process.stdout.write(`\n  ${C.green}Imported${C.reset} ${name} → ${short(imported.address)}\n`);
+  } catch (error) {
+    console.error(`  ${error.message}`);
+  }
+  await prompt("  Press enter…");
+}
+
 async function main() {
   const argv = process.argv.slice(2);
 
@@ -195,6 +258,7 @@ async function main() {
     const items = [
       ...wallets.map((w) => ({ label: w.name, hint: `${w.handle ? "@" + w.handle + "  " : ""}${short(w.address)}` })),
       { label: "＋ Create new wallet", hint: "offline · free" },
+      { label: "📥 Import existing wallet", hint: "Solana key / seed" },
       ...(wallets.length ? [{ label: "⚡ Register @handle", hint: "on staging" }] : []),
       { label: "Quit", hint: "" },
     ];
@@ -220,6 +284,8 @@ async function main() {
           await prompt("  Press enter…");
         }
       }
+    } else if (action.startsWith("📥")) {
+      await importFlow();
     } else if (action.startsWith("⚡")) {
       const pick = await menu("Register which wallet?", [
         ...wallets.map((w) => ({ label: w.name, hint: short(w.address) })),
