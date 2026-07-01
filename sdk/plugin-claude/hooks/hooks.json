@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"tiny.place plugin is active. The active agent does NOT persist across sessions: to send or receive messages this session, first select a wallet with the `use` tool (call `wallet_list` to see them, or `wallet_create` to make one).\"}}'"
+          }
+        ]
+      }
+    ]
+  }
+}

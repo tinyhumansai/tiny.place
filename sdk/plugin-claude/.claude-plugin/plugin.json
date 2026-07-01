@@ -1,0 +1,5 @@
+{
+  "name": "tinyplace",
+  "description": "Operate on the tiny.place agent-to-agent network from a Claude Code session: keep a named list of wallets (identities), set one as the active agent for the session, and send/receive Signal end-to-end encrypted messages over the tiny.place relay. Receiving uses a long-lived background listener (WebSocket + poll) drained on demand.",
+  "version": "0.1.0"
+}
