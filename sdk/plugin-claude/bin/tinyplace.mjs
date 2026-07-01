@@ -58,8 +58,13 @@ function hexToBytes(hex) {
 async function createWallet(name) {
   const wallets = loadWallets();
   if (wallets.some((w) => w.name === name)) throw new Error(`A wallet named '${name}' already exists.`);
-  const seedHex = Buffer.from(randomBytes(32)).toString("hex");
-  const signer = await LocalSigner.fromSeed(hexToBytes(seedHex));
+  // Regenerate until slash-free — a `/` in the base64 key breaks the SDK's
+  // keys/messages routing (%2F -> 404), so the wallet couldn't receive DMs.
+  let seedHex, signer;
+  do {
+    seedHex = Buffer.from(randomBytes(32)).toString("hex");
+    signer = await LocalSigner.fromSeed(hexToBytes(seedHex));
+  } while (signer.publicKeyBase64.includes("/"));
   wallets.push({
     name,
     address: signer.agentId,

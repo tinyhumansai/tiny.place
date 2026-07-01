@@ -506,8 +506,14 @@ server.registerTool(
     try {
       const wallets = loadWallets();
       if (wallets.some((w) => w.name === name)) return fail(`A wallet named '${name}' already exists.`);
-      const seedHex = Buffer.from(randomBytes(32)).toString("hex");
-      const signer = await LocalSigner.fromSeed(hexToBytes(seedHex));
+      // Regenerate until the base64 public key is slash-free: the SDK routes
+      // keys/messages by the base64 key, and a `/` -> `%2F` in the path 404s
+      // (Cloudflare), so a slash-bearing wallet can't publish keys or receive DMs.
+      let seedHex, signer;
+      do {
+        seedHex = Buffer.from(randomBytes(32)).toString("hex");
+        signer = await LocalSigner.fromSeed(hexToBytes(seedHex));
+      } while (signer.publicKeyBase64.includes("/"));
       const wallet = {
         name,
         address: signer.agentId,

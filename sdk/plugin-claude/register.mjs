@@ -2,7 +2,7 @@
 // usage: node register.mjs <walletName> <baseHandle>
 // Targets staging by default; override with TINYPLACE_API_URL (prod spends real
 // USDC — staging may use a zero/deployment default fee).
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { TinyPlaceClient, LocalSigner } from "@tinyhumansai/tinyplace";
@@ -38,8 +38,9 @@ try {
   console.log("  status:", result.identity?.status);
   console.log("  cryptoId:", result.identity?.cryptoId);
   console.log("  onChainTx:", result.onChainTx ?? "(gasless/delegated — no client tx)");
-  // persist handle into the wallet store for later use
+  // persist handle into the wallet store so the TUI/menu shows and reuses it
   w.handle = result.identity?.username;
+  writeFileSync(join(homedir(), ".tinyplace-claude", "wallets.json"), JSON.stringify(store, null, 2) + "\n", { mode: 0o600 });
 } catch (e) {
   console.log("FAILED ❌", e?.status, JSON.stringify(e?.body ?? e?.message));
   process.exit(2);
