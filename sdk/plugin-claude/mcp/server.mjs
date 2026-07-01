@@ -268,6 +268,7 @@ function startListener() {
   } catch {
     // No ws — poll-only is fine.
   }
+  session.listening = true;
 }
 
 function teardownListener() {
@@ -308,6 +309,7 @@ async function adopt(walletName) {
     ws: null,
     pollTimer: null,
     draining: false,
+    listening: false,
   };
   let keysPublished = false;
   let cardPublished = false;
@@ -339,7 +341,7 @@ async function adopt(walletName) {
     active: { name: wallet.name, address: wallet.address, publicKey: wallet.publicKey },
     keysPublished,
     cardPublished,
-    listening: true,
+    listening: Boolean(session.listening),
   };
 }
 
@@ -536,6 +538,11 @@ server.registerTool(
       buffered: session.buffer.length,
       pendingWaiters: session.waiters.length,
       baseUrl: BASE_URL,
+      listening: Boolean(session.listening),
+      pollActive: Boolean(session.pollTimer),
+      wsConnected: Boolean(session.ws),
+      sendOnly: Boolean(process.env.TINYPLACE_SEND_ONLY?.trim()),
+      apiUrlFromEnv: process.env.TINYPLACE_API_URL ?? process.env.TINYPLACE_ENDPOINT ?? null,
     });
   },
 );
