@@ -39,8 +39,22 @@ const BASE_URL =
   process.env.TINYPLACE_ENDPOINT ??
   "https://staging-api.tiny.place";
 const ASSIGN_FILE = join(DATA_DIR, "assignments.json");
+// Auto-responder: durable per-agent inbox queue the Stop-hook dispatcher drains,
+// plus per-agent state (active identity + per-peer reply counters).
+const QUEUE_DIR = join(DATA_DIR, "queue");
+const AUTORESPOND_DIR = join(DATA_DIR, "autorespond");
+// Prefixes an auto-generated reply's plaintext so the recipient recognizes it
+// and refuses to auto-respond back. This tag IS the loop guard: drain() never
+// enqueues a tagged message, so an auto-reply can never trigger another one —
+// no rate cap needed. E2E: only the peer sees it (the relay sees ciphertext).
+const AUTO_SENTINEL = "tp-auto";
 const POLL_INTERVAL_MS = 5000;
-const DEFAULT_WAIT_SECONDS = 55;
+// A synchronous request→reply round-trip waits on the PEER's auto-responder,
+// which spins up an LLM (poll + Stop-hook + `claude -p` + generation + send).
+// That's tens of seconds, so default to 3 min. NOTE: the *calling* session must
+// allow an MCP tool call to run this long — set MCP_TOOL_TIMEOUT (ms) on that
+// session (the launcher does) or the client kills the call before the reply lands.
+const DEFAULT_WAIT_SECONDS = 180;
 
 // Scope key for "which wallet is assigned here". Each Claude Code session gets
 // its own MCP process with CLAUDE_CODE_SESSION_ID set (v2.1.154+), so we key by
@@ -86,6 +100,74 @@ function loadAssignments() {
 function saveAssignments(map) {
   ensureDirs();
   writeFileSync(ASSIGN_FILE, JSON.stringify(map, null, 2) + "\n", { mode: 0o600 });
+}
+
+// ── auto-responder plumbing ──────────────────────────────────────────────────
+// Which active-state file the Stop-hook dispatcher should read for this session.
+function activeStateKey() {
+  return process.env.CLAUDE_CODE_SESSION_ID
+    ? `session-${process.env.CLAUDE_CODE_SESSION_ID}`
+    : "global";
+}
+
+// Record the active identity so the (separate-process) dispatcher knows which
+// agent + queue this session belongs to. Written on every adopt().
+function writeActiveState(wallet, address) {
+  try {
+    mkdirSync(AUTORESPOND_DIR, { recursive: true });
+    const body = JSON.stringify({ wallet, address, updatedAt: new Date().toISOString() }) + "\n";
+    writeFileSync(join(AUTORESPOND_DIR, `active-${activeStateKey()}.json`), body, { mode: 0o600 });
+    writeFileSync(join(AUTORESPOND_DIR, "active-latest.json"), body, { mode: 0o600 });
+  } catch {
+    // Non-fatal: without it the dispatcher just can't auto-respond for this session.
+  }
+}
+
+// Persist an inbound DM to the durable queue the dispatcher drains on idle.
+function enqueueInbound(address, msg) {
+  try {
+    const dir = join(QUEUE_DIR, encodeURIComponent(address));
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, `${encodeURIComponent(String(msg.id))}.json`),
+      JSON.stringify({ id: msg.id, from: msg.from, text: msg.text, ts: msg.timestamp ?? new Date().toISOString() }) + "\n",
+      { mode: 0o600 },
+    );
+  } catch {
+    // Non-fatal: the message is still buffered in-memory + pushed to the channel.
+  }
+}
+
+// Reply correlation: an auto-reply embeds the id of the message it answers as a
+// header right after the auto tag, so the querying side can match a reply to its
+// specific sent message (check_reply). Both markers live INSIDE the encrypted
+// body, so the relay only ever sees ciphertext — only the peer parses them.
+const REPLY_OPEN = "re:";
+const REPLY_CLOSE = "";
+
+// Parse the control header off a decrypted body → { auto, inReplyTo, text }.
+function decodeBody(raw) {
+  let auto = false;
+  let inReplyTo = null;
+  let text = raw;
+  if (typeof text === "string" && text.startsWith(AUTO_SENTINEL)) {
+    auto = true;
+    text = text.slice(AUTO_SENTINEL.length);
+    if (text.startsWith(REPLY_OPEN)) {
+      const end = text.indexOf(REPLY_CLOSE, REPLY_OPEN.length);
+      if (end !== -1) {
+        inReplyTo = text.slice(REPLY_OPEN.length, end);
+        text = text.slice(end + REPLY_CLOSE.length);
+      }
+    }
+  }
+  return { auto, inReplyTo, text };
+}
+
+// Build an auto-reply body: auto tag + optional in-reply-to header + plaintext.
+function encodeAutoReply(inReplyTo, text) {
+  const head = AUTO_SENTINEL + (inReplyTo ? REPLY_OPEN + inReplyTo + REPLY_CLOSE : "");
+  return head + text;
 }
 
 function hexToBytes(hex) {
@@ -142,20 +224,26 @@ async function drain() {
   session.draining = true;
   try {
     const messages = await readMessages(session.client, session.signer);
-    for (const msg of messages) {
-      const waiterIndex = session.waiters.findIndex(
-        (w) => w.matchFrom === null || w.matchFrom === msg.from,
-      );
+    for (const rawMsg of messages) {
+      // Parse the control header up front so BOTH paths see clean text and the
+      // in_reply_to correlation id: the waiter path (send_and_wait / check_reply)
+      // AND the buffer/channel. `auto` still gates enqueue — a tagged reply is
+      // never queued for auto-response, which is the loop guard.
+      const { auto, inReplyTo, text } = decodeBody(rawMsg.text);
+      const msg = { ...rawMsg, text, inReplyTo };
+      const waiterIndex = session.waiters.findIndex((w) => w.match(msg));
       if (waiterIndex !== -1) {
-        // Consumed by a synchronous send_and_wait / await_reply — don't also push.
+        // Consumed by a synchronous waiter — don't also push.
         const [waiter] = session.waiters.splice(waiterIndex, 1);
         clearTimeout(waiter.timer);
         waiter.resolve({ ...msg, _delivered: "waiter" });
       } else {
-        // Unsolicited inbound: buffer it (poll fallback) AND push it into the
-        // session as a channel event so Claude reacts in real time.
+        // Unsolicited inbound: buffer (poll fallback + check_reply source), push
+        // as a channel event so Claude reacts in real time, and — unless it is
+        // itself an auto-reply — enqueue it for the Stop-hook auto-responder.
         session.buffer.push(msg);
         void pushToChannel(msg);
+        if (!auto) enqueueInbound(session.address, msg);
       }
     }
   } catch {
@@ -240,7 +328,13 @@ async function adopt(walletName) {
     });
     cardPublished = true;
   } catch {}
-  startListener();
+  if (!process.env.TINYPLACE_SEND_ONLY) {
+    // A send-only responder (spawned by the auto-responder) neither advertises
+    // itself as the active session nor drains the shared mailbox — draining
+    // stays the main session's job, so two processes never ack the same inbox.
+    writeActiveState(wallet.name, wallet.address);
+    startListener();
+  }
   return {
     active: { name: wallet.name, address: wallet.address, publicKey: wallet.publicKey },
     keysPublished,
@@ -249,14 +343,16 @@ async function adopt(walletName) {
   };
 }
 
-function waitForReply(matchFrom, timeoutSeconds) {
+// Register a waiter that resolves with the first drained message satisfying
+// `match(msg)` (msg carries { from, text, inReplyTo, ... }), or a timeout marker.
+function waitFor(match, timeoutSeconds) {
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
       const i = session.waiters.findIndex((w) => w.timer === timer);
       if (i !== -1) session.waiters.splice(i, 1);
       resolve({ _timedOut: true, timeoutSeconds });
     }, timeoutSeconds * 1000);
-    session.waiters.push({ matchFrom, resolve, timer });
+    session.waiters.push({ match, resolve, timer });
     void drain(); // in case the reply already landed
   });
 }
@@ -466,6 +562,29 @@ server.registerTool(
 );
 
 server.registerTool(
+  "auto_reply",
+  {
+    title: "Reply as the auto-responder",
+    description:
+      "Reply to a received DM as the autonomous auto-responder. The reply is tagged so the recipient will NOT auto-respond back to it (loop guard). Use this ONLY from the auto-responder flow — exactly one call per received message. For normal, human-driven replies use `send` instead.",
+    inputSchema: {
+      to: z.string().describe("Recipient: the received message's `from` (base64 address, cryptoId, or @handle)."),
+      body: z.string().describe("Your reply text (the tag is added automatically)."),
+      in_reply_to: z.string().optional().describe("Id of the message being replied to (kept for your logs; not yet carried on-wire)."),
+    },
+  },
+  async ({ to, body, in_reply_to }) => {
+    try {
+      const s = requireActive();
+      const sent = await sendMessage(s.client, s.signer, to, encodeAutoReply(in_reply_to ?? null, body));
+      return ok({ sent: { id: sent.id, to: sent.to, type: sent.type, auto: true, in_reply_to: in_reply_to ?? null } });
+    } catch (e) {
+      return await handleSendError(e, to);
+    }
+  },
+);
+
+server.registerTool(
   "send_and_wait",
   {
     title: "Send and wait for reply (synchronous)",
@@ -481,7 +600,7 @@ server.registerTool(
       const s = requireActive();
       const recipientKey = await resolveRecipientKey(s.client, to);
       const sent = await sendMessage(s.client, s.signer, to, body);
-      const reply = await waitForReply(recipientKey, timeout_seconds ?? DEFAULT_WAIT_SECONDS);
+      const reply = await waitFor((m) => m.from === recipientKey, timeout_seconds ?? DEFAULT_WAIT_SECONDS);
       if (reply._timedOut) {
         return ok({ sent: { id: sent.id, to: sent.to }, reply: null, timedOut: true, note: "No reply within the timeout. Call await_reply or inbox to keep waiting." });
       }
@@ -526,9 +645,46 @@ server.registerTool(
     try {
       const s = requireActive();
       const matchFrom = from ? await resolveRecipientKey(s.client, from) : null;
-      const reply = await waitForReply(matchFrom, timeout_seconds ?? DEFAULT_WAIT_SECONDS);
+      const reply = await waitFor((m) => matchFrom === null || m.from === matchFrom, timeout_seconds ?? DEFAULT_WAIT_SECONDS);
       if (reply._timedOut) return ok({ reply: null, timedOut: true });
-      return ok({ reply: { id: reply.id, from: reply.from, text: reply.text, timestamp: reply.timestamp } });
+      return ok({ reply: { id: reply.id, from: reply.from, text: reply.text, inReplyTo: reply.inReplyTo ?? null, timestamp: reply.timestamp } });
+    } catch (e) {
+      return fail(String(e?.message ?? e));
+    }
+  },
+);
+
+server.registerTool(
+  "check_reply",
+  {
+    title: "Poll for a correlated reply",
+    description:
+      "Check for the reply to a message you sent, correlated by its id. Waits up to wait_seconds (max 30) for a matching inbound, then returns { reply } or { pending: true }. CALL IT IN A LOOP: after `send` returns an id, call check_reply(in_reply_to=<that id>) repeatedly until you get a reply (or you decide to stop). Each call is short, so it never hits the MCP tool timeout — this is the request→reply pattern for slow (auto-responder) peers.",
+    inputSchema: {
+      in_reply_to: z.string().optional().describe("The id returned by `send` — matches the reply to that specific message."),
+      from: z.string().optional().describe("Optional peer filter (@handle / address / key), if you didn't pass in_reply_to."),
+      wait_seconds: z.number().optional().describe("Seconds to wait this call (1–30, default 30). Keep calling until a reply arrives."),
+    },
+  },
+  async ({ in_reply_to, from, wait_seconds }) => {
+    try {
+      const s = requireActive();
+      const cap = Math.min(Math.max(wait_seconds ?? 30, 1), 30);
+      const peer = from ? await resolveRecipientKey(s.client, from) : null;
+      const match = (m) =>
+        (in_reply_to ? m.inReplyTo === in_reply_to : true) && (peer ? m.from === peer : true);
+      // Consume an already-buffered match first (it may have arrived between polls).
+      await drain();
+      const bufferedIndex = s.buffer.findIndex(match);
+      if (bufferedIndex !== -1) {
+        const [m] = s.buffer.splice(bufferedIndex, 1);
+        return ok({ reply: { id: m.id, from: m.from, text: m.text, inReplyTo: m.inReplyTo ?? null, timestamp: m.timestamp } });
+      }
+      const reply = await waitFor(match, cap);
+      if (reply._timedOut) {
+        return ok({ pending: true, in_reply_to: in_reply_to ?? null, note: "No matching reply yet — call check_reply again to keep polling." });
+      }
+      return ok({ reply: { id: reply.id, from: reply.from, text: reply.text, inReplyTo: reply.inReplyTo ?? null, timestamp: reply.timestamp } });
     } catch (e) {
       return fail(String(e?.message ?? e));
     }
