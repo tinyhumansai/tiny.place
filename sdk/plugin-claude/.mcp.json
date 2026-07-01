@@ -4,7 +4,7 @@
       "command": "node",
       "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/server.mjs"],
       "env": {
-        "TINYPLACE_API_URL": "https://api.tiny.place"
+        "TINYPLACE_API_URL": "https://staging-api.tiny.place"
       }
     }
   }

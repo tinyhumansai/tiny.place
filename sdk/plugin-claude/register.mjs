@@ -1,11 +1,13 @@
-// Register ONE plugin wallet on prod (spends 1 USDC via gasless x402).
+// Register ONE plugin wallet (an @handle) via gasless x402.
 // usage: node register.mjs <walletName> <baseHandle>
+// Targets staging by default; override with TINYPLACE_API_URL (prod spends real
+// USDC — staging may use a zero/deployment default fee).
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { TinyPlaceClient, LocalSigner } from "@tinyhumansai/tinyplace";
 
-const BASE = "https://api.tiny.place";
+const BASE = process.env.TINYPLACE_API_URL ?? "https://staging-api.tiny.place";
 const RPC = `${BASE}/solana/rpc`;
 const [name, baseHandle] = process.argv.slice(2);
 const h2b = (h) => { const o = new Uint8Array(h.length / 2); for (let i = 0; i < o.length; i++) o[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16); return o; };

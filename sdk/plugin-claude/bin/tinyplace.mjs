@@ -158,7 +158,8 @@ async function registerFlow(wallet) {
   clear();
   const base = await prompt(`  Base handle to register for '${wallet.name}': @`);
   if (!base) return;
-  process.stdout.write(`\n  ${C.yellow}Heads up:${C.reset} this spends ~1 USDC on ${C.bold}production${C.reset} for ${wallet.name} (${short(wallet.address)}).\n`);
+  const target = process.env.TINYPLACE_API_URL ?? "https://staging-api.tiny.place";
+  process.stdout.write(`\n  ${C.yellow}Registering${C.reset} @${base}* for ${wallet.name} (${short(wallet.address)}) on ${C.bold}${target}${C.reset}.\n`);
   const confirmed = (await prompt("  Type 'yes' to proceed (anything else cancels): ")).toLowerCase() === "yes";
   if (!confirmed) return;
   spawnSync("node", [REGISTER_SCRIPT, wallet.name, base], { stdio: "inherit" });
@@ -194,7 +195,7 @@ async function main() {
     const items = [
       ...wallets.map((w) => ({ label: w.name, hint: `${w.handle ? "@" + w.handle + "  " : ""}${short(w.address)}` })),
       { label: "＋ Create new wallet", hint: "offline · free" },
-      ...(wallets.length ? [{ label: "⚡ Register @handle", hint: "spends ~1 USDC on prod" }] : []),
+      ...(wallets.length ? [{ label: "⚡ Register @handle", hint: "on staging" }] : []),
       { label: "Quit", hint: "" },
     ];
     const subtitle = wallets.length ? "Select an identity to launch:" : "No wallets yet — create one:";
