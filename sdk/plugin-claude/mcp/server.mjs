@@ -175,6 +175,43 @@ function maybeSpawnResponder() {
   }, 250);
 }
 
+// ── decrypt-drop surfacing + session-reset recovery ──────────────────────────
+// The SDK silently acks-and-drops any envelope it can't decrypt (a desynced
+// Signal ratchet), so messages vanish with no error. We detect drops by diffing
+// a raw read against the decrypted set, surface the count, and — after a couple
+// of drops from one peer — auto-reset the local session with them and send a
+// fresh re-handshake ping (X3DH) that the peer's plugin consumes silently, so the
+// channel self-heals. RESET_SENTINEL is the ping body; only the peer ever sees it.
+const RESET_SENTINEL = String.fromCharCode(1) + "tp-rehandshake" + String.fromCharCode(1);
+const UNDECRYPTABLE_RESET_THRESHOLD = 2;
+const RECOVER_COOLDOWN_MS = 5 * 60 * 1000;
+
+function recordUndecryptable(dropped) {
+  session.undecryptable += dropped.length;
+  for (const d of dropped) {
+    const from = String(d.from ?? "unknown");
+    const n = (session.undecryptableByPeer.get(from) ?? 0) + 1;
+    session.undecryptableByPeer.set(from, n);
+    if (from !== "unknown" && n >= UNDECRYPTABLE_RESET_THRESHOLD) void maybeRecoverSession(from);
+  }
+}
+
+// Drop the stale local session with `peer` and send a fresh re-handshake ping so
+// BOTH sides re-run X3DH. Rate-limited per peer. Best-effort.
+async function maybeRecoverSession(peer) {
+  const s = session;
+  const last = s.lastRecover.get(peer) ?? 0;
+  if (Date.now() - last < RECOVER_COOLDOWN_MS) return;
+  s.lastRecover.set(peer, Date.now());
+  try {
+    await s.store.removeSession(peer);
+    s.undecryptableByPeer.set(peer, 0);
+    await sendMessage(s.client, s.signer, peer, RESET_SENTINEL); // fresh PREKEY_BUNDLE
+  } catch {
+    // best-effort; the user can still reset_session manually
+  }
+}
+
 // Reply correlation: an auto-reply embeds the id of the message it answers as a
 // header right after the auto tag, so the querying side can match a reply to its
 // specific sent message (check_reply). Both markers live INSIDE the encrypted
@@ -251,7 +288,7 @@ async function buildClient(seedHex) {
     signer,
     encryption: { store },
   });
-  return { signer, client };
+  return { signer, client, store };
 }
 
 // Drain the relay: decrypt + ack inbound DMs, then either satisfy a pending
@@ -260,7 +297,20 @@ async function drain() {
   if (!session || session.draining) return;
   session.draining = true;
   try {
+    // Capture raw envelopes BEFORE readMessages acks them, so we can detect
+    // undecryptable drops (the SDK silently acks + skips what it can't decrypt).
+    let rawBefore = [];
+    try {
+      rawBefore = (await session.client.messages.listRaw(session.signer.publicKeyBase64))?.messages ?? [];
+    } catch {
+      // raw read failed — skip drop detection this tick
+    }
     const messages = await readMessages(session.client, session.signer);
+    if (rawBefore.length) {
+      const gotIds = new Set(messages.map((m) => String(m.id)));
+      const dropped = rawBefore.filter((r) => !gotIds.has(String(r.id)));
+      if (dropped.length) recordUndecryptable(dropped);
+    }
     let enqueuedAny = false;
     for (const rawMsg of messages) {
       // Parse the control header up front so BOTH paths see clean text and the
@@ -268,6 +318,9 @@ async function drain() {
       // AND the buffer/channel. `auto` still gates enqueue — a tagged reply is
       // never queued for auto-response, which is the loop guard.
       const { auto, inReplyTo, text } = decodeBody(rawMsg.text);
+      // A re-handshake ping only exists to re-run X3DH (done on decrypt); consume
+      // it silently so it never surfaces as a message.
+      if (text === RESET_SENTINEL) continue;
       const msg = { ...rawMsg, text, inReplyTo };
       const waiterIndex = session.waiters.findIndex((w) => w.match(msg));
       if (waiterIndex !== -1) {
@@ -340,19 +393,23 @@ async function adopt(walletName) {
   const wallet = loadWallets().find((w) => w.name === walletName);
   if (!wallet) throw new Error(`No wallet named '${walletName}'. Use wallet_list to see options.`);
   teardownListener();
-  const { signer, client } = await buildClient(wallet.secretKey);
+  const { signer, client, store } = await buildClient(wallet.secretKey);
   session = {
     name: wallet.name,
     address: wallet.address,
     publicKey: wallet.publicKey,
     signer,
     client,
+    store,
     buffer: [],
     waiters: [],
     ws: null,
     pollTimer: null,
     draining: false,
     listening: false,
+    undecryptable: 0,
+    undecryptableByPeer: new Map(),
+    lastRecover: new Map(),
   };
   let keysPublished = false;
   let cardPublished = false;
@@ -587,6 +644,8 @@ server.registerTool(
       sendOnly: Boolean(process.env.TINYPLACE_SEND_ONLY?.trim()),
       apiUrlFromEnv: process.env.TINYPLACE_API_URL ?? process.env.TINYPLACE_ENDPOINT ?? null,
       autorespond: autorespondEnabled() ? "on" : "off",
+      undecryptable: session.undecryptable ?? 0,
+      undecryptableFrom: [...session.undecryptableByPeer.entries()].filter(([, n]) => n > 0).map(([p]) => p),
     });
   },
 );
@@ -723,6 +782,39 @@ server.registerTool(
 );
 
 server.registerTool(
+  "reset_session",
+  {
+    title: "Reset the Signal session with a peer",
+    description:
+      "Recover a stuck channel where messages stop decrypting (a desynced ratchet). Clears the local Signal session with a peer and re-handshakes (next message re-runs X3DH). Omit peer to instead republish your own key bundle (fixes the receiving side).",
+    inputSchema: {
+      peer: z.string().optional().describe("Peer (@handle / address / key) whose session to reset. Omit to republish your own keys."),
+      rehandshake: z.boolean().optional().describe("Also send the peer a fresh handshake ping so both sides re-key (default true)."),
+    },
+  },
+  async ({ peer, rehandshake }) => {
+    try {
+      const s = requireActive();
+      if (peer) {
+        const addr = await resolveRecipientKey(s.client, peer);
+        await s.store.removeSession(addr);
+        s.undecryptableByPeer.set(addr, 0);
+        let rehandshaked = false;
+        if (rehandshake !== false) {
+          try { await sendMessage(s.client, s.signer, addr, RESET_SENTINEL); rehandshaked = true; } catch {}
+        }
+        return ok({ reset: addr, rehandshaked });
+      }
+      let republished = false;
+      try { await publishKeys(s.client, s.signer); republished = true; } catch {}
+      return ok({ republishedKeys: republished, note: "Per-peer sessions re-establish on next contact. Pass `peer` to reset a specific stuck channel." });
+    } catch (e) {
+      return fail(String(e?.message ?? e));
+    }
+  },
+);
+
+server.registerTool(
   "check_reply",
   {
     title: "Poll for a correlated reply",
@@ -772,7 +864,12 @@ server.registerTool(
       await drain();
       const messages = s.buffer.map((m) => ({ id: m.id, from: m.from, text: m.text, timestamp: m.timestamp }));
       if (!peek) s.buffer = [];
-      return ok({ count: messages.length, messages });
+      const result = { count: messages.length, messages };
+      if (s.undecryptable > 0) {
+        result.undecryptable = s.undecryptable;
+        result.note = `${s.undecryptable} inbound message(s) could not be decrypted (desynced session). Auto-recovery re-handshakes affected peers; use reset_session if a peer stays stuck.`;
+      }
+      return ok(result);
     } catch (e) {
       return fail(String(e?.message ?? e));
     }
