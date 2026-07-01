@@ -629,12 +629,17 @@ server.registerTool(
   },
 );
 
-// Auto-adopt the wallet assigned to this scope (this session, or project),
-// so a resumed session comes back up already acting as its assigned identity.
-// Best-effort: network failures inside adopt() are swallowed, and the active
-// wallet is still set in-memory.
+// Auto-adopt on startup so the session comes up already acting as an identity:
+//   1. TINYPLACE_ACTIVE_WALLET  — set by the `tinyplace` TUI launcher (Door B),
+//      which boots Claude already pointed at a chosen wallet.
+//   2. else the wallet assigned to this scope (session, or project) via `use
+//      remember:true` / `assign` — so a resumed session returns as its identity.
+// When neither is set the server starts with no active wallet and the
+// SessionStart hook prompts the user to pick one with `use` (Door A). Network
+// failures inside adopt() are swallowed; the active wallet is still set in-memory.
 try {
-  const assigned = loadAssignments()[scopeKey()];
+  const forced = process.env.TINYPLACE_ACTIVE_WALLET?.trim();
+  const assigned = forced || loadAssignments()[scopeKey()];
   if (assigned && loadWallets().some((w) => w.name === assigned)) {
     await adopt(assigned);
   }

@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Claude Code plugin: multi-wallet tiny.place messaging over an MCP server wrapping @tinyhumansai/tinyplace.",
+  "bin": {
+    "tinyplace": "./bin/tinyplace.mjs"
+  },
   "engines": {
     "node": ">=22"
   },
