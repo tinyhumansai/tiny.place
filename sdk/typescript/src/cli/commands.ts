@@ -186,13 +186,15 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "codex",
     capability: "maintenance",
     description:
-      "Run Codex through a tiny.place terminal proxy and stream TUI input/output into time-bucketed envelopes.",
-    usage: "[--tinyplace-out <dir>] [--tinyplace-scope folder|session] [--tinyplace-bucket minute|hour|day] [--] <codex-args...>",
+      "Run Codex through a tiny.place terminal proxy, write session envelopes, and optionally Signal-DM semantic user/agent messages.",
+    usage: "[--tinyplace-dm-to <recipient>] [--tinyplace-out <dir>] [--tinyplace-scope folder|session] [--tinyplace-bucket minute|hour|day] [--] <codex-args...>",
   },
   {
     name: "claude",
     capability: "workflow",
-    description: "Open the tinyverse Claude proxy TUI with tiny.place session tracking.",
+    description:
+      "Run Claude Code through the same tiny.place wrapper, writing session envelopes and optional Signal DMs.",
+    usage: "[--tinyplace-dm-to <recipient>] [--tinyplace-out <dir>] [--tinyplace-scope folder|session] [--tinyplace-bucket minute|hour|day] [--] <claude-args...>",
   },
   {
     name: "tui",

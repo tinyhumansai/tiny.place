@@ -11,7 +11,7 @@ import {
   buildHelp,
   rawCommands,
 } from "./commands.js";
-import { runCodexCommand } from "./codex.js";
+import { runClaudeCommand, runCodexCommand } from "./codex.js";
 import { makeContext } from "./context.js";
 import { formatResult, redactSecrets, resolveFormat } from "./format.js";
 import {
@@ -155,6 +155,23 @@ async function dispatchCli(
       };
     }
   }
+  if (parsed.command === "claude") {
+    try {
+      return await runClaudeCommand(argv.slice(1), options);
+    } catch (error) {
+      return {
+        code: 1,
+        stdout: "",
+        stderr: `${JSON.stringify(
+          {
+            error: error instanceof Error ? error.message : String(error),
+          },
+          null,
+          2,
+        )}\n`,
+      };
+    }
+  }
 
   try {
     const ctx = await makeContext(options);
@@ -164,9 +181,6 @@ async function dispatchCli(
         options,
         parseTinyVerseAgentKind(parsed.positionals[0]),
       );
-    }
-    if (parsed.command === "claude") {
-      return await runTinyPlaceTui(ctx, options, "claude");
     }
     const result = await dispatchTop(ctx, parsed);
     const format = resolveFormat(parsed.flags);

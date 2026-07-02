@@ -22,3 +22,4 @@ export * from "./search.js";
 export * from "./profile.js";
 export * from "./docs.js";
 export * from "./mcp.js";
+export * from "./harness.js";

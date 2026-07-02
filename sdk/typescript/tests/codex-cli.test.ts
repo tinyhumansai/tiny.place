@@ -8,6 +8,14 @@ import { describe, expect, it } from "vitest";
 
 import { runTinyPlaceCli } from "../src/cli.js";
 import { parseCodexWrapperArgs } from "../src/cli/codex.js";
+import {
+  LocalSigner,
+  MemorySessionStore,
+  TinyPlaceClient,
+  type MessageEnvelope,
+  type SignedKey,
+} from "../src/index.js";
+import { publishKeys, readMessages } from "../src/agent/index.js";
 
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
@@ -209,13 +217,224 @@ describe("tinyplace codex", () => {
       join(tempDir, "messages", "folders", "project-f630ad93b344", "2026-06-30T10Z.jsonl"),
       "utf8",
     );
-    expect(envelope).toContain('"envelope_version":"tinyplace.codex.session.v1"');
-    expect(envelope).toContain('"codex_session_id":"019f1111-2222-7333-8444-555555555555"');
+    expect(envelope).toContain('"envelope_version":"tinyplace.harness.session.v1"');
+    expect(envelope).toContain('"version":1');
+    expect(envelope).toContain('"harness_session_id":"019f1111-2222-7333-8444-555555555555"');
+    expect(envelope).toContain('"provider":"codex"');
     expect(envelope).toContain('"role":"user"');
-    expect(envelope).toContain('"role":"assistant"');
+    expect(envelope).toContain('"role":"agent"');
     expect(envelope).toContain("real user prompt");
     expect(envelope).toContain("assistant answer");
     expect(envelope).not.toContain("synthetic system material");
+  });
+
+  it("Signal-DMs each semantic Codex SessionEnvelope when a recipient is configured", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "tinyplace-codex-"));
+    const sessionsDir = join(tempDir, "sessions");
+    const sessionFile = join(
+      sessionsDir,
+      "2026",
+      "06",
+      "30",
+      "rollout-2026-06-30T10-00-00-019f1111-2222-7333-8444-666666666666.jsonl",
+    );
+    const relay = makeRelay();
+    const recipient = await makeClient(44, relay);
+    await publishKeys(recipient.client, recipient.signer);
+
+    const result = await runTinyPlaceCli(
+      [
+        "codex",
+        "--tinyplace-no-pty",
+        "--tinyplace-out",
+        tempDir,
+        "--tinyplace-session-id",
+        "session-test",
+        "--tinyplace-session-poll-ms",
+        "5",
+        "--tinyplace-session-tail-grace-ms",
+        "20",
+        "prompt",
+      ],
+      {
+        cwd: "/tmp/project",
+        env: {
+          TINYPLACE_CODEX_BIN: "fake-codex",
+          TINYPLACE_CODEX_SESSIONS_DIR: sessionsDir,
+          TINYPLACE_CONFIG: join(tempDir, "config.json"),
+          TINYPLACE_ENDPOINT: "https://relay.test",
+          TINYPLACE_HARNESS_DM_TO: recipient.signer.publicKeyBase64,
+          TINYPLACE_SECRET_KEY: hexSeed(33),
+        },
+        fetch: relay,
+        stdin: new PassThrough(),
+        stdout: new PassThrough(),
+        stderr: new PassThrough(),
+        spawn: () => {
+          const child = new EventEmitter() as ChildProcessWithoutNullStreams;
+          child.stdin = new PassThrough();
+          child.stdout = new PassThrough();
+          child.stderr = new PassThrough();
+          child.pid = 1234;
+          queueMicrotask(() => {
+            mkdirSync(join(sessionsDir, "2026", "06", "30"), { recursive: true });
+            writeFileSync(
+              sessionFile,
+              [
+                JSON.stringify({
+                  timestamp: "2026-06-30T10:00:00.000Z",
+                  type: "session_meta",
+                  payload: {
+                    cwd: "/tmp/project",
+                    id: "019f1111-2222-7333-8444-666666666666",
+                  },
+                }),
+                JSON.stringify({
+                  timestamp: "2026-06-30T10:01:00.000Z",
+                  type: "event_msg",
+                  payload: { message: "real user prompt", type: "user_message" },
+                }),
+                JSON.stringify({
+                  timestamp: "2026-06-30T10:02:00.000Z",
+                  type: "response_item",
+                  payload: {
+                    content: [{ text: "assistant answer", type: "output_text" }],
+                    role: "assistant",
+                    type: "message",
+                  },
+                }),
+              ].join("\n") + "\n",
+              "utf8",
+            );
+            setTimeout(() => {
+              child.emit("exit", 0, null);
+            }, 20);
+          });
+          return child;
+        },
+      },
+    );
+
+    expect(result.code).toBe(0);
+    const messages = await readMessages(recipient.client, recipient.signer);
+    expect(messages).toHaveLength(2);
+    const envelopes = messages.map((message) => JSON.parse(message.text) as Record<string, unknown>);
+    expect(envelopes.map((envelope) => (envelope.message as { role: string }).role)).toEqual([
+      "user",
+      "agent",
+    ]);
+    expect(envelopes[0]).toMatchObject({
+      envelope_version: "tinyplace.harness.session.v1",
+      harness: { provider: "codex" },
+    });
+  });
+
+  it("mirrors the wrapper for Claude Code session JSONL", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "tinyplace-claude-"));
+    const sessionsDir = join(tempDir, "claude-projects");
+    const sessionFile = join(sessionsDir, "-tmp-project", "b74208bd-179a-4e16-a533.jsonl");
+    const stdin = new PassThrough();
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+
+    const resultPromise = runTinyPlaceCli(
+      [
+        "claude",
+        "--tinyplace-no-pty",
+        "--tinyplace-out",
+        tempDir,
+        "--tinyplace-session-id",
+        "claude-wrapper",
+        "--tinyplace-session-poll-ms",
+        "5",
+        "--tinyplace-session-tail-grace-ms",
+        "20",
+        "--model",
+        "opus",
+      ],
+      {
+        cwd: "/tmp/project",
+        env: {
+          TINYPLACE_CLAUDE_BIN: "fake-claude",
+          TINYPLACE_CLAUDE_SESSIONS_DIR: sessionsDir,
+        },
+        stdin,
+        stdout,
+        stderr,
+        spawn: (command, args) => {
+          expect(command).toBe("fake-claude");
+          expect(args).toEqual(["--model", "opus"]);
+          const child = new EventEmitter() as ChildProcessWithoutNullStreams;
+          child.stdin = new PassThrough();
+          child.stdout = new PassThrough();
+          child.stderr = new PassThrough();
+          child.pid = 1234;
+          queueMicrotask(() => {
+            mkdirSync(join(sessionsDir, "-tmp-project"), { recursive: true });
+            writeFileSync(
+              sessionFile,
+              [
+                JSON.stringify({
+                  type: "user",
+                  message: { role: "user", content: "please inspect this" },
+                  uuid: "u1",
+                  timestamp: "2026-06-30T10:01:00.000Z",
+                  cwd: "/tmp/project",
+                  sessionId: "b74208bd-179a-4e16-a533",
+                }),
+                JSON.stringify({
+                  type: "user",
+                  message: {
+                    role: "user",
+                    content: [{ type: "tool_result", content: "not a semantic user prompt" }],
+                  },
+                  uuid: "tool-result",
+                  timestamp: "2026-06-30T10:01:30.000Z",
+                  cwd: "/tmp/project",
+                  sessionId: "b74208bd-179a-4e16-a533",
+                }),
+                JSON.stringify({
+                  type: "assistant",
+                  message: {
+                    role: "assistant",
+                    content: [
+                      { type: "thinking", thinking: "hidden" },
+                      { type: "text", text: "I inspected it." },
+                      { type: "tool_use", name: "Bash", input: {} },
+                    ],
+                  },
+                  uuid: "a1",
+                  timestamp: "2026-06-30T10:02:00.000Z",
+                  cwd: "/tmp/project",
+                  sessionId: "b74208bd-179a-4e16-a533",
+                }),
+              ].join("\n") + "\n",
+              "utf8",
+            );
+            setTimeout(() => {
+              child.emit("exit", 0, null);
+            }, 20);
+          });
+          return child;
+        },
+      },
+    );
+
+    const result = await resultPromise;
+
+    expect(result.code).toBe(0);
+    const envelope = await readFile(
+      join(tempDir, "messages", "folders", "project-f630ad93b344", "2026-06-30T10Z.jsonl"),
+      "utf8",
+    );
+    expect(envelope).toContain('"provider":"claude"');
+    expect(envelope).toContain('"harness_session_id":"b74208bd-179a-4e16-a533"');
+    expect(envelope).toContain('"role":"user"');
+    expect(envelope).toContain('"role":"agent"');
+    expect(envelope).toContain("please inspect this");
+    expect(envelope).toContain("I inspected it.");
+    expect(envelope).not.toContain("not a semantic user prompt");
+    expect(envelope).not.toContain("hidden");
   });
 });
 
@@ -226,4 +445,87 @@ function currentHourFile(): string {
   const day = String(now.getUTCDate()).padStart(2, "0");
   const hour = String(now.getUTCHours()).padStart(2, "0");
   return `${year}-${month}-${day}T${hour}Z.jsonl`;
+}
+
+function hexSeed(value: number): string {
+  return Array.from(new Uint8Array(32).fill(value), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
+async function makeClient(
+  seed: number,
+  fetch: typeof globalThis.fetch,
+): Promise<{ client: TinyPlaceClient; signer: LocalSigner }> {
+  const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(seed));
+  const store = new MemorySessionStore(await signer.getX25519KeyPair());
+  const client = new TinyPlaceClient({
+    baseUrl: "https://relay.test",
+    signer,
+    encryption: { store },
+    fetch,
+  });
+  return { client, signer };
+}
+
+function makeRelay(): typeof globalThis.fetch {
+  const inbox = new Map<string, Array<MessageEnvelope>>();
+  const signedPreKeys = new Map<string, SignedKey>();
+  const preKeys = new Map<string, Array<SignedKey>>();
+
+  return async (input, init): Promise<Response> => {
+    const request = new Request(input, init);
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const method = request.method;
+
+    if (path === "/messages" && method === "PUT") {
+      const envelope = (await request.json()) as MessageEnvelope;
+      inbox.set(envelope.to, [...(inbox.get(envelope.to) ?? []), envelope]);
+      return Response.json(envelope, { status: 202 });
+    }
+    if (path === "/messages" && method === "GET") {
+      const agentId = url.searchParams.get("agentId") ?? "";
+      return Response.json({ messages: inbox.get(agentId) ?? [] });
+    }
+    if (path.startsWith("/messages/") && method === "DELETE") {
+      const id = decodeURIComponent(path.slice("/messages/".length));
+      const agentId = url.searchParams.get("agentId") ?? "";
+      inbox.set(
+        agentId,
+        (inbox.get(agentId) ?? []).filter((envelope) => envelope.id !== id),
+      );
+      return new Response(null, { status: 204 });
+    }
+    const signedMatch = path.match(/^\/keys\/([^/]+)\/signed-prekey$/);
+    if (signedMatch && method === "PUT") {
+      const body = (await request.json()) as { signedPreKey: SignedKey };
+      signedPreKeys.set(decodeURIComponent(signedMatch[1]!), body.signedPreKey);
+      return new Response(null, { status: 204 });
+    }
+    const preKeysMatch = path.match(/^\/keys\/([^/]+)\/prekeys$/);
+    if (preKeysMatch && method === "PUT") {
+      const id = decodeURIComponent(preKeysMatch[1]!);
+      const body = (await request.json()) as { preKeys: Array<SignedKey> };
+      preKeys.set(id, [...(preKeys.get(id) ?? []), ...body.preKeys]);
+      return new Response(null, { status: 204 });
+    }
+    const bundleMatch = path.match(/^\/keys\/([^/]+)\/bundle$/);
+    if (bundleMatch && method === "GET") {
+      const id = decodeURIComponent(bundleMatch[1]!);
+      const signedPreKey = signedPreKeys.get(id);
+      const oneTimePreKey = preKeys.get(id)?.shift();
+      if (!signedPreKey) {
+        return Response.json({ error: "no bundle" }, { status: 404 });
+      }
+      return Response.json({
+        agentId: id,
+        identityKey: id,
+        signedPreKey,
+        ...(oneTimePreKey ? { oneTimePreKey } : {}),
+        updatedAt: "2026-06-16T00:00:00.000Z",
+      });
+    }
+    return Response.json({ error: `unhandled ${method} ${path}` }, { status: 500 });
+  };
 }

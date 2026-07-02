@@ -86,6 +86,15 @@ export {
   generateNonce,
 } from "./x402.js";
 export { SDK_VERSION, SDK_CLIENT, HEADER_SDK_CLIENT } from "./version.js";
+export type {
+  HarnessBucketUnit,
+  HarnessEnvelopeScope,
+  HarnessMessageRole,
+  HarnessProvider,
+  SessionEnvelope,
+  SessionEnvelopeV1,
+} from "./types/harness.js";
+export { SESSION_ENVELOPE_VERSION_V1 } from "./types/harness.js";
 
 export type {
   X402PaymentRequired,
