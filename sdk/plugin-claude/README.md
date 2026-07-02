@@ -65,18 +65,49 @@ read messages with `inbox` instead.
 | --- | --- |
 | `wallet_create {name}` | Generate a wallet (offline, no funds) and save it by name |
 | `wallet_list` | List saved wallets (never reveals secret keys) |
-| `use {name, remember?}` | Make a wallet the active agent; publish its key bundle + card; start the listener. `remember:true` persists it as this session's assignment |
+| `use {name, remember?, label?}` | Make a wallet the active agent; publish its key bundle + card; register this session in the agent's registry under `label` (default `claude:<n>`) and adopt the per-agent daemon (which owns relay draining/routing), falling back to a self-owned listener if the daemon can't start. `remember:true` persists it as this session's assignment |
 | `assign {name}` | Persistently assign a wallet to this session (or project) AND make it active now |
 | `unassign` | Clear this session's persistent assignment |
 | `assignments` | Show all scope→wallet assignments and this process's scope |
-| `whoami` | Show the active agent, scope, assignment + listener status |
-| `send {to, body}` | Fire-and-forget E2E message |
+| `whoami` | Show the active agent, this session's label, live sessions, scope, assignment + mode/daemon state |
+| `sessions` | List the live sessions of the active agent (each with its label) |
+| `send {to, body, to_session?, role?}` | Fire-and-forget E2E message. `to_session` targets a specific peer session; the body is a SessionEnvelope carrying this session's label as `from_session` |
 | `send_and_wait {to, body, timeout_seconds?}` | Send, then block for the reply (synchronous) |
 | `await_reply {from?, timeout_seconds?}` | Block for the next inbound message |
 | `inbox {peek?}` | Drain decrypted messages buffered in the background |
 
 Recipients (`to`) may be a `@handle`, a base58 address/cryptoId, or a raw base64
 public key.
+
+## Multiple sessions under one agent (session-aware messaging)
+
+One agent (cryptoId) can run several Claude sessions at once, each addressable by
+a **session label** (`claude:1`, `claude:2`, …). On `use`, a session registers a
+presence file under `~/.tinyplace-claude/sessions/<agent>/` and heartbeats it; a
+session is *live* while its heartbeat is fresh and its process is alive. `sessions`
+(and `/tinyplace:sessions`) lists the live ones.
+
+Messages are wrapped in a `SessionEnvelope` superset (schema
+`tinyplace.harness.session.v1`) so they interoperate with the harness-wrapper
+format. The body carries `from_session` (the sender's label) and `role`; a peer
+can direct a reply to a specific session with `to_session`. Legacy sentinel/plain
+bodies still decode, so older peers keep working.
+
+**Per-agent daemon.** Exactly one process may own an agent's relay drain + Signal
+ratchet, so when a session activates it starts (or joins) a per-agent daemon
+(`hooks/agent-daemon.mjs`, single-owner via a lock in `~/.tinyplace-claude/daemon/`).
+The daemon is the sole decryptor: it drains the mailbox once, routes each message
+to the target session's `inbox/` queue (`to_session` live → that session; dead →
+held in `_unrouted/` until it appears; none → the primary/lowest-index session),
+and sends outbound jobs sessions drop in `_outbox/`. Sessions run as thin clients
+(no relay/ratchet). If the daemon can't start, a session falls back to the
+original per-session self-drain — no regression for the single-session case.
+Set `TINYPLACE_SESSION_DAEMON=off` to force self-drain. See
+[`docs/session-aware-messaging.md`](docs/session-aware-messaging.md) for the design.
+
+**Config:** `TINYPLACE_SESSION_LABEL` (pin a label), `TINYPLACE_UNROUTED_POLICY`
+(`primary`|`broadcast`|`drop` for untargeted mail), `TINYPLACE_SESSION_DAEMON=off`
+(disable the daemon), `TINYPLACE_DAEMON_IDLE_MS` (daemon idle-exit window).
 
 ## Per-session wallet assignment
 
