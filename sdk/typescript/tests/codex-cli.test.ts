@@ -238,7 +238,7 @@ describe("tinyplace codex", () => {
       "30",
       "rollout-2026-06-30T10-00-00-019f1111-2222-7333-8444-666666666666.jsonl",
     );
-    const relay = makeRelay();
+    const relay = makeRelay({ autoAcceptContacts: true });
     const recipient = await makeClient(44, relay);
     await publishKeys(recipient.client, recipient.signer);
 
@@ -316,6 +316,7 @@ describe("tinyplace codex", () => {
     );
 
     expect(result.code).toBe(0);
+    expect(relay.contactRequests).toEqual([recipient.signer.publicKeyBase64]);
     const messages = await readMessages(recipient.client, recipient.signer);
     expect(messages).toHaveLength(2);
     const envelopes = messages.map((message) => JSON.parse(message.text) as Record<string, unknown>);
@@ -327,6 +328,93 @@ describe("tinyplace codex", () => {
       envelope_version: "tinyplace.harness.session.v1",
       harness: { provider: "codex" },
     });
+  });
+
+  it("requests contact approval and withholds DMs while the relationship is pending", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "tinyplace-codex-"));
+    const sessionsDir = join(tempDir, "sessions");
+    const sessionFile = join(
+      sessionsDir,
+      "2026",
+      "06",
+      "30",
+      "rollout-2026-06-30T10-00-00-019f1111-2222-7333-8444-777777777777.jsonl",
+    );
+    const relay = makeRelay();
+    const recipient = await makeClient(44, relay);
+    await publishKeys(recipient.client, recipient.signer);
+    const stderr = new PassThrough();
+    const stderrChunks: Array<string> = [];
+    stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk.toString("utf8")));
+
+    const result = await runTinyPlaceCli(
+      [
+        "codex",
+        "--tinyplace-no-pty",
+        "--tinyplace-out",
+        tempDir,
+        "--tinyplace-session-id",
+        "session-test",
+        "--tinyplace-session-poll-ms",
+        "5",
+        "--tinyplace-session-tail-grace-ms",
+        "20",
+        "prompt",
+      ],
+      {
+        cwd: "/tmp/project",
+        env: {
+          TINYPLACE_CODEX_BIN: "fake-codex",
+          TINYPLACE_CODEX_SESSIONS_DIR: sessionsDir,
+          TINYPLACE_CONFIG: join(tempDir, "config.json"),
+          TINYPLACE_ENDPOINT: "https://relay.test",
+          TINYPLACE_HARNESS_DM_TO: recipient.signer.publicKeyBase64,
+          TINYPLACE_SECRET_KEY: hexSeed(33),
+        },
+        fetch: relay,
+        stdin: new PassThrough(),
+        stdout: new PassThrough(),
+        stderr,
+        spawn: () => {
+          const child = new EventEmitter() as ChildProcessWithoutNullStreams;
+          child.stdin = new PassThrough();
+          child.stdout = new PassThrough();
+          child.stderr = new PassThrough();
+          child.pid = 1234;
+          queueMicrotask(() => {
+            mkdirSync(join(sessionsDir, "2026", "06", "30"), { recursive: true });
+            writeFileSync(
+              sessionFile,
+              [
+                JSON.stringify({
+                  timestamp: "2026-06-30T10:00:00.000Z",
+                  type: "session_meta",
+                  payload: {
+                    cwd: "/tmp/project",
+                    id: "019f1111-2222-7333-8444-777777777777",
+                  },
+                }),
+                JSON.stringify({
+                  timestamp: "2026-06-30T10:01:00.000Z",
+                  type: "event_msg",
+                  payload: { message: "real user prompt", type: "user_message" },
+                }),
+              ].join("\n") + "\n",
+              "utf8",
+            );
+            setTimeout(() => {
+              child.emit("exit", 0, null);
+            }, 20);
+          });
+          return child;
+        },
+      },
+    );
+
+    expect(result.code).toBe(1);
+    expect(relay.contactRequests).toEqual([recipient.signer.publicKeyBase64]);
+    expect(stderrChunks.join("")).toContain("contact request pending");
+    await expect(readMessages(recipient.client, recipient.signer)).resolves.toHaveLength(0);
   });
 
   it("mirrors the wrapper for Claude Code session JSONL", async () => {
@@ -468,12 +556,21 @@ async function makeClient(
   return { client, signer };
 }
 
-function makeRelay(): typeof globalThis.fetch {
+interface HarnessRelay {
+  (
+    input: Parameters<typeof globalThis.fetch>[0],
+    init?: Parameters<typeof globalThis.fetch>[1],
+  ): Promise<Response>;
+  contactRequests: Array<string>;
+}
+
+function makeRelay(options: { autoAcceptContacts?: boolean } = {}): HarnessRelay {
   const inbox = new Map<string, Array<MessageEnvelope>>();
   const signedPreKeys = new Map<string, SignedKey>();
   const preKeys = new Map<string, Array<SignedKey>>();
+  const contacts = new Map<string, "pending" | "accepted" | "blocked">();
 
-  return async (input, init): Promise<Response> => {
+  const relay = (async (input, init): Promise<Response> => {
     const request = new Request(input, init);
     const url = new URL(request.url);
     const path = url.pathname;
@@ -481,6 +578,12 @@ function makeRelay(): typeof globalThis.fetch {
 
     if (path === "/messages" && method === "PUT") {
       const envelope = (await request.json()) as MessageEnvelope;
+      if (
+        envelope.from !== envelope.to &&
+        contacts.get(contactKey(envelope.from, envelope.to)) !== "accepted"
+      ) {
+        return Response.json({ error: "not_a_contact" }, { status: 403 });
+      }
       inbox.set(envelope.to, [...(inbox.get(envelope.to) ?? []), envelope]);
       return Response.json(envelope, { status: 202 });
     }
@@ -496,6 +599,30 @@ function makeRelay(): typeof globalThis.fetch {
         (inbox.get(agentId) ?? []).filter((envelope) => envelope.id !== id),
       );
       return new Response(null, { status: 204 });
+    }
+    const contactStatusMatch = path.match(/^\/contacts\/([^/]+)\/status$/);
+    if (contactStatusMatch && method === "GET") {
+      const agentId = decodeURIComponent(contactStatusMatch[1]!);
+      return Response.json({
+        agentId,
+        status: contacts.get(contactKey(actorId(request), agentId)) ?? "none",
+      });
+    }
+    const contactRequestMatch = path.match(/^\/contacts\/([^/]+)$/);
+    if (contactRequestMatch && method === "POST") {
+      const agentId = decodeURIComponent(contactRequestMatch[1]!);
+      const requester = actorId(request);
+      const status = options.autoAcceptContacts ? "accepted" : "pending";
+      const now = "2026-06-16T00:00:00.000Z";
+      relay.contactRequests.push(agentId);
+      contacts.set(contactKey(requester, agentId), status);
+      return Response.json({
+        requester,
+        addressee: agentId,
+        status,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
     const signedMatch = path.match(/^\/keys\/([^/]+)\/signed-prekey$/);
     if (signedMatch && method === "PUT") {
@@ -527,5 +654,15 @@ function makeRelay(): typeof globalThis.fetch {
       });
     }
     return Response.json({ error: `unhandled ${method} ${path}` }, { status: 500 });
-  };
+  }) as HarnessRelay;
+  relay.contactRequests = [];
+  return relay;
+}
+
+function actorId(request: Request): string {
+  return request.headers.get("X-TinyPlace-Public-Key") ?? request.headers.get("X-Agent-ID") ?? "";
+}
+
+function contactKey(a: string, b: string): string {
+  return [a, b].sort().join("\0");
 }

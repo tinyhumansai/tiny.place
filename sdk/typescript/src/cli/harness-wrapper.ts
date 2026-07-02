@@ -11,7 +11,7 @@ import {
 import { homedir, platform } from "node:os";
 import { basename, join, resolve } from "node:path";
 
-import { sendMessage } from "../agent/messaging.js";
+import { resolveRecipientKey, sendMessage } from "../agent/messaging.js";
 import {
   SESSION_ENVELOPE_VERSION_V1,
   type HarnessBucketUnit,
@@ -540,6 +540,7 @@ class HarnessSessionTailer {
 }
 
 class SessionEnvelopePublisher {
+  private contactPromise: Promise<string> | undefined;
   private contextPromise:
     | ReturnType<typeof makeContext>
     | undefined;
@@ -584,18 +585,66 @@ class SessionEnvelopePublisher {
     if (!ctx.signer) {
       throw new Error("DM forwarding requires a tiny.place signer");
     }
-    await sendMessage(
-      ctx.client,
-      ctx.signer,
-      this.config.dmRecipient ?? "",
-      JSON.stringify(envelope),
-    );
+    const recipient = await this.ensureContact(ctx);
+    try {
+      await sendMessage(ctx.client, ctx.signer, recipient, JSON.stringify(envelope));
+    } catch (error) {
+      if (!isNotAContactError(error)) {
+        throw error;
+      }
+      this.contactPromise = undefined;
+      const refreshedRecipient = await this.ensureContact(ctx);
+      await sendMessage(ctx.client, ctx.signer, refreshedRecipient, JSON.stringify(envelope));
+    }
   }
 
   private context(): ReturnType<typeof makeContext> {
     this.contextPromise ??= makeContext(this.options);
     return this.contextPromise;
   }
+
+  private ensureContact(ctx: Awaited<ReturnType<typeof makeContext>>): Promise<string> {
+    this.contactPromise ??= this.ensureContactNow(ctx);
+    return this.contactPromise;
+  }
+
+  private async ensureContactNow(ctx: Awaited<ReturnType<typeof makeContext>>): Promise<string> {
+    if (!ctx.signer) {
+      throw new Error("DM forwarding requires a tiny.place signer");
+    }
+    const recipient = await resolveRecipientKey(ctx.client, this.config.dmRecipient ?? "");
+    if (recipient === ctx.signer.publicKeyBase64) {
+      return recipient;
+    }
+
+    const before = await ctx.client.contacts.status(recipient);
+    if (before.status === "accepted") {
+      return recipient;
+    }
+    if (before.status === "blocked") {
+      throw new Error(`tiny.place contact blocked for ${recipient}; unblock before DM forwarding`);
+    }
+
+    await ctx.client.contacts.request(recipient);
+    const after = await ctx.client.contacts.status(recipient);
+    if (after.status === "accepted") {
+      return recipient;
+    }
+    if (after.status === "blocked") {
+      throw new Error(`tiny.place contact blocked for ${recipient}; unblock before DM forwarding`);
+    }
+    throw new Error(
+      `tiny.place contact request pending for ${recipient}; approve it in OpenHuman before DM forwarding`,
+    );
+  }
+}
+
+function isNotAContactError(error: unknown): boolean {
+  const body = typeof error === "object" && error !== null ? (error as { body?: unknown }).body : undefined;
+  const bodyText =
+    typeof body === "string" ? body : body !== undefined ? JSON.stringify(body) : "";
+  const message = error instanceof Error ? error.message : String(error);
+  return /not[_ ]a[_ ]contact/i.test(`${message} ${bodyText}`);
 }
 
 class TerminalEnvelopeWriter {
