@@ -31,6 +31,16 @@ export const AUTO_SENTINEL = SOH + "tp-auto" + SOH;
 export const REPLY_OPEN = SOH + "re:";
 export const REPLY_CLOSE = SOH;
 
+// A session label is a short, token-like string (e.g. `claude:1`, `reviewer`).
+// Both from_session and to_session are ATTACKER-CONTROLLED free text pulled from
+// the DM body, so we constrain them to this shape at decode time — downstream
+// consumers (routing keys, the auto-responder's LLM prompt) then get values that
+// are safe by construction. Anything outside the shape is dropped (null).
+export const SAFE_LABEL_RE = /^[\w:-]{1,32}$/;
+export function safeLabel(value) {
+  return typeof value === "string" && SAFE_LABEL_RE.test(value) ? value : null;
+}
+
 // §15 default: a plugin session's harness_session_id is the Claude Code session id.
 export function harnessSessionId() {
   return process.env.CLAUDE_CODE_SESSION_ID?.trim() || "";
@@ -69,7 +79,11 @@ export function encodeEnvelope(opts) {
       type: "session",
       key: `${opts.agentAddress ?? "agent"}:${label}`,
       cwd: opts.cwd ?? process.cwd(),
-      wrapper_session_id: label,
+      // The shared SessionEnvelope contract uses wrapper_session_id for a UNIQUE
+      // wrapper-session identifier (the harness-wrapper puts a uuid here), so we
+      // keep it aligned with that semantic. The short routing label rides in
+      // tp.from_session instead.
+      wrapper_session_id: opts.harnessSessionId || harnessSessionId() || `${opts.agentAddress ?? "agent"}:${label}`,
       harness_session_id: opts.harnessSessionId ?? harnessSessionId(),
     },
     harness: { provider: "claude", command: "tinyplace-plugin", argv: [] },
@@ -81,7 +95,7 @@ export function encodeEnvelope(opts) {
       timestamp: now.toISOString(),
     },
     source: { path: "plugin", record_type: "dm" },
-    tp: { v: PLUGIN_TP_VERSION },
+    tp: { v: PLUGIN_TP_VERSION, from_session: label },
   };
   if (opts.toSession) envelope.tp.to_session = opts.toSession;
   if (opts.inReplyTo) envelope.tp.in_reply_to = opts.inReplyTo;
@@ -108,8 +122,11 @@ function decodeEnvelope(obj) {
     inReplyTo: typeof tp.in_reply_to === "string" ? tp.in_reply_to : null,
     text,
     messageId: typeof obj.message?.id === "string" ? obj.message.id : null,
-    fromSession: typeof obj.scope?.wrapper_session_id === "string" ? obj.scope.wrapper_session_id : null,
-    toSession: typeof tp.to_session === "string" ? tp.to_session : null,
+    // The routing label is tp.from_session; fall back to wrapper_session_id for
+    // older bodies that stored the label there. Constrain the (attacker-
+    // controlled) labels to a safe token shape so downstream use is safe.
+    fromSession: safeLabel(tp.from_session) ?? safeLabel(obj.scope?.wrapper_session_id),
+    toSession: safeLabel(tp.to_session),
     role,
     envelope: true,
   };

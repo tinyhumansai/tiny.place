@@ -57,6 +57,17 @@ expect("redeliverUnrouted moved 1 held message", moved === 1);
 const drained9 = routing.drainInbox(A, "claude:9");
 expect("claude:9 now receives its held message m2", drained9.length === 1 && drained9[0].id === "m2");
 
+// ── untargeted mail held while no session is live, redelivered to primary ─────
+const U = "AgentUUUUUUUUUUUUUUUUUUUUUUUUUUUU";
+const ru = routing.enqueueRouted(U, { id: "u1", from: "peerU", text: "nobody home" }, { policy: "primary" });
+expect("untargeted with no live session → unrouted", ru.target.kind === "unrouted");
+expect("no inbox exists yet for U", !existsSync(routing.sessionInboxDir(U, "claude:1")));
+reg.writePresence(U, { label: "claude:1", harnessSessionId: "hu", cwd: "/w", startedAt: new Date().toISOString() });
+const movedU = routing.redeliverUnrouted(U, { policy: "primary" });
+expect("redeliverUnrouted delivers held untargeted mail to primary", movedU === 1);
+const dU = routing.drainInbox(U, "claude:1");
+expect("primary session now receives the held untargeted message", dU.length === 1 && dU[0].id === "u1");
+
 const failed = checks.filter((c) => !c.ok);
 console.log("\n" + (failed.length === 0 ? `ALL ${checks.length} CHECKS PASSED ✅` : `${failed.length} FAILED ❌`));
 process.exit(failed.length === 0 ? 0 : 1);

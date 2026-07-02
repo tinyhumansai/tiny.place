@@ -8,13 +8,26 @@
 // Liveness: a session is live if `now - updatedAt < LIVE_WINDOW` AND its pid is
 // alive. Sessions heartbeat (rewrite updatedAt) on the poll tick. Stale files
 // are ignored for routing and garbage-collected.
-import { mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync, openSync, writeSync, closeSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 const DATA_DIR = process.env.TINYPLACE_CLAUDE_HOME ?? join(homedir(), ".tinyplace-claude");
 // A session is considered live within this window of its last heartbeat.
 const LIVE_WINDOW_MS = Number(process.env.TINYPLACE_SESSION_LIVE_MS) || 30_000;
+
+// Synchronous sleep (no async yield) so claimLabel's CAS retry is indivisible.
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function readEntryFile(path) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
 
 export function sessionsDir(agentAddress) {
   return join(DATA_DIR, "sessions", encodeURIComponent(String(agentAddress)));
@@ -129,6 +142,55 @@ export function allocateLabel(agentAddress, { requested, harnessSessionId } = {}
     const cand = `claude:${n}`;
     if (!liveLabels.has(cand)) return cand;
   }
+}
+
+// Atomically allocate a label AND create this session's presence file in one
+// step. Allocating then writing separately races: two sessions starting at once
+// could both pick the same free `claude:n` before either file exists, and the
+// second write would orphan the first. Here the exclusive create (wx) is the
+// CAS — on collision we either reclaim our own/stale file or allocate the next
+// free label and retry. Returns the presence entry (label + metadata).
+export function claimLabel(agentAddress, { requested, harnessSessionId, cwd, startedAt } = {}) {
+  const dir = sessionsDir(agentAddress);
+  mkdirSync(dir, { recursive: true });
+  let req = requested;
+  for (let attempt = 0; attempt < 128; attempt++) {
+    const label = allocateLabel(agentAddress, { requested: req, harnessSessionId });
+    const path = join(dir, presenceFile(label));
+    const now = new Date().toISOString();
+    const entry = {
+      label,
+      harnessSessionId: harnessSessionId ?? "",
+      cwd: cwd ?? "",
+      pid: process.pid,
+      startedAt: startedAt ?? now,
+      updatedAt: now,
+    };
+    try {
+      const fd = openSync(path, "wx", 0o600); // exclusive create — the CAS
+      try { writeSync(fd, JSON.stringify(entry) + "\n"); } finally { closeSync(fd); }
+      return entry;
+    } catch (e) {
+      if (e?.code !== "EEXIST") throw e;
+      // Tolerate a racer mid-create (empty/partial file): re-read briefly before
+      // deciding it's reclaimable, so we never clobber a winner's in-flight file.
+      let existing = readEntryFile(path);
+      for (let i = 0; existing === null && i < 6; i++) { sleepSync(5); existing = readEntryFile(path); }
+      if ((harnessSessionId && existing?.harnessSessionId === harnessSessionId) || !isLive(existing)) {
+        // Our own prior file, or a dead/corrupt leftover → reclaim it. Pin the
+        // request to THIS exact label so the retry re-targets it (not a sibling
+        // stale file that shares our harnessSessionId).
+        try { rmSync(path); } catch { /* raced */ }
+        req = label;
+        continue;
+      }
+      // A live foreigner won this label in the race — allocate the next one.
+      // Drop an explicit request pinned to the taken label so we don't spin.
+      if (req && req.trim() === label) req = undefined;
+    }
+  }
+  // Extremely unlikely: fall back to a plain (non-atomic) write.
+  return writePresence(agentAddress, { label: allocateLabel(agentAddress, { requested: req, harnessSessionId }), harnessSessionId, cwd, startedAt });
 }
 
 // Write (or refresh) this process's presence file. Called on adopt and on every

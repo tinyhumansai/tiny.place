@@ -79,9 +79,11 @@ export function enqueueRouted(agentAddress, decoded, { policy = unroutedPolicy()
   return { target, written };
 }
 
-// When a session becomes live, deliver any held messages addressed to it. Moves
-// matching _unrouted files into the session's inbox. Returns count delivered.
-export function redeliverUnrouted(agentAddress) {
+// When a session becomes live, deliver any held messages that can now be routed.
+// Re-evaluates each held message against the CURRENT live set + policy — so both
+// explicitly-targeted mail (whose target just came online) AND untargeted mail
+// held because no session was live get delivered. Returns count delivered.
+export function redeliverUnrouted(agentAddress, { policy = unroutedPolicy() } = {}) {
   const dir = unroutedDir(agentAddress);
   let files = [];
   try {
@@ -89,7 +91,8 @@ export function redeliverUnrouted(agentAddress) {
   } catch {
     return 0;
   }
-  const live = new Set(liveSessions(agentAddress).map((s) => s.label));
+  const liveList = liveSessions(agentAddress).map((s) => s.label);
+  const primary = primarySession(agentAddress)?.label ?? null;
   let delivered = 0;
   for (const f of files) {
     let payload;
@@ -98,11 +101,14 @@ export function redeliverUnrouted(agentAddress) {
     } catch {
       continue;
     }
-    const target = payload.toSession;
-    if (target && live.has(target)) {
+    const target = routeTarget({ toSession: payload.toSession, liveLabels: liveList, primary, policy });
+    // Only single-session delivery is reversible from _unrouted (broadcast would
+    // need copies); a held untargeted message goes to the current primary.
+    if (target.kind === "session" && target.labels.length === 1) {
+      const label = target.labels[0];
       try {
-        mkdirSync(inboxDir(agentAddress, target), { recursive: true });
-        renameSync(join(dir, f), join(inboxDir(agentAddress, target), f));
+        mkdirSync(inboxDir(agentAddress, label), { recursive: true });
+        renameSync(join(dir, f), join(inboxDir(agentAddress, label), f));
         delivered += 1;
       } catch {
         /* raced/gone */

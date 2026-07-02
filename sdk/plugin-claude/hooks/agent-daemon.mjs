@@ -24,6 +24,7 @@ import { liveSessions } from "../mcp/registry.mjs";
 import { enqueueRouted, redeliverUnrouted } from "../mcp/routing.mjs";
 import { claimOutboxJobs } from "../mcp/outbox.mjs";
 import { acquireLock, heartbeatLock, releaseLock } from "../mcp/daemon-lock.mjs";
+import { toCryptoId } from "../mcp/address.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = dirname(HERE);
@@ -97,7 +98,7 @@ function enqueueForAutoResponse(msg) {
     mkdirSync(dir, { recursive: true });
     writeFileSync(
       join(dir, `${encodeURIComponent(String(msg.id))}.json`),
-      JSON.stringify({ id: msg.id, from: msg.from, text: msg.text, fromSession: msg.fromSession ?? null, role: msg.role ?? null, inReplyTo: msg.inReplyTo ?? null, ts: msg.ts }) + "\n",
+      JSON.stringify({ id: msg.id, from: msg.from, text: msg.text, fromSession: msg.fromSession ?? null, toSession: msg.toSession ?? null, role: msg.role ?? null, inReplyTo: msg.inReplyTo ?? null, ts: msg.ts }) + "\n",
       { mode: 0o600 },
     );
   } catch { /* non-fatal */ }
@@ -165,10 +166,12 @@ async function drainOutbound() {
       done();
     } catch (e) {
       // Contact-gate: request the contact once, then leave the job queued so it
-      // delivers as soon as the peer accepts. Other failures also re-queue.
+      // delivers as soon as the peer accepts. The contacts API is keyed by the
+      // base58 cryptoId, so resolve @handle/base64-key first (a raw job.to would
+      // silently fail). Other failures also re-queue.
       if (e?.status === 403 && !contactRequested.has(job.to)) {
         contactRequested.add(job.to);
-        try { await client.contacts.request(job.to); } catch { /* best-effort */ }
+        try { await client.contacts.request(await toCryptoId(client, job.to)); } catch { /* best-effort */ }
       }
       fail();
     }

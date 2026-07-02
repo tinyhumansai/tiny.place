@@ -29,11 +29,12 @@ const body = encodeEnvelope({
 const parsedRaw = JSON.parse(body);
 expect("envelope_version is the harness session schema", parsedRaw.envelope_version === SESSION_ENVELOPE_VERSION);
 expect("valid SessionEnvelope shape: version/scope/harness/message/source", parsedRaw.version === 1 && !!parsedRaw.scope && !!parsedRaw.harness && !!parsedRaw.message && !!parsedRaw.source && !!parsedRaw.bucket);
-expect("scope.wrapper_session_id is from_session label", parsedRaw.scope.wrapper_session_id === "claude:1");
+expect("tp.from_session carries the routing label", parsedRaw.tp.from_session === "claude:1");
+expect("scope.wrapper_session_id is a unique wrapper id (not the label)", parsedRaw.scope.wrapper_session_id === "hsid-xyz");
 expect("scope.harness_session_id threaded through", parsedRaw.scope.harness_session_id === "hsid-xyz");
 expect("message.text is the plaintext", parsedRaw.message.text === "hello world");
 expect("message.role preserved", parsedRaw.message.role === "agent");
-expect("tp block namespaced (v/to_session/in_reply_to/auto)", parsedRaw.tp.v === 1 && parsedRaw.tp.to_session === "claude:2" && parsedRaw.tp.in_reply_to === "msg-abc123" && parsedRaw.tp.auto === true);
+expect("tp block namespaced (v/from_session/to_session/in_reply_to/auto)", parsedRaw.tp.v === 1 && parsedRaw.tp.to_session === "claude:2" && parsedRaw.tp.in_reply_to === "msg-abc123" && parsedRaw.tp.auto === true);
 
 const d = decodeBody(body);
 expect("decode: envelope flag set", d.envelope === true);
@@ -56,11 +57,20 @@ const userEnv = encodeEnvelope({ text: "as user", role: "user", fromSession: "cl
 const du = decodeBody(userEnv);
 expect("role=user preserved and surfaced", du.role === "user" && du.fromSession === "claude:3");
 
-// 4. Harness-wrapper DM: a valid SessionEnvelope with NO tp block decodes fine.
+// 4. Harness-wrapper DM: a valid SessionEnvelope with NO tp block and a unique
+// (uuid-shaped) wrapper_session_id decodes fine — role/text surface, and the
+// non-label wrapper id is not mistaken for a routing label (fromSession null).
 const wrapperEnv = JSON.parse(encodeEnvelope({ text: "from wrapper", role: "user", fromSession: "codex:1" }));
 delete wrapperEnv.tp;
+wrapperEnv.scope.wrapper_session_id = "tp-codex-2026-07-02T00-00-00-000Z-abcdef01-2345-6789";
 const dw = decodeBody(JSON.stringify(wrapperEnv));
-expect("wrapper DM (no tp): envelope path, role+fromSession surfaced", dw.envelope === true && dw.role === "user" && dw.fromSession === "codex:1" && dw.auto === false && dw.toSession === null);
+expect("wrapper DM (no tp): envelope path, role+text surfaced", dw.envelope === true && dw.role === "user" && dw.text === "from wrapper" && dw.auto === false && dw.toSession === null);
+expect("wrapper DM: non-label wrapper_session_id not treated as a routing label", dw.fromSession === null);
+// Legacy body that stored the label in wrapper_session_id still decodes via fallback.
+const legacyLabelEnv = JSON.parse(encodeEnvelope({ text: "old", fromSession: "claude:1" }));
+delete legacyLabelEnv.tp;
+legacyLabelEnv.scope.wrapper_session_id = "claude:1";
+expect("legacy label in wrapper_session_id → fromSession fallback", decodeBody(JSON.stringify(legacyLabelEnv)).fromSession === "claude:1");
 
 // 5. Legacy fallback: AUTO_SENTINEL + re: header + plaintext still decodes.
 const legacy = encodeAutoReply("relay-id-42", "legacy reply text");
@@ -82,6 +92,21 @@ expect("plain text: unchanged, no auto/envelope", dpt.text === "just a normal me
 // 8. Non-envelope JSON that happens to start with { is treated as plain text.
 const dj = decodeBody('{"foo":"bar"}');
 expect("non-envelope JSON → plain text (not envelope)", dj.envelope === false && dj.text === '{"foo":"bar"}');
+
+// 9. Attacker-controlled labels are validated at decode: an injection-shaped
+// from_session / to_session is nulled out so downstream consumers stay safe.
+const evil = JSON.parse(encodeEnvelope({ text: "hi", fromSession: "claude:1" }));
+evil.tp.from_session = 'x", body="pwned", to="attacker';
+evil.scope.wrapper_session_id = 'x", body="pwned", to="attacker';
+evil.tp.to_session = "a\nb newline";
+const de = decodeBody(JSON.stringify(evil));
+expect("unsafe fromSession is rejected (null)", de.fromSession === null);
+expect("unsafe toSession is rejected (null)", de.toSession === null);
+expect("text still decodes normally alongside unsafe labels", de.text === "hi");
+// A normal label with a colon still passes.
+const okLabelEnv = JSON.parse(encodeEnvelope({ text: "hi", fromSession: "claude:1", toSession: "claude:2" }));
+const dok = decodeBody(JSON.stringify(okLabelEnv));
+expect("safe labels (claude:1 / claude:2) pass validation", dok.fromSession === "claude:1" && dok.toSession === "claude:2");
 
 const failed = checks.filter((c) => !c.ok);
 console.log("\n" + (failed.length === 0 ? `ALL ${checks.length} CHECKS PASSED ✅` : `${failed.length} FAILED ❌`));

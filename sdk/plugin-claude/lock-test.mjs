@@ -85,6 +85,27 @@ const results = await Promise.all([runRacer(), runRacer(), runRacer()]);
 const wins = results.filter((r) => r === "WIN").length;
 expect("3-way race → exactly one WIN", wins === 1);
 
+// ── stale-steal race: concurrent stealers of one stale lock → one winner ──────
+function runStealRacer(agent) {
+  const src = `
+    process.env.TINYPLACE_CLAUDE_HOME = ${JSON.stringify(process.env.TINYPLACE_CLAUDE_HOME)};
+    const lock = await import(${JSON.stringify(join(here, "mcp", "daemon-lock.mjs"))});
+    const won = lock.acquireLock(${JSON.stringify(agent)}, { wallet: "w" });
+    if (won) await new Promise((r) => setTimeout(r, 300));
+    process.stdout.write(won ? "WIN" : "LOSE");
+  `;
+  return new Promise((resolve) => {
+    const c = spawn(process.execPath, ["--input-type=module", "-e", src], { stdio: ["ignore", "pipe", "ignore"] });
+    let out = "";
+    c.stdout.on("data", (d) => (out += d.toString()));
+    c.on("exit", () => resolve(out.trim()));
+  });
+}
+const staleAgent = "AgentStaleRace666666666666666";
+writeForeignLock(staleAgent, deadPid, now()); // a stale lock all racers must steal
+const stealResults = await Promise.all([runStealRacer(staleAgent), runStealRacer(staleAgent), runStealRacer(staleAgent)]);
+expect("3-way stale-steal race → exactly one WIN", stealResults.filter((r) => r === "WIN").length === 1);
+
 sleeper.kill("SIGKILL");
 
 const failed = checks.filter((c) => !c.ok);

@@ -2,13 +2,40 @@
 // single ratchet writer) claims it, builds the SessionEnvelope, and sends. File
 // queue at sessions/<agent>/_outbox/. Claims are atomic renames so the daemon
 // never double-sends a job.
-import { mkdirSync, writeFileSync, readdirSync, readFileSync, renameSync, rmSync } from "node:fs";
+import { mkdirSync, writeFileSync, readdirSync, readFileSync, renameSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { sessionsDir } from "./registry.mjs";
 
+// A claim older than this is assumed abandoned (daemon crashed mid-send) and is
+// requeued. Kept safely longer than any single send attempt.
+const STALE_CLAIM_MS = Number(process.env.TINYPLACE_OUTBOX_CLAIM_MS) || 60_000;
+
 export function outboxDir(agentAddress) {
   return join(sessionsDir(agentAddress), "_outbox");
+}
+
+// Requeue jobs whose `.sending-*` claim was orphaned by a daemon that exited
+// between claiming and done()/fail(). Without this they'd never be listed again.
+function recoverStaleClaims(dir) {
+  let files;
+  try {
+    files = readdirSync(dir).filter((f) => f.startsWith(".sending-"));
+  } catch {
+    return;
+  }
+  const now = Date.now();
+  for (const f of files) {
+    const p = join(dir, f);
+    try {
+      if (now - statSync(p).mtimeMs < STALE_CLAIM_MS) continue;
+      const orig = f.replace(/^\.sending-\d+-/, "");
+      if (!orig.endsWith(".json")) continue;
+      renameSync(p, join(dir, orig)); // back to a pending job
+    } catch {
+      /* raced with a live daemon finishing the send — fine */
+    }
+  }
 }
 
 // Session side: enqueue a send job. `job` carries
@@ -30,6 +57,7 @@ export function writeOutboxJob(agentAddress, job) {
 // then parse. Returns [{ job, done() }] where done() removes the claimed file.
 export function claimOutboxJobs(agentAddress) {
   const dir = outboxDir(agentAddress);
+  recoverStaleClaims(dir); // requeue anything a crashed daemon left mid-send
   let files = [];
   try {
     files = readdirSync(dir).filter((f) => f.endsWith(".json") && !f.startsWith(".")).sort();

@@ -2,7 +2,7 @@
 // Signal ratchet for an agent. Lock file: ~/.tinyplace-claude/daemon/<agent>.lock
 // = { pid, wallet, startedAt, updatedAt }. Acquire is a compare-and-set on an
 // atomic O_EXCL create; a stale lock (dead pid or expired heartbeat) is stolen.
-import { mkdirSync, writeFileSync, readFileSync, rmSync, openSync, closeSync, writeSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, rmSync, renameSync, openSync, closeSync, writeSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -84,12 +84,25 @@ export function acquireLock(agentAddress, info) {
       if (e?.code !== "EEXIST") throw e;
       let cur = readLock(agentAddress);
       // Tolerate a racer mid-create (empty/partial file): re-read briefly before
-      // deciding it's stealable, so we never delete a winner's in-flight lock.
+      // deciding it's stealable, so we never treat a winner's in-flight lock as
+      // stale.
       for (let i = 0; cur === null && i < 6; i++) { sleepSync(5); cur = readLock(agentAddress); }
       if (cur && cur.pid === process.pid) { writeLock(agentAddress, info); return true; }
       if (isDaemonLive(cur)) return false; // a live daemon owns it
-      // Stale or corrupt leftover — steal and retry the exclusive create.
-      try { rmSync(path); } catch { /* raced with another stealer */ }
+      // Stale or corrupt leftover — atomically claim it by renaming, then verify
+      // what we grabbed was really stale. This closes the steal race: if another
+      // process wrote a fresh lock between our read and the rename, we'd move
+      // THAT live lock — so if the claimed contents are live, put it back and
+      // stand down instead of clobbering the new owner.
+      const claim = `${path}.steal-${process.pid}-${attempt}`;
+      try { renameSync(path, claim); } catch { continue; } // gone/replaced — retry
+      let claimed = null;
+      try { claimed = JSON.parse(readFileSync(claim, "utf8")); } catch { claimed = null; }
+      if (isDaemonLive(claimed)) {
+        try { renameSync(claim, path); } catch { /* owner self-heals on next heartbeat */ }
+        return false;
+      }
+      try { rmSync(claim); } catch { /* best-effort */ }
     }
   }
   // Someone else won the steal race; treat them as the owner.
@@ -111,6 +124,8 @@ export function heartbeatLock(agentAddress, info) {
 
 export function releaseLock(agentAddress) {
   const cur = readLock(agentAddress);
-  if (cur && cur.pid !== process.pid) return; // not ours
+  // Only remove a lock we can PROVE is ours — never delete a partial/corrupt or
+  // foreign lock (a null read could be another daemon's in-flight create).
+  if (!cur || cur.pid !== process.pid) return;
   try { rmSync(lockPath(agentAddress)); } catch { /* already gone */ }
 }

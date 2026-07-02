@@ -79,6 +79,7 @@ expect("daemon acquires its lock on boot", becameLive);
 // no live sessions → daemon idle-exits within a couple of IDLE windows
 for (let i = 0; i < 30 && !exited; i++) await sleep(100);
 expect("daemon idle-exits when no live sessions", exited);
+if (!exited) daemon.kill("SIGKILL"); // don't leave a stray process if the assertion failed
 expect("daemon releases its lock on exit", !lock.daemonLive(AGENT));
 
 // ── part 2: thin-client mode against a FAKE live daemon ──────────────────────

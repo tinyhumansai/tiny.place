@@ -35,12 +35,12 @@ import {
 import {
   harnessSessionId,
   sessionLabel,
-  encodeEnvelope,
+  buildEnvelope,
   newMessageId,
   decodeBody,
 } from "./format.mjs";
 import {
-  allocateLabel,
+  claimLabel,
   writePresence,
   removePresence,
   liveSessions,
@@ -49,6 +49,7 @@ import {
 import { drainInbox, redeliverUnrouted } from "./routing.mjs";
 import { writeOutboxJob } from "./outbox.mjs";
 import { daemonLive } from "./daemon-lock.mjs";
+import { toCryptoId } from "./address.mjs";
 
 // ── storage ────────────────────────────────────────────────────────────────
 const DATA_DIR = process.env.TINYPLACE_CLAUDE_HOME ?? join(homedir(), ".tinyplace-claude");
@@ -276,30 +277,16 @@ async function maybeRecoverSession(peer) {
 
 
 // ── outbound body builder (envelope superset) ───────────────────────────────
-// Build an outbound body for the active in-process session (envelope superset).
-function encodeSend({ text, role, toSession, inReplyTo, auto }) {
-  return encodeEnvelope({
-    text,
-    role,
-    toSession,
-    inReplyTo,
-    auto,
-    fromSession: session?.label,
-    harnessSessionId: harnessSessionId(),
-    agentAddress: session?.address,
-    cwd: process.cwd(),
-  });
-}
-
-// Route an outbound message. In daemon mode the send is deferred to the daemon
-// (single ratchet writer) via an outbox job keyed by a client-generated id; in
-// self mode we send directly. Returns { id, via } where id is the correlation id
-// used to match a later reply (envelope message.id in daemon mode, relay id in
-// self mode).
+// Route an outbound message. Both modes key the message by a client-generated
+// envelope `message.id` and correlate replies on THAT id (not the relay id), so
+// correlation works identically whether the peer/daemon is present or not — and
+// a daemon-mode sender's reply still matches a self-mode receiver's echo. In
+// daemon mode the send is deferred to the daemon (single ratchet writer) via an
+// outbox job; in self mode we send directly. Returns { id, via }.
 async function dispatchSend({ to, text, role, toSession, inReplyTo, auto }) {
   const s = requireActive();
+  const id = newMessageId();
   if (s.mode === "daemon") {
-    const id = newMessageId();
     writeOutboxJob(s.address, {
       id,
       to,
@@ -314,36 +301,26 @@ async function dispatchSend({ to, text, role, toSession, inReplyTo, auto }) {
     });
     return { id, via: "daemon" };
   }
-  const sent = await sendMessage(s.client, s.signer, to, encodeSend({ text, role, toSession, inReplyTo, auto }));
-  return { id: sent.id, type: sent.type, via: "self" };
+  const { body } = buildEnvelope({
+    messageId: id,
+    text,
+    role,
+    toSession,
+    inReplyTo,
+    auto,
+    fromSession: s.label,
+    harnessSessionId: harnessSessionId(),
+    agentAddress: s.address,
+    cwd: process.cwd(),
+  });
+  const sent = await sendMessage(s.client, s.signer, to, body);
+  return { id, relayId: sent.id, type: sent.type, via: "self" };
 }
 
 function hexToBytes(hex) {
   const out = new Uint8Array(hex.length / 2);
   for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
   return out;
-}
-
-// Contacts are keyed by the base58 cryptoId (a base64 key gives 404 on
-// /contacts/{id}). Convert whatever the user passed (cryptoId, base64 key, or
-// @handle) into the cryptoId the contacts API expects.
-const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const CRYPTO_ID_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-const B64KEY_RE = /^[A-Za-z0-9+/]{43}=$/;
-function bytesToBase58(bytes) {
-  let n = 0n;
-  for (const b of bytes) n = (n << 8n) + BigInt(b);
-  let out = "";
-  while (n > 0n) { out = BASE58[Number(n % 58n)] + out; n = n / 58n; }
-  for (const b of bytes) { if (b !== 0) break; out = "1" + out; }
-  return out || "1";
-}
-async function toCryptoId(client, value) {
-  if (B64KEY_RE.test(value)) return bytesToBase58(Buffer.from(value, "base64"));
-  if (!value.startsWith("@") && CRYPTO_ID_RE.test(value)) return value;
-  const handle = value.startsWith("@") ? value : `@${value}`;
-  const r = await client.directory.resolve(handle).catch(() => null);
-  return r?.agent?.agentId ?? r?.agentId ?? r?.cryptoId ?? value;
 }
 
 // ── per-session active wallet + listener ─────────────────────────────────────
@@ -410,11 +387,13 @@ async function drainSelf() {
     }
     let enqueuedAny = false;
     for (const rawMsg of messages) {
-      const { auto, inReplyTo, text, fromSession, role, toSession } = decodeBody(rawMsg.text);
+      const { auto, inReplyTo, text, messageId, fromSession, role, toSession } = decodeBody(rawMsg.text);
       // A re-handshake ping only exists to re-run X3DH (done on decrypt); consume
       // it silently so it never surfaces as a message.
       if (text === RESET_SENTINEL) continue;
-      const msg = { ...rawMsg, text, inReplyTo, fromSession, role, toSession };
+      // Correlate on the in-body envelope id when present (matches what a peer
+      // echoes as in_reply_to), else fall back to the relay id for legacy bodies.
+      const msg = { ...rawMsg, id: messageId ?? rawMsg.id, text, inReplyTo, fromSession, role, toSession };
       if (deliverToSession(msg, { auto, enqueueForAuto: true })) enqueuedAny = true;
     }
     // Daemon trigger: react to new mail even when the Claude UI is idle.
@@ -429,12 +408,19 @@ async function drainSelf() {
 // DAEMON MODE drain: the daemon owns the relay and routes this session's mail
 // into its inbox/ file queue. Here we just claim those files and deliver them
 // through the same waiter/buffer pipeline. No relay/ratchet touching.
+let lastDaemonSpawnAttempt = 0;
+const DAEMON_SPAWN_COOLDOWN_MS = 5000;
 async function drainDaemonInbox() {
   if (!session || session.draining) return;
   session.draining = true;
   try {
     // If the daemon died, respawn one (lock CAS makes the winner the new owner).
-    if (!daemonLive(session.address)) ensureDaemonSpawn(session.name);
+    // Cooldown-guarded so a daemon that crashes on boot can't cause a spawn storm
+    // across every session's poll tick.
+    if (!daemonLive(session.address) && Date.now() - lastDaemonSpawnAttempt > DAEMON_SPAWN_COOLDOWN_MS) {
+      lastDaemonSpawnAttempt = Date.now();
+      ensureDaemonSpawn(session.name);
+    }
     redeliverUnrouted(session.address); // in case our label just went live
     const payloads = drainInbox(session.address, session.label);
     for (const p of payloads) {
@@ -520,17 +506,27 @@ async function adopt(walletName, { label } = {}) {
   // (use label:… / TINYPLACE_SESSION_LABEL), else claim the lowest free claude:n.
   const hsid = harnessSessionId();
   const requestedLabel = label?.trim() || process.env.TINYPLACE_SESSION_LABEL?.trim() || undefined;
-  const allocatedLabel = process.env.TINYPLACE_SEND_ONLY
-    ? requestedLabel || sessionLabel()
-    : allocateLabel(wallet.address, { requested: requestedLabel, harnessSessionId: hsid });
+  const startedAt = new Date().toISOString();
+  // Allocate this session's label. A real session atomically claims it AND writes
+  // its presence file (claimLabel) so two concurrent starts can't grab the same
+  // label. A send-only responder stays out of the registry (no claim).
+  let allocatedLabel;
+  let presenceClaimed = false;
+  if (process.env.TINYPLACE_SEND_ONLY) {
+    allocatedLabel = requestedLabel || sessionLabel();
+  } else {
+    const entry = claimLabel(wallet.address, { requested: requestedLabel, harnessSessionId: hsid, cwd: process.cwd(), startedAt });
+    allocatedLabel = entry.label;
+    presenceClaimed = true;
+  }
   session = {
     name: wallet.name,
     address: wallet.address,
     publicKey: wallet.publicKey,
     label: allocatedLabel,
     harnessSessionId: hsid,
-    startedAt: new Date().toISOString(),
-    presenceWritten: false,
+    startedAt,
+    presenceWritten: presenceClaimed,
     heartbeatTimer: null,
     mode: "self",
     daemonStatus: "self",
@@ -601,8 +597,10 @@ async function adopt(walletName, { label } = {}) {
   };
 }
 
-// Write this session's presence file and heartbeat it on the poll cadence so the
-// registry reflects liveness (used for label allocation + Phase C routing).
+// Refresh this session's presence file (claimLabel wrote it first) and heartbeat
+// it on the poll cadence so the registry reflects liveness. Any successful write
+// — including a heartbeat after a transient initial failure — marks
+// presenceWritten so teardown always cleans up the file/label.
 function registerPresence() {
   if (!session) return;
   const meta = {
@@ -619,7 +617,10 @@ function registerPresence() {
     // Non-fatal: without presence this session just isn't individually addressable.
   }
   session.heartbeatTimer = setInterval(() => {
-    try { writePresence(session.address, meta); } catch {}
+    try {
+      writePresence(session.address, meta);
+      session.presenceWritten = true;
+    } catch {}
   }, POLL_INTERVAL_MS);
 }
 
@@ -924,28 +925,35 @@ server.registerTool(
     inputSchema: {
       to: z.string().describe("Recipient: @handle, base58 address, or base64 public key."),
       body: z.string().describe("Message text."),
+      to_session: z.string().optional().describe("Optional target session label of the peer (e.g. 'claude:1')."),
+      role: z.enum(["user", "agent"]).optional().describe("Authoring role for the envelope's message.role (default 'agent')."),
       timeout_seconds: z.number().optional().describe(`Max seconds to wait for a reply (default ${DEFAULT_WAIT_SECONDS}). Keep under the Claude Code tool timeout.`),
     },
   },
-  async ({ to, body, timeout_seconds }) => {
+  async ({ to, body, to_session, role, timeout_seconds }) => {
     try {
       const s = requireActive();
-      const r = await dispatchSend({ to, text: body });
+      const r = await dispatchSend({ to, text: body, role, toSession: to_session });
       // Match the correlated reply to THIS message (by its id). In self mode also
-      // require the peer + accept an uncorrelated reply; in daemon mode the
-      // envelope id is unique, so id correlation alone is sufficient.
+      // require the peer; when we targeted a specific peer session, require the
+      // reply to come back from that same session so another session of a
+      // multi-session peer can't satisfy this waiter with an uncorrelated reply.
       let matchFn;
       if (r.via === "daemon") {
-        matchFn = (m) => m.inReplyTo === r.id;
+        matchFn = (m) => m.inReplyTo === r.id && (!to_session || m.fromSession == null || m.fromSession === to_session);
       } else {
         const recipientKey = await resolveRecipientKey(s.client, to);
-        matchFn = (m) => m.from === recipientKey && (m.inReplyTo == null || m.inReplyTo === r.id);
+        matchFn = (m) =>
+          m.from === recipientKey &&
+          (m.inReplyTo == null || m.inReplyTo === r.id) &&
+          (!to_session || m.fromSession == null || m.fromSession === to_session);
       }
       const reply = await waitFor(matchFn, timeout_seconds ?? DEFAULT_WAIT_SECONDS);
+      const sent = { id: r.id, to, via: r.via, fromSession: s.label, toSession: to_session ?? null };
       if (reply._timedOut) {
-        return ok({ sent: { id: r.id, to }, reply: null, timedOut: true, note: "No reply within the timeout. Call await_reply or inbox to keep waiting." });
+        return ok({ sent, reply: null, timedOut: true, note: "No reply within the timeout. Call await_reply or inbox to keep waiting." });
       }
-      return ok({ sent: { id: r.id, to }, reply: { id: reply.id, from: reply.from, fromSession: reply.fromSession ?? null, role: reply.role ?? null, text: reply.text, timestamp: reply.timestamp } });
+      return ok({ sent, reply: { id: reply.id, from: reply.from, fromSession: reply.fromSession ?? null, role: reply.role ?? null, text: reply.text, timestamp: reply.timestamp } });
     } catch (e) {
       return await handleSendError(e, to);
     }

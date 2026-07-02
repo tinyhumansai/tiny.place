@@ -64,13 +64,14 @@ Outbound body = `JSON.stringify(envelope)` where `envelope` is a valid `SessionE
   "envelope_version": "tinyplace.harness.session.v1",
   "version": 1,
   "scope":   { "type": "session", "key": "<agent>:<label>", "cwd": "…",
-               "wrapper_session_id": "claude:1", "harness_session_id": "<uuid>" },
+               "wrapper_session_id": "<unique wrapper session id>", "harness_session_id": "<uuid>" },
   "harness": { "provider": "claude", "command": "tinyplace-plugin", "argv": [] },
   "message": { "id": "msg-…", "line": 0, "role": "user"|"agent",
                "text": "<the message>", "timestamp": "…" },
   "source":  { "path": "plugin", "record_type": "dm" },
   "tp": {                                   // plugin extension (ignored by pure-envelope readers)
     "v": 1,
+    "from_session": "claude:1",             // this session's routing label
     "to_session": "claude:2",               // optional: target a specific peer session
     "in_reply_to": "msg-…",                 // optional: correlation
     "auto": true                            // optional: auto-reply loop guard
@@ -78,7 +79,7 @@ Outbound body = `JSON.stringify(envelope)` where `envelope` is a valid `SessionE
 }
 ```
 
-- **from_session** = `scope.wrapper_session_id`; **role** = `message.role`; **text** = `message.text` — all standard envelope fields (interop).
+- **from_session** = `tp.from_session` (the short routing label); **role** = `message.role`; **text** = `message.text`. NOTE: updated during review — the label lives in `tp.from_session`, not `scope.wrapper_session_id`, so the core envelope field stays aligned with the shared SessionEnvelope contract (where `wrapper_session_id` is a unique wrapper-session identifier, e.g. the harness-wrapper's `tp-<provider>-<ts>-<uuid>`). `decodeBody` falls back to `wrapper_session_id` for older bodies that stored the label there. All labels are validated to a safe token shape (`^[\w:-]{1,32}$`) at decode.
 - Routing/correlation/auto live under `tp` so a plain harness consumer still parses the envelope.
 - **Parsing (`decodeBody`)**: try `JSON.parse`; if it has `envelope_version === "tinyplace.harness.session.v1"` → structured path (extract text/role/from_session/tp.*). Else → **legacy fallback**: current `AUTO_SENTINEL`/`re:` sentinel + plaintext. Plain text with no markers stays plain text.
 - **Size:** the envelope adds ~300–500 bytes of JSON overhead per DM (encrypted). Acceptable.

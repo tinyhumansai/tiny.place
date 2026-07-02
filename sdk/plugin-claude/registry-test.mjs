@@ -91,6 +91,40 @@ const remaining = existsSync(dirA) ? readdirSync(dirA).filter((f) => f.endsWith(
 expect("gcStale keeps exactly the 2 live files", remaining.length === 2);
 expect("gcStale did not remove live sessions", reg.liveSessions(A).length === 2);
 
+// ── claimLabel: atomic allocate+write, no collision on concurrent start ───────
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
+const regPath = join(dirname(fileURLToPath(import.meta.url)), "mcp", "registry.mjs");
+const E = "AgentClaimEEEEEEEEEEEEEEEEEEEEEE";
+function runClaimer(hsid) {
+  const src = `
+    process.env.TINYPLACE_CLAUDE_HOME = ${JSON.stringify(process.env.TINYPLACE_CLAUDE_HOME)};
+    const reg = await import(${JSON.stringify(regPath)});
+    const entry = reg.claimLabel(${JSON.stringify(E)}, { harnessSessionId: ${JSON.stringify(hsid)} });
+    await new Promise((r) => setTimeout(r, 250)); // hold presence live so peers see it
+    process.stdout.write(entry.label);
+  `;
+  return new Promise((resolve) => {
+    const c = spawn(process.execPath, ["--input-type=module", "-e", src], { stdio: ["ignore", "pipe", "ignore"] });
+    let out = "";
+    c.stdout.on("data", (d) => (out += d.toString()));
+    c.on("exit", () => resolve(out.trim()));
+  });
+}
+const claimLabels = await Promise.all([runClaimer("hA"), runClaimer("hB"), runClaimer("hC")]);
+const uniqueLabels = new Set(claimLabels);
+expect("3 concurrent claimLabel → 3 DISTINCT labels (no collision)", uniqueLabels.size === 3);
+expect("concurrent claims are claude:1/2/3", [...uniqueLabels].sort().join(",") === "claude:1,claude:2,claude:3");
+
+// claimLabel reuses the same label for the same harnessSessionId across restarts.
+const F = "AgentClaimFFFFFFFFFFFFFFFFFFFFFF";
+const first = reg.claimLabel(F, { harnessSessionId: "restart-me", requested: "worker" });
+expect("claimLabel honors an explicit free request", first.label === "worker");
+// Simulate restart: our pid is still alive so the file is 'live', but same hsid → reclaim same label.
+const again = reg.claimLabel(F, { harnessSessionId: "restart-me" });
+expect("claimLabel reuses same label for same harnessSessionId", again.label === "worker");
+expect("no duplicate label files after reclaim", reg.readSessions(F).filter((e) => e.label === "worker").length === 1);
+
 const failed = checks.filter((c) => !c.ok);
 console.log("\n" + (failed.length === 0 ? `ALL ${checks.length} CHECKS PASSED ✅` : `${failed.length} FAILED ❌`));
 process.exit(failed.length === 0 ? 0 : 1);

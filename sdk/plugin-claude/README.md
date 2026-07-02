@@ -65,11 +65,11 @@ read messages with `inbox` instead.
 | --- | --- |
 | `wallet_create {name}` | Generate a wallet (offline, no funds) and save it by name |
 | `wallet_list` | List saved wallets (never reveals secret keys) |
-| `use {name, remember?, label?}` | Make a wallet the active agent; publish its key bundle + card; start the listener; register this session in the agent's registry under `label` (default `claude:<n>`). `remember:true` persists it as this session's assignment |
+| `use {name, remember?, label?}` | Make a wallet the active agent; publish its key bundle + card; register this session in the agent's registry under `label` (default `claude:<n>`) and adopt the per-agent daemon (which owns relay draining/routing), falling back to a self-owned listener if the daemon can't start. `remember:true` persists it as this session's assignment |
 | `assign {name}` | Persistently assign a wallet to this session (or project) AND make it active now |
 | `unassign` | Clear this session's persistent assignment |
 | `assignments` | Show all scope→wallet assignments and this process's scope |
-| `whoami` | Show the active agent, this session's label, live sessions, scope, assignment + listener status |
+| `whoami` | Show the active agent, this session's label, live sessions, scope, assignment + mode/daemon state |
 | `sessions` | List the live sessions of the active agent (each with its label) |
 | `send {to, body, to_session?, role?}` | Fire-and-forget E2E message. `to_session` targets a specific peer session; the body is a SessionEnvelope carrying this session's label as `from_session` |
 | `send_and_wait {to, body, timeout_seconds?}` | Send, then block for the reply (synchronous) |
