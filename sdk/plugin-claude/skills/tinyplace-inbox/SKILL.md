@@ -12,5 +12,6 @@ DMs as they arrive and buffers them.
 - Report each message's `from` (sender public key) and `text`. If empty, say there are
   no new messages.
 
-For a real-time "wait for the next message" instead of draining what's already here,
-use `await_reply` (see `/tinyplace:send`).
+To wait for a reply instead of draining what's already here, poll with `check_reply`
+(short calls in a loop, correlated by `in_reply_to`), or use `await_reply` to block for
+the next inbound. See the `tinyplace-await` skill.

@@ -9,10 +9,12 @@ import { TinyPlaceClient, LocalSigner } from "@tinyhumansai/tinyplace";
 
 const BASE = process.env.TINYPLACE_API_URL ?? "https://staging-api.tiny.place";
 const RPC = `${BASE}/solana/rpc`;
+const HOME = process.env.TINYPLACE_CLAUDE_HOME ?? join(homedir(), ".tinyplace-claude");
+const WALLETS_FILE = join(HOME, "wallets.json");
 const [name, baseHandle] = process.argv.slice(2);
 const h2b = (h) => { const o = new Uint8Array(h.length / 2); for (let i = 0; i < o.length; i++) o[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16); return o; };
 
-const store = JSON.parse(readFileSync(join(homedir(), ".tinyplace-claude", "wallets.json"), "utf8"));
+const store = JSON.parse(readFileSync(WALLETS_FILE, "utf8"));
 const w = store.wallets.find((x) => x.name === name);
 if (!w) { console.log("no wallet", name); process.exit(1); }
 
@@ -40,7 +42,7 @@ try {
   console.log("  onChainTx:", result.onChainTx ?? "(gasless/delegated — no client tx)");
   // persist handle into the wallet store so the TUI/menu shows and reuses it
   w.handle = result.identity?.username;
-  writeFileSync(join(homedir(), ".tinyplace-claude", "wallets.json"), JSON.stringify(store, null, 2) + "\n", { mode: 0o600 });
+  writeFileSync(WALLETS_FILE, JSON.stringify(store, null, 2) + "\n", { mode: 0o600 });
 } catch (e) {
   console.log("FAILED ❌", e?.status, JSON.stringify(e?.body ?? e?.message));
   process.exit(2);

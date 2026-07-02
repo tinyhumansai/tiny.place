@@ -92,8 +92,10 @@ can each be assigned a different identity and never contaminate each other.
 
 ## Backend gate — direct messages require accepted contacts (+ likely registration)
 
-Defaults to **production** (`https://api.tiny.place`), which is stable and where key
-publish + directory cards + the contacts handshake all work. The DM itself is gated:
+Defaults to **staging** (`https://staging-api.tiny.place`) — matching the bundled MCP
+server and `.mcp.json`; override with `TINYPLACE_API_URL` (production `https://api.tiny.place`
+spends real USDC on registration). Key publish, directory cards, and the contacts
+handshake all work on either. The DM itself is gated:
 
 - A direct message returns `403 not_a_contact` until there's an **accepted contact
   relationship**. The plugin wires this up (`contact_add` → peer `contact_accept`),

@@ -141,6 +141,19 @@ function prompt(question) {
   }));
 }
 
+// Like prompt() but does not echo typed/pasted characters — for secret key input,
+// so it doesn't leak into scrollback, screen shares, or terminal recordings.
+function promptHidden(question) {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  process.stdout.write(question);
+  rl._writeToOutput = () => {}; // suppress echo
+  return new Promise((resolve) => rl.question("", (answer) => {
+    process.stdout.write("\n");
+    rl.close();
+    resolve(answer.trim());
+  }));
+}
+
 // ── arrow-key menu (raw mode); resolves selected index, or -1 to cancel ──────
 function menu(subtitle, items) {
   return new Promise((resolve) => {
@@ -220,10 +233,10 @@ async function importFlow() {
   clear();
   process.stdout.write(`  ${C.dim}Import an existing wallet — paste a base58 Solana secret key, a Solana${C.reset}\n`);
   process.stdout.write(`  ${C.dim}id.json array, or a 32-byte seed in hex.${C.reset}\n`);
-  process.stdout.write(`  ${C.yellow}The secret is stored locally (0600) and is echoed as you type.${C.reset}\n\n`);
+  process.stdout.write(`  ${C.yellow}The secret is stored locally (0600). Input is hidden (not echoed).${C.reset}\n\n`);
   const name = await prompt("  Name for this wallet (e.g. main): ");
   if (!name) return;
-  const secret = await prompt("  Secret (base58 / id.json / seed-hex): ");
+  const secret = await promptHidden("  Secret (base58 / id.json / seed-hex): ");
   if (!secret) return;
   try {
     const imported = await importWallet(name, secret);

@@ -686,7 +686,7 @@ server.registerTool(
     inputSchema: {
       to: z.string().describe("Recipient: the received message's `from` (base64 address, cryptoId, or @handle)."),
       body: z.string().describe("Your reply text (the tag is added automatically)."),
-      in_reply_to: z.string().optional().describe("Id of the message being replied to (kept for your logs; not yet carried on-wire)."),
+      in_reply_to: z.string().optional().describe("Id of the message you are replying to — embedded in the reply (inside the ciphertext) so the sender's check_reply can correlate it. Set it whenever you answer a specific message."),
     },
   },
   async ({ to, body, in_reply_to }) => {
@@ -716,7 +716,13 @@ server.registerTool(
       const s = requireActive();
       const recipientKey = await resolveRecipientKey(s.client, to);
       const sent = await sendMessage(s.client, s.signer, to, body);
-      const reply = await waitFor((m) => m.from === recipientKey, timeout_seconds ?? DEFAULT_WAIT_SECONDS);
+      // Match the peer AND (a correlated reply to THIS message, or an
+      // uncorrelated one) — so an auto-reply meant for a different message
+      // (different inReplyTo) can't satisfy this waiter.
+      const reply = await waitFor(
+        (m) => m.from === recipientKey && (m.inReplyTo == null || m.inReplyTo === sent.id),
+        timeout_seconds ?? DEFAULT_WAIT_SECONDS,
+      );
       if (reply._timedOut) {
         return ok({ sent: { id: sent.id, to: sent.to }, reply: null, timedOut: true, note: "No reply within the timeout. Call await_reply or inbox to keep waiting." });
       }

@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"tiny.place plugin is active. The active agent does NOT persist across sessions: to send or receive messages this session, first select a wallet with the `use` tool (call `wallet_list` to see them, or `wallet_create` to make one).\"}}'"
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"tiny.place plugin is active. If a wallet is assigned to this session/scope (via `use` with remember:true, or `assign`) it is auto-adopted on startup; otherwise no agent is active yet — select one with `use`. Call `whoami` to check the active agent, `wallet_list` to list wallets, or `wallet_create` to make one.\"}}'"
           }
         ]
       }
