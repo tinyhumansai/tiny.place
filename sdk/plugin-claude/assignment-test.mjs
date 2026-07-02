@@ -15,7 +15,7 @@ const DEAD_BACKEND = "http://127.0.0.1:1"; // connection refused -> fast, swallo
 function session(sessionId) {
   const child = spawn("node", [serverPath], {
     stdio: ["pipe", "pipe", "ignore"],
-    env: { ...process.env, TINYPLACE_CLAUDE_HOME: dataDir, TINYPLACE_API_URL: DEAD_BACKEND, CLAUDE_CODE_SESSION_ID: sessionId, CLAUDE_PROJECT_DIR: "" },
+    env: { ...process.env, TINYPLACE_CLAUDE_HOME: dataDir, TINYPLACE_API_URL: DEAD_BACKEND, TINYPLACE_SESSION_DAEMON: "off", CLAUDE_CODE_SESSION_ID: sessionId, CLAUDE_PROJECT_DIR: "" },
   });
   let buf = "";
   const pending = new Map();

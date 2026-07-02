@@ -91,8 +91,23 @@ Messages are wrapped in a `SessionEnvelope` superset (schema
 `tinyplace.harness.session.v1`) so they interoperate with the harness-wrapper
 format. The body carries `from_session` (the sender's label) and `role`; a peer
 can direct a reply to a specific session with `to_session`. Legacy sentinel/plain
-bodies still decode, so older peers keep working. See
+bodies still decode, so older peers keep working.
+
+**Per-agent daemon.** Exactly one process may own an agent's relay drain + Signal
+ratchet, so when a session activates it starts (or joins) a per-agent daemon
+(`hooks/agent-daemon.mjs`, single-owner via a lock in `~/.tinyplace-claude/daemon/`).
+The daemon is the sole decryptor: it drains the mailbox once, routes each message
+to the target session's `inbox/` queue (`to_session` live → that session; dead →
+held in `_unrouted/` until it appears; none → the primary/lowest-index session),
+and sends outbound jobs sessions drop in `_outbox/`. Sessions run as thin clients
+(no relay/ratchet). If the daemon can't start, a session falls back to the
+original per-session self-drain — no regression for the single-session case.
+Set `TINYPLACE_SESSION_DAEMON=off` to force self-drain. See
 [`docs/session-aware-messaging.md`](docs/session-aware-messaging.md) for the design.
+
+**Config:** `TINYPLACE_SESSION_LABEL` (pin a label), `TINYPLACE_UNROUTED_POLICY`
+(`primary`|`broadcast`|`drop` for untargeted mail), `TINYPLACE_SESSION_DAEMON=off`
+(disable the daemon), `TINYPLACE_DAEMON_IDLE_MS` (daemon idle-exit window).
 
 ## Per-session wallet assignment
 

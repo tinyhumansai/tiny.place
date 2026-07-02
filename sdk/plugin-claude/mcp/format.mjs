@@ -74,7 +74,7 @@ export function encodeEnvelope(opts) {
     },
     harness: { provider: "claude", command: "tinyplace-plugin", argv: [] },
     message: {
-      id: newMessageId(),
+      id: opts.messageId ?? newMessageId(),
       line: 0,
       role,
       text: String(opts.text ?? ""),
@@ -89,6 +89,15 @@ export function encodeEnvelope(opts) {
   return JSON.stringify(envelope);
 }
 
+// Like encodeEnvelope, but also returns the envelope's message.id — the
+// in-body correlation id. Callers keep it to match a later reply's in_reply_to
+// (works across the daemon file-queue transport, where the relay id isn't known
+// synchronously).
+export function buildEnvelope(opts) {
+  const id = opts.messageId ?? newMessageId();
+  return { id, body: encodeEnvelope({ ...opts, messageId: id }) };
+}
+
 // Decode a structured SessionEnvelope body → normalized message fields.
 function decodeEnvelope(obj) {
   const tp = obj.tp && typeof obj.tp === "object" ? obj.tp : {};
@@ -98,6 +107,7 @@ function decodeEnvelope(obj) {
     auto: tp.auto === true,
     inReplyTo: typeof tp.in_reply_to === "string" ? tp.in_reply_to : null,
     text,
+    messageId: typeof obj.message?.id === "string" ? obj.message.id : null,
     fromSession: typeof obj.scope?.wrapper_session_id === "string" ? obj.scope.wrapper_session_id : null,
     toSession: typeof tp.to_session === "string" ? tp.to_session : null,
     role,
@@ -123,7 +133,7 @@ function decodeLegacyBody(raw) {
       }
     }
   }
-  return { auto, inReplyTo, text, fromSession: null, toSession: null, role: null, envelope: false };
+  return { auto, inReplyTo, text, messageId: null, fromSession: null, toSession: null, role: null, envelope: false };
 }
 
 // Build a legacy auto-reply body (auto tag + optional re: header + plaintext).
