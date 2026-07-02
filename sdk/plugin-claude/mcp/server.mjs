@@ -38,6 +38,13 @@ import {
   encodeEnvelope,
   decodeBody,
 } from "./format.mjs";
+import {
+  allocateLabel,
+  writePresence,
+  removePresence,
+  liveSessions,
+  gcStale,
+} from "./registry.mjs";
 
 // ── storage ────────────────────────────────────────────────────────────────
 const DATA_DIR = process.env.TINYPLACE_CLAUDE_HOME ?? join(homedir(), ".tinyplace-claude");
@@ -368,7 +375,11 @@ function startListener() {
 function teardownListener() {
   if (!session) return;
   if (session.pollTimer) clearInterval(session.pollTimer);
+  if (session.heartbeatTimer) clearInterval(session.heartbeatTimer);
   try { session.ws?.close(); } catch {}
+  // Give up this session's registry label on switch, so a peer doesn't route to
+  // a session that's no longer this identity.
+  if (session.presenceWritten) removePresence(session.address, session.label);
   for (const w of session.waiters) {
     clearTimeout(w.timer);
     w.resolve({ _timedOut: true, _reason: "wallet switched" });
@@ -387,16 +398,27 @@ function requireActive() {
 // best-effort publish its Signal key bundle + directory card (so peers can reach
 // it), and start the background listener. Network steps are best-effort so the
 // server still boots offline / when the backend is unavailable.
-async function adopt(walletName) {
+async function adopt(walletName, { label } = {}) {
   const wallet = loadWallets().find((w) => w.name === walletName);
   if (!wallet) throw new Error(`No wallet named '${walletName}'. Use wallet_list to see options.`);
   teardownListener();
   const { signer, client, store } = await buildClient(wallet.secretKey);
+  // Allocate this session's label (registry-aware): honor an explicit request
+  // (use label:… / TINYPLACE_SESSION_LABEL), else claim the lowest free claude:n.
+  const hsid = harnessSessionId();
+  const requestedLabel = label?.trim() || process.env.TINYPLACE_SESSION_LABEL?.trim() || undefined;
+  const allocatedLabel = process.env.TINYPLACE_SEND_ONLY
+    ? requestedLabel || sessionLabel()
+    : allocateLabel(wallet.address, { requested: requestedLabel, harnessSessionId: hsid });
   session = {
     name: wallet.name,
     address: wallet.address,
     publicKey: wallet.publicKey,
-    label: sessionLabel(),
+    label: allocatedLabel,
+    harnessSessionId: hsid,
+    startedAt: new Date().toISOString(),
+    presenceWritten: false,
+    heartbeatTimer: null,
     signer,
     client,
     store,
@@ -433,15 +455,41 @@ async function adopt(walletName) {
     // A send-only responder (spawned by the auto-responder) neither advertises
     // itself as the active session nor drains the shared mailbox — draining
     // stays the main session's job, so two processes never ack the same inbox.
+    // It also stays out of the registry so it never occupies a session label.
     writeActiveState(wallet.name, wallet.address);
+    registerPresence();
     startListener();
   }
   return {
     active: { name: wallet.name, address: wallet.address, publicKey: wallet.publicKey },
+    label: session.label,
     keysPublished,
     cardPublished,
     listening: Boolean(session.listening),
+    sessions: liveSessions(wallet.address).map((s) => ({ label: s.label, live: s.live })),
   };
+}
+
+// Write this session's presence file and heartbeat it on the poll cadence so the
+// registry reflects liveness (used for label allocation + Phase C routing).
+function registerPresence() {
+  if (!session) return;
+  const meta = {
+    label: session.label,
+    harnessSessionId: session.harnessSessionId,
+    cwd: process.cwd(),
+    startedAt: session.startedAt,
+  };
+  try {
+    writePresence(session.address, meta);
+    session.presenceWritten = true;
+    gcStale(session.address); // prune dead siblings so labels free up
+  } catch {
+    // Non-fatal: without presence this session just isn't individually addressable.
+  }
+  session.heartbeatTimer = setInterval(() => {
+    try { writePresence(session.address, meta); } catch {}
+  }, POLL_INTERVAL_MS);
 }
 
 // Register a waiter that resolves with the first drained message satisfying
@@ -553,15 +601,16 @@ server.registerTool(
   "use",
   {
     title: "Set active agent",
-    description: "Make a saved wallet the active agent for this session. Publishes its Signal key bundle + directory card (so peers can message it) and starts the background listener. Pass remember:true to persist this wallet as the assignment for this session/scope so future runs auto-adopt it.",
+    description: "Make a saved wallet the active agent for this session. Publishes its Signal key bundle + directory card (so peers can message it) and starts the background listener. Registers this session in the agent's session registry under a label (default claude:<n>, or the one you pass). Pass remember:true to persist this wallet as the assignment for this session/scope so future runs auto-adopt it.",
     inputSchema: {
       name: z.string().describe("Name of a wallet from wallet_list."),
       remember: z.boolean().optional().describe("Persist this wallet as the assignment for the current scope (this session, or project if no session id)."),
+      label: z.string().optional().describe("Session label to register under (e.g. 'claude:1'). Peers can target this session with to_session. Defaults to the lowest free claude:<n>; a label already held by a live session falls back to the next index."),
     },
   },
-  async ({ name, remember }) => {
+  async ({ name, remember, label }) => {
     try {
-      const res = await adopt(name);
+      const res = await adopt(name, { label });
       if (remember) {
         const m = loadAssignments();
         m[scopeKey()] = name;
@@ -640,6 +689,9 @@ server.registerTool(
     if (!session) return ok({ active: null, scope, assigned, note: "No active wallet. Use `use` (or `assign`) to select one." });
     return ok({
       active: { name: session.name, address: session.address, publicKey: session.publicKey },
+      label: session.label,
+      harnessSessionId: session.harnessSessionId || null,
+      sessions: liveSessions(session.address).map((s) => ({ label: s.label, harnessSessionId: s.harnessSessionId || null, pid: s.pid, self: s.label === session.label })),
       scope,
       assigned,
       buffered: session.buffer.length,
@@ -654,6 +706,32 @@ server.registerTool(
       undecryptable: session.undecryptable ?? 0,
       undecryptableFrom: [...session.undecryptableByPeer.entries()].filter(([, n]) => n > 0).map(([p]) => p),
     });
+  },
+);
+
+server.registerTool(
+  "sessions",
+  {
+    title: "List live sessions of the active agent",
+    description: "List the live sessions registered for the active agent, each with its label (e.g. claude:1). A peer can target a specific one with the send tool's to_session. A session is live if it heartbeat within the liveness window and its process is alive.",
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      const s = requireActive();
+      const list = liveSessions(s.address).map((e) => ({
+        label: e.label,
+        harnessSessionId: e.harnessSessionId || null,
+        pid: e.pid,
+        cwd: e.cwd || null,
+        startedAt: e.startedAt || null,
+        updatedAt: e.updatedAt || null,
+        self: e.label === s.label,
+      }));
+      return ok({ agent: { name: s.name, address: s.address }, count: list.length, sessions: list, thisLabel: s.label });
+    } catch (e) {
+      return fail(String(e?.message ?? e));
+    }
   },
 );
 
