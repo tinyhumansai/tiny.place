@@ -10,6 +10,9 @@
   "engines": {
     "node": ">=22"
   },
+  "scripts": {
+    "test": "node smoke-test.mjs && node assignment-test.mjs && node env-adopt-test.mjs && node envelope-test.mjs"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
     "@tinyhumansai/tinyplace": "^1.0.1",
