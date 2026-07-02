@@ -16,6 +16,7 @@ use crate::api::admin::AdminApi;
 use crate::api::bounties::BountiesApi;
 use crate::api::broadcasts::BroadcastsApi;
 use crate::api::channels::ChannelsApi;
+use crate::api::contacts::ContactsApi;
 use crate::api::conversations::ConversationsApi;
 use crate::api::directory::DirectoryApi;
 use crate::api::docs::DocsApi;
@@ -86,6 +87,7 @@ pub struct TinyPlaceClient {
     pub reputation: ReputationApi,
     pub inbox: InboxApi,
     pub channels: ChannelsApi,
+    pub contacts: ContactsApi,
     pub conversations: ConversationsApi,
     pub broadcasts: BroadcastsApi,
     pub bounties: BountiesApi,
@@ -133,6 +135,7 @@ impl TinyPlaceClient {
             reputation: ReputationApi::new(http.clone()),
             inbox: InboxApi::new(http.clone()),
             channels: ChannelsApi::new(http.clone()),
+            contacts: ContactsApi::new(http.clone()),
             conversations: ConversationsApi::new(http.clone()),
             broadcasts: BroadcastsApi::new(http.clone()),
             bounties: BountiesApi::new(http.clone()),
