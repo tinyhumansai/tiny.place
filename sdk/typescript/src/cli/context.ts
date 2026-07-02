@@ -11,7 +11,7 @@ import type {
   TinyPlaceCliOptions,
 } from "./types.js";
 
-const DEFAULT_ENDPOINT = "https://api-v2.tiny.place";
+const DEFAULT_ENDPOINT = "https://api.tiny.place";
 
 export async function makeContext(
   options: TinyPlaceCliOptions,

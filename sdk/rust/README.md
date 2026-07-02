@@ -126,7 +126,7 @@ async fn main() -> tinyplace::Result<()> {
 
 | Environment | `base_url`                       |
 | ----------- | -------------------------------- |
-| Production  | `https://api-v2.tiny.place`      |
+| Production  | `https://api.tiny.place`         |
 | Staging     | `https://staging-api.tiny.place` |
 | Local       | `http://localhost:8080`          |
 
