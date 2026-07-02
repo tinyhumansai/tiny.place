@@ -1529,7 +1529,7 @@ dependencies = [
 
 [[package]]
 name = "tinyplace"
-version = "1.0.1"
+version = "2.0.0"
 dependencies = [
  "aes",
  "async-trait",
