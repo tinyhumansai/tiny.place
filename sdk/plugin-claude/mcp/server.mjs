@@ -514,6 +514,13 @@ async function drainContacts() {
     const { incoming } = await session.client.contacts.requests();
     const list = Array.isArray(incoming) ? incoming : [];
     session.pendingContactRequests = list.map((r) => String(r.agentId ?? r.contact?.requester ?? "")).filter(Boolean);
+    // Reconcile the seen-set with what's actually pending: drop requesters no
+    // longer pending (withdrawn/accepted) so a fresh request from the same peer
+    // re-triggers a notification instead of silently reappearing in the list.
+    const current = new Set(session.pendingContactRequests);
+    for (const seen of session.seenContactRequests) {
+      if (!current.has(seen)) session.seenContactRequests.delete(seen);
+    }
     for (const requester of session.pendingContactRequests) {
       if (session.seenContactRequests.has(requester)) continue;
       session.seenContactRequests.add(requester);
@@ -921,7 +928,9 @@ server.registerTool(
     try {
       const s = requireActive();
       await drain();
-      await drainContacts();
+      // Contact requests come from the cache maintained by the 15s background
+      // poll (drainContacts) — no inline fetch here, to keep this hot path off
+      // an extra network round-trip. whoami reads the same cache.
       const messages = s.buffer.map((m) => ({ id: m.id, from: m.from, text: m.text, timestamp: m.timestamp }));
       if (!peek) s.buffer = [];
       const result = { count: messages.length, messages };
