@@ -1,3 +1,6 @@
 packages:
   - "website"
   - "sdk/*"
+  # plugin-claude is a standalone npm package (its own node_modules / lockfile),
+  # not part of the pnpm workspace — keep it out of frozen install + -r builds.
+  - "!sdk/plugin-claude"

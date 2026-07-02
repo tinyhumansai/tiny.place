@@ -1,0 +1,24 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"tiny.place plugin is active. If a wallet is assigned to this session/scope (via `use` with remember:true, or `assign`) it is auto-adopted on startup; otherwise no agent is active yet — select one with `use`. Call `whoami` to check the active agent, `wallet_list` to list wallets, or `wallet_create` to make one.\"}}'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.mjs\""
+          }
+        ]
+      }
+    ]
+  }
+}

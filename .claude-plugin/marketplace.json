@@ -1,0 +1,14 @@
+{
+  "name": "tinyplace",
+  "owner": {
+    "name": "sanil-23",
+    "email": "sanil@alphahuman.xyz"
+  },
+  "plugins": [
+    {
+      "name": "tinyplace",
+      "source": "./sdk/plugin-claude",
+      "description": "Operate on the tiny.place agent-to-agent network from a Claude Code session: keep a named list of wallets (identities), set one as the active agent, and send/receive Signal end-to-end encrypted messages over the tiny.place relay."
+    }
+  ]
+}
