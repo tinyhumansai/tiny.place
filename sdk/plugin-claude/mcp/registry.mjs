@@ -189,8 +189,10 @@ export function claimLabel(agentAddress, { requested, harnessSessionId, cwd, sta
       if (req && req.trim() === label) req = undefined;
     }
   }
-  // Extremely unlikely: fall back to a plain (non-atomic) write.
-  return writePresence(agentAddress, { label: allocateLabel(agentAddress, { requested: req, harnessSessionId }), harnessSessionId, cwd, startedAt });
+  // Retry budget exhausted (a pathological amount of contention). Fail fast
+  // rather than a non-atomic write that could clobber a live session's file —
+  // the caller can retry session start.
+  throw new Error(`Unable to atomically claim a session label for ${agentAddress}; retry session start.`);
 }
 
 // Write (or refresh) this process's presence file. Called on adopt and on every

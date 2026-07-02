@@ -78,7 +78,7 @@ function runRacer() {
     const c = spawn(process.execPath, ["--input-type=module", "-e", racer], { stdio: ["ignore", "pipe", "ignore"] });
     let out = "";
     c.stdout.on("data", (d) => (out += d.toString()));
-    c.on("exit", () => resolve(out.trim()));
+    c.on("close", () => resolve(out.trim())); // 'close' = stdout fully flushed
   });
 }
 const results = await Promise.all([runRacer(), runRacer(), runRacer()]);
@@ -98,7 +98,7 @@ function runStealRacer(agent) {
     const c = spawn(process.execPath, ["--input-type=module", "-e", src], { stdio: ["ignore", "pipe", "ignore"] });
     let out = "";
     c.stdout.on("data", (d) => (out += d.toString()));
-    c.on("exit", () => resolve(out.trim()));
+    c.on("close", () => resolve(out.trim())); // 'close' = stdout fully flushed
   });
 }
 const staleAgent = "AgentStaleRace666666666666666";

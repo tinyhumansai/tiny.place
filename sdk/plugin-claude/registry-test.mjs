@@ -108,7 +108,8 @@ function runClaimer(hsid) {
     const c = spawn(process.execPath, ["--input-type=module", "-e", src], { stdio: ["ignore", "pipe", "ignore"] });
     let out = "";
     c.stdout.on("data", (d) => (out += d.toString()));
-    c.on("exit", () => resolve(out.trim()));
+    // Resolve on 'close' (stdout fully flushed), not 'exit' (can fire first).
+    c.on("close", () => resolve(out.trim()));
   });
 }
 const claimLabels = await Promise.all([runClaimer("hA"), runClaimer("hB"), runClaimer("hC")]);
