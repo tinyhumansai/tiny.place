@@ -127,29 +127,38 @@ async function drainInbound() {
   draining = true;
   try {
     const messages = await readMessages(client, signer);
-    const pending = [];
+    // Group pending (non-auto) mail by the session label it was ROUTED to, so we
+    // wake the RIGHT session's pane — a DM addressed to to_session=claude:2 must
+    // wake claude:2, not whichever pane happens to be first.
+    const pendingByLabel = new Map(); // label -> [decoded]
     for (const raw of messages) {
       const { auto, inReplyTo, text, messageId, fromSession, role, toSession } = decodeBody(raw.text);
       if (text === RESET_SENTINEL) continue; // handshake ping — consumed on decrypt
       // Correlate on the in-body envelope id when present, else the relay id.
       const id = messageId ?? raw.id;
       const decoded = { id, from: raw.from, fromSession, role, text, inReplyTo, toSession, ts: raw.timestamp ?? new Date().toISOString() };
-      enqueueRouted(AGENT, decoded); // always route to the session inbox
+      const { target } = enqueueRouted(AGENT, decoded); // route to the session inbox(es)
       // Non-auto messages need a reply (loop guard: an auto-tagged reply is never
-      // itself answered).
-      if (!auto && !autorespondOff) pending.push(decoded);
-    }
-    // Foreground-preferred: inject a trigger into a live session's tmux pane so the
-    // real agent drains its inbox and replies IN-CONTEXT. The daemon is detached
-    // (not in the target's pane), so injectForeground looks the pane up from the
-    // registry. Only when no session has a pane (headless) do we enqueue for +
-    // spawn the isolated `claude -p` responder — so the two never both fire.
-    if (pending.length) {
-      if (!injectForeground(AGENT)) {
-        for (const d of pending) enqueueForAutoResponse(d);
-        maybeSpawnResponder();
+      // itself answered). Held (unrouted) mail is resolved when its target comes
+      // live + is redelivered; nothing to wake now.
+      if (auto || autorespondOff || target.kind !== "session") continue;
+      for (const label of target.labels) {
+        if (!pendingByLabel.has(label)) pendingByLabel.set(label, []);
+        pendingByLabel.get(label).push(decoded);
       }
     }
+    // Foreground-preferred: inject a trigger into EACH routed session's own tmux
+    // pane so the real agent drains its inbox and replies IN-CONTEXT. A routed
+    // session with no pane (headless) falls back to the isolated `claude -p`
+    // responder — so for any given message exactly one path fires (no double-reply).
+    let anyHeadless = false;
+    for (const [label, msgs] of pendingByLabel) {
+      if (!injectForeground(AGENT, { label })) {
+        for (const d of msgs) enqueueForAutoResponse(d);
+        anyHeadless = true;
+      }
+    }
+    if (anyHeadless) maybeSpawnResponder();
   } catch { /* relay hiccup — retry next tick */ } finally {
     draining = false;
   }
