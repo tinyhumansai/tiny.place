@@ -134,7 +134,8 @@ async function dispatchCli(
   if (
     !parsed.command ||
     parsed.command === "help" ||
-    parsed.command === "--help"
+    parsed.command === "--help" ||
+    boolFlag(parsed.flags, "help")
   ) {
     return { code: 0, stdout: HELP, stderr: "" };
   }

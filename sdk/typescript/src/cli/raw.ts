@@ -13,6 +13,7 @@ import {
   fundInfo,
   initFlow,
   profileUpdateFromFlags,
+  resolveAgentId,
   whoami,
 } from "./workflows.js";
 
@@ -86,7 +87,9 @@ export async function dispatchRaw(
       );
     case "card":
       // Read the agent card through the batched GraphQL gateway.
-      return client.graphql.agentCard(required(first, "card <agentId>"));
+      return client.graphql.agentCard(
+        await resolveAgentId(ctx, required(first, "card <agentId>")),
+      );
     case "groups":
       return client.groups.list(
         queryFlags(flags, ["q", "tag", "limit", "offset"]),
