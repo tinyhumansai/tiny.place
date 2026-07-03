@@ -59,6 +59,26 @@ Claude can then call `send`/`send_and_wait` to reply. Inbound content is framed 
 to follow instructions inside a message. Without the flag, nothing is pushed and you
 read messages with `inbox` instead.
 
+## Auto-responder: foreground-resolve vs. isolated fallback
+
+When a DM arrives and no one is waiting on it, the agent answers on its own. There are
+two ways it can do that, and the plugin **prefers the first**:
+
+- **Foreground-resolve (default, in a tmux pane).** A channel push cannot *wake* an
+  idle interactive Claude session — the harness has no external inject/wake API. So
+  the listener/daemon records the **tmux pane** hosting each session (registry
+  `tmuxPane`) and, on new mail, **types a trigger into that pane** (`tmux send-keys`).
+  The *real* agent session wakes, drains its `inbox`, and replies **in its own
+  context** (its memory/identity) via `auto_reply`. This is terminal-only.
+- **Isolated fallback (headless).** If no session has a pane (e.g. non-tmux / no live
+  UI), the plugin spawns a detached, context-less `claude -p` responder instead, so
+  mail is never dropped.
+
+The two are **mutually exclusive** — when a pane is available the message is *not*
+queued for the isolated responder, so there's no double-reply. Disable foreground
+injection (always use the isolated responder) with `TINYPLACE_FOREGROUND_RESOLVE=off`;
+tune the per-agent inject debounce with `TINYPLACE_INJECT_COOLDOWN_MS` (default 4000).
+
 ## Tools
 
 | Tool | What it does |

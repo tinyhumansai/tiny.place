@@ -163,6 +163,10 @@ export function claimLabel(agentAddress, { requested, harnessSessionId, cwd, sta
       harnessSessionId: harnessSessionId ?? "",
       cwd: cwd ?? "",
       pid: process.pid,
+      // tmux pane hosting this session's TUI, so the daemon/listener can inject a
+      // trigger keystroke into the live session (foreground-resolve). "" = not in
+      // a tmux pane (headless) → callers fall back to the isolated responder.
+      tmuxPane: process.env.TMUX_PANE ?? "",
       startedAt: startedAt ?? now,
       updatedAt: now,
     };
@@ -206,6 +210,7 @@ export function writePresence(agentAddress, { label, harnessSessionId, cwd, star
     harnessSessionId: harnessSessionId ?? "",
     cwd: cwd ?? "",
     pid: process.pid,
+    tmuxPane: process.env.TMUX_PANE ?? "",
     startedAt: startedAt ?? now,
     updatedAt: now,
   };

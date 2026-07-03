@@ -25,6 +25,7 @@ import { enqueueRouted, redeliverUnrouted } from "../mcp/routing.mjs";
 import { claimOutboxJobs } from "../mcp/outbox.mjs";
 import { acquireLock, heartbeatLock, releaseLock } from "../mcp/daemon-lock.mjs";
 import { toCryptoId } from "../mcp/address.mjs";
+import { injectForeground } from "../mcp/inject.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = dirname(HERE);
@@ -126,19 +127,29 @@ async function drainInbound() {
   draining = true;
   try {
     const messages = await readMessages(client, signer);
-    let enqueuedAny = false;
+    const pending = [];
     for (const raw of messages) {
       const { auto, inReplyTo, text, messageId, fromSession, role, toSession } = decodeBody(raw.text);
       if (text === RESET_SENTINEL) continue; // handshake ping — consumed on decrypt
       // Correlate on the in-body envelope id when present, else the relay id.
       const id = messageId ?? raw.id;
       const decoded = { id, from: raw.from, fromSession, role, text, inReplyTo, toSession, ts: raw.timestamp ?? new Date().toISOString() };
-      enqueueRouted(AGENT, decoded);
-      // Auto-responder: answer non-auto messages when a session is idle (loop
-      // guard: an auto-tagged reply is never itself enqueued for a response).
-      if (!auto) { enqueueForAutoResponse(decoded); enqueuedAny = true; }
+      enqueueRouted(AGENT, decoded); // always route to the session inbox
+      // Non-auto messages need a reply (loop guard: an auto-tagged reply is never
+      // itself answered).
+      if (!auto && !autorespondOff) pending.push(decoded);
     }
-    if (enqueuedAny) maybeSpawnResponder();
+    // Foreground-preferred: inject a trigger into a live session's tmux pane so the
+    // real agent drains its inbox and replies IN-CONTEXT. The daemon is detached
+    // (not in the target's pane), so injectForeground looks the pane up from the
+    // registry. Only when no session has a pane (headless) do we enqueue for +
+    // spawn the isolated `claude -p` responder — so the two never both fire.
+    if (pending.length) {
+      if (!injectForeground(AGENT)) {
+        for (const d of pending) enqueueForAutoResponse(d);
+        maybeSpawnResponder();
+      }
+    }
   } catch { /* relay hiccup — retry next tick */ } finally {
     draining = false;
   }
