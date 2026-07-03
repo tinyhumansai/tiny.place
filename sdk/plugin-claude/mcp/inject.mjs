@@ -33,16 +33,16 @@ function enabled() {
   return process.env.TINYPLACE_FOREGROUND_RESOLVE !== "off";
 }
 
-// Resolve the tmux pane to inject into:
-//   - an explicit pane (self-mode passes its own process.env.TMUX_PANE), else
+// Resolve the { pane, socket } to inject into:
+//   - an explicit pane (self-mode passes its own $TMUX_PANE + $TMUX socket), else
 //   - the pane of the live session with `label` (daemon routing a DM to a specific
 //     to_session — MUST wake THAT session, not just any), else
 //   - the first live session for the agent that recorded a pane.
-function resolvePane(agentAddress, explicitPane, label) {
-  if (explicitPane) return explicitPane;
+function resolveTarget(agentAddress, explicitPane, label) {
+  if (explicitPane) return { pane: explicitPane, socket: (process.env.TMUX ?? "").split(",")[0] };
   const sessions = liveSessions(agentAddress).filter((e) => e.tmuxPane);
-  if (label) return sessions.find((e) => e.label === label)?.tmuxPane || null;
-  return sessions[0]?.tmuxPane || null;
+  const s = label ? sessions.find((e) => e.label === label) : sessions[0];
+  return s ? { pane: s.tmuxPane, socket: s.tmuxSocket || "" } : null;
 }
 
 // Inject the trigger into a live session's pane. With `label`, targets that exact
@@ -52,17 +52,21 @@ function resolvePane(agentAddress, explicitPane, label) {
 // Best-effort and non-throwing.
 export function injectForeground(agentAddress, { pane, label } = {}) {
   if (!enabled()) return false;
-  const target = resolvePane(agentAddress, pane, label);
-  if (!target) return false;
+  const target = resolveTarget(agentAddress, pane, label);
+  if (!target?.pane) return false;
   const now = Date.now();
-  const last = lastInject.get(target) ?? 0;
+  const key = `${target.socket}\0${target.pane}`;
+  const last = lastInject.get(key) ?? 0;
   if (now - last < COOLDOWN_MS) return true; // recently injected — batch will be drained
+  // Target the SAME tmux server the session lives on (`-S <socket>`) — a wrapped
+  // plain terminal runs on a dedicated socket, not the default one.
+  const S = target.socket ? ["-S", target.socket] : [];
   try {
     // -l sends the string literally (so it isn't parsed as tmux key names); a
     // separate Enter submits the turn. `--` guards a trigger that starts with '-'.
-    execFileSync("tmux", ["send-keys", "-t", String(target), "-l", "--", TRIGGER], { stdio: "ignore" });
-    execFileSync("tmux", ["send-keys", "-t", String(target), "Enter"], { stdio: "ignore" });
-    lastInject.set(target, now);
+    execFileSync("tmux", [...S, "send-keys", "-t", String(target.pane), "-l", "--", TRIGGER], { stdio: "ignore" });
+    execFileSync("tmux", [...S, "send-keys", "-t", String(target.pane), "Enter"], { stdio: "ignore" });
+    lastInject.set(key, now);
     return true;
   } catch {
     // tmux missing / pane gone / not a tmux env → headless fallback.

@@ -163,10 +163,14 @@ export function claimLabel(agentAddress, { requested, harnessSessionId, cwd, sta
       harnessSessionId: harnessSessionId ?? "",
       cwd: cwd ?? "",
       pid: process.pid,
-      // tmux pane hosting this session's TUI, so the daemon/listener can inject a
-      // trigger keystroke into the live session (foreground-resolve). "" = not in
-      // a tmux pane (headless) → callers fall back to the isolated responder.
+      // tmux pane + server socket hosting this session's TUI, so the daemon/listener
+      // can inject a trigger keystroke into the live session (foreground-resolve).
+      // tmuxPane "" = not in a tmux pane (headless) → callers fall back to the
+      // isolated responder. tmuxSocket is the `-S` path from $TMUX (first field),
+      // needed because the launcher wraps plain terminals in a DEDICATED tmux
+      // socket, so `send-keys` must target that server, not the default one.
       tmuxPane: process.env.TMUX_PANE ?? "",
+      tmuxSocket: (process.env.TMUX ?? "").split(",")[0],
       startedAt: startedAt ?? now,
       updatedAt: now,
     };
@@ -211,6 +215,7 @@ export function writePresence(agentAddress, { label, harnessSessionId, cwd, star
     cwd: cwd ?? "",
     pid: process.pid,
     tmuxPane: process.env.TMUX_PANE ?? "",
+    tmuxSocket: (process.env.TMUX ?? "").split(",")[0],
     startedAt: startedAt ?? now,
     updatedAt: now,
   };

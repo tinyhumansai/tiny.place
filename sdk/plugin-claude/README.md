@@ -66,10 +66,20 @@ two ways it can do that, and the plugin **prefers the first**:
 
 - **Foreground-resolve (default, in a tmux pane).** A channel push cannot *wake* an
   idle interactive Claude session — the harness has no external inject/wake API. So
-  the listener/daemon records the **tmux pane** hosting each session (registry
-  `tmuxPane`) and, on new mail, **types a trigger into that pane** (`tmux send-keys`).
-  The *real* agent session wakes, drains its `inbox`, and replies **in its own
-  context** (its memory/identity) via `auto_reply`. This is terminal-only.
+  the listener/daemon records the **tmux pane + server socket** hosting each session
+  (registry `tmuxPane` / `tmuxSocket`) and, on new mail, **types a trigger into that
+  pane** (`tmux send-keys`). The *real* agent session wakes, drains its `inbox`, and
+  replies **in its own context** (its memory/identity) via `auto_reply`.
+
+  To make this work in **any** terminal (not just when you already run tmux), the
+  `tinyplace` launcher **auto-wraps** the session: if you launch outside tmux it
+  starts Claude inside a tmux session on a **dedicated socket** (`-L tinyplace`,
+  status bar hidden so it feels like a plain terminal) and attaches you to it — so a
+  pane always exists to inject into. If `tmux` isn't installed it tries to install it
+  (`brew` / `apt` / `dnf` / `pacman`); if that fails it launches directly and inbound
+  mail falls back to the isolated responder. Already inside tmux → it uses the current
+  pane. Injection targets the session's own socket (`tmux -S <socket>`), so a wrapped
+  session on the dedicated socket and a session in your own tmux both work.
 - **Isolated fallback (headless).** If no session has a pane (e.g. non-tmux / no live
   UI), the plugin spawns a detached, context-less `claude -p` responder instead, so
   mail is never dropped.

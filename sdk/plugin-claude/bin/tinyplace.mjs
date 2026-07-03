@@ -196,17 +196,50 @@ function menu(subtitle, items) {
 }
 
 // ── launch Claude Code with the plugin + chosen wallet (takes over terminal) ──
-function launch(walletName, forwardedArgs) {
-  clear();
-  process.stdout.write(`${C.green}▶${C.reset} launching Claude as ${C.bold}${walletName}${C.reset} …\n\n`);
-  const args = [
-    "--plugin-dir",
-    PLUGIN_DIR,
-    "--dangerously-load-development-channels",
-    "server:tinyplace",
-    ...forwardedArgs,
-  ];
-  const child = spawn("claude", args, {
+// A dedicated tmux socket so wrapped sessions stay out of the user's own tmux.
+const TMUX_SOCKET = "tinyplace";
+
+function claudeArgv(forwardedArgs) {
+  return ["--plugin-dir", PLUGIN_DIR, "--dangerously-load-development-channels", "server:tinyplace", ...forwardedArgs];
+}
+
+function tmuxAvailable() {
+  try {
+    return spawnSync("tmux", ["-V"], { stdio: "ignore" }).status === 0;
+  } catch {
+    return false;
+  }
+}
+
+// Best-effort auto-install of tmux via the platform package manager. Returns true
+// if tmux is available afterward.
+function installTmux() {
+  const attempts =
+    process.platform === "darwin"
+      ? [["brew", ["install", "tmux"]]]
+      : [
+          ["sudo", ["apt-get", "install", "-y", "tmux"]],
+          ["sudo", ["dnf", "install", "-y", "tmux"]],
+          ["sudo", ["pacman", "-S", "--noconfirm", "tmux"]],
+        ];
+  for (const [cmd, args] of attempts) {
+    try {
+      if (spawnSync(cmd, ["--version"], { stdio: "ignore" }).status !== 0) continue; // manager absent
+      process.stdout.write(`  ${C.dim}Installing tmux via ${cmd} ${args.join(" ")} …${C.reset}\n`);
+      spawnSync(cmd, args, { stdio: "inherit" });
+      if (tmuxAvailable()) return true;
+    } catch {
+      /* try next */
+    }
+  }
+  return tmuxAvailable();
+}
+
+// Launch claude directly in the current terminal (already inside tmux, or no tmux
+// available). Foreground-resolve works when $TMUX is set; otherwise inbound mail
+// is answered by the isolated responder.
+function launchDirect(walletName, forwardedArgs) {
+  const child = spawn("claude", claudeArgv(forwardedArgs), {
     stdio: "inherit",
     env: { ...process.env, TINYPLACE_ACTIVE_WALLET: walletName },
   });
@@ -215,6 +248,68 @@ function launch(walletName, forwardedArgs) {
     process.exit(1);
   });
   child.on("exit", (code) => process.exit(code ?? 0));
+}
+
+const shq = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
+
+// Pick a free `tp-<wallet>[-N]` session name on our dedicated socket so each launch
+// is its own claude instance (a distinct agent session → its own claude:N label).
+function freeSessionName(walletName) {
+  const base = `tp-${walletName}`;
+  for (let n = 1; ; n++) {
+    const name = n === 1 ? base : `${base}-${n}`;
+    if (spawnSync("tmux", ["-L", TMUX_SOCKET, "has-session", "-t", name], { stdio: "ignore" }).status !== 0) return name;
+  }
+}
+
+// Wrap the launch in a tmux session on our dedicated socket, then attach. This
+// makes the agent ALWAYS live in a tmux pane, so the daemon can TTY-inject inbound
+// queries for the live session to resolve in-context — in ANY terminal, not just
+// when the user happens to already run tmux.
+function launchWrapped(walletName, forwardedArgs) {
+  const name = freeSessionName(walletName);
+  const S = ["-L", TMUX_SOCKET];
+  // Carry the plugin's env (TINYPLACE_*) + the active wallet into the pane command
+  // explicitly, so it survives regardless of the tmux server's own environment.
+  const envParts = ["env"];
+  for (const [k, v] of Object.entries(process.env)) {
+    if (k.startsWith("TINYPLACE_") && k !== "TINYPLACE_ACTIVE_WALLET") envParts.push(`${k}=${shq(v)}`);
+  }
+  envParts.push(`TINYPLACE_ACTIVE_WALLET=${shq(walletName)}`);
+  const cmd = [...envParts, "claude", ...claudeArgv(forwardedArgs).map(shq)].join(" ");
+  const created = spawnSync("tmux", [...S, "new-session", "-d", "-s", name, cmd], { stdio: "inherit" });
+  if (created.status !== 0) {
+    process.stdout.write(`  ${C.dim}tmux wrap failed; launching directly (auto-replies use an isolated context).${C.reset}\n`);
+    return launchDirect(walletName, forwardedArgs);
+  }
+  // Make the wrap feel like a plain terminal + pass color through.
+  for (const opt of [
+    ["status", "off"],
+    ["mouse", "on"],
+    ["escape-time", "0"],
+    ["default-terminal", "tmux-256color"],
+  ]) {
+    spawnSync("tmux", [...S, "set-option", "-g", ...opt], { stdio: "ignore" });
+  }
+  spawnSync("tmux", [...S, "set-option", "-ga", "terminal-overrides", ",*:Tc"], { stdio: "ignore" });
+  const att = spawnSync("tmux", [...S, "attach-session", "-t", name], { stdio: "inherit" });
+  process.exit(att.status ?? 0);
+}
+
+function launch(walletName, forwardedArgs) {
+  clear();
+  process.stdout.write(`${C.green}▶${C.reset} launching Claude as ${C.bold}${walletName}${C.reset} …\n\n`);
+  // Already inside tmux → the current pane is injectable; launch directly.
+  if (process.env.TMUX) return launchDirect(walletName, forwardedArgs);
+  // Not in tmux → wrap so foreground-resolve works. Install tmux if missing.
+  if (!tmuxAvailable()) {
+    process.stdout.write(`  ${C.yellow}tmux not found${C.reset} — needed so the agent can answer inbound DMs in-context.\n`);
+    if (!installTmux()) {
+      process.stdout.write(`  ${C.dim}Could not install tmux; launching without it (auto-replies use an isolated context).${C.reset}\n`);
+      return launchDirect(walletName, forwardedArgs);
+    }
+  }
+  return launchWrapped(walletName, forwardedArgs);
 }
 
 async function registerFlow(wallet) {
