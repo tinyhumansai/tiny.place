@@ -212,19 +212,21 @@ function tmuxAvailable() {
 }
 
 // Best-effort auto-install of tmux via the platform package manager. Returns true
-// if tmux is available afterward.
+// if tmux is available afterward. Each entry is [managerBinary, installArgv] — we
+// probe the MANAGER (not sudo) so we never run e.g. `sudo apt-get` on a box that
+// has sudo but not apt.
 function installTmux() {
-  const attempts =
+  const managers =
     process.platform === "darwin"
-      ? [["brew", ["install", "tmux"]]]
+      ? [["brew", ["brew", "install", "tmux"]]]
       : [
-          ["sudo", ["apt-get", "install", "-y", "tmux"]],
-          ["sudo", ["dnf", "install", "-y", "tmux"]],
-          ["sudo", ["pacman", "-S", "--noconfirm", "tmux"]],
+          ["apt-get", ["sudo", "apt-get", "install", "-y", "tmux"]],
+          ["dnf", ["sudo", "dnf", "install", "-y", "tmux"]],
+          ["pacman", ["sudo", "pacman", "-S", "--noconfirm", "tmux"]],
         ];
-  for (const [cmd, args] of attempts) {
+  for (const [manager, [cmd, ...args]] of managers) {
     try {
-      if (spawnSync(cmd, ["--version"], { stdio: "ignore" }).status !== 0) continue; // manager absent
+      if (spawnSync(manager, ["--version"], { stdio: "ignore" }).status !== 0) continue; // manager absent
       process.stdout.write(`  ${C.dim}Installing tmux via ${cmd} ${args.join(" ")} …${C.reset}\n`);
       spawnSync(cmd, args, { stdio: "inherit" });
       if (tmuxAvailable()) return true;
@@ -252,6 +254,19 @@ function launchDirect(walletName, forwardedArgs) {
 
 const shq = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
 
+// Non-secret config env vars the wrapped session should inherit. Passed via
+// `tmux -e` (session environment) rather than on the command line, so nothing
+// lands in `ps`/tmux command listings. Wallet secrets live in wallets.json, never
+// in env — this allowlist also guarantees we never forward an unexpected var.
+const CARRIED_ENV = [
+  "TINYPLACE_API_URL", "TINYPLACE_ENDPOINT", "TINYPLACE_CLAUDE_HOME",
+  "TINYPLACE_FOREGROUND_RESOLVE", "TINYPLACE_INJECT_COOLDOWN_MS",
+  "TINYPLACE_AUTORESPOND", "TINYPLACE_SEND_ONLY", "TINYPLACE_SESSION_DAEMON",
+  "TINYPLACE_DAEMON_POLL_MS", "TINYPLACE_DAEMON_HEARTBEAT_MS", "TINYPLACE_DAEMON_IDLE_MS",
+  "TINYPLACE_SESSION_LIVE_MS", "TINYPLACE_UNROUTED_POLICY",
+  "TINYPLACE_AUTORESPOND_POOL", "TINYPLACE_AUTORESPOND_MODEL",
+];
+
 // Pick a free `tp-<wallet>[-N]` session name on our dedicated socket so each launch
 // is its own claude instance (a distinct agent session → its own claude:N label).
 function freeSessionName(walletName) {
@@ -269,15 +284,13 @@ function freeSessionName(walletName) {
 function launchWrapped(walletName, forwardedArgs) {
   const name = freeSessionName(walletName);
   const S = ["-L", TMUX_SOCKET];
-  // Carry the plugin's env (TINYPLACE_*) + the active wallet into the pane command
-  // explicitly, so it survives regardless of the tmux server's own environment.
-  const envParts = ["env"];
-  for (const [k, v] of Object.entries(process.env)) {
-    if (k.startsWith("TINYPLACE_") && k !== "TINYPLACE_ACTIVE_WALLET") envParts.push(`${k}=${shq(v)}`);
-  }
-  envParts.push(`TINYPLACE_ACTIVE_WALLET=${shq(walletName)}`);
-  const cmd = [...envParts, "claude", ...claudeArgv(forwardedArgs).map(shq)].join(" ");
-  const created = spawnSync("tmux", [...S, "new-session", "-d", "-s", name, cmd], { stdio: "inherit" });
+  // Carry the active wallet + allowlisted config into the SESSION environment via
+  // `-e` (not the command line), so each launch gets its own wallet and nothing
+  // sensitive is exposed in process/tmux listings.
+  const envFlags = ["-e", `TINYPLACE_ACTIVE_WALLET=${walletName}`];
+  for (const k of CARRIED_ENV) if (process.env[k] != null) envFlags.push("-e", `${k}=${process.env[k]}`);
+  const cmd = ["claude", ...claudeArgv(forwardedArgs).map(shq)].join(" ");
+  const created = spawnSync("tmux", [...S, "new-session", "-d", "-s", name, ...envFlags, cmd], { stdio: "inherit" });
   if (created.status !== 0) {
     process.stdout.write(`  ${C.dim}tmux wrap failed; launching directly (auto-replies use an isolated context).${C.reset}\n`);
     return launchDirect(walletName, forwardedArgs);
