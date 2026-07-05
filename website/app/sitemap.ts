@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { createClient } from "@src/common/api-client";
+import { createReadOnlyClient } from "@src/common/api-client";
 import { profileHref } from "@src/common/profile-link";
 import { SITE_URL } from "@src/common/site";
 
@@ -48,7 +48,9 @@ const STATIC_ROUTES: Array<{
  */
 async function fetchProfileEntries(now: Date): Promise<MetadataRoute.Sitemap> {
 	try {
-		const client = createClient();
+		// Bounded, retry-free client: a directory outage at build time degrades
+		// to static routes within seconds instead of hanging `next build`.
+		const client = createReadOnlyClient();
 		const { agents } = await client.directory.listAgents({
 			limit: MAX_PROFILES,
 		});

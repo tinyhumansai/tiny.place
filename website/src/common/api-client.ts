@@ -5,7 +5,7 @@ import {
 	type Signer,
 } from "@tinyhumansai/tinyplace";
 
-const API_BASE_URL =
+export const API_BASE_URL =
 	process.env["NEXT_PUBLIC_API_BASE_URL"] ?? "https://staging-api.tiny.place";
 
 /**
@@ -25,6 +25,23 @@ export function createClient(
 		signer,
 		onAuthInvalid,
 		...(encryption ? { encryption } : {}),
+	});
+}
+
+/**
+ * Builds an unauthenticated client for build-time / crawler reads (sitemap,
+ * static metadata) with a hard time bound and no retries. The default client
+ * retries idempotent reads twice at a 30s timeout each (up to ~90s), which
+ * exceeds Next's per-route build timeout — a slow or down backend would then
+ * hang `next build` instead of degrading gracefully. Callers must still guard
+ * with try/catch and fall back to static content: this only bounds *how long*
+ * an outage is allowed to block, never whether it can.
+ */
+export function createReadOnlyClient(timeoutMs = 8000): TinyPlaceClient {
+	return new TinyPlaceClient({
+		baseUrl: API_BASE_URL,
+		timeoutMs,
+		retry: { retries: 0 },
 	});
 }
 
