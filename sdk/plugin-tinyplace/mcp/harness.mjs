@@ -7,8 +7,12 @@ import { join } from "node:path";
 
 import { claudeAdapter } from "../adapters/claude.mjs";
 import { codexAdapter } from "../adapters/codex.mjs";
+import { mockAdapter } from "../adapters/mock.mjs";
 
-const ADAPTERS = { claude: claudeAdapter, codex: codexAdapter };
+// `mock` is a deterministic test harness. It is NEVER auto-detected (no env
+// signal in detectHarness) — only reachable via the explicit TINYPLACE_HARNESS
+// override — so it adds no risk to the real Claude/Codex paths.
+const ADAPTERS = { claude: claudeAdapter, codex: codexAdapter, mock: mockAdapter };
 
 // Detect the harness from the environment. Order:
 //   1. explicit override (TINYPLACE_HARNESS) — escape hatch / launcher-set,
