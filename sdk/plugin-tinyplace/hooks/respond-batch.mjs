@@ -53,13 +53,16 @@ function moveToFailed(file) {
 // so validate its shape before use to prevent argument-injection. decodeEnvelope
 // already nulls unsafe labels; this is defense-in-depth for the queue path.
 const SAFE_SESSION_RE = /^[\w:-]{1,32}$/;
-// msg.from (base58 agent id) and msg.id (client/relay message id) are also
+// msg.from (a messaging address) and msg.id (client/relay message id) are also
 // attacker-controlled and here get interpolated into QUOTED tool-call arguments in
-// the LLM prompt (to="…", in_reply_to="…"). Strip each to a safe charset (word
-// chars + : . -) so a crafted value can't close the quote and inject extra
-// arguments or instructions. Both are naturally within this set — base58 ids are
-// alphanumeric, relay ids are slug-like — so a well-formed value is unchanged.
-const UNSAFE_ARG_RE = /[^\w:.-]+/g;
+// the LLM prompt (to="…", in_reply_to="…"). Strip each to a safe charset so a
+// crafted value can't close the quote and inject extra arguments or instructions.
+// The address may be a base64 Ed25519 key (contains + / =), a base58 cryptoId, or
+// an @handle, so the set MUST include those chars — otherwise a base64 `from` is
+// mangled into an unresolvable address and the reply can never be delivered. None
+// of the allowed chars can terminate a double-quoted arg (only " / newline can, and
+// both stay excluded), so the injection guard is preserved.
+const UNSAFE_ARG_RE = /[^\w:.+/=@-]+/g;
 const safeArg = (v) => String(v ?? "").replace(UNSAFE_ARG_RE, "").slice(0, 128);
 function buildPrompt(msg) {
   // If the sender addressed us from a specific session, reply back to that same
