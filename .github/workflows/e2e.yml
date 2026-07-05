@@ -12,6 +12,13 @@ jobs:
   e2e:
     name: Playwright
     runs-on: ubuntu-latest
+    # The Playwright suite mocks the backend (page.route) or skips live-only
+    # specs, so it must not reach staging. Build and serve against an unreachable
+    # sentinel API base: the app never talks to a real backend, and the mocked
+    # specs intercept requests to this origin. Keeps CI hermetic and staging
+    # outages from failing the build/tests.
+    env:
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:9999
     steps:
       - uses: actions/checkout@v4
 
