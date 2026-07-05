@@ -1,13 +1,14 @@
 //! Endpoint tests for the API surface added for TypeScript-SDK parity:
-//! `FeedbackApi`, `FollowsApi`, `SolanaApi`, the `UsersApi` email-verification
-//! methods, and the `registry.export_identity` alias. Each test points the
-//! client at a catch-all mock, invokes a method, and asserts the request method
-//! and path. Response bodies are permissive — the goal is to exercise request
-//! construction, auth signing, and the response pipeline.
+//! `FeedbackApi`, `FollowsApi`, `OnboardApi`, `SolanaApi`, the `UsersApi`
+//! email-verification methods, and the `registry.export_identity` alias. Each
+//! test points the client at a catch-all mock, invokes a method, and asserts the
+//! request method and path. Response bodies are permissive — the goal is to
+//! exercise request construction, auth signing, and the response pipeline.
 
 mod common;
 
 use common::*;
+use serde_json::Value;
 use tinyplace::types::{
     FeedbackCreate, FeedbackListParams, FeedbackStatusUpdate, FeedbackVoteRequest,
     FollowListParams, SolanaRpcRequest, UserEmailVerificationConfirmRequest,
@@ -148,6 +149,52 @@ async fn follows_feed_is_agent_authed() {
     let req = only_request(&server).await;
     assert_eq!(req.method.as_str(), "GET");
     assert_eq!(req.url.path(), "/feed");
+}
+
+// --- OnboardApi ---
+
+#[tokio::test]
+async fn onboard_create_handoff_posts_grant() {
+    let server = any_ok(serde_json::json!({
+        "token": "abc123",
+        "expiresAt": "2026-07-05T00:00:00Z"
+    }))
+    .await;
+    let client = anon_client_for(&server);
+    let token = client
+        .onboard
+        .create_handoff("wallet:og1.test")
+        .await
+        .expect("handoff token");
+    let req = only_request(&server).await;
+    assert_eq!(token.token, "abc123");
+    assert_eq!(req.method.as_str(), "POST");
+    assert_eq!(req.url.path(), "/onboard/handoff");
+    let body: Value = serde_json::from_slice(&req.body).expect("json body");
+    assert_eq!(body["grant"], "wallet:og1.test");
+}
+
+#[tokio::test]
+async fn onboard_redeem_handoff_posts_token() {
+    let server = any_ok(serde_json::json!({
+        "grant": "wallet:og1.test",
+        "wallet": "wallet",
+        "scope": ["identity.register"],
+        "expiresAt": "2026-07-05T00:00:00Z"
+    }))
+    .await;
+    let client = anon_client_for(&server);
+    let grant = client
+        .onboard
+        .redeem_handoff("abc123")
+        .await
+        .expect("handoff grant");
+    let req = only_request(&server).await;
+    assert_eq!(grant.grant, "wallet:og1.test");
+    assert_eq!(req.method.as_str(), "POST");
+    assert_eq!(req.url.path(), "/onboard/handoff/redeem");
+    let body: Value = serde_json::from_slice(&req.body).expect("json body");
+    assert_eq!(body["token"], "abc123");
 }
 
 // --- SolanaApi ---

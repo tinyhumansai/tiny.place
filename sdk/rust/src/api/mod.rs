@@ -23,6 +23,7 @@ pub mod ledger;
 pub mod mcp;
 pub mod messages;
 pub mod moderation;
+pub mod onboard;
 pub mod payments;
 pub mod pricing;
 pub mod profiles;

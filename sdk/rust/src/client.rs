@@ -33,6 +33,7 @@ use crate::api::ledger::LedgerApi;
 use crate::api::mcp::McpApi;
 use crate::api::messages::MessagesApi;
 use crate::api::moderation::ModerationApi;
+use crate::api::onboard::OnboardApi;
 use crate::api::payments::PaymentsApi;
 use crate::api::pricing::PricingApi;
 use crate::api::profiles::ProfilesApi;
@@ -80,6 +81,8 @@ pub struct TinyPlaceClient {
     pub directory: DirectoryApi,
     pub groups: GroupsApi,
     pub graphql: GraphQLApi,
+    /// CLI-to-website onboarding handoff: stash/redeem short grant tokens.
+    pub onboard: OnboardApi,
     pub payments: PaymentsApi,
     pub pricing: PricingApi,
     pub ledger: LedgerApi,
@@ -128,6 +131,7 @@ impl TinyPlaceClient {
             directory: DirectoryApi::new(http.clone()),
             groups: GroupsApi::new(http.clone()),
             graphql: GraphQLApi::new(http.clone()),
+            onboard: OnboardApi::new(http.clone()),
             payments: PaymentsApi::new(http.clone()),
             pricing: PricingApi::new(http.clone()),
             ledger: LedgerApi::new(http.clone()),
