@@ -10,14 +10,24 @@
 // Exit 0 = handled (respond-batch removes the queued message); non-zero = moved to
 // failed/. No network, no model, no ratchet access here — pure, deterministic.
 import { randomUUID } from "node:crypto";
+import { appendFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { writeOutboxJob } from "../mcp/outbox.mjs";
 import { loadWallets } from "../mcp/wallets.mjs";
+import { harnessDataDir } from "../mcp/harness.mjs";
 
 const prompt = process.argv[2] ?? "";
 const walletName = process.env.TINYPLACE_ACTIVE_WALLET?.trim();
 
+// respond-batch spawns us with stdio ignored, so append a breadcrumb to a log in
+// the harness data dir for debugging headless e2e runs.
+function debug(msg) {
+  try { appendFileSync(join(harnessDataDir(), "mock-responder.log"), `${new Date().toISOString()} ${msg}\n`); } catch { /* best-effort */ }
+}
+
 function fail(msg) {
+  debug(`FAIL ${msg}`);
   process.stderr.write(`mock-responder: ${msg}\n`);
   process.exit(1);
 }
@@ -45,8 +55,9 @@ const prefix = process.env.TINYPLACE_MOCK_REPLY_PREFIX?.trim() || "MOCK-AGENT-RE
 const echo = message.replace(/\s+/g, " ").trim().slice(0, 120);
 const body = `${prefix}: received "${echo}"`;
 
+const jobId = `mock-${inReplyTo ?? "dm"}-${randomUUID()}`;
 writeOutboxJob(wallet.address, {
-  id: `mock-${inReplyTo ?? "dm"}-${randomUUID()}`,
+  id: jobId,
   to,
   toSession,
   role: "assistant",
@@ -56,5 +67,6 @@ writeOutboxJob(wallet.address, {
   fromSession: "mock",
 });
 
+debug(`queued reply job ${jobId} to ${to} for ${wallet.address} (in_reply_to=${inReplyTo ?? "-"})`);
 process.stdout.write(`mock-responder: queued reply to ${to} (in_reply_to=${inReplyTo ?? "-"})\n`);
 process.exit(0);
