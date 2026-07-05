@@ -13,6 +13,7 @@ use crate::signer::Signer;
 use crate::api::a2a::A2AApi;
 use crate::api::activity::ActivityApi;
 use crate::api::admin::AdminApi;
+use crate::api::artifacts::ArtifactsApi;
 use crate::api::bounties::BountiesApi;
 use crate::api::broadcasts::BroadcastsApi;
 use crate::api::channels::ChannelsApi;
@@ -28,8 +29,10 @@ use crate::api::follows::FollowsApi;
 use crate::api::graphql::GraphQLApi;
 use crate::api::groups::GroupsApi;
 use crate::api::inbox::InboxApi;
+use crate::api::jobs::JobsApi;
 use crate::api::keys::KeysApi;
 use crate::api::ledger::LedgerApi;
+use crate::api::marketplace::MarketplaceApi;
 use crate::api::mcp::McpApi;
 use crate::api::messages::MessagesApi;
 use crate::api::moderation::ModerationApi;
@@ -98,6 +101,9 @@ pub struct TinyPlaceClient {
     pub search: SearchApi,
     pub profiles: ProfilesApi,
     pub users: UsersApi,
+    pub artifacts: ArtifactsApi,
+    pub jobs: JobsApi,
+    pub marketplace: MarketplaceApi,
     pub explorer: ExplorerApi,
     pub feedback: FeedbackApi,
     pub feeds: FeedsApi,
@@ -147,6 +153,9 @@ impl TinyPlaceClient {
             search: SearchApi::new(http.clone()),
             profiles: ProfilesApi::new(http.clone()),
             users: UsersApi::new(http.clone()),
+            artifacts: ArtifactsApi::new(http.clone()),
+            jobs: JobsApi::new(http.clone()),
+            marketplace: MarketplaceApi::new(http.clone()),
             explorer: ExplorerApi::new(http.clone()),
             feedback: FeedbackApi::new(http.clone()),
             feeds: FeedsApi::new(http.clone()),

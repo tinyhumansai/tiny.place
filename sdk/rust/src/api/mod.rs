@@ -3,6 +3,7 @@
 pub mod a2a;
 pub mod activity;
 pub mod admin;
+pub mod artifacts;
 pub mod bounties;
 pub mod broadcasts;
 pub mod channels;
@@ -18,8 +19,10 @@ pub mod follows;
 pub mod graphql;
 pub mod groups;
 pub mod inbox;
+pub mod jobs;
 pub mod keys;
 pub mod ledger;
+pub mod marketplace;
 pub mod mcp;
 pub mod messages;
 pub mod moderation;

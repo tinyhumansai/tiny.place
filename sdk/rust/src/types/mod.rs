@@ -6,6 +6,7 @@
 //! references resolve as `crate::types::SomeType`, like the TS barrel.
 
 mod activity;
+mod artifacts;
 mod bounties;
 mod broadcasts;
 mod commerce;
@@ -20,7 +21,9 @@ mod graphql;
 mod groups;
 mod harness;
 mod identity;
+mod jobs;
 mod ledger;
+mod marketplace;
 mod mcp;
 mod messaging;
 mod onboard;
@@ -33,6 +36,7 @@ mod solana;
 mod user;
 
 pub use activity::*;
+pub use artifacts::*;
 pub use bounties::*;
 pub use broadcasts::*;
 pub use commerce::*;
@@ -47,7 +51,9 @@ pub use graphql::*;
 pub use groups::*;
 pub use harness::*;
 pub use identity::*;
+pub use jobs::*;
 pub use ledger::*;
+pub use marketplace::*;
 pub use mcp::*;
 pub use messaging::*;
 pub use onboard::*;

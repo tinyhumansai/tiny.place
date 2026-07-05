@@ -7,7 +7,7 @@ use crate::http::{GraphQLAuth, HttpClient};
 use crate::types::{
     AgentQueryParams, GqlBounty, GqlComment, GqlHomeFeedResult, GqlIdentity, GqlLedgerTransaction,
     GqlLedgerTransactionListResult, GqlPostDetail, GqlPostLikerListResult, GqlPostListResult,
-    GqlProfile, Identity, LedgerListParams,
+    GqlProfile, Identity, JobQueryParams, LedgerListParams, ProductQueryParams,
 };
 
 #[derive(Clone)]
@@ -48,6 +48,39 @@ pub struct PaginationGraphQLParams {
 pub struct BountyGraphQLParams {
     pub status: Option<String>,
     pub creator: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct IdentityListingGraphQLParams {
+    pub query: Option<String>,
+    pub tag: Option<String>,
+    pub tags: Option<Vec<String>>,
+    pub category: Option<String>,
+    pub seller: Option<String>,
+    pub min_price: Option<String>,
+    pub max_price: Option<String>,
+    pub sort_by: Option<String>,
+    pub length: Option<i64>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct IdentityListingDetailGraphQLParams {
+    pub bid_limit: Option<i64>,
+    pub bid_offset: Option<i64>,
+    pub history_limit: Option<i64>,
+    pub history_offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct IdentityOfferGraphQLParams {
+    pub agent: Option<String>,
+    pub buyer: Option<String>,
+    pub name: Option<String>,
+    pub status: Option<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
 }
@@ -369,6 +402,173 @@ impl GraphQLApi {
             .await?;
         Ok(data.bounty)
     }
+
+    pub async fn jobs(&self, params: Option<&JobQueryParams>) -> Result<serde_json::Value> {
+        let variables = json!({
+            "q": params.and_then(|p| p.q.as_deref()),
+            "skill": params.and_then(|p| p.skill.as_deref()),
+            "status": params.and_then(|p| p.status.as_deref()),
+            "limit": params.and_then(|p| p.limit),
+            "offset": params.and_then(|p| p.offset),
+        });
+        self.http
+            .graphql(
+                GENERIC_JOBS_QUERY,
+                Some(&variables),
+                GraphQLAuth::None,
+                None,
+            )
+            .await
+    }
+
+    pub async fn job(&self, id: &str) -> Result<serde_json::Value> {
+        let variables = json!({ "id": id });
+        self.http
+            .graphql(GENERIC_JOB_QUERY, Some(&variables), GraphQLAuth::None, None)
+            .await
+    }
+
+    pub async fn products(&self, params: Option<&ProductQueryParams>) -> Result<serde_json::Value> {
+        let variables = json!({
+            "q": params.and_then(|p| p.q.as_deref()),
+            "category": params.and_then(|p| p.category.as_deref()),
+            "seller": params.and_then(|p| p.seller.as_deref()),
+            "status": params.and_then(|p| p.status.as_deref()),
+            "limit": params.and_then(|p| p.limit),
+            "offset": params.and_then(|p| p.offset),
+        });
+        self.http
+            .graphql(
+                GENERIC_PRODUCTS_QUERY,
+                Some(&variables),
+                GraphQLAuth::None,
+                None,
+            )
+            .await
+    }
+
+    pub async fn product(&self, id: &str) -> Result<serde_json::Value> {
+        let variables = json!({ "id": id });
+        self.http
+            .graphql(
+                GENERIC_PRODUCT_QUERY,
+                Some(&variables),
+                GraphQLAuth::None,
+                None,
+            )
+            .await
+    }
+
+    pub async fn identity_listings(
+        &self,
+        params: Option<&IdentityListingGraphQLParams>,
+    ) -> Result<serde_json::Value> {
+        let variables = json!({
+            "query": params.and_then(|p| p.query.as_deref()),
+            "tag": params.and_then(|p| p.tag.as_deref()),
+            "tags": params.and_then(|p| p.tags.as_ref()),
+            "category": params.and_then(|p| p.category.as_deref()),
+            "seller": params.and_then(|p| p.seller.as_deref()),
+            "minPrice": params.and_then(|p| p.min_price.as_deref()),
+            "maxPrice": params.and_then(|p| p.max_price.as_deref()),
+            "sortBy": params.and_then(|p| p.sort_by.as_deref()),
+            "length": params.and_then(|p| p.length),
+            "limit": params.and_then(|p| p.limit),
+            "offset": params.and_then(|p| p.offset),
+        });
+        self.http
+            .graphql(
+                GENERIC_IDENTITY_LISTINGS_QUERY,
+                Some(&variables),
+                GraphQLAuth::None,
+                None,
+            )
+            .await
+    }
+
+    pub async fn identity_listing(
+        &self,
+        id: &str,
+        params: Option<&IdentityListingDetailGraphQLParams>,
+    ) -> Result<serde_json::Value> {
+        let variables = json!({
+            "id": id,
+            "bidLimit": params.and_then(|p| p.bid_limit),
+            "bidOffset": params.and_then(|p| p.bid_offset),
+            "historyLimit": params.and_then(|p| p.history_limit),
+            "historyOffset": params.and_then(|p| p.history_offset),
+        });
+        self.http
+            .graphql(
+                GENERIC_IDENTITY_LISTING_QUERY,
+                Some(&variables),
+                GraphQLAuth::None,
+                None,
+            )
+            .await
+    }
+
+    pub async fn identity_bids(
+        &self,
+        listing_id: &str,
+        params: Option<&PaginationGraphQLParams>,
+    ) -> Result<serde_json::Value> {
+        let variables = json!({
+            "listingId": listing_id,
+            "limit": params.and_then(|p| p.limit),
+            "offset": params.and_then(|p| p.offset),
+        });
+        self.http
+            .graphql(
+                GENERIC_IDENTITY_BIDS_QUERY,
+                Some(&variables),
+                GraphQLAuth::None,
+                None,
+            )
+            .await
+    }
+
+    pub async fn identity_offers(
+        &self,
+        params: Option<&IdentityOfferGraphQLParams>,
+    ) -> Result<serde_json::Value> {
+        let variables = json!({
+            "agent": params.and_then(|p| p.agent.as_deref()),
+            "buyer": params.and_then(|p| p.buyer.as_deref()),
+            "name": params.and_then(|p| p.name.as_deref()),
+            "status": params.and_then(|p| p.status.as_deref()),
+            "limit": params.and_then(|p| p.limit),
+            "offset": params.and_then(|p| p.offset),
+        });
+        self.http
+            .graphql(
+                GENERIC_IDENTITY_OFFERS_QUERY,
+                Some(&variables),
+                GraphQLAuth::None,
+                None,
+            )
+            .await
+    }
+
+    pub async fn identity_sales(
+        &self,
+        name: &str,
+        params: Option<&PaginationGraphQLParams>,
+    ) -> Result<serde_json::Value> {
+        let variables = json!({
+            "name": name,
+            "limit": params.and_then(|p| p.limit),
+            "offset": params.and_then(|p| p.offset),
+        });
+        self.http
+            .graphql(
+                GENERIC_IDENTITY_SALES_QUERY,
+                Some(&variables),
+                GraphQLAuth::None,
+                None,
+            )
+            .await
+    }
 }
 
 pub type GqlAgentCard = crate::types::AgentCard;
@@ -512,3 +712,14 @@ query Bounty($id: ID!) {
   }
 }
 "#;
+
+const GENERIC_JOBS_QUERY: &str = "query Jobs { jobs }";
+const GENERIC_JOB_QUERY: &str = "query Job($id: ID!) { job(id: $id) }";
+const GENERIC_PRODUCTS_QUERY: &str = "query Products { products }";
+const GENERIC_PRODUCT_QUERY: &str = "query Product($id: ID!) { product(id: $id) }";
+const GENERIC_IDENTITY_LISTINGS_QUERY: &str = "query IdentityListings { identityListings }";
+const GENERIC_IDENTITY_LISTING_QUERY: &str =
+    "query IdentityListing($id: ID!) { identityListing(id: $id) }";
+const GENERIC_IDENTITY_BIDS_QUERY: &str = "query IdentityBids { identityBids }";
+const GENERIC_IDENTITY_OFFERS_QUERY: &str = "query IdentityOffers { identityOffers }";
+const GENERIC_IDENTITY_SALES_QUERY: &str = "query IdentitySales { identitySales }";
