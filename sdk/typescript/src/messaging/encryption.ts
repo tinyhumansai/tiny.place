@@ -1,4 +1,5 @@
 import type { KeysApi } from "../api/keys.js";
+import { deriveCryptoId } from "../crypto.js";
 import type { Signer } from "../signer.js";
 import {
   SignalSession,
@@ -71,11 +72,17 @@ export class EncryptionContext implements MessageCipher {
     await this.store.storeSignedPreKey(signedPreKey);
     await Promise.all(preKeys.map((preKey) => this.store.storePreKey(preKey)));
 
-    await this.keys.rotateSignedPreKey(address, {
+    // The relay's key routes (`/keys/:cryptoId/...`) are addressed by the base58
+    // cryptoId, NOT the base64 Ed25519 key: a base64 key contains `/` and `+`, and
+    // the `/` breaks the single-segment `:cryptoId` route match (→ 404) for roughly
+    // half of all identities. The Signal identity key (base64) still travels in the
+    // body as `identityKey`. Mirrors the recipient path and the manual publish flow.
+    const keyPathId = this.signer.agentId;
+    await this.keys.rotateSignedPreKey(keyPathId, {
       identityKey: address,
       signedPreKey: serializeSignedKey(signedPreKey),
     });
-    await this.keys.uploadPreKeys(address, {
+    await this.keys.uploadPreKeys(keyPathId, {
       identityKey: address,
       preKeys: preKeys.map(serializePreKey),
     });
@@ -87,9 +94,12 @@ export class EncryptionContext implements MessageCipher {
     const recipientX25519 = ed25519PubToX25519Pub(recipientEd25519);
     // First message to a peer needs their bundle to bootstrap X3DH; later messages
     // ride the established Double Ratchet session and need no bundle fetch.
+    // Fetch by the recipient's base58 cryptoId, NOT their base64 key: the relay
+    // key routes (/keys/:cryptoId/bundle) match a single path segment, which a
+    // base64 key's `/` breaks (→ 404). Mirrors publishKeyBundle.
     const bundle = (await session.hasSession(envelope.to))
       ? undefined
-      : await this.keys.getBundle(envelope.to);
+      : await this.keys.getBundle(deriveCryptoId(recipientEd25519));
 
     const encrypted = await session.encrypt(
       envelope.to,
