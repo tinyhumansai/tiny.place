@@ -86,6 +86,12 @@ export interface HarnessWrapperConfig {
   receiveFrom?: string;
   receivePollMs: number;
   sessionFile?: string;
+  // A resumed session appends to a file that already existed when the tailer
+  // started, so it lands in `ignoredSessionFiles` and would never be tailed.
+  // Setting this un-ignores that one file so the resumed turns still stream
+  // (without pinning — a resume that instead spawns a fresh file is still
+  // located normally). See tui.ts resume flow.
+  resumeSessionFile?: string;
   sessionPollMs: number;
   sessionsDir: string;
   sessionTailGraceMs: number;
@@ -647,6 +653,11 @@ export class HarnessSessionTailer {
   public start(startedAt: Date): void {
     this.startedAt = startedAt;
     this.ignoredSessionFiles = new Set(listSessionFiles(this.config));
+    // Resume: the file the resumed session appends to already existed, so it was
+    // just swept into the ignore set. Drop it back out so its new turns tail.
+    if (this.config.resumeSessionFile) {
+      this.ignoredSessionFiles.delete(this.config.resumeSessionFile);
+    }
     bridgeLog("tailer.start", {
       startedAt: startedAt.toISOString(),
       cwd: this.cwd,

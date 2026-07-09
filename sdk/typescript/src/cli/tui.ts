@@ -129,7 +129,7 @@ export async function runTinyPlaceTui(
       code: 0,
       stderr: "",
       stdout: homeMode
-        ? renderHomeSnapshot(ctx)
+        ? renderHomeSnapshot(ctx, options.cwd ?? process.cwd())
         : renderStaticSnapshot(ctx, profile),
     };
   }
@@ -201,6 +201,9 @@ class BlessedTinyPlaceTui {
   // cwd (so its OpenHuman folder-thread and session-file lookup line up); a fresh
   // launch leaves this undefined and falls back to the process cwd.
   private launchCwd?: string;
+  // Resume only: the session's JSONL path, handed to the tailer so it keeps
+  // streaming a resumed file that already existed at bridge start.
+  private launchSessionFile?: string;
 
   public constructor(
     private readonly ctx: CliContext,
@@ -513,6 +516,7 @@ class BlessedTinyPlaceTui {
     }
     this.setProfile(session.agent, session.id);
     this.launchCwd = session.cwd;
+    this.launchSessionFile = session.path;
     this.state = {
       ...this.state,
       notice: `Resuming ${session.agent} session…`,
@@ -668,6 +672,10 @@ class BlessedTinyPlaceTui {
     if (this.profile.resumeSessionId) {
       config.scope = "session";
       config.wrapperSessionId = `tp-${this.profile.kind}-resume-${this.profile.resumeSessionId}`;
+      // Keep tailing the resumed file even though it predates the tailer.
+      if (this.launchSessionFile) {
+        config.resumeSessionFile = this.launchSessionFile;
+      }
     }
     const cwd = this.effectiveCwd();
     bridgeLog("bridge.start", {
@@ -1948,7 +1956,7 @@ function renderStaticSnapshot(ctx: CliContext, profile: AgentProfile): string {
  * Non-TTY snapshot for bare `tinyplace` (home mode) — the agent picker. Mirrors
  * the interactive home menu so scripts / `| cat` see the same options.
  */
-function renderHomeSnapshot(ctx: CliContext): string {
+function renderHomeSnapshot(ctx: CliContext, cwd: string): string {
   const owner = bridgeOwner(ctx.env) ?? ctx.openHumanOwner;
   const lines = [
     "welcome to tiny.place",
@@ -1968,7 +1976,7 @@ function renderHomeSnapshot(ctx: CliContext): string {
     "  [ Settings ]",
     "  [ Quit ]",
     "",
-    ...renderSnapshotSessions(ctx),
+    ...renderSnapshotSessions(ctx, cwd),
     "Arrows/j,k move · Tab switches panes · Enter selects · q quits.",
     `${ctx.baseUrl ? "Connected to tiny.place" : "Disconnected"} - Chat id: none`,
   ];
@@ -1976,8 +1984,8 @@ function renderHomeSnapshot(ctx: CliContext): string {
 }
 
 /** Recent-session lines for the non-TTY home snapshot (scripts / `| cat`). */
-function renderSnapshotSessions(ctx: CliContext): Array<string> {
-  const sessions = safeListRecentSessions(ctx.env, process.cwd(), { limit: 8 });
+function renderSnapshotSessions(ctx: CliContext, cwd: string): Array<string> {
+  const sessions = safeListRecentSessions(ctx.env, cwd, { limit: 8 });
   if (sessions.length === 0) {
     return [];
   }
