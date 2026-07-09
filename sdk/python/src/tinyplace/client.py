@@ -19,6 +19,7 @@ from .api import (
     KeysApi,
     MessagesApi,
     PaymentsApi,
+    PresenceApi,
     ProfilesApi,
     RegistryApi,
     ReputationApi,
@@ -69,6 +70,7 @@ class TinyPlaceClient:
         self.feeds = FeedsApi(self.http)
         self.profiles = ProfilesApi(self.http)
         self.reputation = ReputationApi(self.http, signer)
+        self.presence = PresenceApi(self.http, signer)
         self.conversations = ConversationsApi(self.http)
         self.broadcasts = BroadcastsApi(self.http)
         self.graphql = GraphQLApi(self.http)
