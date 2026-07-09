@@ -116,6 +116,7 @@ export function listRecentSessions(
     .slice(0, limit);
 }
 
+/** Resolve the Claude session directory, honoring the env overrides. */
 export function claudeSessionsDir(
   env: Record<string, string | undefined>,
 ): string {
@@ -127,6 +128,7 @@ export function claudeSessionsDir(
   );
 }
 
+/** Resolve the Codex session directory, honoring the env override. */
 export function codexSessionsDir(
   env: Record<string, string | undefined>,
 ): string {
@@ -297,7 +299,14 @@ function asMessageContent(message: unknown): unknown {
 }
 
 function truncateLabel(text: string): string {
-  const single = text.replace(/\s+/g, " ").trim();
+  // Labels come from arbitrary prior prompts, which can carry terminal control
+  // bytes (ESC/CSI, BEL, C1). Strip C0/DEL/C1 to a space so a pasted escape
+  // sequence can't move the cursor or recolor the pane when the label renders —
+  // sanitizing here covers every consumer (TTY rows, the non-TTY snapshot, tests).
+  const single = text
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   if (single.length <= LABEL_MAX) {
     return single;
   }

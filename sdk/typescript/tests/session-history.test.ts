@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, utimes } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -89,7 +89,6 @@ async function writeSession(
   mtime: Date,
 ): Promise<void> {
   await writeFile(path, content);
-  const { utimes } = await import("node:fs/promises");
   await utimes(path, mtime, mtime);
 }
 
@@ -176,6 +175,23 @@ describe("listRecentSessions", () => {
     expect(session.label.length).toBeLessThanOrEqual(72);
     expect(session.label).not.toContain("\n");
     expect(session.label.endsWith("…")).toBe(true);
+  });
+
+  it("strips terminal control bytes from the label", async () => {
+    const { env, claudeDir } = await stage();
+    // ESC[31m … BEL — an escape sequence smuggled through a prior prompt.
+    const nasty = "hi \u001b[31mRED\u001b[0m\u0007 there";
+    await writeSession(
+      join(claudeDir, "ctl.jsonl"),
+      claudeSession("ctl", "/work/x", [nasty]),
+      new Date("2026-07-01T10:00:00Z"),
+    );
+
+    const [session] = listRecentSessions(env, "/work/x");
+
+    // eslint-disable-next-line no-control-regex -- asserting they were stripped
+    expect(session.label).not.toMatch(/[\u0000-\u001F\u007F-\u009F]/);
+    expect(session.label).toContain("RED");
   });
 
   it("returns an empty list when no session dirs exist", () => {
