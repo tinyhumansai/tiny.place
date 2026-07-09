@@ -22,6 +22,7 @@ import { ActivityApi } from "./api/activity.js";
 import { ExplorerApi } from "./api/explorer.js";
 import { FeedbackApi } from "./api/feedback.js";
 import { ContactsApi } from "./api/contacts.js";
+import { PresenceApi } from "./api/presence.js";
 import { FollowsApi } from "./api/follows.js";
 import { GroupsApi } from "./api/groups.js";
 import { InboxApi } from "./api/inbox.js";
@@ -125,6 +126,7 @@ export class TinyPlaceClient {
   readonly explorer: ExplorerApi;
   readonly feedback: FeedbackApi;
   readonly contacts: ContactsApi;
+  readonly presence: PresenceApi;
   readonly follows: FollowsApi;
   readonly solana: SolanaApi;
   readonly moderation: ModerationApi;
@@ -205,6 +207,7 @@ export class TinyPlaceClient {
     this.explorer = new ExplorerApi(this.http, wsFactory);
     this.feedback = new FeedbackApi(this.http);
     this.contacts = new ContactsApi(this.http);
+    this.presence = new PresenceApi(this.http);
     this.follows = new FollowsApi(this.http);
     this.solana = new SolanaApi(this.http);
     this.moderation = new ModerationApi(this.http);

@@ -254,6 +254,7 @@ export { ProfilesApi } from "./api/profiles.js";
 export { ExplorerApi } from "./api/explorer.js";
 export { FeedbackApi } from "./api/feedback.js";
 export { ContactsApi } from "./api/contacts.js";
+export { PresenceApi } from "./api/presence.js";
 export { FollowsApi } from "./api/follows.js";
 export { SolanaApi, formatTokenAmount } from "./api/solana.js";
 export type {
