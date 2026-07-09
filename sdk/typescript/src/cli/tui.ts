@@ -9,12 +9,16 @@ import {
 } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
-import { dirname, relative, resolve, join, sep } from "node:path";
+import { basename, dirname, relative, resolve, join, sep } from "node:path";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { IPty } from "node-pty";
 
 import { bridgeLog, createBridgeDiagSink } from "./bridge-debug.js";
 import { saveOpenHumanOwner } from "./context.js";
+import {
+  listRecentSessions,
+  type RecentSession,
+} from "./session-history.js";
 import {
   HarnessSessionTailer,
   InboundMessageReceiver,
@@ -45,6 +49,10 @@ interface TuiState {
   openHumanSessionId?: string;
   selectedIndex: number;
   view: TuiView;
+  // Home mode only: which pane holds the cursor (left actions vs the recent-
+  // session resume list), and the highlighted row in the sessions pane.
+  homeFocus?: "actions" | "sessions";
+  sessionIndex?: number;
 }
 
 interface AgentLaunch {
@@ -61,6 +69,9 @@ interface AgentProfile {
   pendingSessionId: string;
   sessionPollEnv: string;
   sessionsDir: string;
+  // Set when this profile resumes a specific session (home resume pane): drives
+  // the `--resume`/`resume` launch arg and a stable per-session OpenHuman scope.
+  resumeSessionId?: string;
 }
 
 interface AgentSessionMeta {
@@ -183,6 +194,13 @@ class BlessedTinyPlaceTui {
   // inbound receiver, reused from the harness wrapper.
   private bridgeTailer?: HarnessSessionTailer;
   private bridgeReceiver?: InboundMessageReceiver;
+  // Home-screen resume pane: the recent sessions across both agents, loaded once
+  // at start. Empty in fixed-agent mode.
+  private recentSessions: Array<RecentSession> = [];
+  // Per-launch working directory. A resumed session launches in its own original
+  // cwd (so its OpenHuman folder-thread and session-file lookup line up); a fresh
+  // launch leaves this undefined and falls back to the process cwd.
+  private launchCwd?: string;
 
   public constructor(
     private readonly ctx: CliContext,
@@ -206,10 +224,20 @@ class BlessedTinyPlaceTui {
   }
 
   /** Home mode: bind the chosen agent, then resolve the owner for THAT agent
-   *  (provider-specific recipients only take effect once the agent is known). */
-  private setProfile(kind: TinyVerseAgentKind): void {
-    this.profile = buildAgentProfile(this.ctx.env, kind);
+   *  (provider-specific recipients only take effect once the agent is known). An
+   *  optional `resumeSessionId` binds a resume launch (home resume pane). */
+  private setProfile(
+    kind: TinyVerseAgentKind,
+    resumeSessionId?: string,
+  ): void {
+    this.profile = buildAgentProfile(this.ctx.env, kind, resumeSessionId);
     this.adoptRememberedOwner();
+  }
+
+  /** Working directory for the current launch: a resumed session runs where it
+   *  originally ran; everything else follows the process/option cwd. */
+  private effectiveCwd(): string {
+    return this.launchCwd ?? this.options.cwd ?? process.cwd();
   }
 
   private createBlessedLayout(): void {
@@ -269,6 +297,12 @@ class BlessedTinyPlaceTui {
     // to the wrong owner.
     if (!this.homeMode) {
       this.adoptRememberedOwner();
+    } else {
+      this.recentSessions = safeListRecentSessions(
+        this.ctx.env,
+        this.effectiveCwd(),
+      );
+      this.state = { ...this.state, homeFocus: "actions", sessionIndex: 0 };
     }
     this.render();
     this.scheduleAutoStart();
@@ -319,6 +353,17 @@ class BlessedTinyPlaceTui {
     this.screen.key(["down", "j"], () => {
       this.moveSelection(1);
     });
+    // Home mode has two panes (actions + recent sessions); Tab and ←/→ move the
+    // cursor between them. No-op in fixed-agent mode / non-welcome views.
+    this.screen.key(["tab", "S-tab"], () => {
+      this.toggleHomeFocus();
+    });
+    this.screen.key(["right", "l"], () => {
+      this.toggleHomeFocus("sessions");
+    });
+    this.screen.key(["left", "h"], () => {
+      this.toggleHomeFocus("actions");
+    });
     this.screen.key(["c", "n"], () => {
       // Home mode has no single default agent — force the picker (arrows/Enter)
       // so `c`/`n`/`x` can't silently launch Codex when the user wanted Claude.
@@ -355,6 +400,22 @@ class BlessedTinyPlaceTui {
       return;
     }
     this.clearAutoStart();
+    if (this.homeMode && this.state.homeFocus === "sessions") {
+      if (this.recentSessions.length === 0) {
+        return;
+      }
+      this.state = {
+        ...this.state,
+        notice: undefined,
+        sessionIndex: clamp(
+          (this.state.sessionIndex ?? 0) + delta,
+          0,
+          this.recentSessions.length - 1,
+        ),
+      };
+      this.render();
+      return;
+    }
     this.state = {
       ...this.state,
       notice: undefined,
@@ -364,6 +425,28 @@ class BlessedTinyPlaceTui {
         this.actions().length - 1,
       ),
     };
+    this.render();
+  }
+
+  /** Move the home cursor between the actions pane and the resume pane. No-op
+   *  outside home/welcome, or into an empty sessions pane. */
+  private toggleHomeFocus(target?: "actions" | "sessions"): void {
+    if (!this.homeMode || this.state.view !== "welcome") {
+      return;
+    }
+    const next =
+      target ??
+      ((this.state.homeFocus ?? "actions") === "actions"
+        ? "sessions"
+        : "actions");
+    if (next === "sessions" && this.recentSessions.length === 0) {
+      return;
+    }
+    if (next === (this.state.homeFocus ?? "actions")) {
+      return;
+    }
+    this.clearAutoStart();
+    this.state = { ...this.state, homeFocus: next, notice: undefined };
     this.render();
   }
 
@@ -380,6 +463,10 @@ class BlessedTinyPlaceTui {
       };
       this.scheduleAutoStart();
       this.render();
+      return;
+    }
+    if (this.homeMode && this.state.homeFocus === "sessions") {
+      this.resumeSelectedSession();
       return;
     }
     switch (this.selectedAction()) {
@@ -414,6 +501,23 @@ class BlessedTinyPlaceTui {
       view: "settings",
     };
     this.render();
+  }
+
+  /** Resume the highlighted recent session: bind its agent + id (so the launch
+   *  carries `--resume`/`resume` and a stable per-session OpenHuman scope), run
+   *  it in its original folder, and hand off to the normal agent launch. */
+  private resumeSelectedSession(): void {
+    const session = this.recentSessions[this.state.sessionIndex ?? 0];
+    if (!session) {
+      return;
+    }
+    this.setProfile(session.agent, session.id);
+    this.launchCwd = session.cwd;
+    this.state = {
+      ...this.state,
+      notice: `Resuming ${session.agent} session…`,
+    };
+    void this.startAgent();
   }
 
   /**
@@ -558,7 +662,14 @@ class BlessedTinyPlaceTui {
     config.dmRecipient = owner;
     config.receiveFrom = owner;
     config.receiveEnabled = true;
-    const cwd = this.options.cwd ?? process.cwd();
+    // Resume: pin the OpenHuman thread to THIS agent session (stable, derived
+    // from its id) so re-resuming the same session continues the same thread
+    // regardless of folder. Fresh launches keep the default folder scope.
+    if (this.profile.resumeSessionId) {
+      config.scope = "session";
+      config.wrapperSessionId = `tp-${this.profile.kind}-resume-${this.profile.resumeSessionId}`;
+    }
+    const cwd = this.effectiveCwd();
     bridgeLog("bridge.start", {
       owner,
       provider: config.provider,
@@ -624,7 +735,8 @@ class BlessedTinyPlaceTui {
     };
     this.agentSessionMonitor = new AgentSessionMonitor(
       this.ctx,
-      this.options,
+      // Locate the resumed/fresh session against the folder it actually runs in.
+      { ...this.options, cwd: this.effectiveCwd() },
       this.profile,
       (meta) => {
         this.state = {
@@ -676,7 +788,7 @@ class BlessedTinyPlaceTui {
         const { spawn } = await import("node-pty");
         const pty = spawn(launch.command, launch.args, {
           cols: terminalColumns(this.options),
-          cwd: this.options.cwd ?? process.cwd(),
+          cwd: this.effectiveCwd(),
           env: childEnv(this.ctx.env),
           name: terminalName(this.ctx.env),
           rows: terminalRows(this.options),
@@ -703,7 +815,7 @@ class BlessedTinyPlaceTui {
 
     const spawnFn = this.options.spawn ?? spawnChild;
     const child = spawnFn(launch.command, launch.args, {
-      cwd: this.options.cwd ?? process.cwd(),
+      cwd: this.effectiveCwd(),
       env: childEnv(this.ctx.env),
     });
     this.child = child;
@@ -775,7 +887,7 @@ class BlessedTinyPlaceTui {
         ["-L", socket, "attach-session", "-t", session],
         {
           cols: terminalColumns(this.options),
-          cwd: this.options.cwd ?? process.cwd(),
+          cwd: this.effectiveCwd(),
           env: tmuxEnv(this.ctx.env),
           name: terminalName(this.ctx.env),
           rows: terminalPhysicalRows(this.options),
@@ -893,7 +1005,7 @@ class BlessedTinyPlaceTui {
     launch: AgentLaunch,
   ): boolean {
     const command = shellCommandFor(launch);
-    const cwd = this.options.cwd ?? process.cwd();
+    const cwd = this.effectiveCwd();
     if (
       !runTmuxCommand(
         socket,
@@ -982,6 +1094,11 @@ class BlessedTinyPlaceTui {
     this.clearBody();
     if (this.state.view === "settings") {
       this.body.setContent(renderSettingsContent(this.ctx, this.profile));
+    } else if (this.homeMode && this.state.view === "welcome") {
+      // Home welcome is a two-pane layout (actions + resume list) built from
+      // child boxes rather than a single content string.
+      this.body.setContent("");
+      this.renderHomePanes();
     } else {
       this.body.setContent(
         renderWelcomeContent(
@@ -995,6 +1112,97 @@ class BlessedTinyPlaceTui {
     }
     this.renderFooter();
     this.screen.render();
+  }
+
+  /** Home welcome: left = actions, right = recent-session resume list. Focused
+   *  pane gets the cyan border + the live cursor highlight. */
+  private renderHomePanes(): void {
+    const focus = this.state.homeFocus ?? "actions";
+    const actionsFocused = focus === "actions";
+    blessed.box({
+      parent: this.body,
+      top: 0,
+      left: 0,
+      width: "42%",
+      height: "100%",
+      tags: true,
+      border: { type: "line" },
+      label: " tiny.place ",
+      style: {
+        bg: "black",
+        fg: "white",
+        border: { fg: actionsFocused ? "cyan" : "gray" },
+      },
+      content: this.renderHomeActionsContent(actionsFocused),
+    });
+    const sessions = blessed.box({
+      parent: this.body,
+      top: 0,
+      left: "42%",
+      width: "58%",
+      height: "100%",
+      tags: true,
+      scrollable: true,
+      alwaysScroll: true,
+      border: { type: "line" },
+      label: " resume a session ",
+      style: {
+        bg: "black",
+        fg: "white",
+        border: { fg: actionsFocused ? "gray" : "cyan" },
+      },
+      content: this.renderSessionsContent(!actionsFocused),
+    });
+    // Keep the highlighted row in view when the list overflows the pane.
+    if (!actionsFocused) {
+      sessions.setScroll(this.state.sessionIndex ?? 0);
+    }
+  }
+
+  private renderHomeActionsContent(focused: boolean): string {
+    const actions = this.actions();
+    const rows = actions.map((action, index) => {
+      const [label, colorTag] = actionRow(action, "", this.state);
+      const selected = focused && this.state.selectedIndex === index;
+      return renderActionRow(selected, label, colorTag);
+    });
+    const owner = this.state.openHumanSessionId;
+    const openHuman = this.state.bridgeLive
+      ? renderKeyValue("OpenHuman", `connected ${owner ?? ""}`, "{green-fg}")
+      : this.state.openHumanConnected
+        ? renderKeyValue(
+            "OpenHuman",
+            `remembered ${owner ?? ""}`,
+            "{yellow-fg}",
+          )
+        : renderKeyValue("OpenHuman", "disconnected", "{gray-fg}");
+    return [
+      renderKeyValue("tiny.place", this.ctx.baseUrl, "{cyan-fg}"),
+      renderKeyValue("wallet", walletIdFor(this.ctx), "{yellow-fg}"),
+      openHuman,
+      "",
+      ...rows,
+      "",
+      "{gray-fg}↑↓ move · Tab → sessions{/gray-fg}",
+    ].join("\n");
+  }
+
+  private renderSessionsContent(focused: boolean): string {
+    if (this.recentSessions.length === 0) {
+      return [
+        "{gray-fg}No recent sessions yet.{/gray-fg}",
+        "",
+        "{gray-fg}Start one from the left; it{/gray-fg}",
+        "{gray-fg}shows up here to resume later.{/gray-fg}",
+      ].join("\n");
+    }
+    const here = this.effectiveCwd();
+    return this.recentSessions
+      .map((session, index) => {
+        const selected = focused && (this.state.sessionIndex ?? 0) === index;
+        return renderSessionRow(session, selected, here);
+      })
+      .join("\n");
   }
 
   private renderFooter(): void {
@@ -1284,6 +1492,7 @@ function renderSettingsContent(ctx: CliContext, profile: AgentProfile): string {
 function buildAgentProfile(
   env: Record<string, string | undefined>,
   kind: TinyVerseAgentKind,
+  resumeSessionId?: string,
 ): AgentProfile {
   if (kind === "claude") {
     const command =
@@ -1292,31 +1501,41 @@ function buildAgentProfile(
     const args = splitShellWords(
       firstEnv(env, ["TINYVERSE_CLAUDE_ARGS", "TINYPLACE_CLAUDE_ARGS"]) ?? "",
     );
+    // `claude --resume <id>` resumes a specific conversation by session id.
+    const launchArgs = resumeSessionId
+      ? [...args, "--resume", resumeSessionId]
+      : args;
     return {
       disabledPtyEnv: "TINYPLACE_CLAUDE_NO_PTY",
       displayName: "Claude",
       kind,
-      launch: buildLaunch(command, args),
-      pendingSessionId: "claude:pending",
+      launch: buildLaunch(command, launchArgs),
+      pendingSessionId: resumeSessionId ?? "claude:pending",
       sessionPollEnv: "TINYPLACE_CLAUDE_SESSION_POLL_MS",
       sessionsDir:
         firstEnv(env, [
           "TINYVERSE_CLAUDE_SESSIONS_DIR",
           "TINYPLACE_CLAUDE_SESSIONS_DIR",
         ]) ?? join(homedir(), ".claude", "projects"),
+      ...(resumeSessionId ? { resumeSessionId } : {}),
     };
   }
   const command = env.TINYPLACE_CODEX_BIN ?? "codex";
   const args = splitShellWords(env.TINYPLACE_CODEX_ARGS ?? "");
+  // `codex resume <id>` is a subcommand, so it must lead the arg list.
+  const launchArgs = resumeSessionId
+    ? ["resume", resumeSessionId, ...args]
+    : args;
   return {
     disabledPtyEnv: "TINYPLACE_CODEX_NO_PTY",
     displayName: "Codex",
     kind,
-    launch: buildLaunch(command, args),
-    pendingSessionId: "codex:pending",
+    launch: buildLaunch(command, launchArgs),
+    pendingSessionId: resumeSessionId ?? "codex:pending",
     sessionPollEnv: "TINYPLACE_CODEX_SESSION_POLL_MS",
     sessionsDir:
       env.TINYPLACE_CODEX_SESSIONS_DIR ?? join(homedir(), ".codex", "sessions"),
+    ...(resumeSessionId ? { resumeSessionId } : {}),
   };
 }
 
@@ -1749,10 +1968,27 @@ function renderHomeSnapshot(ctx: CliContext): string {
     "  [ Settings ]",
     "  [ Quit ]",
     "",
-    "Arrows/j,k move · Enter selects · q quits.",
+    ...renderSnapshotSessions(ctx),
+    "Arrows/j,k move · Tab switches panes · Enter selects · q quits.",
     `${ctx.baseUrl ? "Connected to tiny.place" : "Disconnected"} - Chat id: none`,
   ];
   return `${lines.join("\n")}\n`;
+}
+
+/** Recent-session lines for the non-TTY home snapshot (scripts / `| cat`). */
+function renderSnapshotSessions(ctx: CliContext): Array<string> {
+  const sessions = safeListRecentSessions(ctx.env, process.cwd(), { limit: 8 });
+  if (sessions.length === 0) {
+    return [];
+  }
+  return [
+    "recent sessions (resume):",
+    ...sessions.map(
+      (session) =>
+        `  ${session.agent} ${relativeTime(session.lastActive)} ${session.label}`,
+    ),
+    "",
+  ];
 }
 
 function walletIdFor(ctx: CliContext): string {
@@ -1781,6 +2017,66 @@ function bridgeOwner(
     ...(upper ? [`TINYPLACE_${upper}_RECEIVE_FROM`] : []),
     "TINYPLACE_HARNESS_RECEIVE_FROM",
   ]);
+}
+
+/** One row in the home resume pane: agent tag · relative time · prompt · (folder
+ *  when it differs from where you're standing). Highlighted when it's the cursor. */
+function renderSessionRow(
+  session: RecentSession,
+  selected: boolean,
+  here: string,
+): string {
+  const tag =
+    session.agent === "claude"
+      ? "{magenta-fg}claude{/magenta-fg}"
+      : "{blue-fg}codex {/blue-fg}";
+  const when = relativeTime(session.lastActive).padStart(4, " ");
+  const label = blessed.escape(session.label);
+  const elsewhere =
+    session.cwd !== undefined && safeSameDir(session.cwd, here) === false
+      ? ` {gray-fg}· ${blessed.escape(basename(session.cwd))}{/gray-fg}`
+      : "";
+  const row = `${selected ? ">" : " "} ${tag} {gray-fg}${when}{/gray-fg} ${label}${elsewhere}`;
+  return selected ? `{inverse}${row}{/inverse}` : row;
+}
+
+function safeSameDir(left: string, right: string): boolean {
+  try {
+    return resolve(left) === resolve(right);
+  } catch {
+    return false;
+  }
+}
+
+/** Compact "time since" for the resume list (now/5m/3h/2d). */
+function relativeTime(epochMs: number): string {
+  const deltaMs = Date.now() - epochMs;
+  if (deltaMs < 60_000) {
+    return "now";
+  }
+  const minutes = Math.floor(deltaMs / 60_000);
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours}h`;
+  }
+  return `${Math.floor(hours / 24)}d`;
+}
+
+/** Never let a session-scan error crash the TUI — the home screen degrades to
+ *  "no recent sessions" instead. */
+function safeListRecentSessions(
+  env: Record<string, string | undefined>,
+  cwd: string,
+  options?: Parameters<typeof listRecentSessions>[2],
+): Array<RecentSession> {
+  try {
+    return listRecentSessions(env, cwd, options);
+  } catch {
+    return [];
+  }
 }
 
 function clamp(value: number, min: number, max: number): number {
