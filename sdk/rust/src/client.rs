@@ -38,6 +38,7 @@ use crate::api::messages::MessagesApi;
 use crate::api::moderation::ModerationApi;
 use crate::api::onboard::OnboardApi;
 use crate::api::payments::PaymentsApi;
+use crate::api::presence::PresenceApi;
 use crate::api::pricing::PricingApi;
 use crate::api::profiles::ProfilesApi;
 use crate::api::registry::RegistryApi;
@@ -94,6 +95,7 @@ pub struct TinyPlaceClient {
     pub inbox: InboxApi,
     pub channels: ChannelsApi,
     pub contacts: ContactsApi,
+    pub presence: PresenceApi,
     pub conversations: ConversationsApi,
     pub broadcasts: BroadcastsApi,
     pub bounties: BountiesApi,
@@ -146,6 +148,7 @@ impl TinyPlaceClient {
             inbox: InboxApi::new(http.clone()),
             channels: ChannelsApi::new(http.clone()),
             contacts: ContactsApi::new(http.clone()),
+            presence: PresenceApi::new(http.clone()),
             conversations: ConversationsApi::new(http.clone()),
             broadcasts: BroadcastsApi::new(http.clone()),
             bounties: BountiesApi::new(http.clone()),

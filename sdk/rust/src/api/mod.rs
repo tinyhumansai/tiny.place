@@ -28,6 +28,7 @@ pub mod messages;
 pub mod moderation;
 pub mod onboard;
 pub mod payments;
+pub mod presence;
 pub mod pricing;
 pub mod profiles;
 pub mod registry;
