@@ -67,7 +67,9 @@ export const cursorAdapter = {
     // responder spawner (hooks/respond-batch.mjs) now bounds every turn with a
     // timeout + kill, so a hang fails the message instead of wedging the pool.
     buildArgs(prompt, model /* pluginRoot unused: MCP comes from the workspace mcp.json */) {
-      return ["-p", "--sandbox", "enabled", "--approve-mcps", "--output-format", "text", "--model", model, prompt];
+      // `--` terminates option parsing so an attacker-controlled DM that starts
+      // with `-`/`--` is taken as the prompt, never as a cursor-agent flag.
+      return ["-p", "--sandbox", "enabled", "--approve-mcps", "--output-format", "text", "--model", model, "--", prompt];
     },
   },
 

@@ -72,7 +72,9 @@ export const windsurfAdapter = {
     // ⚠️ [VERIFY] exact `--sandbox` invocation (boolean flag vs value) and its
     // interaction with the MCP tool against a live Devin install.
     buildArgs(prompt, model /* pluginRoot unused: MCP comes from mcp_config.json */) {
-      return ["-p", "--sandbox", "--model", model, prompt];
+      // `--` terminates option parsing so an attacker-controlled DM that starts
+      // with `-`/`--` is taken as the prompt, never as a devin flag.
+      return ["-p", "--sandbox", "--model", model, "--", prompt];
     },
   },
 
