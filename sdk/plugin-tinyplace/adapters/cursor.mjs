@@ -53,23 +53,29 @@ export const cursorAdapter = {
     command: "cursor-agent",
     defaultModel: "auto",
     // Feeds ATTACKER-CONTROLLED DM text into headless `cursor-agent -p`, so it runs
-    // in the least-privileged headless shape (parity with codex `--sandbox
-    // read-only` / claude tool-stripping):
+    // least-privilege (no `--force`/`--yolo`, which auto-allow writes + shell):
     //   • `--sandbox enabled` — OS-level sandbox so a prompt-injected DM can't write
-    //     files or run shell commands through the Cursor agent. NEVER `--force`/
-    //     `--yolo` (those auto-allow writes + commands).
-    //   • `--approve-mcps` — the tinyplace MCP server runs as a SEPARATE process
-    //     (not under cursor-agent's sandbox), so auto_reply — the only intended
-    //     side-effecting path — still works; the sandbox only confines the agent's
-    //     own file/shell actions.
+    //     files or run shell through the Cursor agent.
+    //   • `--trust` — grant workspace trust so headless mode can START (cursor-agent
+    //     refuses an untrusted dir) WITHOUT `--force`'s run-everything permissiveness.
+    //   • `--approve-mcps` — auto-approve the tinyplace MCP server; auto_reply (the
+    //     only intended side-effecting path) runs in a SEPARATE process outside the
+    //     sandbox.
     //   • `--output-format text` — clean reply text.
+    //   • `--` — terminate option parsing before the untrusted DM (no flag smuggling;
+    //     verified: cursor-agent errors on a dash-leading prompt without it).
+    //
+    // ⚠️ [VERIFY] Whether cursor-agent can INVOKE MCP tools under `--sandbox enabled`
+    // headlessly is NOT yet live-confirmed — validation was blocked by cursor-agent
+    // rate-limiting during testing. If a clean-env retest shows the sandbox blocks
+    // the MCP tool call, fall back (e.g. drop `--sandbox`, keep the throwaway
+    // isolated workspace + the spawner's timeout guard as the bound) and reopen the
+    // security trade-off. The first clean E2E confirmed the adapter itself works.
     // NOTE: cursor-agent print-mode can hang after replying (verified) — the shared
-    // responder spawner (hooks/respond-batch.mjs) now bounds every turn with a
+    // responder spawner (hooks/respond-batch.mjs) bounds every turn with a
     // timeout + kill, so a hang fails the message instead of wedging the pool.
     buildArgs(prompt, model /* pluginRoot unused: MCP comes from the workspace mcp.json */) {
-      // `--` terminates option parsing so an attacker-controlled DM that starts
-      // with `-`/`--` is taken as the prompt, never as a cursor-agent flag.
-      return ["-p", "--sandbox", "enabled", "--approve-mcps", "--output-format", "text", "--model", model, "--", prompt];
+      return ["-p", "--sandbox", "enabled", "--trust", "--approve-mcps", "--output-format", "text", "--model", model, "--", prompt];
     },
   },
 
