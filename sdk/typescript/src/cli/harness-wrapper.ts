@@ -634,6 +634,9 @@ function buildAgentLaunch(config: HarnessWrapperConfig): AgentLaunch {
 export class HarnessSessionTailer {
   private ignoredSessionFiles = new Set<string>();
   private lineOffset = 0;
+  // Lines already present in a resumed file when the tailer started — the offset
+  // to begin at so the pre-existing transcript isn't replayed to OpenHuman.
+  private resumeStartOffset = 0;
   private startedAt: Date | undefined;
   private sessionFile: string | undefined;
   private sessionMeta: SessionMeta | undefined;
@@ -657,6 +660,9 @@ export class HarnessSessionTailer {
     // just swept into the ignore set. Drop it back out so its new turns tail.
     if (this.config.resumeSessionFile) {
       this.ignoredSessionFiles.delete(this.config.resumeSessionFile);
+      // Skip the transcript that already exists — only turns appended after the
+      // resume should stream, or OpenHuman would re-receive the whole history.
+      this.resumeStartOffset = readAllLines(this.config.resumeSessionFile).length;
     }
     bridgeLog("tailer.start", {
       startedAt: startedAt.toISOString(),
@@ -694,7 +700,12 @@ export class HarnessSessionTailer {
       }
       this.sessionFile = located.path;
       this.sessionMeta = located.meta;
-      this.lineOffset = 0;
+      // A resumed file starts past its existing transcript; any other located
+      // file is new, so start at 0.
+      this.lineOffset =
+        located.path === this.config.resumeSessionFile
+          ? this.resumeStartOffset
+          : 0;
       bridgeLog("tailer.located", {
         path: located.path,
         sessionId: located.meta?.sessionId,
