@@ -539,6 +539,87 @@ class HarnessSessionTailer {
   }
 }
 
+/**
+ * The local co-location handshake file, `~/.openhuman/local-agents.json`.
+ *
+ * A wrapped agent writes its own messaging key + the OpenHuman owner it is
+ * connecting to here — on the same machine, moments before it sends its contact
+ * request. A tiny.place contact request carries NO owner declaration on the wire,
+ * so this same-user file is how a freshly-launched local CLI proves "I am a
+ * co-located agent that wants THIS OpenHuman as my owner": OpenHuman auto-accepts
+ * a pending request only when the requester id + declared owner match a fresh
+ * entry here. The path, entry shape, and TTL are mirrored on the OpenHuman side
+ * (`agent_orchestration::pairing`). Same-user filesystem access is the trust proof.
+ */
+const LOCAL_AGENTS_TTL_MS = 60 * 60 * 1000;
+
+export interface LocalAgentEntry {
+  agentId: string;
+  owner: string;
+  cwd?: string;
+  provider?: string;
+  ts: string;
+}
+
+export interface LocalAgentsFile {
+  version: number;
+  agents: Array<LocalAgentEntry>;
+}
+
+function localAgentsDir(): string {
+  return join(homedir(), ".openhuman");
+}
+
+/**
+ * Insert `entry`, replacing this agent's own prior row and dropping any expired
+ * or undated foreign rows (so a since-departed agent can't linger). Pure — no IO,
+ * so the TTL/upsert contract is unit-testable and stays in lockstep with the
+ * OpenHuman-side reader.
+ */
+export function mergeLocalAgentEntry(
+  file: LocalAgentsFile,
+  entry: LocalAgentEntry,
+  now: number,
+): LocalAgentsFile {
+  const kept = file.agents.filter(
+    (existing) =>
+      existing.agentId !== entry.agentId &&
+      typeof existing.ts === "string" &&
+      now - Date.parse(existing.ts) < LOCAL_AGENTS_TTL_MS,
+  );
+  return { version: 1, agents: [...kept, entry] };
+}
+
+function readLocalAgentsFile(path: string): LocalAgentsFile {
+  try {
+    const parsed = JSON.parse(
+      readFileSync(path, "utf8"),
+    ) as Partial<LocalAgentsFile>;
+    return { version: 1, agents: Array.isArray(parsed.agents) ? parsed.agents : [] };
+  } catch {
+    // Missing / unreadable / malformed → start fresh (best-effort registry).
+    return { version: 1, agents: [] };
+  }
+}
+
+/**
+ * Upsert this agent's co-location entry, pruning our own prior row and any
+ * expired/undated entries. Best-effort: every filesystem error is swallowed — a
+ * handshake-file failure must never break DM forwarding, since the contact
+ * request still fires and a human can accept it manually.
+ */
+function announceLocalAgent(entry: LocalAgentEntry, now: number): void {
+  try {
+    const dir = localAgentsDir();
+    const path = join(dir, "local-agents.json");
+    const next = mergeLocalAgentEntry(readLocalAgentsFile(path), entry, now);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path, `${JSON.stringify(next, undefined, 2)}\n`, "utf8");
+  } catch {
+    // Ignore — co-location is an optimization; contact request still fires.
+  }
+}
+
 class SessionEnvelopePublisher {
   private contactPromise: Promise<string> | undefined;
   private contextPromise:
@@ -625,6 +706,19 @@ class SessionEnvelopePublisher {
       throw new Error(`tiny.place contact blocked for ${recipient}; unblock before DM forwarding`);
     }
 
+    // We're about to send a contact request that OpenHuman must accept before any
+    // DM lands. Drop a co-location entry naming this owner FIRST, so the same-
+    // machine OpenHuman can auto-accept the pending request without a manual click.
+    announceLocalAgent(
+      {
+        agentId: ctx.signer.publicKeyBase64,
+        owner: recipient,
+        cwd: process.cwd(),
+        provider: this.config.provider,
+        ts: new Date().toISOString(),
+      },
+      Date.now(),
+    );
     await ctx.client.contacts.request(recipient);
     const after = await ctx.client.contacts.status(recipient);
     if (after.status === "accepted") {
