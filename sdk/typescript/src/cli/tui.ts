@@ -14,11 +14,16 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { IPty } from "node-pty";
 
 import { bridgeLog, createBridgeDiagSink } from "./bridge-debug.js";
-import { saveOpenHumanOwner } from "./context.js";
+import { configPathFor, saveOpenHumanOwner } from "./context.js";
 import {
   listRecentSessions,
   type RecentSession,
 } from "./session-history.js";
+import {
+  acquireSessionLock,
+  releaseSessionLock,
+  type AcquiredSessionLock,
+} from "./session-lock.js";
 import {
   HarnessSessionTailer,
   InboundMessageReceiver,
@@ -204,6 +209,10 @@ class BlessedTinyPlaceTui {
   // Resume only: the session's JSONL path, handed to the tailer so it keeps
   // streaming a resumed file that already existed at bridge start.
   private launchSessionFile?: string;
+  // Resume only: the per-session exclusive lock held while this instance bridges
+  // it, so a second tinyplace can't resume the same session concurrently (which
+  // would double-stream into one OpenHuman thread + fight over the JSONL).
+  private sessionLock?: AcquiredSessionLock;
 
   public constructor(
     private readonly ctx: CliContext,
@@ -514,6 +523,12 @@ class BlessedTinyPlaceTui {
     if (!session) {
       return;
     }
+    // Refuse a second concurrent resume of the same session (see session-lock).
+    const lock = this.acquireSessionLockOrNotice(session);
+    if (!lock) {
+      return;
+    }
+    this.sessionLock = lock;
     this.setProfile(session.agent, session.id);
     this.launchCwd = session.cwd;
     this.launchSessionFile = session.path;
@@ -522,6 +537,43 @@ class BlessedTinyPlaceTui {
       notice: `Resuming ${session.agent} session…`,
     };
     void this.startAgent();
+  }
+
+  /** Claim the per-session lock; on contention leave a notice and return
+   *  undefined so the caller stays on the home screen. Never throws — a lock
+   *  filesystem hiccup degrades to "allowed" rather than blocking a resume. */
+  private acquireSessionLockOrNotice(
+    session: RecentSession,
+  ): AcquiredSessionLock | undefined {
+    let lock: AcquiredSessionLock | undefined;
+    try {
+      lock = acquireSessionLock(
+        join(dirname(configPathFor(this.ctx.env)), "locks"),
+        session.agent,
+        session.id,
+      );
+    } catch {
+      // Can't touch the lock dir — don't wedge the user; allow the resume.
+      return { path: "" };
+    }
+    if (!lock) {
+      this.state = {
+        ...this.state,
+        notice: `This ${session.agent} session is already live in another tinyplace window.`,
+      };
+      this.render();
+    }
+    return lock;
+  }
+
+  /** Release the per-session resume lock, if held. */
+  private releaseSessionLockIfHeld(): void {
+    if (this.sessionLock) {
+      if (this.sessionLock.path) {
+        releaseSessionLock(this.sessionLock);
+      }
+      this.sessionLock = undefined;
+    }
   }
 
   /**
@@ -1090,6 +1142,7 @@ class BlessedTinyPlaceTui {
     this.agentSessionMonitor?.stop();
     this.agentSessionMonitor = undefined;
     this.stopBridge();
+    this.releaseSessionLockIfHeld();
     this.cleanupNativeRelay();
     this.pty = undefined;
     this.terminal?.destroy();
@@ -1245,6 +1298,7 @@ class BlessedTinyPlaceTui {
       this.child = undefined;
     }
     this.stopBridge();
+    this.releaseSessionLockIfHeld();
     this.cleanupNativeRelay();
     this.agentSessionMonitor?.stop();
     this.agentSessionMonitor = undefined;
