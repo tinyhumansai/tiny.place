@@ -60,15 +60,19 @@ export const windsurfAdapter = {
     // [VERIFY] default model id against `devin models`; tunable via the shared
     // TINYPLACE_AUTORESPOND_MODEL override. "auto" is the intended default.
     defaultModel: "auto",
-    // Feeds ATTACKER-CONTROLLED DM text into headless `devin -p`. `--permission-mode
-    // bypass` prevents the unattended turn from blocking on approvals.
-    // ⚠️ [VERIFY] SECURITY: unlike codex (`--sandbox read-only`) / claude (tool
-    // stripping), no confirmed least-privilege flag is documented for devin — bypass
-    // grants broad tool access, so a prompt-injected DM could reach the shell. Before
-    // production, find and add devin's sandbox/tool-restriction equivalent so the only
-    // side-effecting path is the tinyplace `auto_reply` MCP tool.
+    // Feeds ATTACKER-CONTROLLED DM text into headless `devin -p`, so it runs in the
+    // least-privileged unattended shape (parity with codex `--sandbox read-only`):
+    //   • `--sandbox` — Devin's OS-level isolation (Read/Write scopes enforced by
+    //     the OS, fail-closed if sandboxing is unavailable, autonomous permission
+    //     mode by default) so a prompt-injected DM can't write/execute outside the
+    //     sandbox. NEVER `--permission-mode bypass` (auto-approves ALL tools incl.
+    //     writes + shell).
+    //   • The tinyplace MCP server runs as a separate process, so auto_reply — the
+    //     only intended side-effecting path — still works.
+    // ⚠️ [VERIFY] exact `--sandbox` invocation (boolean flag vs value) and its
+    // interaction with the MCP tool against a live Devin install.
     buildArgs(prompt, model /* pluginRoot unused: MCP comes from mcp_config.json */) {
-      return ["-p", "--permission-mode", "bypass", "--model", model, prompt];
+      return ["-p", "--sandbox", "--model", model, prompt];
     },
   },
 
@@ -86,13 +90,17 @@ export const windsurfAdapter = {
   // shape to reconcile once a live install confirms the resolution order.
   launch: {
     displayHarness: "Windsurf",
-    binary: "windsurf",
-    notFoundHint: "Is Windsurf / Devin Desktop installed and its `windsurf` CLI on your PATH?",
+    // Current Devin Desktop opens a folder via the `devin-desktop` shell command
+    // (the terminal agent CLI is `devin`, used by the responder above). A current
+    // install ships no `windsurf` binary, so keying the launcher off `devin-desktop`
+    // is what actually gets this harness auto-offered + launched.
+    binary: "devin-desktop",
+    notFoundHint: "Is Devin Desktop installed and its `devin-desktop` shell command on your PATH?",
     // ctx: { pluginDir, dataDir, apiUrl, walletName, forwardedArgs }
     prepare(ctx) {
       const iso = ensureIsolatedWorkspace(ctx);
       return {
-        command: "windsurf",
+        command: "devin-desktop",
         args: [iso, ...ctx.forwardedArgs],
         env: {
           TINYPLACE_ACTIVE_WALLET: ctx.walletName,

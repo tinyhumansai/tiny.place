@@ -53,13 +53,21 @@ export const cursorAdapter = {
     command: "cursor-agent",
     defaultModel: "auto",
     // Feeds ATTACKER-CONTROLLED DM text into headless `cursor-agent -p`, so it runs
-    // in the least-privileged headless shape: `--output-format text` for a clean
-    // reply; `--force`/`--approve-mcps` only so the unattended turn doesn't block on
-    // approvals — the ONLY side-effecting path is the tinyplace `auto_reply` MCP
-    // tool. NOTE: cursor-agent print-mode can hang after replying (verified) — the
-    // shared responder spawner must wrap this call with a timeout/kill.
+    // in the least-privileged headless shape (parity with codex `--sandbox
+    // read-only` / claude tool-stripping):
+    //   • `--sandbox enabled` — OS-level sandbox so a prompt-injected DM can't write
+    //     files or run shell commands through the Cursor agent. NEVER `--force`/
+    //     `--yolo` (those auto-allow writes + commands).
+    //   • `--approve-mcps` — the tinyplace MCP server runs as a SEPARATE process
+    //     (not under cursor-agent's sandbox), so auto_reply — the only intended
+    //     side-effecting path — still works; the sandbox only confines the agent's
+    //     own file/shell actions.
+    //   • `--output-format text` — clean reply text.
+    // NOTE: cursor-agent print-mode can hang after replying (verified) — the shared
+    // responder spawner (hooks/respond-batch.mjs) now bounds every turn with a
+    // timeout + kill, so a hang fails the message instead of wedging the pool.
     buildArgs(prompt, model /* pluginRoot unused: MCP comes from the workspace mcp.json */) {
-      return ["-p", "--force", "--approve-mcps", "--output-format", "text", "--model", model, prompt];
+      return ["-p", "--sandbox", "enabled", "--approve-mcps", "--output-format", "text", "--model", model, prompt];
     },
   },
 

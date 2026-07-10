@@ -30,6 +30,11 @@ const ADAPTER = activeAdapter();
 const rawPool = Number(process.env.TINYPLACE_AUTORESPOND_POOL);
 const POOL = Number.isFinite(rawPool) && rawPool > 0 ? Math.min(Math.floor(rawPool), 16) : 4;
 const MODEL = process.env.TINYPLACE_AUTORESPOND_MODEL ?? ADAPTER.responder.defaultModel;
+// Hard cap on a single responder turn. Some headless CLIs finish their reply but
+// don't release the process (verified: cursor-agent print-mode can hang), which
+// would wedge a worker forever. Kill + fail the message past this bound.
+const rawTimeout = Number(process.env.TINYPLACE_RESPONDER_TIMEOUT_MS);
+const RESPONDER_TIMEOUT_MS = Number.isFinite(rawTimeout) && rawTimeout > 0 ? Math.floor(rawTimeout) : 180_000;
 
 const { wallet, batchDir } = JSON.parse(process.argv[2] ?? "{}");
 if (!wallet || !batchDir || !existsSync(batchDir)) process.exit(0);
@@ -109,22 +114,38 @@ function respond(file) {
         },
       },
     );
-    child.on("exit", (code) => {
+    // Settle exactly once: whichever of exit / error / timeout fires first wins.
+    let settled = false;
+    const finish = (cleanup) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       try {
-        if (code === 0) {
-          rmSync(join(batchDir, file));
-        } else {
-          moveToFailed(file);
-        }
+        cleanup();
       } catch {
         /* best-effort cleanup */
       }
       resolve();
-    });
-    child.on("error", () => {
-      moveToFailed(file);
-      resolve();
-    });
+    };
+    const timer = setTimeout(() => {
+      // Hung responder (e.g. cursor-agent print-mode): SIGTERM, then SIGKILL, and
+      // fail the message so the worker isn't wedged and the batch can drain.
+      try {
+        child.kill("SIGTERM");
+      } catch {
+        /* already gone */
+      }
+      setTimeout(() => {
+        try {
+          child.kill("SIGKILL");
+        } catch {
+          /* already gone */
+        }
+      }, 3000).unref();
+      finish(() => moveToFailed(file));
+    }, RESPONDER_TIMEOUT_MS);
+    child.on("exit", (code) => finish(() => (code === 0 ? rmSync(join(batchDir, file)) : moveToFailed(file))));
+    child.on("error", () => finish(() => moveToFailed(file)));
   });
 }
 
