@@ -12,11 +12,15 @@ check("codex via CODEX_SESSION_ID", detectHarness({ CODEX_SESSION_ID: "s" }) ===
 check("codex via CODEX_THREAD_ID", detectHarness({ CODEX_THREAD_ID: "t" }) === "codex");
 check("claude via CLAUDE_PLUGIN_ROOT", detectHarness({ CLAUDE_PLUGIN_ROOT: "/p" }) === "claude");
 check("claude via CLAUDE_CODE_SESSION_ID", detectHarness({ CLAUDE_CODE_SESSION_ID: "s" }) === "claude");
+// Cursor exposes no ambient signal to the MCP subprocess (verified), so its
+// detection rides the self-provisioned TINYPLACE_CURSOR_HOME the install sets.
+check("cursor via TINYPLACE_CURSOR_HOME", detectHarness({ TINYPLACE_CURSOR_HOME: "/c" }) === "cursor");
 check("default = claude (no signals)", detectHarness({}) === "claude");
 
 // ── explicit override wins over signals ───────────────────────────────────────
 check("override forces codex", detectHarness({ TINYPLACE_HARNESS: "codex", CLAUDE_PLUGIN_ROOT: "/p" }) === "codex");
 check("override forces claude", detectHarness({ TINYPLACE_HARNESS: "claude", CODEX_HOME: "/x" }) === "claude");
+check("override forces cursor", detectHarness({ TINYPLACE_HARNESS: "cursor", CODEX_HOME: "/x" }) === "cursor");
 check("bad override ignored → signal", detectHarness({ TINYPLACE_HARNESS: "nope", CODEX_HOME: "/x" }) === "codex");
 check("override case-insensitive", detectHarness({ TINYPLACE_HARNESS: "CODEX" }) === "codex");
 
@@ -42,6 +46,17 @@ check("override case-insensitive", detectHarness({ TINYPLACE_HARNESS: "CODEX" })
   check("claude has foreground inject slot", a.inbound.foregroundInject === true);
   check("claude responder = claude -p", a.responder.command === "claude" && a.responder.buildArgs("P", "M", "/root").includes("-p"));
   check("claude install kind", a.install.kind === "plugin-dir");
+}
+
+// ── adapter wiring: cursor ────────────────────────────────────────────────────
+{
+  const a = resolveAdapter({ TINYPLACE_CURSOR_HOME: "/c" });
+  check("cursor adapter provider", a.provider === "cursor");
+  check("cursor label prefix", a.sessionLabelPrefix === "cursor");
+  check("cursor dataDirEnv", a.dataDirEnv === "TINYPLACE_CURSOR_HOME");
+  check("cursor pull-only (no push, no inject)", a.inbound.push === false && a.inbound.pull === true && a.inbound.foregroundInject === false);
+  check("cursor responder = cursor-agent -p", a.responder.command === "cursor-agent" && a.responder.buildArgs("P", "M").includes("-p"));
+  check("cursor install kind", a.install.kind === "mcp-json");
 }
 
 // ── session-id resolution is per-harness ──────────────────────────────────────

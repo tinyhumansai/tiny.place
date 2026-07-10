@@ -7,12 +7,13 @@ import { join } from "node:path";
 
 import { claudeAdapter } from "../adapters/claude.mjs";
 import { codexAdapter } from "../adapters/codex.mjs";
+import { cursorAdapter } from "../adapters/cursor.mjs";
 import { mockAdapter } from "../adapters/mock.mjs";
 
 // `mock` is a deterministic test harness. It is NEVER auto-detected (no env
 // signal in detectHarness) — only reachable via the explicit TINYPLACE_HARNESS
 // override — so it adds no risk to the real Claude/Codex paths.
-const ADAPTERS = { claude: claudeAdapter, codex: codexAdapter, mock: mockAdapter };
+const ADAPTERS = { claude: claudeAdapter, codex: codexAdapter, cursor: cursorAdapter, mock: mockAdapter };
 
 // Detect the harness from the environment. Order:
 //   1. explicit override (TINYPLACE_HARNESS) — escape hatch / launcher-set,
@@ -30,6 +31,13 @@ export function detectHarness(env = process.env) {
   // Claude Code signals — plugin root is exported to plugin subprocesses; the
   // session id is present in hook/tool contexts.
   if (env.CLAUDE_PLUGIN_ROOT || env.CLAUDE_CODE_SESSION_ID) return "claude";
+
+  // Cursor exposes NO ambient signal to an MCP subprocess (verified: only
+  // HOME/PATH/SHELL/… reach the child). Detection is therefore self-provisioned:
+  // the cursor install writes TINYPLACE_HARNESS=cursor (the override above) and
+  // TINYPLACE_CURSOR_HOME into the mcp.json env block. Treat the dedicated home
+  // var as the cursor signal so a manually-installed server still self-detects.
+  if (env.TINYPLACE_CURSOR_HOME) return "cursor";
 
   return "claude";
 }
