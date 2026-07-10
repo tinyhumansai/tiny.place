@@ -20,7 +20,9 @@ async function lockDir(): Promise<string> {
 async function reapedPid(): Promise<number> {
   const child = spawn(process.execPath, ["-e", ""], { stdio: "ignore" });
   const pid = child.pid as number;
-  await new Promise<void>((resolveExit) => child.on("exit", () => resolveExit()));
+  await new Promise<void>((resolveExit) =>
+    child.on("exit", () => resolveExit()),
+  );
   return pid;
 }
 

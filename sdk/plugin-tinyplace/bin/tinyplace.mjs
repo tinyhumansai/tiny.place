@@ -29,7 +29,7 @@ import { LocalSigner } from "@tinyhumansai/tinyplace";
 
 import { activeAdapter, harnessDataDir, ADAPTERS, _resetAdapterCache } from "../mcp/harness.mjs";
 import { canForegroundInject } from "../mcp/foreground-inject.mjs";
-import { loadWallets, saveWallets } from "../mcp/wallets.mjs";
+import { loadWallets, saveWallets, sharedDir } from "../mcp/wallets.mjs";
 
 // bin/tinyplace.mjs -> plugin root is one dir up from bin/.
 const PLUGIN_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -109,6 +109,34 @@ async function importWallet(name, secretInput) {
   });
   saveWallets(wallets);
   return { address: signer.agentId, publicKey: signer.publicKeyBase64 };
+}
+
+// Fold the tinyplace **CLI's** auto-minted wallet (`~/.tinyplace/config.json` →
+// `secretKey`, a 32-byte seed in hex) into the shared plugin store on first run.
+// The CLI mints its identity into `config.json`; the plugin reads `wallets.json`
+// — two different files in the same dir — so without this a session started via
+// the CLI sees "no wallets" and prompts for a brand-new identity instead of
+// reusing the one you already created. Best-effort + only when the store is
+// empty, so it never overwrites or duplicates a wallet the user already has.
+async function seedFromCliConfig() {
+  if (loadWallets().length) return;
+  let secretKey;
+  try {
+    // Resolve the CLI config the same way the SDK's configPathFor does — honor
+    // TINYPLACE_CONFIG so a non-default profile / embedder / test that moved the
+    // CLI identity is adopted, instead of silently reading the default file.
+    const configPath =
+      process.env.TINYPLACE_CONFIG ?? join(sharedDir(), "config.json");
+    secretKey = JSON.parse(readFileSync(configPath, "utf8"))?.secretKey;
+  } catch {
+    return; // no CLI config / unreadable
+  }
+  if (typeof secretKey !== "string" || !secretKey) return;
+  try {
+    await importWallet("cli", secretKey);
+  } catch {
+    /* bad key or a race created the store — leave it to the menu */
+  }
 }
 
 // ── tiny ANSI helpers ────────────────────────────────────────────────────────
@@ -425,6 +453,10 @@ async function main() {
   // Resolve the active adapter + its data dir now that the override is in env.
   ADAPTER = activeAdapter();
   DATA_DIR = harnessDataDir(ADAPTER);
+
+  // First-run: adopt the CLI's auto-minted wallet so `--wallet cli` and the menu
+  // both see the identity created by the tinyplace CLI, not just plugin-created ones.
+  await seedFromCliConfig();
 
   // Non-interactive fast path: `tinyplace-plugin --wallet alice`.
   const walletFlag = flags.indexOf("--wallet");

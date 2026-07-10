@@ -15,10 +15,7 @@ import type { IPty } from "node-pty";
 
 import { bridgeLog, createBridgeDiagSink } from "./bridge-debug.js";
 import { configPathFor, saveOpenHumanOwner } from "./context.js";
-import {
-  listRecentSessions,
-  type RecentSession,
-} from "./session-history.js";
+import { listRecentSessions, type RecentSession } from "./session-history.js";
 import {
   acquireSessionLock,
   releaseSessionLock,
@@ -164,7 +161,13 @@ function runInteractiveBlessedTui(
   homeMode: boolean,
 ): Promise<void> {
   return new Promise((resolve) => {
-    const app = new BlessedTinyPlaceTui(ctx, options, profile, resolve, homeMode);
+    const app = new BlessedTinyPlaceTui(
+      ctx,
+      options,
+      profile,
+      resolve,
+      homeMode,
+    );
     app.start();
   });
 }
@@ -213,6 +216,15 @@ class BlessedTinyPlaceTui {
   // it, so a second tinyplace can't resume the same session concurrently (which
   // would double-stream into one OpenHuman thread + fight over the JSONL).
   private sessionLock?: AcquiredSessionLock;
+  // Loop guard: count consecutive auto-submitted inbound turns with no human
+  // keystroke in between. OpenHuman's master auto-replies, so unbounded
+  // auto-submit ping-pongs forever; after MAX_AUTO_INJECTS we stop submitting
+  // (text still parks) until a human types, which resets the counter.
+  private consecutiveAutoInjects = 0;
+  private static readonly MAX_AUTO_INJECTS = 6;
+  // Serial queue for inbound injection so a batch of DMs typed in one receiver
+  // poll keeps its turn boundaries (each body+Enter finishes before the next).
+  private injectionQueue: Promise<void> = Promise.resolve();
 
   public constructor(
     private readonly ctx: CliContext,
@@ -238,10 +250,7 @@ class BlessedTinyPlaceTui {
   /** Home mode: bind the chosen agent, then resolve the owner for THAT agent
    *  (provider-specific recipients only take effect once the agent is known). An
    *  optional `resumeSessionId` binds a resume launch (home resume pane). */
-  private setProfile(
-    kind: TinyVerseAgentKind,
-    resumeSessionId?: string,
-  ): void {
+  private setProfile(kind: TinyVerseAgentKind, resumeSessionId?: string): void {
     this.profile = buildAgentProfile(this.ctx.env, kind, resumeSessionId);
     this.adoptRememberedOwner();
   }
@@ -755,7 +764,17 @@ class BlessedTinyPlaceTui {
       : undefined;
     this.bridgeReceiver?.setSink((text) => {
       bridgeLog("inbound.inject", { chars: text.length });
-      this.writeAgentInput(Buffer.from(text, "utf8"));
+      // The receiver appends a CR to submit. Writing "text\r" straight to the
+      // PTY makes claude's TUI treat the burst as a bracketed paste and swallow
+      // the CR, so the prompt parks unsubmitted. In the native tmux relay,
+      // inject the literal text and then a DISTINCT Enter keypress (separate
+      // send-keys after a short debounce) so the turn actually submits.
+      const body = text.endsWith("\r") ? text.slice(0, -1) : text;
+      // The receiver can deliver several inbound messages in one poll, calling
+      // this sink synchronously per message. Serialize them: each body+Enter
+      // pair must complete before the next body types, or two messages land in
+      // one prompt and the trailing Enter submits an empty turn (lost boundary).
+      this.enqueueInjection(body, this.computeAutoSubmit());
     });
     this.bridgeTailer?.start(new Date());
     void this.bridgeReceiver?.start();
@@ -778,6 +797,67 @@ class BlessedTinyPlaceTui {
     this.bridgeTailer = undefined;
     this.bridgeReceiver = undefined;
     this.state = { ...this.state, bridgeLive: false };
+  }
+
+  /** Resolve whether this inbound turn should auto-submit, applying the env
+   *  switch and the runaway loop guard, and advancing the guard counter. */
+  private computeAutoSubmit(): boolean {
+    // Auto-submit is ON by default so claude replies to an inbound OpenHuman
+    // turn without a human keypress. Because OpenHuman's master also auto-
+    // replies, the two can ping-pong; TINYPLACE_<KIND>_AUTOSUBMIT=0 falls back
+    // to a human gate (text parks in the prompt; press Enter to send).
+    const envAutoSubmit =
+      this.ctx.env[
+        `TINYPLACE_${this.profile.kind.toUpperCase()}_AUTOSUBMIT`
+      ] !== "0";
+    const guardTripped =
+      this.consecutiveAutoInjects >= BlessedTinyPlaceTui.MAX_AUTO_INJECTS;
+    if (envAutoSubmit && guardTripped) {
+      bridgeLog("inbound.loopGuard", {
+        paused: true,
+        consecutive: this.consecutiveAutoInjects,
+      });
+    }
+    const autoSubmit = envAutoSubmit && !guardTripped;
+    if (autoSubmit) {
+      this.consecutiveAutoInjects += 1;
+    }
+    return autoSubmit;
+  }
+
+  /** Chain an injection onto the serial queue so batched inbound turns keep
+   *  their boundaries (body → Enter → next body), never interleaving. */
+  private enqueueInjection(body: string, autoSubmit: boolean): void {
+    this.injectionQueue = this.injectionQueue
+      .then(() => this.injectOne(body, autoSubmit))
+      .catch(() => {});
+  }
+
+  /** Type one inbound turn and, when auto-submitting, the distinct Enter after a
+   *  short debounce (so the agent TUI doesn't swallow the CR as a paste). */
+  private async injectOne(body: string, autoSubmit: boolean): Promise<void> {
+    if (this.tmuxSocket && this.tmuxSession) {
+      const socket = this.tmuxSocket;
+      const session = this.tmuxSession;
+      const cwd = this.options.cwd ?? process.cwd();
+      runTmuxCommand(
+        socket,
+        ["send-keys", "-t", session, "-l", body],
+        this.ctx.env,
+        cwd,
+      );
+      if (autoSubmit) {
+        await delay(150);
+        runTmuxCommand(
+          socket,
+          ["send-keys", "-t", session, "Enter"],
+          this.ctx.env,
+          cwd,
+        );
+      }
+      return;
+    }
+    this.writeAgentInput(Buffer.from(autoSubmit ? `${body}\r` : body, "utf8"));
   }
 
   private async startAgent(): Promise<void> {
@@ -824,6 +904,11 @@ class BlessedTinyPlaceTui {
     this.terminal = blessed.terminal({
       cursor: "block",
       handler: (input) => {
+        // A genuine keystroke (Blessed-widget path, mirroring the native relay's
+        // nativeInputHandler) clears the loop-guard streak so auto-submit
+        // resumes after the person re-engages. writeAgentInput is also used by
+        // inbound injection, so the reset must live here, not inside it.
+        this.consecutiveAutoInjects = 0;
         this.writeAgentInput(input);
       },
       height: "100%",
@@ -956,6 +1041,9 @@ class BlessedTinyPlaceTui {
       this.pty = pty;
       this.nativeRelayActive = true;
       this.nativeInputHandler = (chunk) => {
+        // A real human keystroke clears the loop-guard streak so auto-submit
+        // resumes after the person re-engages.
+        this.consecutiveAutoInjects = 0;
         pty.write(Buffer.isBuffer(chunk) ? chunk.toString("utf8") : chunk);
       };
       const stdin = this.options.stdin ?? process.stdin;
@@ -1446,11 +1534,15 @@ function renderWelcomeContent(
   const info = [
     renderKeyValue("tiny.place", ctx.baseUrl, "{cyan-fg}"),
     renderKeyValue("wallet", walletIdFor(ctx), "{yellow-fg}"),
-    // Fixed-agent mode names the one agent; home mode doesn't bind one yet.
+    // Fixed-agent mode names the one agent + its sessions dir; home mode hasn't
+    // bound one yet, so showing a codex-specific `sessions:` path there is
+    // misleading — omit both until the user picks an agent.
     ...(homeMode
       ? []
-      : [renderKeyValue(profile.kind, profile.launch.label, "{green-fg}")]),
-    renderKeyValue("sessions", profile.sessionsDir, "{cyan-fg}"),
+      : [
+          renderKeyValue(profile.kind, profile.launch.label, "{green-fg}"),
+          renderKeyValue("sessions", profile.sessionsDir, "{cyan-fg}"),
+        ]),
     state.bridgeLive
       ? renderKeyValue(
           "OpenHuman",
@@ -2143,6 +2235,12 @@ function safeListRecentSessions(
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolveDelay) => {
+    setTimeout(resolveDelay, ms);
+  });
 }
 
 function autoStartMs(env: Record<string, string | undefined>): number {

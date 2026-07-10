@@ -903,8 +903,13 @@ describe("tinyplace CLI", () => {
   });
 
   it("bare `tinyplace` opens the Home picker (both agents), not the help dump", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "tinyplace-home-"));
     const home = await runTinyPlaceCli([], {
-      env: { TINYPLACE_ENDPOINT: "https://example.test" },
+      env: {
+        TINYPLACE_ENDPOINT: "https://example.test",
+        // Isolate the config so a real persisted owner in ~/.tinyplace can't leak in.
+        TINYPLACE_CONFIG: join(dir, "config.json"),
+      },
     });
     expect(home.code).toBe(0);
     expect(home.stdout).toContain("welcome to tiny.place");
@@ -918,9 +923,12 @@ describe("tinyplace CLI", () => {
   it("Home mode ignores a provider-specific recipient until an agent is picked", async () => {
     // A Codex-only recipient must NOT be adopted before the user chooses Codex
     // vs Claude — otherwise picking Claude would bridge to the Codex owner.
+    const dir = await mkdtemp(join(tmpdir(), "tinyplace-home-"));
     const home = await runTinyPlaceCli([], {
       env: {
         TINYPLACE_ENDPOINT: "https://example.test",
+        // Isolate the config so a real persisted owner in ~/.tinyplace can't leak in.
+        TINYPLACE_CONFIG: join(dir, "config.json"),
         TINYPLACE_CODEX_DM_TO: "@codex-only-owner",
       },
     });

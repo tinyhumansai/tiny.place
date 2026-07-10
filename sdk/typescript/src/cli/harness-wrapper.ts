@@ -22,6 +22,7 @@ import {
   sendMessage,
   type ReadMessage,
 } from "../agent/messaging.js";
+import { publishCard } from "../agent/identity.js";
 import {
   SESSION_ENVELOPE_VERSION_V1,
   SESSION_ENVELOPE_VERSION_V2,
@@ -1001,12 +1002,56 @@ export class SessionEnvelopePublisher {
   private failures = 0;
   private pending = new Set<Promise<void>>();
   private queue: Promise<void> = Promise.resolve();
+  // Echo suppression: text injected FROM the owner (inbound) is recorded by the
+  // agent as a `user`-role session line, which the tailer would otherwise stream
+  // straight back — the owner then sees its own message twice AND may auto-reply
+  // to its own echo, feeding a ping-pong loop. Remember recent injections so
+  // `publish()` can drop the matching `user` echo. TTL-bounded so a genuine
+  // later user turn with identical text still forwards.
+  private injectedEchoes = new Map<string, number>();
+  private static readonly ECHO_TTL_MS = 60_000;
 
   public constructor(
     private readonly config: HarnessWrapperConfig,
     private readonly options: TinyPlaceCliOptions,
     private readonly stderr: Writable,
   ) {}
+
+  /** Record an owner→agent injection so its echoed-back `user` line is dropped. */
+  public markInjected(text: string): void {
+    const key = echoKey(text);
+    if (key.length === 0) {
+      return;
+    }
+    const now = Date.now();
+    // Prune expired keys on every write so the map stays bounded even when the
+    // echo never comes back (e.g. captureSession off → no tailer → publish()
+    // never consumes entries). Without this it grows one entry per inbound.
+    for (const [existingKey, expiry] of this.injectedEchoes) {
+      if (expiry < now) {
+        this.injectedEchoes.delete(existingKey);
+      }
+    }
+    this.injectedEchoes.set(key, now + SessionEnvelopePublisher.ECHO_TTL_MS);
+  }
+
+  /** True (consuming the record) if this outbound is an echo of a fresh injection. */
+  private isInjectedEcho(envelope: AnySessionEnvelope): boolean {
+    // The echoed injection is a `user` turn in v1 and an `owner` `user_prompt`
+    // in v2 — accept both, or v2 sessions (TINYPLACE_*_V2=1) leak the echo and
+    // re-enter the auto-reply loop this suppression exists to stop.
+    const role = envelopeRole(envelope);
+    if (role !== "user" && role !== "owner") {
+      return false;
+    }
+    const key = echoKey(envelopeText(envelope));
+    const expiry = this.injectedEchoes.get(key);
+    if (expiry === undefined) {
+      return false;
+    }
+    this.injectedEchoes.delete(key);
+    return expiry >= Date.now();
+  }
 
   public publish(envelope: AnySessionEnvelope): void {
     const id = envelopeId(envelope);
@@ -1015,6 +1060,10 @@ export class SessionEnvelopePublisher {
         id,
         reason: !this.config.dmRecipient ? "no-dmRecipient" : "dryRun",
       });
+      return;
+    }
+    if (this.isInjectedEcho(envelope)) {
+      bridgeLog("publish.echoSkip", { id });
       return;
     }
     bridgeLog("publish.enqueue", {
@@ -1137,10 +1186,29 @@ function envelopeId(envelope: AnySessionEnvelope): string {
     : envelope.message.id;
 }
 
-function envelopeRole(envelope: AnySessionEnvelope): string {
+export function envelopeRole(envelope: AnySessionEnvelope): string {
   return envelope.envelope_version === SESSION_ENVELOPE_VERSION_V2
     ? envelope.event.role
     : envelope.message.role;
+}
+
+export function envelopeText(envelope: AnySessionEnvelope): string {
+  if (envelope.envelope_version === SESSION_ENVELOPE_VERSION_V2) {
+    // v2 typed events carry their body under event.payload.text (user_prompt,
+    // agent_message, …); older/other shapes may put it at event.text.
+    const event = envelope.event as {
+      text?: string;
+      payload?: { text?: string };
+    };
+    return event.payload?.text ?? event.text ?? "";
+  }
+  return envelope.message.text;
+}
+
+/** Normalize a message body so an injected inbound and its echoed-back session
+ *  line compare equal (trim + collapse interior whitespace). */
+function echoKey(text: string): string {
+  return text.trim().replace(/\s+/g, " ");
 }
 
 function isNotAContactError(error: unknown): boolean {
@@ -1209,6 +1277,21 @@ export class InboundMessageReceiver {
     } catch (error) {
       this.stderr.write(
         `tinyplace ${this.config.provider}: failed to publish Signal keys: ${describeError(error)}\n`,
+      );
+    }
+    // Also register a directory card. publishKeys makes us *messageable* (prekey
+    // bundle) but not *discoverable*: a peer that resolves us by lookup —
+    // OpenHuman's `signal send` hits /directory/agents/<id> — 404s without a
+    // card, so first contact from the owner fails. Best-effort; a card failure
+    // must not stop the inbound poll from starting.
+    try {
+      await publishCard(ctx.client, ctx.signer, {
+        name: `tinyplace ${this.config.provider}`,
+        description: `coding-agent bridge (${this.config.provider}) → OpenHuman`,
+      });
+    } catch (error) {
+      this.stderr.write(
+        `tinyplace ${this.config.provider}: failed to publish directory card: ${describeError(error)}\n`,
       );
     }
     if (this.config.receiveFrom) {
@@ -1289,6 +1372,10 @@ export class InboundMessageReceiver {
         const text = this.filterAndParse(message);
         if (text !== undefined && this.sink) {
           injected += 1;
+          // Record before injecting so the tailer's echoed-back `user` line
+          // (the agent logs the injected prompt as its own user turn) is dropped
+          // by the publisher instead of bouncing to the owner.
+          this.publisher.markInjected(text);
           // "\r" (carriage return) submits the prompt to the agent TUI.
           this.sink(`${text}\r`);
         } else {
@@ -1561,6 +1648,12 @@ function readSessionMeta(
   provider: HarnessProvider,
   path: string,
 ): SessionMeta | undefined {
+  // A claude session can open with a cwd-less record (e.g. `type:"last-prompt"`
+  // on a resumed session). Returning on that first line would yield a meta with
+  // no `cwd`, which `locateSession` rejects (`meta.cwd === this.cwd`) — silently
+  // orphaning the whole (correct) session so the tailer never streams. Remember
+  // the id from such lines but keep scanning for one that records the cwd.
+  let claudeFallbackId: string | undefined;
   for (const raw of readAllLines(path)) {
     const record = parseJsonObject(raw);
     if (!record) {
@@ -1579,12 +1672,19 @@ function readSessionMeta(
       };
     }
     if (provider === "claude") {
-      const sessionId = asString(record.sessionId) ?? basename(path, ".jsonl");
-      return {
-        ...(asString(record.cwd) ? { cwd: asString(record.cwd) } : {}),
-        sessionId,
-      };
+      const cwd = asString(record.cwd);
+      const sessionId = asString(record.sessionId);
+      if (!cwd) {
+        claudeFallbackId ??= sessionId;
+        continue;
+      }
+      return { cwd, sessionId: sessionId ?? basename(path, ".jsonl") };
     }
+  }
+  // No cwd-bearing line found. Surface any id we saw so a directly-specified
+  // session file still resolves (locate-by-cwd simply won't match this one).
+  if (claudeFallbackId) {
+    return { sessionId: claudeFallbackId };
   }
   return undefined;
 }
