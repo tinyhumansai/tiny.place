@@ -9,11 +9,12 @@ import { claudeAdapter } from "../adapters/claude.mjs";
 import { codexAdapter } from "../adapters/codex.mjs";
 import { cursorAdapter } from "../adapters/cursor.mjs";
 import { mockAdapter } from "../adapters/mock.mjs";
+import { windsurfAdapter } from "../adapters/windsurf.mjs";
 
 // `mock` is a deterministic test harness. It is NEVER auto-detected (no env
 // signal in detectHarness) — only reachable via the explicit TINYPLACE_HARNESS
 // override — so it adds no risk to the real Claude/Codex paths.
-const ADAPTERS = { claude: claudeAdapter, codex: codexAdapter, cursor: cursorAdapter, mock: mockAdapter };
+const ADAPTERS = { claude: claudeAdapter, codex: codexAdapter, cursor: cursorAdapter, windsurf: windsurfAdapter, mock: mockAdapter };
 
 // Detect the harness from the environment. Order:
 //   1. explicit override (TINYPLACE_HARNESS) — escape hatch / launcher-set,
@@ -38,6 +39,11 @@ export function detectHarness(env = process.env) {
   // TINYPLACE_CURSOR_HOME into the mcp.json env block. Treat the dedicated home
   // var as the cursor signal so a manually-installed server still self-detects.
   if (env.TINYPLACE_CURSOR_HOME) return "cursor";
+
+  // Windsurf (Devin Desktop) likewise exposes no confirmed MCP-subprocess signal;
+  // detection is self-provisioned via TINYPLACE_HARNESS=windsurf (the override
+  // above) + TINYPLACE_WINDSURF_HOME written into the mcp_config.json env block.
+  if (env.TINYPLACE_WINDSURF_HOME) return "windsurf";
 
   return "claude";
 }

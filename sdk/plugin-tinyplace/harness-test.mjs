@@ -15,12 +15,16 @@ check("claude via CLAUDE_CODE_SESSION_ID", detectHarness({ CLAUDE_CODE_SESSION_I
 // Cursor exposes no ambient signal to the MCP subprocess (verified), so its
 // detection rides the self-provisioned TINYPLACE_CURSOR_HOME the install sets.
 check("cursor via TINYPLACE_CURSOR_HOME", detectHarness({ TINYPLACE_CURSOR_HOME: "/c" }) === "cursor");
+// Windsurf (now Devin Desktop) likewise leaks no MCP-subprocess signal; detection
+// rides the self-provisioned TINYPLACE_WINDSURF_HOME the install sets.
+check("windsurf via TINYPLACE_WINDSURF_HOME", detectHarness({ TINYPLACE_WINDSURF_HOME: "/w" }) === "windsurf");
 check("default = claude (no signals)", detectHarness({}) === "claude");
 
 // ── explicit override wins over signals ───────────────────────────────────────
 check("override forces codex", detectHarness({ TINYPLACE_HARNESS: "codex", CLAUDE_PLUGIN_ROOT: "/p" }) === "codex");
 check("override forces claude", detectHarness({ TINYPLACE_HARNESS: "claude", CODEX_HOME: "/x" }) === "claude");
 check("override forces cursor", detectHarness({ TINYPLACE_HARNESS: "cursor", CODEX_HOME: "/x" }) === "cursor");
+check("override forces windsurf", detectHarness({ TINYPLACE_HARNESS: "windsurf", CODEX_HOME: "/x" }) === "windsurf");
 check("bad override ignored → signal", detectHarness({ TINYPLACE_HARNESS: "nope", CODEX_HOME: "/x" }) === "codex");
 check("override case-insensitive", detectHarness({ TINYPLACE_HARNESS: "CODEX" }) === "codex");
 
@@ -57,6 +61,17 @@ check("override case-insensitive", detectHarness({ TINYPLACE_HARNESS: "CODEX" })
   check("cursor pull-only (no push, no inject)", a.inbound.push === false && a.inbound.pull === true && a.inbound.foregroundInject === false);
   check("cursor responder = cursor-agent -p", a.responder.command === "cursor-agent" && a.responder.buildArgs("P", "M").includes("-p"));
   check("cursor install kind", a.install.kind === "mcp-json");
+}
+
+// ── adapter wiring: windsurf (Devin Desktop) ──────────────────────────────────
+{
+  const a = resolveAdapter({ TINYPLACE_WINDSURF_HOME: "/w" });
+  check("windsurf adapter provider", a.provider === "windsurf");
+  check("windsurf label prefix", a.sessionLabelPrefix === "windsurf");
+  check("windsurf dataDirEnv", a.dataDirEnv === "TINYPLACE_WINDSURF_HOME");
+  check("windsurf pull-only (no push, no inject)", a.inbound.push === false && a.inbound.pull === true && a.inbound.foregroundInject === false);
+  check("windsurf responder = devin -p", a.responder.command === "devin" && a.responder.buildArgs("P", "M").includes("-p"));
+  check("windsurf install kind", a.install.kind === "mcp-json");
 }
 
 // ── session-id resolution is per-harness ──────────────────────────────────────
