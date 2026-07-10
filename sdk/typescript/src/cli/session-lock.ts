@@ -3,6 +3,7 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  renameSync,
   unlinkSync,
   writeSync,
 } from "node:fs";
@@ -41,12 +42,25 @@ export function acquireSessionLock(
   if (writeLock(path)) {
     return { path };
   }
-  // Held — reclaim only if the recorded holder is gone.
+  // Held — reclaim only if the recorded holder is gone, and do it atomically.
+  // A plain unlink-then-create lets two contenders both delete the stale file
+  // and race the re-create; worse, the second's unlink can wipe the FIRST's
+  // fresh lock, leaving two holders. Instead, move the stale file aside with a
+  // rename: renameSync is atomic and fails with ENOENT once the source is gone,
+  // so only one contender wins the steal. The final claim is still an exclusive
+  // `wx` create, which lets at most one winner publish the lock.
   if (isStale(path)) {
+    const aside = `${path}.stale-${process.pid}`;
     try {
-      unlinkSync(path);
+      renameSync(path, aside);
     } catch {
-      // Someone else reclaimed it first; fall through to a fresh attempt.
+      // Lost the steal race (already moved/gone) — just try a clean create.
+      return writeLock(path) ? { path } : undefined;
+    }
+    try {
+      unlinkSync(aside);
+    } catch {
+      // Best-effort cleanup of the moved-aside stale file.
     }
     if (writeLock(path)) {
       return { path };

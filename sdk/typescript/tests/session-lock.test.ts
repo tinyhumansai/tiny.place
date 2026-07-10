@@ -29,7 +29,10 @@ describe("acquireSessionLock", () => {
     // Simulate another live instance: stamp the lock with our parent's pid
     // (a different, running process), so the liveness probe reports "held".
     const path = join(dir, "claude-sess-1.lock");
-    await writeFile(path, JSON.stringify({ pid: process.ppid, at: Date.now() }));
+    await writeFile(
+      path,
+      JSON.stringify({ pid: process.ppid, at: Date.now() }),
+    );
 
     expect(acquireSessionLock(dir, "claude", "sess-1")).toBeUndefined();
     await rm(dir, { recursive: true, force: true });
@@ -42,6 +45,20 @@ describe("acquireSessionLock", () => {
 
     const lock = acquireSessionLock(dir, "claude", "sess-1");
     expect(lock).toBeDefined();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("reclaims a lock whose holder process is dead", async () => {
+    const dir = await lockDir();
+    const path = join(dir, "claude-sess-1.lock");
+    // A pid almost certainly not running → process.kill(pid, 0) throws ESRCH,
+    // exercising the primary isStale liveness branch (not the corrupt path).
+    await writeFile(path, JSON.stringify({ pid: 2 ** 22, at: Date.now() }));
+
+    const lock = acquireSessionLock(dir, "claude", "sess-1");
+    expect(lock).toBeDefined();
+    const stamped = JSON.parse(await readFile(lock!.path, "utf8"));
+    expect(stamped.pid).toBe(process.pid);
     await rm(dir, { recursive: true, force: true });
   });
 
