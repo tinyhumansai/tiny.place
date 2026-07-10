@@ -1170,6 +1170,13 @@ class BlessedTinyPlaceTui {
       ["set-option", "-t", session, "status-left-length", "200"],
       ["set-option", "-t", session, "status-right", ""],
       ["set-option", "-t", session, "status-style", "bg=black,fg=white"],
+      // Capture the mouse so the scroll wheel drives tmux copy-mode (scrollback)
+      // instead of leaking past tmux to the agent. The agents run INLINE (no
+      // alternate screen), so an uncaptured wheel scrolls the agent's own prompt
+      // up and down; `mouse on` routes it to tmux scrollback and anchors the
+      // prompt. Trade-off: drag-select becomes tmux's selection (still copies)
+      // rather than the host terminal's native selection.
+      ["set-option", "-t", session, "mouse", "on"],
       ["set-window-option", "-t", session, "window-status-format", ""],
       ["set-window-option", "-t", session, "window-status-current-format", ""],
       [
