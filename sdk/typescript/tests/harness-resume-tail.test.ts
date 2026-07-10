@@ -198,6 +198,13 @@ describe("HarnessSessionTailer resume offset", () => {
       publisher,
     );
 
+    // Fixed mtimes (after startedAt) BEFORE start(): start() polls immediately,
+    // so selection must be deterministic without relying on the wall clock. The
+    // competitor is excluded by cwd, not recency, so real is always chosen.
+    const mtime = new Date("2026-07-07T10:30:00.000Z");
+    utimesSync(real, mtime, mtime);
+    utimesSync(competitor, mtime, mtime);
+
     tailer.start(new Date("2026-07-07T09:59:00.000Z"));
     // Resumed agent appends a fresh turn to the REAL file (via the pinned cwd).
     appendFileSync(
@@ -210,8 +217,6 @@ describe("HarnessSessionTailer resume offset", () => {
       })}\n`,
       "utf8",
     );
-    // Keep the resumed file the freshest cwd-match so locate lands on it.
-    utimesSync(real, new Date(), new Date());
     await tailer.stop();
 
     const texts = v1Texts(chunks);

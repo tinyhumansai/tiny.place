@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -11,6 +12,16 @@ import {
 
 async function lockDir(): Promise<string> {
   return mkdtemp(join(tmpdir(), "tp-lock-"));
+}
+
+// A deterministically-dead pid: spawn a process that exits immediately and wait
+// for its exit, so `process.kill(pid, 0)` reliably throws ESRCH. Beats a fixed
+// high number (which can collide with a real pid on some hosts).
+async function reapedPid(): Promise<number> {
+  const child = spawn(process.execPath, ["-e", ""], { stdio: "ignore" });
+  const pid = child.pid as number;
+  await new Promise<void>((resolveExit) => child.on("exit", () => resolveExit()));
+  return pid;
 }
 
 describe("acquireSessionLock", () => {
@@ -51,9 +62,10 @@ describe("acquireSessionLock", () => {
   it("reclaims a lock whose holder process is dead", async () => {
     const dir = await lockDir();
     const path = join(dir, "claude-sess-1.lock");
-    // A pid almost certainly not running → process.kill(pid, 0) throws ESRCH,
-    // exercising the primary isStale liveness branch (not the corrupt path).
-    await writeFile(path, JSON.stringify({ pid: 2 ** 22, at: Date.now() }));
+    // A reaped pid → process.kill(pid, 0) throws ESRCH, exercising the primary
+    // isStale liveness branch (not the corrupt path).
+    const dead = await reapedPid();
+    await writeFile(path, JSON.stringify({ pid: dead, at: Date.now() }));
 
     const lock = acquireSessionLock(dir, "claude", "sess-1");
     expect(lock).toBeDefined();
