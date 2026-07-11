@@ -173,6 +173,26 @@ describe("tinyplace CLI", () => {
     });
   });
 
+  it("short-circuits command-specific help before signer-dependent writes", async () => {
+    for (const args of [
+      ["publish-card", "--help"],
+      ["raw", "publish-card", "--help"],
+    ]) {
+      const result = await runTinyPlaceCli(args, {
+        env: { TINYPLACE_ENDPOINT: "https://example.test" },
+        fetch: async () => {
+          throw new Error(
+            `help path should not touch the network: ${args.join(" ")}`,
+          );
+        },
+      });
+
+      expect(result.code, args.join(" ")).toBe(0);
+      expect(result.stderr, args.join(" ")).toBe("");
+      expect(result.stdout, args.join(" ")).toContain("publish-card");
+    }
+  });
+
   it("maps payment challenges into parseable JSON errors", async () => {
     const challenge = {
       error: "x402 payment is required",
@@ -854,6 +874,55 @@ describe("tinyplace CLI", () => {
       const body = (await requests[0].clone().json()) as { query: string };
       expect(body.query, args.join(" ")).toContain(query);
     }
+  });
+
+  it("resolves @handles before raw agent-card lookup", async () => {
+    const requests: Array<Request> = [];
+    const result = await runTinyPlaceCli(["raw", "card", "@naturedesk"], {
+      env: { TINYPLACE_ENDPOINT: "https://example.test" },
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        requests.push(request);
+        const url = new URL(request.url);
+        if (url.pathname === "/directory/resolve/%40naturedesk") {
+          return Response.json({
+            identity: {
+              username: "@naturedesk",
+              cryptoId: "A8sVmcaC5apxoUx1kCA4pPa9RttQK1HXmfkziSFf5dVg",
+            },
+          });
+        }
+        if (url.pathname === "/graphql") {
+          const body = (await request.clone().json()) as {
+            variables: { id?: string };
+          };
+          return Response.json({
+            data: {
+              agentCard: {
+                agentId: body.variables.id,
+                name: "NatureDesk",
+              },
+            },
+          });
+        }
+        return Response.json({ error: "unexpected route" }, { status: 500 });
+      },
+    });
+
+    expect(result.code).toBe(0);
+    expect(requests.map((request) => new URL(request.url).pathname)).toEqual([
+      "/directory/resolve/%40naturedesk",
+      "/graphql",
+    ]);
+    const body = (await requests[1]!.clone().json()) as {
+      variables: { id?: string };
+    };
+    expect(body.variables.id).toBe(
+      "A8sVmcaC5apxoUx1kCA4pPa9RttQK1HXmfkziSFf5dVg",
+    );
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      agentId: "A8sVmcaC5apxoUx1kCA4pPa9RttQK1HXmfkziSFf5dVg",
+    });
   });
 
   it("passes the bounties status filter as a GraphQL variable", async () => {

@@ -259,13 +259,13 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "publish-card",
     capability: "profile",
     description: "Publish/update your discoverable Agent Card.",
-    usage: "[--name <name>] [--description <text>] [--skills a,b] [--endpoint <url>]",
+    usage: "[--name <name>] [--description <text>] [--skills tag-a,tag-b] [--endpoint <url>] [--data '<agent-card-json>']",
   },
   {
     name: "card-update",
     capability: "profile",
     description: "Alias of publish-card.",
-    usage: "[--name <name>] [--description <text>] [--skills a,b] [--endpoint <url>]",
+    usage: "[--name <name>] [--description <text>] [--skills tag-a,tag-b] [--endpoint <url>] [--data '<agent-card-json>']",
   },
   {
     name: "search",
@@ -276,8 +276,8 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
   {
     name: "card",
     capability: "directory",
-    description: "Get an agent card.",
-    usage: "<agentId>",
+    description: "Get an agent card by @handle or agent id.",
+    usage: "<@handle|agentId>",
   },
   {
     name: "groups",

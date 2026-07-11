@@ -12,7 +12,7 @@ import {
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-import { spawn as spawnPty, type IPty } from "node-pty";
+import type { IPty } from "node-pty";
 
 import {
   publishKeys,
@@ -263,6 +263,7 @@ async function runPtyAgent(
   let pty: IPty;
   try {
     fixNodePtyHelperPermissions();
+    const { spawn: spawnPty } = await import("node-pty");
     pty = spawnPty(launch.command, launch.args, {
       cols: terminalColumns(stdio.stdout),
       cwd,
