@@ -19,6 +19,7 @@
 export type TinyPlaceErrorCode =
   | "payment_required"
   | "auth_invalid"
+  | "admin_not_configured"
   | "handle_taken"
   | "not_found"
   | "rate_limited"
@@ -33,6 +34,7 @@ export type TinyPlaceErrorCode =
 export const TINYPLACE_ERROR_CODES: ReadonlyArray<TinyPlaceErrorCode> = [
   "payment_required",
   "auth_invalid",
+  "admin_not_configured",
   "handle_taken",
   "not_found",
   "rate_limited",
@@ -70,6 +72,8 @@ const HINTS: Record<TinyPlaceErrorCode, string> = {
     "Payment required (x402 challenge). Settle it (e.g. `tinyplace pay --data '<paymentRequired>'`), then retry the original call.",
   auth_invalid:
     "Authentication rejected. Confirm your signing key matches the registered identity (TINYPLACE_SECRET_KEY); if you have no identity yet, run `tinyplace init` then `tinyplace register`.",
+  admin_not_configured:
+    "Admin approval is not configured. Stop retrying and configure an admin signing route or ask platform support to approve/recover the bounty.",
   handle_taken: "That @handle is already claimed — choose a different handle.",
   not_found:
     "Not found. Re-check the id or @handle; resolve a handle first with `tinyplace resolve @name`.",
@@ -90,6 +94,7 @@ const HINTS: Record<TinyPlaceErrorCode, string> = {
 const RETRYABLE: Record<TinyPlaceErrorCode, boolean> = {
   payment_required: false,
   auth_invalid: false,
+  admin_not_configured: false,
   handle_taken: false,
   not_found: false,
   rate_limited: true,
@@ -104,6 +109,8 @@ const RETRYABLE: Record<TinyPlaceErrorCode, boolean> = {
 const WHEN: Record<TinyPlaceErrorCode, string> = {
   payment_required: "HTTP 402, or a response carrying an x402 payment challenge.",
   auth_invalid: "HTTP 401/403 — the request signature or session was rejected.",
+  admin_not_configured:
+    "The bounty approval endpoint reports that admin approval is not configured.",
   handle_taken:
     "HTTP 409 (or a body) indicating the @handle/username is already claimed.",
   not_found: "HTTP 404 — the id or @handle does not exist.",
@@ -158,11 +165,14 @@ function deriveCode(error: unknown): TinyPlaceErrorCode {
     return "payment_required";
   }
 
-  // 2. Local SDK-thrown errors (no HTTP status).
+  // 2. Configuration failures that need operator action, not blind retries.
+  if (ADMIN_APPROVAL_NOT_CONFIGURED.test(text)) return "admin_not_configured";
+
+  // 3. Local SDK-thrown errors (no HTTP status).
   if (name === "TinyPlaceValidationError") return "validation";
   if (status === undefined && SIGNER_REQUIRED.test(text)) return "no_signer";
 
-  // 3. Status-driven classification.
+  // 4. Status-driven classification.
   if (status !== undefined) {
     if (status === 0) return "transient";
     if (status === 429) return "rate_limited";
@@ -180,13 +190,16 @@ function deriveCode(error: unknown): TinyPlaceErrorCode {
     if (status >= 400 && HANDLE_TAKEN.test(text)) return "handle_taken";
   }
 
-  // 4. Non-HTTP fallbacks.
+  // 5. Non-HTTP fallbacks.
   if (HANDLE_TAKEN.test(text)) return "handle_taken";
   return "unknown";
 }
 
 const SIGNER_REQUIRED =
   /requires? (a )?(signing key|signer)|needs? a (wallet|signer)|secret_key|no signer/i;
+
+const ADMIN_APPROVAL_NOT_CONFIGURED =
+  /admin approval is not configured|approval.*admin.*not configured/i;
 
 const HANDLE_TAKEN =
   /(handle|username|name)[^.]*(taken|exists|already|registered|claimed|conflict)|(taken|exists|already|registered|claimed)[^.]*(handle|username)/i;

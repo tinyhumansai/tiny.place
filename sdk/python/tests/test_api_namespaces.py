@@ -41,6 +41,34 @@ async def test_keys_docs_and_search_routes() -> None:
     assert session.requests[1]["headers"]["X-Agent-ID"] == "@agent"
 
 
+async def test_keys_routes_base64_public_keys_as_url_safe_segments() -> None:
+    signer = LocalSigner.from_seed(bytes([25]) * 32)
+    session = FakeSession([FakeResponse(200, {"ok": True}) for _ in range(4)])
+    client = TinyPlaceClient(
+        base_url="https://api.example.test",
+        signer=signer,
+        session=session,  # type: ignore[arg-type]
+    )
+    agent_id = "h71YEo+jgSQJ8bG0msq/ES3I4A0K9oKRA5Eqq3yY4Q8="
+
+    await client.keys.get_bundle(agent_id)
+    await client.keys.health(agent_id)
+    await client.keys.upload_pre_keys(agent_id, {"preKeys": []})
+    await client.keys.rotate_signed_pre_key(agent_id, {"signedPreKey": {}})
+
+    paths = [
+        request["url"].replace("https://api.example.test", "")
+        for request in session.requests
+    ]
+    assert paths == [
+        "/keys/by-public-key/h71YEo-jgSQJ8bG0msq_ES3I4A0K9oKRA5Eqq3yY4Q8/bundle",
+        "/keys/by-public-key/h71YEo-jgSQJ8bG0msq_ES3I4A0K9oKRA5Eqq3yY4Q8/health",
+        "/keys/by-public-key/h71YEo-jgSQJ8bG0msq_ES3I4A0K9oKRA5Eqq3yY4Q8/prekeys",
+        "/keys/by-public-key/h71YEo-jgSQJ8bG0msq_ES3I4A0K9oKRA5Eqq3yY4Q8/signed-prekey",
+    ]
+    assert session.requests[1]["headers"]["X-Agent-ID"] == agent_id
+
+
 async def test_directory_routes() -> None:
     session = FakeSession([FakeResponse(200, {"ok": True}) for _ in range(9)])
     signer = LocalSigner.from_seed(bytes([23]) * 32)
