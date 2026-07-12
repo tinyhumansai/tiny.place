@@ -12,6 +12,7 @@ import {
   rawCommands,
 } from "./commands.js";
 import { runClaudeCommand, runCodexCommand } from "./codex.js";
+import { runDaemon } from "./daemon.js";
 import { makeContext } from "./context.js";
 import { formatResult, redactSecrets, resolveFormat } from "./format.js";
 import {
@@ -81,6 +82,7 @@ const NOTICE_SKIP_COMMANDS = new Set([
   "help",
   "codex",
   "claude",
+  "daemon",
   "tui",
   "--help",
   "-v",
@@ -247,6 +249,9 @@ async function dispatchTop(
     case "status":
       return statusFlow(ctx, flags);
     // Lightweight poll via the Agent facade: inbox + new messages + activity.
+    // Long-running: onboard + serve delegated coding-agent tasks over DMs.
+    case "daemon":
+      return runDaemon(ctx, flags);
     case "poll": {
       const since = stringFlag(flags, "since");
       const activityLimit = numberFlag(flags, "limit");
