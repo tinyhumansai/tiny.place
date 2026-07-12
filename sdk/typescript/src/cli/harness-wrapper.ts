@@ -139,6 +139,12 @@ interface TerminalEnvelope {
     pid?: number;
     pty: boolean;
   };
+  opencode?: {
+    argv: Array<string>;
+    command: string;
+    pid?: number;
+    pty: boolean;
+  };
 }
 
 interface SessionMeta {
@@ -182,6 +188,18 @@ const PROFILES: Record<HarnessProvider, HarnessWrapperProfile> = {
     defaultOutDir: join(homedir(), ".tinyplace", "claude-envelopes"),
     defaultSessionsDir: join(homedir(), ".claude", "projects"),
     terminalEnvelopeVersion: "tinyplace.claude.terminal.v1",
+  },
+  // opencode is driven headlessly by the daemon (`opencode run --format json`),
+  // not by the interactive PTY tailer — it keeps sessions in a SQLite store, not
+  // per-session JSONL files. The profile exists so opencode is a first-class
+  // `HarnessProvider` (bin resolution, envelope framing); the sessions dir is a
+  // best-effort default and is not tailed for opencode.
+  opencode: {
+    binEnv: ["TINYPLACE_OPENCODE_BIN"],
+    defaultBin: "opencode",
+    defaultOutDir: join(homedir(), ".tinyplace", "opencode-envelopes"),
+    defaultSessionsDir: join(homedir(), ".local", "share", "opencode", "sessions"),
+    terminalEnvelopeVersion: "tinyplace.opencode.terminal.v1",
   },
 };
 

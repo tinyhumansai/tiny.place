@@ -27,6 +27,7 @@ export {
   codexEventsFromLine,
   harnessEventsFromLine,
   normalizeToolKind,
+  opencodeEventsFromLine,
   toolDisplay,
 } from "../cli/harness-events.js";
 export {

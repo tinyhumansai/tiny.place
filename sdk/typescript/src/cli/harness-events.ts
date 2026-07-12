@@ -49,6 +49,7 @@ export type HarnessLineMapper = (
 const LINE_MAPPERS: Record<HarnessProvider, HarnessLineMapper> = {
   claude: claudeEventsFromLine,
   codex: codexEventsFromLine,
+  opencode: opencodeEventsFromLine,
 };
 
 export function harnessEventsFromLine(
@@ -396,6 +397,174 @@ function codexIsError(payload: Record<string, unknown>): boolean {
     return true;
   }
   return false;
+}
+
+// ── OpenCode ─────────────────────────────────────────────────────────────────
+//
+// `opencode run --format json` streams one JSON object per line, each a snapshot
+// of a "part": assistant text, a tool part (state.status pending→completed with
+// input then output), a reasoning part, a step_finish with token usage, or a
+// top-level `error`. Adapted from medulla's battle-tested `tui/opencodeParser.ts`
+// into the shared semantic-event model. opencode events carry no timestamp, so
+// receive time is stamped (see parseTimestamp).
+
+interface OpenCodePart {
+  type?: string;
+  text?: string;
+  tool?: string;
+  callID?: string;
+  state?: {
+    status?: string;
+    input?: unknown;
+    output?: unknown;
+  };
+}
+
+/** Terminal opencode tool states — the snapshot carries the tool's output. */
+const OPENCODE_TERMINAL_STATES = new Set(["completed", "error", "done"]);
+
+export function opencodeEventsFromLine(
+  raw: string,
+  line: number,
+): Array<HarnessSemanticEvent> {
+  const record = parseJsonObject(raw);
+  if (!record) {
+    return [];
+  }
+  const timestamp = parseTimestamp(record.timestamp);
+  const type = asString(record.type);
+
+  if (type === "error") {
+    const message =
+      describeOpenCodeError(record.error) ??
+      safeStringify(record.error ?? record);
+    return [
+      {
+        line,
+        timestamp,
+        recordType: "opencode:error",
+        event: {
+          kind: "error",
+          role: "agent",
+          payload: { message: truncate(message), fatal: false },
+        },
+      },
+    ];
+  }
+
+  const part = asObject(record.part) as OpenCodePart | undefined;
+  if (!part) {
+    return [];
+  }
+
+  if (type === "text" && typeof part.text === "string" && part.text.trim()) {
+    return [
+      {
+        line,
+        timestamp,
+        recordType: "opencode:text",
+        event: {
+          kind: "agent_message",
+          role: "agent",
+          payload: { text: part.text.trim() },
+        },
+      },
+    ];
+  }
+
+  if (type === "reasoning" && typeof part.text === "string" && part.text.trim()) {
+    return [
+      {
+        line,
+        timestamp,
+        recordType: "opencode:reasoning",
+        event: {
+          kind: "agent_thinking",
+          role: "agent",
+          payload: { text: part.text.trim() },
+        },
+      },
+    ];
+  }
+
+  if (typeof part.tool === "string" && part.tool) {
+    const toolName = part.tool;
+    const callId = asString(part.callID) ?? "";
+    const status = (part.state?.status ?? "").toLowerCase();
+    const output = part.state?.output;
+    const terminal =
+      OPENCODE_TERMINAL_STATES.has(status) ||
+      (output !== undefined && output !== null && output !== "");
+    if (terminal) {
+      const outputText = openCodeOutputText(output);
+      const isError = status === "error";
+      return [
+        {
+          line,
+          timestamp,
+          recordType: "opencode:tool_result",
+          event: {
+            kind: "tool_result",
+            role: "agent",
+            payload: {
+              call_id: callId,
+              ok: !isError,
+              is_error: isError,
+              output: truncate(outputText),
+              output_bytes: byteLength(outputText),
+            },
+          },
+        },
+      ];
+    }
+    return [
+      {
+        line,
+        timestamp,
+        recordType: "opencode:tool_call",
+        event: {
+          kind: "tool_call",
+          role: "agent",
+          payload: {
+            call_id: callId,
+            tool_name: toolName,
+            tool_kind: normalizeToolKind(toolName),
+            display: toolDisplay(toolName, part.state?.input),
+            input: boundToolInput(part.state?.input),
+          },
+        },
+      },
+    ];
+  }
+
+  return [];
+}
+
+/** Pull a human message out of an opencode `error` payload. */
+function describeOpenCodeError(error: unknown): string | undefined {
+  const object = asObject(error);
+  if (!object) {
+    return undefined;
+  }
+  const data = asObject(object.data);
+  const message = [data?.message, object.message].find(
+    (candidate): candidate is string =>
+      typeof candidate === "string" && candidate.trim().length > 0,
+  );
+  if (!message) {
+    return undefined;
+  }
+  const name =
+    typeof object.name === "string" && object.name ? `${object.name}: ` : "";
+  const ref = data && typeof data.ref === "string" && data.ref ? ` (${data.ref})` : "";
+  return `${name}${message}${ref}`;
+}
+
+function openCodeOutputText(output: unknown): string {
+  if (typeof output === "string") {
+    return output;
+  }
+  return safeStringify(output);
 }
 
 // ── shared helpers ───────────────────────────────────────────────────────────

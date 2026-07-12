@@ -1,4 +1,4 @@
-export type HarnessProvider = "codex" | "claude";
+export type HarnessProvider = "codex" | "claude" | "opencode";
 
 export type HarnessMessageRole = "user" | "agent";
 
