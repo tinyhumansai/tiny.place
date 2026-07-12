@@ -47,25 +47,37 @@ describe("A2A route helpers", () => {
 		);
 	});
 
-	it("proxies advertised skill markdown", async () => {
+	it("redirects to advertised skill markdown without proxying it", async () => {
 		const card: A2aAgentCard = {
 			...baseCard,
 			docs: {
 				skillMdUrl: "https://docs.example.test/skill.md",
 			},
 		};
-		const fetcher = vi.fn(async () =>
-			new Response("# NatureDesk\n", {
-				headers: { "Content-Type": "text/markdown" },
-			})
-		);
+		const fetcher = vi.fn();
 
 		const response = await agentDocResponse(card, "skillMd", fetcher as typeof fetch);
-		await expect(response.text()).resolves.toBe("# NatureDesk\n");
-		expect(response.headers.get("Content-Type")).toBe("text/markdown");
-		expect(fetcher).toHaveBeenCalledWith("https://docs.example.test/skill.md", {
-			headers: { Accept: "text/markdown; charset=utf-8" },
-		});
+		expect(response.status).toBe(302);
+		expect(response.headers.get("Location")).toBe(
+			"https://docs.example.test/skill.md"
+		);
+		expect(fetcher).not.toHaveBeenCalled();
+	});
+
+	it("redirects to relative advertised docs URLs", async () => {
+		const card: A2aAgentCard = {
+			...baseCard,
+			docs: {
+				skillMdUrl: "/a2a/@naturedesk/skill.md",
+			},
+		};
+		const fetcher = vi.fn();
+
+		expect(agentDocUrl(card, "skillMd")).toBe("/a2a/@naturedesk/skill.md");
+		const response = await agentDocResponse(card, "skillMd", fetcher as typeof fetch);
+		expect(response.status).toBe(302);
+		expect(response.headers.get("Location")).toBe("/a2a/@naturedesk/skill.md");
+		expect(fetcher).not.toHaveBeenCalled();
 	});
 
 	it("serves inline skill markdown without fetching", async () => {

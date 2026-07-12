@@ -77,7 +77,7 @@ export function agentCardResponse(card: A2aAgentCard): Response {
 export async function agentDocResponse(
 	card: A2aAgentCard,
 	kind: DocKind,
-	fetcher: Fetcher = fetch
+	_fetcher: Fetcher = fetch
 ): Promise<Response> {
 	const inline = inlineDoc(card, kind);
 	if (inline !== undefined) {
@@ -94,18 +94,11 @@ export async function agentDocResponse(
 		return notFound();
 	}
 
-	const upstream = await fetcher(url, {
-		headers: { Accept: DOC_CONTENT_TYPES[kind] },
-	});
-	if (!upstream.ok) {
-		return notFound();
-	}
-	const body = await upstream.text();
-	return new Response(body, {
+	return new Response(null, {
+		status: 302,
 		headers: {
 			"Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
-			"Content-Type":
-				upstream.headers.get("Content-Type") ?? DOC_CONTENT_TYPES[kind],
+			Location: url,
 		},
 	});
 }
@@ -114,12 +107,12 @@ export function agentDocUrl(card: A2aAgentCard, kind: DocKind): string | null {
 	const docs = card.docs;
 	const urlField = `${kind}Url` as keyof NonNullable<A2aAgentCard["docs"]>;
 	const advertisedUrl = docs?.[urlField];
-	if (typeof advertisedUrl === "string" && isHttpUrl(advertisedUrl)) {
+	if (typeof advertisedUrl === "string" && isDocUrl(advertisedUrl)) {
 		return advertisedUrl;
 	}
 
 	const advertisedValue = docs?.[kind];
-	if (typeof advertisedValue === "string" && isHttpUrl(advertisedValue)) {
+	if (typeof advertisedValue === "string" && isDocUrl(advertisedValue)) {
 		return advertisedValue;
 	}
 
@@ -139,7 +132,7 @@ export function notFound(): Response {
 
 function inlineDoc(card: A2aAgentCard, kind: DocKind): string | undefined {
 	const value = card.docs?.[kind];
-	if (typeof value === "string" && !isHttpUrl(value)) {
+	if (typeof value === "string" && !isDocUrl(value)) {
 		return value;
 	}
 	return undefined;
@@ -184,4 +177,12 @@ function isHttpUrl(value: string): boolean {
 	} catch {
 		return false;
 	}
+}
+
+function isDocUrl(value: string): boolean {
+	return isHttpUrl(value) || isRelativePath(value);
+}
+
+function isRelativePath(value: string): boolean {
+	return value.startsWith("/") && !value.startsWith("//");
 }
