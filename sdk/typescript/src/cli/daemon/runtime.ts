@@ -54,6 +54,8 @@ interface RunningTask {
   correlationId?: string;
   controller: AbortController;
   stdin?: (text: string) => void;
+  /** Inputs that arrived before the session's stdin sink was ready. */
+  pendingInput: Array<string>;
 }
 
 export class DaemonRuntime {
@@ -111,8 +113,14 @@ export class DaemonRuntime {
 
   private handleInput(from: string, frame: TaskFrame): void {
     const task = this.running.get(frame.taskId);
-    if (task?.stdin) {
-      task.stdin(frame.text);
+    if (task) {
+      if (task.stdin) {
+        task.stdin(frame.text);
+      } else {
+        // The session's stdin sink is not registered yet — buffer and flush it
+        // when the run starts, so an input racing the ack is never dropped.
+        task.pendingInput.push(frame.text);
+      }
     }
     void this.reply(from, "ack", frame.taskId, "input received", {
       ...(frame.correlationId ? { correlationId: frame.correlationId } : {}),
@@ -136,21 +144,24 @@ export class DaemonRuntime {
       return;
     }
 
+    // Register the task BEFORE acking so an `input` frame arriving right after
+    // the ack always finds the record (its stdin buffers until the run starts).
+    const controller = new AbortController();
+    const record: RunningTask = {
+      provider,
+      controller,
+      pendingInput: [],
+      ...(correlationId ? { correlationId } : {}),
+    };
+    this.running.set(frame.taskId, record);
+
     await this.reply(from, "ack", frame.taskId, "task accepted", {
       ...(correlationId ? { correlationId } : {}),
       harness: provider,
     });
 
     await this.withSlot(async () => {
-      const controller = new AbortController();
       let lastStatusAt = 0;
-      let stdin: ((text: string) => void) | undefined;
-      const record: RunningTask = {
-        provider,
-        controller,
-        ...(correlationId ? { correlationId } : {}),
-      };
-      this.running.set(frame.taskId, record);
       this.log(`task ${frame.taskId} → ${provider}`);
       try {
         const result = await this.runTask({
@@ -164,8 +175,10 @@ export class DaemonRuntime {
           ...(this.deps.extraArgs ? { extraArgs: this.deps.extraArgs } : {}),
           signal: controller.signal,
           onStdin: (write) => {
-            stdin = write;
             record.stdin = write;
+            for (const buffered of record.pendingInput.splice(0)) {
+              write(buffered);
+            }
           },
           onEvent: (event) => {
             const detail = statusDetail(event);
@@ -179,7 +192,6 @@ export class DaemonRuntime {
             });
           },
         });
-        void stdin;
         await this.reply(from, "reply", frame.taskId, result.reply, {
           ...(correlationId ? { correlationId } : {}),
           harness: provider,
