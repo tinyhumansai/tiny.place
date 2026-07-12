@@ -561,7 +561,12 @@ describe("tinyplace codex", () => {
       relay: HarnessRelay;
       ownerAgentId: string;
       send: (wrapperAddress: string) => Promise<void>;
-    }): Promise<{ code: number; stdin: string; wrapperAddress: string }> {
+    }): Promise<{
+      code: number;
+      stdin: string;
+      stdinChunks: Array<string>;
+      wrapperAddress: string;
+    }> {
       const tempDir = await mkdtemp(join(tmpdir(), "tinyplace-inbound-"));
       const wrapperSigner = await LocalSigner.fromSeed(new Uint8Array(32).fill(33));
       const stdinChunks: Array<string> = [];
@@ -609,7 +614,12 @@ describe("tinyplace codex", () => {
           },
         },
       );
-      return { code: result.code, stdin: stdinChunks.join(""), wrapperAddress: wrapperSigner.agentId };
+      return {
+        code: result.code,
+        stdin: stdinChunks.join(""),
+        stdinChunks,
+        wrapperAddress: wrapperSigner.agentId,
+      };
     }
 
     it("publishes its Signal keys so the owner can DM it (was un-messageable before)", async () => {
@@ -627,11 +637,11 @@ describe("tinyplace codex", () => {
       expect(relay.keysPublished).toContain(wrapperAddress);
     });
 
-    it("injects an owner DM into the codex process as `<text>\\r`", async () => {
+    it("injects an owner DM as the body then a DISTINCT carriage return", async () => {
       const relay = makeRelay({ autoAcceptContacts: true });
       const owner = await makeClient(44, relay);
       await publishKeys(owner.client, owner.signer);
-      const { code, stdin } = await runWrapperReceiving({
+      const { code, stdin, stdinChunks } = await runWrapperReceiving({
         relay,
         ownerAgentId: owner.signer.agentId,
         send: async (wrapperAddress) => {
@@ -639,6 +649,14 @@ describe("tinyplace codex", () => {
         },
       });
       expect(code).toBe(0);
+      // The body and the submitting CR must be SEPARATE writes: writing
+      // "text\r" in one chunk makes the agent TUI swallow the CR as a paste and
+      // park the prompt unsubmitted.
+      expect(stdinChunks).toContain("hello from openhuman");
+      expect(stdinChunks).toContain("\r");
+      // The body is not written with a trailing CR fused onto it.
+      expect(stdinChunks).not.toContain("hello from openhuman\r");
+      // The CR still lands after the body so the joined stream submits.
       expect(stdin).toContain("hello from openhuman\r");
     });
 

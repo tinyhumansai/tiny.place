@@ -1261,10 +1261,18 @@ const RESET_SENTINEL = "\x01tp-rehandshake\x01";
  * and the SDK primitives `publishKeys` (be messageable) + `readMessages` (decrypt).
  */
 export class InboundMessageReceiver {
+  // Debounce between typing the body and sending the distinct Enter, mirroring
+  // the interactive TUI (tui.ts injectOne) so the agent TUI doesn't swallow the
+  // carriage return as part of a bracketed paste.
+  private static readonly INJECT_ENTER_DELAY_MS = 150;
+
   private sink: ((text: string) => void) | undefined;
   private timer: ReturnType<typeof setInterval> | undefined;
   private draining = false;
   private ownerAddress: string | undefined;
+  // Serialize injected turns so a batched poll never interleaves them: each
+  // body → Enter pair completes before the next body types.
+  private injectionQueue: Promise<void> = Promise.resolve();
 
   public constructor(
     private readonly config: HarnessWrapperConfig,
@@ -1345,6 +1353,8 @@ export class InboundMessageReceiver {
     } catch {
       // best-effort final drain
     }
+    // Let any queued body → Enter injections finish before we tear down.
+    await this.injectionQueue;
   }
 
   /** Accept the owner contact so inbound DMs are not 403'd by the relay. */
@@ -1389,14 +1399,18 @@ export class InboundMessageReceiver {
       let dropped = 0;
       for (const message of messages) {
         const text = this.filterAndParse(message);
-        if (text !== undefined && this.sink) {
+        // `this.sink` is guaranteed defined here — poll() returns early when it
+        // is not. injectOne re-guards it before each write regardless.
+        if (text !== undefined) {
           injected += 1;
           // Record before injecting so the tailer's echoed-back `user` line
           // (the agent logs the injected prompt as its own user turn) is dropped
           // by the publisher instead of bouncing to the owner.
           this.publisher.markInjected(text);
-          // "\r" (carriage return) submits the prompt to the agent TUI.
-          this.sink(`${text}\r`);
+          // Type the body now, then submit with a DISTINCT carriage return after
+          // a short debounce (see injectOne). Enqueued so batched inbound turns
+          // stay serialized (body → Enter → next body) and never interleave.
+          this.enqueueInjection(text);
         } else {
           dropped += 1;
         }
@@ -1415,6 +1429,29 @@ export class InboundMessageReceiver {
       });
     } finally {
       this.draining = false;
+    }
+  }
+
+  /** Chain an injection onto the serial queue so batched inbound turns keep
+   *  their boundaries (body → Enter → next body), never interleaving. */
+  private enqueueInjection(text: string): void {
+    this.injectionQueue = this.injectionQueue
+      .then(() => this.injectOne(text))
+      .catch(() => {});
+  }
+
+  /** Type one inbound turn, then send the carriage return as a SEPARATE write
+   *  after a short debounce. Writing "text\r" in one chunk makes the agent TUI
+   *  (codex/claude) treat the burst as a bracketed paste and swallow the CR, so
+   *  the prompt parks unsubmitted; a distinct CR after the paste settles submits
+   *  it. Mirrors the interactive TUI's injectOne. */
+  private async injectOne(text: string): Promise<void> {
+    if (this.sink) {
+      this.sink(text);
+    }
+    await delay(InboundMessageReceiver.INJECT_ENTER_DELAY_MS);
+    if (this.sink) {
+      this.sink("\r");
     }
   }
 
@@ -1462,6 +1499,12 @@ export class InboundMessageReceiver {
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolveDelay) => {
+    setTimeout(resolveDelay, ms);
+  });
 }
 
 class TerminalEnvelopeWriter {
