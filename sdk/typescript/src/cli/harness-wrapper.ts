@@ -288,7 +288,9 @@ async function runPtyAgent(
   let pty: IPty;
   try {
     fixNodePtyHelperPermissions();
-    const { spawn: spawnPty } = await import("node-pty");
+    const { spawn: spawnPty } = requireForHarness(
+      "node-pty",
+    ) as typeof import("node-pty");
     pty = spawnPty(launch.command, launch.args, {
       cols: terminalColumns(stdio.stdout),
       cwd,
