@@ -9,10 +9,18 @@ import {
 import {
   buildRunArgs,
   detectProviders,
+  isTransientLock,
+  makePathLookup,
   providerBin,
   runProviderTask,
+  withAuthHint,
   type SpawnFn,
 } from "../src/cli/daemon/providers.js";
+import {
+  createContactAutoAccepter,
+  createLock,
+  createMailbox,
+} from "../src/cli/daemon/mailbox.js";
 import {
   DaemonRuntime,
   statusDetail,
@@ -394,6 +402,328 @@ describe("DaemonRuntime task protocol", () => {
     await vi.waitFor(() => expect(writes).toContain("more context"));
     release?.();
     await vi.waitFor(() => expect(sent.some((s) => s.frame?.kind === "reply")).toBe(true));
+  });
+});
+
+describe("DaemonRuntime isolation & limits", () => {
+  it("does not let another sender inject input into a running task", async () => {
+    const { sent, send } = collector();
+    const writes: Array<string> = [];
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((r) => (release = r));
+    const runTask: RunTaskFn = async (options) => {
+      options.onStdin?.((text) => writes.push(text));
+      await gate;
+      return { provider: options.provider, reply: "done", events: 0 };
+    };
+    const runtime = new DaemonRuntime({ ...baseDeps, send, runTask });
+    runtime.handleMessage(
+      "owner",
+      { text: "" },
+      { proto: TINYPLACE_PROTO, kind: "task", taskId: "shared", text: "go", ts: "now" },
+    );
+    await vi.waitFor(() => expect(sent.some((s) => s.frame?.kind === "ack")).toBe(true));
+    // A different accepted contact reuses the same taskId — must not reach stdin.
+    runtime.handleMessage(
+      "intruder",
+      { text: "" },
+      { proto: TINYPLACE_PROTO, kind: "input", taskId: "shared", text: "evil", ts: "now" },
+    );
+    await vi.waitFor(() =>
+      expect(
+        sent.some((s) => s.to === "intruder" && s.frame?.kind === "ack"),
+      ).toBe(true),
+    );
+    expect(writes).toEqual([]);
+    expect(
+      sent.find((s) => s.to === "intruder" && s.frame?.kind === "ack")?.frame?.text,
+    ).toMatch(/no matching/);
+    release?.();
+    await runtime.idle();
+    expect(writes).toEqual([]);
+  });
+
+  it("ignores an input whose correlationId does not match the running task", async () => {
+    const { sent, send } = collector();
+    const writes: Array<string> = [];
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((r) => (release = r));
+    const runTask: RunTaskFn = async (options) => {
+      options.onStdin?.((text) => writes.push(text));
+      await gate;
+      return { provider: options.provider, reply: "done", events: 0 };
+    };
+    const runtime = new DaemonRuntime({ ...baseDeps, send, runTask });
+    runtime.handleMessage(
+      "owner",
+      { text: "" },
+      { proto: TINYPLACE_PROTO, kind: "task", taskId: "t", correlationId: "c-1", text: "go", ts: "now" },
+    );
+    await vi.waitFor(() => expect(sent.some((s) => s.frame?.kind === "ack")).toBe(true));
+    runtime.handleMessage(
+      "owner",
+      { text: "" },
+      { proto: TINYPLACE_PROTO, kind: "input", taskId: "t", correlationId: "c-2", text: "stale", ts: "now" },
+    );
+    await vi.waitFor(() =>
+      expect(sent.filter((s) => s.frame?.kind === "ack").length).toBe(2),
+    );
+    expect(writes).toEqual([]);
+    release?.();
+    await runtime.idle();
+  });
+
+  it("rejects a duplicate active taskId from the same sender", async () => {
+    const { sent, send } = collector();
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((r) => (release = r));
+    const runtime = new DaemonRuntime({
+      ...baseDeps,
+      send,
+      runTask: async (options) => {
+        await gate;
+        return { provider: options.provider, reply: "first", events: 0 };
+      },
+    });
+    const task: TaskFrame = { proto: TINYPLACE_PROTO, kind: "task", taskId: "dup", text: "go", ts: "now" };
+    runtime.handleMessage("owner", { text: "" }, task);
+    await vi.waitFor(() => expect(sent.some((s) => s.frame?.kind === "ack")).toBe(true));
+    runtime.handleMessage("owner", { text: "" }, task);
+    await vi.waitFor(() => expect(sent.some((s) => s.frame?.kind === "error")).toBe(true));
+    expect(sent.find((s) => s.frame?.kind === "error")?.frame?.text).toMatch(/already running/);
+    release?.();
+    await runtime.idle();
+    // The original task still completes normally.
+    expect(sent.find((s) => s.frame?.kind === "reply")?.frame?.text).toBe("first");
+  });
+
+  it("rejects new tasks beyond maxPending with an error frame", async () => {
+    const { sent, send } = collector();
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((r) => (release = r));
+    const runtime = new DaemonRuntime({
+      ...baseDeps,
+      maxPending: 1,
+      send,
+      runTask: async (options) => {
+        await gate;
+        return { provider: options.provider, reply: "ok", events: 0 };
+      },
+    });
+    runtime.handleMessage(
+      "owner",
+      { text: "" },
+      { proto: TINYPLACE_PROTO, kind: "task", taskId: "a", text: "go", ts: "now" },
+    );
+    await vi.waitFor(() => expect(sent.some((s) => s.frame?.kind === "ack")).toBe(true));
+    runtime.handleMessage(
+      "owner",
+      { text: "" },
+      { proto: TINYPLACE_PROTO, kind: "task", taskId: "b", text: "go", ts: "now" },
+    );
+    await vi.waitFor(() => expect(sent.some((s) => s.frame?.kind === "error")).toBe(true));
+    expect(sent.find((s) => s.frame?.kind === "error")?.frame?.text).toMatch(/capacity/);
+    release?.();
+    await runtime.idle();
+  });
+
+  it("shutdown aborts plain-text runs too, and idle() drains dispatches", async () => {
+    const { sent, send } = collector();
+    let sawAbort = false;
+    const runTask: RunTaskFn = (options) =>
+      new Promise((_, reject) => {
+        options.signal?.addEventListener("abort", () => {
+          sawAbort = true;
+          reject(new Error("aborted"));
+        });
+      });
+    const runtime = new DaemonRuntime({ ...baseDeps, send, runTask });
+    runtime.handleMessage("owner", { text: "plain prompt" }, undefined);
+    await vi.waitFor(() => expect(runtime.activeCount()).toBe(1));
+    runtime.shutdown();
+    await runtime.idle();
+    expect(sawAbort).toBe(true);
+    expect(sent[0]?.raw).toMatch(/Task failed: aborted/);
+  });
+});
+
+describe("provider runner hardening", () => {
+  it("never spawns when the signal is already aborted", async () => {
+    const spawn = vi.fn();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      runProviderTask({
+        provider: "claude",
+        prompt: "x",
+        cwd: "/tmp",
+        env: {},
+        timeoutMs: 1_000,
+        signal: controller.signal,
+        spawn: spawn as unknown as SpawnFn,
+      }),
+    ).rejects.toThrow(/aborted before start/);
+    expect(spawn).not.toHaveBeenCalled();
+  });
+
+  it("rejects an aborted child instead of settling its partial output", async () => {
+    const child = fakeChild();
+    const controller = new AbortController();
+    const promise = runProviderTask({
+      provider: "claude",
+      prompt: "x",
+      cwd: "/tmp",
+      env: {},
+      timeoutMs: 5_000,
+      signal: controller.signal,
+      spawn: (() => child) as unknown as SpawnFn,
+    });
+    child.stdout.emit(
+      "data",
+      Buffer.from(JSON.stringify({ type: "result", result: "partial" }) + "\n"),
+    );
+    controller.abort();
+    child.emit("close", null);
+    await expect(promise).rejects.toThrow(/task aborted/);
+  });
+
+  it("retries a transient opencode SQLite lock and then succeeds", async () => {
+    let attempts = 0;
+    const spawn: SpawnFn = () => {
+      attempts += 1;
+      const child = fakeChild();
+      queueMicrotask(() => {
+        if (attempts === 1) {
+          child.stderr.emit("data", Buffer.from("database is locked"));
+          child.emit("close", 1);
+        } else {
+          child.stdout.emit(
+            "data",
+            Buffer.from(JSON.stringify({ type: "text", part: { type: "text", text: "recovered" } }) + "\n"),
+          );
+          child.emit("close", 0);
+        }
+      });
+      return child as never;
+    };
+    const result = await runProviderTask({
+      provider: "opencode",
+      prompt: "x",
+      cwd: "/tmp",
+      env: {},
+      timeoutMs: 5_000,
+      spawn,
+    });
+    expect(attempts).toBe(2);
+    expect(result.reply).toBe("recovered");
+  });
+
+  it("neutralizes a prompt that begins with a dash", () => {
+    const args = buildRunArgs({ provider: "claude", prompt: "--version" });
+    expect(args[args.length - 1]).toBe(" --version");
+    expect(args.some((a) => a === "--version")).toBe(false);
+  });
+
+  it("classifies transient locks and appends auth hints", () => {
+    expect(isTransientLock("database is locked")).toBe(true);
+    expect(isTransientLock("SQLITE_BUSY: db busy")).toBe(true);
+    expect(isTransientLock("segfault")).toBe(false);
+    expect(withAuthHint("Unexpected server error")).toMatch(/credentials/);
+    expect(withAuthHint("plain failure")).toBe("plain failure");
+  });
+});
+
+describe("mailbox machinery", () => {
+  it("createLock serializes overlapping async work", async () => {
+    const lock = createLock();
+    const order: Array<string> = [];
+    const slow = lock(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+      order.push("slow");
+    });
+    const fast = lock(async () => {
+      order.push("fast");
+    });
+    await Promise.all([slow, fast]);
+    expect(order).toEqual(["slow", "fast"]);
+  });
+
+  it("createLock keeps the chain alive after a rejection", async () => {
+    const lock = createLock();
+    await expect(lock(async () => Promise.reject(new Error("boom")))).rejects.toThrow("boom");
+    await expect(lock(async () => "next")).resolves.toBe("next");
+  });
+
+  it("mailbox dispatches decoded frames and keeps going when a handler throws", async () => {
+    const messages = [
+      { id: "1", from: "peer", timestamp: "t", type: "CIPHERTEXT", text: encodeTaskFrame({ kind: "task", taskId: "a", text: "one" }) },
+      { id: "2", from: "peer", timestamp: "t", type: "CIPHERTEXT", text: "plain chatter" },
+    ];
+    const agent = {
+      readMessages: vi.fn(async () => messages),
+    };
+    const errors: Array<unknown> = [];
+    const seen: Array<string> = [];
+    const mailbox = createMailbox(agent as never, {
+      lock: createLock(),
+      onError: (error) => errors.push(error),
+    });
+    mailbox.onMessage((_, message, frame) => {
+      seen.push(frame ? `frame:${frame.taskId}` : `plain:${message.text}`);
+      throw new Error("handler exploded");
+    });
+    await expect(mailbox.tickOnce()).resolves.toBeUndefined();
+    // Both messages of the destructive batch were dispatched despite the throw.
+    expect(seen).toEqual(["frame:a", "plain:plain chatter"]);
+    expect(errors).toHaveLength(2);
+  });
+
+  it("tickOnce reports read failures through onError and rethrows", async () => {
+    const agent = {
+      readMessages: vi.fn(async () => {
+        throw new Error("relay down");
+      }),
+    };
+    const errors: Array<unknown> = [];
+    const mailbox = createMailbox(agent as never, {
+      lock: createLock(),
+      onError: (error) => errors.push(error),
+    });
+    await expect(mailbox.tickOnce()).rejects.toThrow("relay down");
+    expect(errors).toHaveLength(1);
+  });
+
+  it("contact auto-accepter accepts each incoming request", async () => {
+    const accepted: Array<string> = [];
+    const agent = {
+      client: {
+        contacts: {
+          requests: vi.fn(async () => ({
+            incoming: [{ agentId: "peer1" }, { agentId: "peer2" }],
+            outgoing: [],
+          })),
+          accept: vi.fn(async (id: string) => {
+            accepted.push(id);
+            return {};
+          }),
+        },
+      },
+    };
+    const accepter = createContactAutoAccepter(agent as never, {
+      lock: createLock(),
+      intervalMs: 10_000,
+      onAccept: () => {},
+    });
+    accepter.start();
+    await vi.waitFor(() => expect(accepted).toEqual(["peer1", "peer2"]));
+    accepter.stop();
+  });
+
+  it("makePathLookup finds executables only on PATH dirs", () => {
+    const lookup = makePathLookup({ PATH: "/definitely/not/a/dir" });
+    expect(lookup("some-untraceable-binary-xyz")).toBe(false);
+    const shLookup = makePathLookup({ PATH: "/bin:/usr/bin" });
+    expect(shLookup("sh")).toBe(true);
   });
 });
 

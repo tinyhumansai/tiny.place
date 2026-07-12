@@ -143,6 +143,14 @@ export function buildRunArgs(options: {
   extraArgs?: ReadonlyArray<string>;
 }): Array<string> {
   const extra = options.extraArgs ?? [];
+  // A prompt beginning with "-" would be parsed as a CLI flag by the provider
+  // (an argument-injection vector, since task text is remote-controlled). None
+  // of the three CLIs documents `--` termination, so neutralize with a leading
+  // space instead: the token no longer starts with "-" and the model sees an
+  // insignificant leading space.
+  const prompt = options.prompt.startsWith("-")
+    ? ` ${options.prompt}`
+    : options.prompt;
   switch (options.provider) {
     case "claude":
       return [
@@ -151,7 +159,7 @@ export function buildRunArgs(options: {
         "stream-json",
         "--verbose",
         ...extra,
-        options.prompt,
+        prompt,
       ];
     case "codex":
       return [
@@ -159,7 +167,7 @@ export function buildRunArgs(options: {
         "--json",
         ...(options.model ? ["-m", options.model] : []),
         ...extra,
-        options.prompt,
+        prompt,
       ];
     case "opencode":
       return [
@@ -170,7 +178,7 @@ export function buildRunArgs(options: {
         "--format",
         "json",
         ...extra,
-        options.prompt,
+        prompt,
       ];
   }
 }
@@ -191,15 +199,52 @@ export function withAuthHint(message: string): string {
     : message;
 }
 
+/** Transient-lock retry policy (opencode's SQLite store under concurrency). */
+const LOCK_RETRY_ATTEMPTS = 5;
+const LOCK_RETRY_BASE_MS = 250;
+
 /**
  * Run one delegated task headlessly and return the agent's final answer. Streams
  * semantic events to `onEvent` as they arrive; captures assistant text for the
  * reply and falls back to the raw stdout tail when a provider emits no parseable
- * assistant message.
+ * assistant message. Transient opencode SQLite-lock exits are retried with
+ * jittered exponential backoff (concurrent starts contend on its session store).
  */
-export function runProviderTask(
+export async function runProviderTask(
   options: RunTaskOptions,
 ): Promise<RunTaskResult> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await runProviderAttempt(options);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        !isTransientLock(message) ||
+        attempt >= LOCK_RETRY_ATTEMPTS ||
+        options.signal?.aborted
+      ) {
+        throw error;
+      }
+      // Jittered backoff so a burst of workers desynchronizes instead of all
+      // retrying into the same lock window.
+      const delay = LOCK_RETRY_BASE_MS * 2 ** (attempt - 1) * (0.5 + Math.random());
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, delay));
+    }
+  }
+}
+
+/** A record that never terminates in a newline is dropped past this size — a
+ *  noisy provider must not grow the line buffer without bound. */
+const MAX_RECORD_BYTES = 1_048_576;
+
+/** One spawn of the provider CLI (the single attempt behind the retry loop). */
+function runProviderAttempt(options: RunTaskOptions): Promise<RunTaskResult> {
+  if (options.signal?.aborted) {
+    // Queued work aborted (e.g. daemon shutdown) — never spawn a new CLI.
+    return Promise.reject(
+      new Error(`${options.provider} task aborted before start`),
+    );
+  }
   const spawn = options.spawn ?? defaultSpawn;
   const args = buildRunArgs({
     provider: options.provider,
@@ -285,6 +330,11 @@ export function runProviderTask(
         stdoutBuffer = stdoutBuffer.slice(newline + 1);
         newline = stdoutBuffer.indexOf("\n");
       }
+      // A record that huge is not parseable JSONL — drop it rather than let a
+      // noisy provider grow the buffer without bound (the tail keeps evidence).
+      if (stdoutBuffer.length > MAX_RECORD_BYTES) {
+        stdoutBuffer = "";
+      }
     });
     child.stderr?.on("data", (chunk: Buffer) => {
       stderrTail = tail(stderrTail + chunk.toString());
@@ -300,6 +350,12 @@ export function runProviderTask(
       if (settled) return;
       settled = true;
       cleanup();
+      // An aborted child exits with code null (signal kill); its partial output
+      // must never settle as a normal reply.
+      if (options.signal?.aborted) {
+        reject(new Error(`${options.provider} task aborted`));
+        return;
+      }
       if (stdoutBuffer.trim()) {
         consumeLine(stdoutBuffer);
       }

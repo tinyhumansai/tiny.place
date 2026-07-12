@@ -34,6 +34,15 @@ const DEFAULT_CONCURRENCY = 2;
 const DEFAULT_TASK_TIMEOUT_MS = 600_000;
 const DEFAULT_POLL_MS = 2_000;
 
+/** Require a positive-integer flag (or its default); reject 0/negative/NaN. */
+function positiveIntFlag(flags: Flags, name: string, fallback: number): number {
+  const value = numberFlag(flags, name) ?? fallback;
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`--${name} must be a positive integer (got ${value})`);
+  }
+  return value;
+}
+
 function parseProviders(flags: Flags): Array<HarnessProvider> | undefined {
   const raw = listFlag(flags, "providers");
   if (!raw) return undefined;
@@ -88,20 +97,40 @@ export async function runDaemon(
     );
   }
 
-  const requestedDefault = stringFlag(flags, "default-provider") as
-    | HarnessProvider
-    | undefined;
+  // An explicit --default-provider must exist AND be detected — silently
+  // substituting another provider would run tasks on a coding service the
+  // operator did not select.
+  const requestedDefault = stringFlag(flags, "default-provider");
+  if (
+    requestedDefault !== undefined &&
+    !providers.includes(requestedDefault as HarnessProvider)
+  ) {
+    throw new Error(
+      `--default-provider "${requestedDefault}" is not available; detected: ${providers.join(", ")}`,
+    );
+  }
   const defaultProvider =
-    requestedDefault && providers.includes(requestedDefault)
-      ? requestedDefault
-      : (providers[0] as HarnessProvider);
+    (requestedDefault as HarnessProvider | undefined) ??
+    (providers[0] as HarnessProvider);
 
   const workspace = resolve(stringFlag(flags, "workspace") ?? process.cwd());
-  const concurrency = numberFlag(flags, "concurrency") ?? DEFAULT_CONCURRENCY;
-  const taskTimeoutMs =
-    numberFlag(flags, "task-timeout-ms") ?? DEFAULT_TASK_TIMEOUT_MS;
-  const pollMs = numberFlag(flags, "poll-ms") ?? DEFAULT_POLL_MS;
+  const concurrency = positiveIntFlag(flags, "concurrency", DEFAULT_CONCURRENCY);
+  const taskTimeoutMs = positiveIntFlag(
+    flags,
+    "task-timeout-ms",
+    DEFAULT_TASK_TIMEOUT_MS,
+  );
+  const pollMs = positiveIntFlag(flags, "poll-ms", DEFAULT_POLL_MS);
+  const maxPending = positiveIntFlag(flags, "max-pending", 16);
   const statusThrottleMs = numberFlag(flags, "status-throttle-ms");
+  if (
+    statusThrottleMs !== undefined &&
+    (!Number.isInteger(statusThrottleMs) || statusThrottleMs < 0)
+  ) {
+    throw new Error(
+      `--status-throttle-ms must be a non-negative integer (got ${statusThrottleMs})`,
+    );
+  }
   const model = stringFlag(flags, "model");
   const opencodeAgent = stringFlag(flags, "opencode-agent");
   const handle = stringFlag(flags, "handle");
@@ -140,6 +169,7 @@ export async function runDaemon(
     env: ctx.env,
     taskTimeoutMs,
     concurrency,
+    maxPending,
     ...(statusThrottleMs !== undefined ? { statusThrottleMs } : {}),
     ...(model ? { model } : {}),
     ...(opencodeAgent ? { agent: opencodeAgent } : {}),
@@ -180,9 +210,11 @@ export async function runDaemon(
   });
 
   if (once) {
-    // Test/probe hook: accept pending contacts, drain the inbox once, then exit.
+    // Test/probe hook: accept pending contacts, drain the inbox once, wait for
+    // every started task to settle (handlers are fire-and-forget), then exit.
     await accepterTick(agent, lock, log);
     await mailbox.tickOnce();
+    await runtime.idle();
     log("--once complete");
     return summary("once");
   }

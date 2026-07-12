@@ -125,7 +125,13 @@ export function createMailbox(agent: Agent, options: MailboxOptions): Mailbox {
     for (const message of messages) {
       const frame = decodeTaskFrame(message.text);
       for (const handler of handlers) {
-        handler(message.from, message, frame);
+        // Reads are destructive, so a throwing handler must not abort dispatch
+        // of the rest of the batch — those messages would be lost forever.
+        try {
+          handler(message.from, message, frame);
+        } catch (error) {
+          options.onError?.(error);
+        }
       }
     }
   }
@@ -147,8 +153,14 @@ export function createMailbox(agent: Agent, options: MailboxOptions): Mailbox {
       handlers.add(handler);
       return () => handlers.delete(handler);
     },
-    tickOnce() {
-      return poll();
+    async tickOnce() {
+      // Same reporting as the loop, but rethrow so a one-shot caller fails loud.
+      try {
+        await poll();
+      } catch (error) {
+        options.onError?.(error);
+        throw error;
+      }
     },
     start() {
       if (running) return;

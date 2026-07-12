@@ -423,6 +423,7 @@ interface OpenCodePart {
 /** Terminal opencode tool states — the snapshot carries the tool's output. */
 const OPENCODE_TERMINAL_STATES = new Set(["completed", "error", "done"]);
 
+/** Maps one `opencode run --format json` stream line into typed events. */
 export function opencodeEventsFromLine(
   raw: string,
   line: number,
