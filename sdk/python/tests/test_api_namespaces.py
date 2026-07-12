@@ -69,6 +69,28 @@ async def test_keys_routes_base64_public_keys_as_url_safe_segments() -> None:
     assert session.requests[1]["headers"]["X-Agent-ID"] == agent_id
 
 
+async def test_keys_keeps_non_canonical_base64_like_ids_on_legacy_route() -> None:
+    signer = LocalSigner.from_seed(bytes([26]) * 32)
+    session = FakeSession([FakeResponse(200, {"ok": True}) for _ in range(2)])
+    client = TinyPlaceClient(
+        base_url="https://api.example.test",
+        signer=signer,
+        session=session,  # type: ignore[arg-type]
+    )
+
+    await client.keys.get_bundle("h71YEo+jgSQJ8bG0msq/ES3I4A0K9oKRA5Eqq3yY4Q8===")
+    await client.keys.get_bundle("h71YEo+jgSQJ8bG0msq/ES3I4A0K9oKRA5Eqq3yY4Qé=")
+
+    paths = [
+        request["url"].replace("https://api.example.test", "")
+        for request in session.requests
+    ]
+    assert paths == [
+        "/keys/h71YEo%2BjgSQJ8bG0msq%2FES3I4A0K9oKRA5Eqq3yY4Q8%3D%3D%3D/bundle",
+        "/keys/h71YEo%2BjgSQJ8bG0msq%2FES3I4A0K9oKRA5Eqq3yY4Q%C3%A9%3D/bundle",
+    ]
+
+
 async def test_directory_routes() -> None:
     session = FakeSession([FakeResponse(200, {"ok": True}) for _ in range(9)])
     signer = LocalSigner.from_seed(bytes([23]) * 32)

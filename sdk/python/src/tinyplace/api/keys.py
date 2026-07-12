@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from ..http import HttpClient, encode
 from ..types import Json, JsonDict
 
@@ -45,9 +47,7 @@ def _key_route_id(agent_id: str) -> str:
 def _looks_like_base64_public_key(value: str) -> bool:
     if len(value) < 40 or not any(marker in value for marker in "+/="):
         return False
-    return all(char.isalnum() or char in "+/=" for char in value) and (
-        value.rstrip("=").count("=") == 0
-    )
+    return bool(re.fullmatch(r"[A-Za-z0-9+/]+={0,2}", value))
 
 
 def _base64_to_base64url(value: str) -> str:
