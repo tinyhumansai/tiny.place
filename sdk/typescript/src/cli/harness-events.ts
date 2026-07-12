@@ -61,6 +61,44 @@ export function harnessEventsFromLine(
   return mapper ? mapper(raw, line) : [];
 }
 
+// Codex records every assistant message twice, on adjacent lines with the same
+// timestamp: an `event_msg:agent_message` and a `response_item:message`. Both
+// shapes stay mapped above (neither is guaranteed present across codex
+// versions/modes — the v1 mapper and `codex exec --json` streams have seen
+// each alone), so the per-stream mapper drops the repeat instead: an
+// agent_message whose text equals the previous one within this window is the
+// same message re-recorded, not a new turn.
+const CODEX_DUPLICATE_WINDOW_MS = 2000;
+
+/** Stateful per-stream mapper. Wraps `harnessEventsFromLine` and, for codex,
+ *  dedupes the double-recorded assistant message so downstream consumers (the
+ *  wrapper tailer and the daemon provider runner) see each message exactly
+ *  once. Create one per tailed session / child stream — the dedupe state must
+ *  not leak across streams. */
+export function createHarnessLineMapper(
+  provider: HarnessProvider,
+): HarnessLineMapper {
+  if (provider !== "codex") {
+    return (raw, line) => harnessEventsFromLine(provider, raw, line);
+  }
+  let lastText: string | undefined;
+  let lastAtMs = Number.NEGATIVE_INFINITY;
+  return (raw, line) =>
+    harnessEventsFromLine(provider, raw, line).filter((semantic) => {
+      if (semantic.event.kind !== "agent_message") {
+        return true;
+      }
+      const text = semantic.event.payload.text;
+      const atMs = semantic.timestamp.getTime();
+      const duplicate =
+        text === lastText &&
+        Math.abs(atMs - lastAtMs) <= CODEX_DUPLICATE_WINDOW_MS;
+      lastText = text;
+      lastAtMs = atMs;
+      return !duplicate;
+    });
+}
+
 // ── Claude ───────────────────────────────────────────────────────────────────
 
 export function claudeEventsFromLine(

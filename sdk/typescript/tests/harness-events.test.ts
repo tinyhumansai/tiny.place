@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   claudeEventsFromLine,
   codexEventsFromLine,
+  createHarnessLineMapper,
   harnessEventsFromLine,
   normalizeToolKind,
   toolDisplay,
@@ -341,6 +342,78 @@ describe("codexEventsFromLine", () => {
       5,
     );
     expect(events[0].event.payload).toMatchObject({ ok: false, is_error: true });
+  });
+});
+
+describe("createHarnessLineMapper (codex duplicate assistant records)", () => {
+  // Codex v0.144 rollout JSONL records every assistant message twice, on
+  // adjacent lines with the same timestamp — these mirror the real shapes.
+  const eventMsgLine = (text: string, timestamp: string): string =>
+    claudeLine({
+      type: "event_msg",
+      timestamp,
+      payload: { type: "agent_message", message: text, phase: "final_answer" },
+    });
+  const responseItemLine = (text: string, timestamp: string): string =>
+    claudeLine({
+      type: "response_item",
+      timestamp,
+      payload: {
+        type: "message",
+        role: "assistant",
+        content: [{ type: "output_text", text }],
+      },
+    });
+
+  it("emits a single agent_message for the event_msg + response_item pair", () => {
+    const map = createHarnessLineMapper("codex");
+    const at = "2026-07-12T10:00:00.000Z";
+    const events = [
+      ...map(eventMsgLine("all done", at), 1),
+      ...map(responseItemLine("all done", at), 2),
+    ];
+    expect(kinds(events)).toStrictEqual(["agent_message"]);
+    expect(events[0].event.payload).toMatchObject({ text: "all done" });
+  });
+
+  it("keeps distinct messages and a genuine later repeat", () => {
+    const map = createHarnessLineMapper("codex");
+    const events = [
+      ...map(eventMsgLine("first", "2026-07-12T10:00:00.000Z"), 1),
+      ...map(responseItemLine("first", "2026-07-12T10:00:00.000Z"), 2),
+      ...map(eventMsgLine("second", "2026-07-12T10:00:01.000Z"), 3),
+      ...map(responseItemLine("second", "2026-07-12T10:00:01.000Z"), 4),
+      // Same text again much later — a real new turn, not the double record.
+      ...map(eventMsgLine("first", "2026-07-12T10:05:00.000Z"), 5),
+    ];
+    const texts = events.map(
+      (event) => (event.event.payload as { text: string }).text,
+    );
+    expect(kinds(events)).toStrictEqual([
+      "agent_message",
+      "agent_message",
+      "agent_message",
+    ]);
+    expect(texts).toStrictEqual(["first", "second", "first"]);
+  });
+
+  it("still emits when only one record shape is present", () => {
+    // Neither shape is guaranteed across codex versions/modes, so a stream
+    // carrying only response_item (or only event_msg) must not lose messages.
+    const map = createHarnessLineMapper("codex");
+    const events = map(
+      responseItemLine("lone reply", "2026-07-12T10:00:00.000Z"),
+      1,
+    );
+    expect(kinds(events)).toStrictEqual(["agent_message"]);
+  });
+
+  it("does not dedupe across separate mapper instances (per-stream state)", () => {
+    const at = "2026-07-12T10:00:00.000Z";
+    const first = createHarnessLineMapper("codex")(eventMsgLine("hi", at), 1);
+    const second = createHarnessLineMapper("codex")(eventMsgLine("hi", at), 1);
+    expect(kinds(first)).toStrictEqual(["agent_message"]);
+    expect(kinds(second)).toStrictEqual(["agent_message"]);
   });
 });
 

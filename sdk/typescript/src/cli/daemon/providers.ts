@@ -4,7 +4,7 @@
  * The daemon runs a delegated task by spawning the requested coding-agent CLI
  * **once**, non-interactively, with the instruction as the prompt, then folds
  * the CLI's streaming output through the shared semantic-event mappers
- * (`harnessEventsFromLine`) — the same parser the interactive wrapper uses — to
+ * (`createHarnessLineMapper`) — the same parser the interactive wrapper uses — to
  * derive status updates and the final agent message. This is the headless
  * complement to `harness-wrapper.ts`: that module wraps a human-driven PTY
  * session and tails its transcript files; this one drives a one-shot run and
@@ -20,7 +20,7 @@ import { accessSync, constants } from "node:fs";
 import { delimiter, join } from "node:path";
 
 import {
-  harnessEventsFromLine,
+  createHarnessLineMapper,
   type HarnessSemanticEvent,
 } from "../harness-events.js";
 import type { HarnessProvider } from "../../types/harness.js";
@@ -257,6 +257,9 @@ function runProviderAttempt(options: RunTaskOptions): Promise<RunTaskResult> {
   const child = spawn(bin, args, { cwd: options.cwd, env: options.env });
 
   return new Promise<RunTaskResult>((resolvePromise, reject) => {
+    // Per-run stateful mapper: dedupes codex's double-recorded assistant
+    // message so `messages` collects each reply exactly once.
+    const mapEventsFromLine = createHarnessLineMapper(options.provider);
     const messages: Array<string> = [];
     let claudeResult: string | undefined;
     let events = 0;
@@ -311,7 +314,7 @@ function runProviderAttempt(options: RunTaskOptions): Promise<RunTaskResult> {
           claudeResult = result;
         }
       }
-      for (const event of harnessEventsFromLine(options.provider, raw, line)) {
+      for (const event of mapEventsFromLine(raw, line)) {
         events += 1;
         options.onEvent?.(event);
         if (event.event.kind === "agent_message") {

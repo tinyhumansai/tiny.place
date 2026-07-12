@@ -35,8 +35,11 @@ import {
   type StatusPayload,
 } from "../types/harness.js";
 import { bridgeLog } from "./bridge-debug.js";
-import { harnessEventsFromLine } from "./harness-events.js";
-import type { HarnessSemanticEvent } from "./harness-events.js";
+import { createHarnessLineMapper } from "./harness-events.js";
+import type {
+  HarnessLineMapper,
+  HarnessSemanticEvent,
+} from "./harness-events.js";
 import {
   buildEventEnvelopeV2,
   type EnvelopeContext,
@@ -669,13 +672,18 @@ export class HarnessSessionTailer {
   private status: SessionStatusState = initialStatus();
   private v2Seq = 0;
   private lastHeartbeatMs = 0;
+  // Stateful per-stream mapper: dedupes codex's double-recorded assistant
+  // message (event_msg + response_item for the same turn).
+  private readonly mapEventsFromLine: HarnessLineMapper;
 
   public constructor(
     private readonly config: HarnessWrapperConfig,
     private readonly cwd: string,
     private readonly dryRunOutput: Writable,
     private readonly publisher: SessionEnvelopePublisher,
-  ) {}
+  ) {
+    this.mapEventsFromLine = createHarnessLineMapper(config.provider);
+  }
 
   public start(startedAt: Date): void {
     this.startedAt = startedAt;
@@ -764,11 +772,7 @@ export class HarnessSessionTailer {
           this.write(message);
         }
         if (this.config.emitV2) {
-          for (const event of harnessEventsFromLine(
-            this.config.provider,
-            raw,
-            line,
-          )) {
+          for (const event of this.mapEventsFromLine(raw, line)) {
             this.writeV2(event);
           }
         }

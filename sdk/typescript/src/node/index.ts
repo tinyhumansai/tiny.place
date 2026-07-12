@@ -25,6 +25,7 @@ export { FileSessionStore } from "./file-session-store.js";
 export {
   claudeEventsFromLine,
   codexEventsFromLine,
+  createHarnessLineMapper,
   harnessEventsFromLine,
   normalizeToolKind,
   opencodeEventsFromLine,
