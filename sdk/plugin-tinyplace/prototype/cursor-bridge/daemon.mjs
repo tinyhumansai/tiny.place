@@ -10,10 +10,31 @@
 // (System Preferences → Privacy & Security → Accessibility → enable your terminal
 // / node). First push fails loudly in the log if it's not granted.
 import { spawnSync } from "node:child_process";
-import { build, OPENHUMAN, log, recordPush, withLock } from "./common.mjs";
+import { existsSync, statSync } from "node:fs";
+import {
+  build,
+  OPENHUMAN,
+  log,
+  recordPush,
+  withLock,
+  AWAITING,
+} from "./common.mjs";
 
 const POLL_MS = Number(process.env.BRIDGE_POLL_MS) || 3000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// The approval hook holds this flag while it waits for an OpenHuman allow/deny; it
+// must be the SOLE inbox reader then, so the daemon pauses. Ignore a stale flag
+// (crashed hook) older than 6 min so a crash can't wedge reverse delivery forever.
+function approvalPending() {
+  try {
+    return (
+      existsSync(AWAITING) && Date.now() - statSync(AWAITING).mtimeMs < 360_000
+    );
+  } catch {
+    return false;
+  }
+}
 
 function extractText(raw) {
   try {
@@ -75,6 +96,12 @@ log(
 
 for (;;) {
   try {
+    // While an approval is pending, the hook owns the inbox (it's watching for the
+    // allow/deny DM) — don't drain it out from under them.
+    if (approvalPending()) {
+      await sleep(POLL_MS);
+      continue;
+    }
     // Serialize session-store access with the hooks (which SEND on the same store)
     // so the Double Ratchet state isn't corrupted by concurrent read/write (→ 400).
     const msgs = await withLock(() =>

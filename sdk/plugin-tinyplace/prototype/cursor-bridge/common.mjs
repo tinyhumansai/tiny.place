@@ -1,10 +1,9 @@
 // Shared wiring for the Cursor⇄OpenHuman bidirectional bridge prototype.
 // Uses the built TypeScript SDK (sdk/typescript/dist) directly — it must be
-// >= 2.0.2, which fetches peer bundles by base58 cryptoId; older builds (e.g.
-// the 1.0.1 in a stale node_modules) fetch by the base64 key and 404 on any key
-// containing "/". Build it first: `pnpm --filter @tinyhumansai/tinyplace build`.
-// The dist path is resolved relative to THIS file (repo-portable, cwd-independent,
-// since Cursor runs hooks from arbitrary dirs); override with TINYPLACE_SDK_DIST.
+// >= 2.0.2, which fetches peer bundles by base58 cryptoId; older builds fetch by
+// the base64 key and 404 on any key containing "/". Build it first:
+// `pnpm --filter @tinyhumansai/tinyplace build`. The dist path is resolved
+// relative to THIS file (repo-portable, cwd-independent); override TINYPLACE_SDK_DIST.
 import {
   readFileSync,
   writeFileSync,
@@ -40,6 +39,32 @@ export const log = (m) => {
     appendFileSync(LOG, `${new Date().toISOString()} ${m}\n`);
   } catch {}
 };
+
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// OpenHuman sends its replies as a SessionEnvelopeV1 JSON body (role "owner").
+// Pull the human-readable text out; fall back to the raw string for plain DMs.
+export function extractText(raw) {
+  try {
+    const o = JSON.parse(raw);
+    if (
+      o &&
+      o.envelope_version &&
+      o.message &&
+      typeof o.message.text === "string"
+    ) {
+      return o.message.text;
+    }
+  } catch {
+    /* plain DM */
+  }
+  return raw;
+}
+
+// Flag file the approval hook sets while it waits for an OpenHuman allow/deny, so
+// the reverse daemon PAUSES inbox draining (the hook must be the sole reader then,
+// or it would race the daemon for the decision DM).
+export const AWAITING = join(HOME, ".awaiting-approval");
 
 // ── cross-process mutex ──────────────────────────────────────────────────────
 // The daemon (reverse: reads inbox) and the hook processes (forward: send) both
@@ -116,7 +141,33 @@ export async function build() {
     signer,
     encryption: { store },
   });
-  return { signer, client, agent };
+  return { signer, client, agent, store };
+}
+
+// Send with self-healing: on an encryption/session error (the intermittent
+// "body must be encrypted ciphertext" 400 or a ratchet desync), drop the stale
+// session with the recipient and retry once so a fresh X3DH re-establishes it.
+// Prevents a single desynced message from silently dropping a forwarded reply.
+export async function sendWithRetry(ctx, recipient, body) {
+  const { client, signer, agent, store } = ctx;
+  try {
+    return await agent.sendMessage(client, signer, recipient, body);
+  } catch (e) {
+    if (
+      !/encrypted ciphertext|HTTP 400|No session|ratchet|decrypt/i.test(
+        String(e?.message),
+      )
+    ) {
+      throw e;
+    }
+    try {
+      const to = await agent.resolveRecipientKey(client, recipient);
+      await store.removeSession(to);
+    } catch {
+      /* best-effort reset */
+    }
+    return await agent.sendMessage(client, signer, recipient, body);
+  }
 }
 
 // ── echo suppression ──────────────────────────────────────────────────────────
@@ -184,5 +235,45 @@ export function envelope({ role, text, convId, cwd }) {
       timestamp: new Date().toISOString(),
     },
     source: { path: "cursor", record_type: role },
+  });
+}
+
+// SessionEnvelopeV2 with a typed `approval_request` event. OpenHuman's orchestration
+// ingest (classify_v2) maps this to eventKind "approval_request" (display → body,
+// tool_name, call_id) and the SessionTranscript renders an Allow/Deny card. Uses the
+// SAME wrapper_session_id as the chat turns so it threads into the same session; the
+// user's button reply comes back as a plain "allow"/"deny" DM.
+export function approvalEnvelope({
+  toolName,
+  display,
+  convId,
+  cwd,
+  requestId,
+}) {
+  const sid = convId || "cursor-session";
+  return JSON.stringify({
+    envelope_version: "tinyplace.harness.session.v2",
+    version: 2,
+    scope: {
+      type: "session",
+      key: "cursor",
+      cwd: cwd || "",
+      wrapper_session_id: sid,
+      harness_session_id: sid,
+    },
+    harness: { provider: "cursor", command: "cursor", argv: [] },
+    event: {
+      id: requestId,
+      seq: Date.now(),
+      ts: new Date().toISOString(),
+      role: "agent",
+      kind: "approval_request",
+      payload: {
+        tool_name: toolName || "shell",
+        display: display || "",
+        call_id: requestId,
+      },
+    },
+    source: { path: "cursor", record_type: "approval_request" },
   });
 }

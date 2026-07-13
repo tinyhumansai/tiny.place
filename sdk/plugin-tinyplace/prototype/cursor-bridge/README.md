@@ -17,6 +17,12 @@
   encrypted inbox and, on a new OpenHuman DM, pastes it into Cursor's chat and
   submits — so OpenHuman's messages appear in the **live Cursor GUI** and get
   answered, and the answer flows back to OpenHuman. Full loop.
+- **Tool-approval routing (OpenHuman decides):** Cursor's `beforeShellExecution` /
+  `beforeMCPExecution` hooks route the approval to OpenHuman — the hook posts a v2
+  `approval_request` event (rendered as a native **Allow/Deny card** by OpenHuman)
+  and **blocks** until the user replies `allow`/`deny` there, then returns that as
+  the hook's permission. So you approve a Cursor tool call from OpenHuman without
+  switching to Cursor. On timeout it falls back to Cursor's own prompt (`ask`).
 
 ## Architecture
 
@@ -25,13 +31,13 @@ Cursor GUI  ──beforeSubmitPrompt/afterAgentResponse hooks──▶  hook.mjs
 Cursor GUI  ◀──paste+Enter (daemon, macOS automation)──────  daemon.mjs ◀──Signal DM──  OpenHuman
 ```
 
-| File             | Role                                                                                                                                                                         |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `common.mjs`     | Shared SDK wiring (client/signer/FileSessionStore), the `SessionEnvelopeV1` builder, the cross-process lock, and echo-suppression records.                                   |
-| `hook.mjs`       | The Cursor hook handler. Dispatches on `hook_event_name`: forwards user/assistant turns, auto-approves shell/MCP/read gates, no-ops on `stop` (reverse is the daemon's job). |
-| `daemon.mjs`     | Long-running reverse-push loop: poll inbox → paste each OpenHuman message into Cursor.                                                                                       |
-| `postkeys.swift` | Experiment: `CGEventPostToPid` background key injection. **Does not work** for Cursor (see Findings) — kept as evidence.                                                     |
-| `setup.mjs`      | One-time: mint the bridge identity, publish Signal keys, send OpenHuman a contact request.                                                                                   |
+| File             | Role                                                                                                                                                                                                                                          |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `common.mjs`     | Shared SDK wiring (client/signer/FileSessionStore), the `SessionEnvelopeV1` + v2 `approval_request` builders, the cross-process lock, echo-suppression records, and `sendWithRetry` (self-heals a desynced session on a `400`/encrypt error). |
+| `hook.mjs`       | The Cursor hook handler. Forwards user/assistant turns; routes `beforeShellExecution`/`beforeMCPExecution` to OpenHuman for approval (blocks for the decision); auto-allows file reads; no-ops on `stop` (reverse is the daemon's job).       |
+| `daemon.mjs`     | Long-running reverse-push loop: poll inbox → paste each OpenHuman message into Cursor. Pauses while an approval is pending so the hook owns the decision DM.                                                                                  |
+| `postkeys.swift` | Experiment: `CGEventPostToPid` background key injection. **Does not work** for Cursor (see Findings) — kept as evidence.                                                                                                                      |
+| `setup.mjs`      | One-time: mint the bridge identity, publish Signal keys, send OpenHuman a contact request.                                                                                                                                                    |
 
 ## Setup
 
@@ -66,8 +72,8 @@ Cursor GUI  ◀──paste+Enter (daemon, macOS automation)──────  d
        "beforeSubmitPrompt": [{ "command": "/abs/bridge.sh", "timeout": 30 }],
        "afterAgentResponse": [{ "command": "/abs/bridge.sh", "timeout": 30 }],
        "stop": [{ "command": "/abs/bridge.sh", "timeout": 30 }],
-       "beforeShellExecution": [{ "command": "/abs/bridge.sh", "timeout": 15 }],
-       "beforeMCPExecution": [{ "command": "/abs/bridge.sh", "timeout": 15 }],
+       "beforeShellExecution": [{ "command": "/abs/bridge.sh", "timeout": 300 }],
+       "beforeMCPExecution": [{ "command": "/abs/bridge.sh", "timeout": 300 }],
        "beforeReadFile": [{ "command": "/abs/bridge.sh", "timeout": 15 }]
      }
    }
@@ -121,6 +127,22 @@ Now chat in Cursor (mirrors to OpenHuman) and message the bridge from OpenHuman
 
 7. **First-contact ratchet desync** can drop the very first DM; recover with a
    session reset + re-handshake, then resend.
+
+8. **The Signal session between two independently-managed stores is fragile.** The
+   app resets its store on restart while the bridge accumulates state, and the
+   daemon (reads) + hooks (sends) touch the same store concurrently. Once the
+   Double Ratchet diverges, `readMessages` **silently drops** what it can't
+   decrypt, so the receiving side never learns to reset — it stays broken until a
+   manual re-handshake. `sendWithRetry` self-heals the _sending_ side (reset the
+   session + retry on a `400`/encrypt error), but the _receiving_ side has no
+   equivalent (you can't retry a silent drop). A production adapter should own
+   both identities' stores or add an explicit re-key signal rather than lean on
+   two loosely-coupled ratchets.
+
+9. **Approval outcome must be derived, not just local state.** OpenHuman renders
+   the resolved Allow/Deny card from the persisted decision message (not only the
+   click), so it survives a reload — the button-only version reverted to
+   unresolved on remount.
 
 ## ⚠️ Security caveats (demo only)
 
