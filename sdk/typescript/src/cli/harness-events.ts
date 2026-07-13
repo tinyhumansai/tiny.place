@@ -124,7 +124,9 @@ export function claudeEventsFromLine(
         ? [userPromptEvent(line, timestamp, message.content)]
         : [];
     }
-    return blocks.flatMap((block) => claudeUserBlock(block, line, timestamp));
+    return blocks.flatMap((block) =>
+      claudeUserBlock(block, line, timestamp),
+    );
   }
 
   // An `assistant` record carries text / thinking / tool_use blocks.
@@ -315,10 +317,8 @@ export function codexEventsFromLine(
   }
 
   if (type === "function_call" || type === "tool_search_call") {
-    const toolName =
-      asString(payload.name) ?? asString(payload.query) ?? "tool";
-    const input =
-      parseMaybeJson(payload.arguments) ?? payload.query ?? payload.input;
+    const toolName = asString(payload.name) ?? asString(payload.query) ?? "tool";
+    const input = parseMaybeJson(payload.arguments) ?? payload.query ?? payload.input;
     return [
       {
         line,
@@ -511,11 +511,7 @@ export function opencodeEventsFromLine(
     ];
   }
 
-  if (
-    type === "reasoning" &&
-    typeof part.text === "string" &&
-    part.text.trim()
-  ) {
+  if (type === "reasoning" && typeof part.text === "string" && part.text.trim()) {
     return [
       {
         line,
@@ -599,8 +595,7 @@ function describeOpenCodeError(error: unknown): string | undefined {
   }
   const name =
     typeof object.name === "string" && object.name ? `${object.name}: ` : "";
-  const ref =
-    data && typeof data.ref === "string" && data.ref ? ` (${data.ref})` : "";
+  const ref = data && typeof data.ref === "string" && data.ref ? ` (${data.ref})` : "";
   return `${name}${message}${ref}`;
 }
 

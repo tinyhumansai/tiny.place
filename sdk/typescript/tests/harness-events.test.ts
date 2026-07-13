@@ -28,10 +28,7 @@ describe("claudeEventsFromLine", () => {
       claudeLine({
         type: "assistant",
         timestamp: "2026-07-07T10:00:00.000Z",
-        message: {
-          role: "assistant",
-          content: [{ type: "text", text: "hello" }],
-        },
+        message: { role: "assistant", content: [{ type: "text", text: "hello" }] },
       }),
       1,
     );
@@ -141,12 +138,7 @@ describe("claudeEventsFromLine", () => {
           role: "assistant",
           content: [
             { type: "text", text: "running now" },
-            {
-              type: "tool_use",
-              id: "toolu_x",
-              name: "Read",
-              input: { file_path: "/a/b.ts" },
-            },
+            { type: "tool_use", id: "toolu_x", name: "Read", input: { file_path: "/a/b.ts" } },
           ],
         },
       }),
@@ -165,14 +157,7 @@ describe("claudeEventsFromLine", () => {
         type: "assistant",
         message: {
           role: "assistant",
-          content: [
-            {
-              type: "tool_use",
-              id: "toolu_9",
-              name: "Bash",
-              input: { command: "ls" },
-            },
-          ],
+          content: [{ type: "tool_use", id: "toolu_9", name: "Bash", input: { command: "ls" } }],
         },
       }),
       7,
@@ -182,9 +167,7 @@ describe("claudeEventsFromLine", () => {
         type: "user",
         message: {
           role: "user",
-          content: [
-            { type: "tool_result", tool_use_id: "toolu_9", content: "a\nb" },
-          ],
+          content: [{ type: "tool_result", tool_use_id: "toolu_9", content: "a\nb" }],
         },
       }),
       8,
@@ -197,9 +180,7 @@ describe("claudeEventsFromLine", () => {
 
   it("returns nothing for an unparseable line", () => {
     expect(claudeEventsFromLine("not json", 9)).toStrictEqual([]);
-    expect(
-      claudeEventsFromLine(claudeLine({ type: "system" }), 10),
-    ).toStrictEqual([]);
+    expect(claudeEventsFromLine(claudeLine({ type: "system" }), 10)).toStrictEqual([]);
   });
 
   it("byte-caps multi-byte tool_result output within the byte budget", () => {
@@ -212,18 +193,14 @@ describe("claudeEventsFromLine", () => {
         type: "user",
         message: {
           role: "user",
-          content: [
-            { type: "tool_result", tool_use_id: "toolu_big", content: huge },
-          ],
+          content: [{ type: "tool_result", tool_use_id: "toolu_big", content: huge }],
         },
       }),
       11,
     );
     const output = (events[0].event.payload as { output: string }).output;
     const elisionBytes = Buffer.byteLength("\n…[truncated]", "utf8");
-    expect(Buffer.byteLength(output, "utf8")).toBeLessThanOrEqual(
-      4096 + elisionBytes,
-    );
+    expect(Buffer.byteLength(output, "utf8")).toBeLessThanOrEqual(4096 + elisionBytes);
     expect(output.endsWith("…[truncated]")).toBe(true);
     expect(output).not.toContain("�");
   });
@@ -249,30 +226,19 @@ describe("claudeEventsFromLine", () => {
     const input = (big[0].event.payload as { input: unknown }).input;
     const elisionBytes = Buffer.byteLength("\n…[truncated]", "utf8");
     expect(typeof input).toBe("string");
-    expect(Buffer.byteLength(input as string, "utf8")).toBeLessThanOrEqual(
-      4096 + elisionBytes,
-    );
+    expect(Buffer.byteLength(input as string, "utf8")).toBeLessThanOrEqual(4096 + elisionBytes);
 
     const small = claudeEventsFromLine(
       claudeLine({
         type: "assistant",
         message: {
           role: "assistant",
-          content: [
-            {
-              type: "tool_use",
-              id: "t2",
-              name: "Read",
-              input: { file_path: "/a.ts" },
-            },
-          ],
+          content: [{ type: "tool_use", id: "t2", name: "Read", input: { file_path: "/a.ts" } }],
         },
       }),
       13,
     );
-    expect((small[0].event.payload as { input: unknown }).input).toEqual({
-      file_path: "/a.ts",
-    });
+    expect((small[0].event.payload as { input: unknown }).input).toEqual({ file_path: "/a.ts" });
   });
 });
 
@@ -377,10 +343,7 @@ describe("codexEventsFromLine", () => {
       }),
       5,
     );
-    expect(events[0].event.payload).toMatchObject({
-      ok: false,
-      is_error: true,
-    });
+    expect(events[0].event.payload).toMatchObject({ ok: false, is_error: true });
   });
 });
 
@@ -460,19 +423,13 @@ describe("harnessEventsFromLine dispatch", () => {
   it("routes by provider", () => {
     const claude = harnessEventsFromLine(
       "claude",
-      claudeLine({
-        type: "assistant",
-        message: { role: "assistant", content: [{ type: "text", text: "x" }] },
-      }),
+      claudeLine({ type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "x" }] } }),
       1,
     );
     expect(claude[0].event.kind).toBe("agent_message");
     const codex = harnessEventsFromLine(
       "codex",
-      claudeLine({
-        type: "event_msg",
-        payload: { type: "user_message", message: "y" },
-      }),
+      claudeLine({ type: "event_msg", payload: { type: "user_message", message: "y" } }),
       1,
     );
     expect(codex[0].event.kind).toBe("user_prompt");
@@ -481,10 +438,7 @@ describe("harnessEventsFromLine dispatch", () => {
   it("returns [] for an unregistered provider instead of guessing a branch", () => {
     const events = harnessEventsFromLine(
       "gemini" as HarnessProvider,
-      claudeLine({
-        type: "assistant",
-        message: { role: "assistant", content: [{ type: "text", text: "x" }] },
-      }),
+      claudeLine({ type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "x" }] } }),
       1,
     );
     expect(events).toStrictEqual([]);

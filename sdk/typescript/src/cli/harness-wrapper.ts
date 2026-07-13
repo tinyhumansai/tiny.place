@@ -214,13 +214,7 @@ const PROFILES: Record<HarnessProvider, HarnessWrapperProfile> = {
     binEnv: ["TINYPLACE_OPENCODE_BIN"],
     defaultBin: "opencode",
     defaultOutDir: join(homedir(), ".tinyplace", "opencode-envelopes"),
-    defaultSessionsDir: join(
-      homedir(),
-      ".local",
-      "share",
-      "opencode",
-      "sessions",
-    ),
+    defaultSessionsDir: join(homedir(), ".local", "share", "opencode", "sessions"),
     terminalEnvelopeVersion: "tinyplace.opencode.terminal.v1",
   },
 };

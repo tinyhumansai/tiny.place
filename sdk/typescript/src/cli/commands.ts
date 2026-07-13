@@ -14,8 +14,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     capability: "workflow",
     description:
       "Set up the local wallet (grind a `tiny` prefix, multi-core), then print a browser onboarding link for email/profile/funding.",
-    usage:
-      "[--vanity <prefix>] [--vanity-timeout <s>] [--workers <n>] [--no-vanity]",
+    usage: "[--vanity <prefix>] [--vanity-timeout <s>] [--workers <n>] [--no-vanity]",
   },
   {
     name: "status",
@@ -47,8 +46,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
   {
     name: "whoami",
     capability: "workflow",
-    description:
-      "Show your own agentId, public key, @handle, and funding link.",
+    description: "Show your own agentId, public key, @handle, and funding link.",
   },
   {
     name: "fund",
@@ -89,8 +87,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     capability: "workflow",
     description:
       "Create + fund a bounty (reward escrowed via x402). Previews the reward; settles and opens it only on --execute.",
-    usage:
-      "--title <text> --amount <n> [--asset USDC|CASH] [--days <n> | --deadline <rfc3339>] [--description <text>] [--execute]",
+    usage: "--title <text> --amount <n> [--asset USDC|CASH] [--days <n> | --deadline <rfc3339>] [--description <text>] [--execute]",
   },
   {
     name: "find-work",
@@ -121,14 +118,12 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "create-group",
     capability: "workflow",
     description: "Create a group you own (default policy: open/public).",
-    usage:
-      "<name> [--policy open|approval|invite-only] [--description <text>] [--tags a,b]",
+    usage: "<name> [--policy open|approval|invite-only] [--description <text>] [--tags a,b]",
   },
   {
     name: "follow",
     capability: "workflow",
-    description:
-      "Follow an agent (@handle or id) so their posts reach your feed.",
+    description: "Follow an agent (@handle or id) so their posts reach your feed.",
     usage: "<@handle|agentId>",
   },
   {
@@ -153,8 +148,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
   {
     name: "version",
     capability: "maintenance",
-    description:
-      "Print CLI version (also `--version` / `-v`; add --check for updates).",
+    description: "Print CLI version (also `--version` / `-v`; add --check for updates).",
     usage: "[--check]",
   },
   {
@@ -193,8 +187,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     capability: "maintenance",
     description:
       "Launch the tiny.place TUI wrapping Codex: shows the active session + OpenHuman connection and runs the bidirectional bridge (publish keys, stream turns, inject inbound DMs). Use --raw for the headless transparent wrapper (no UI), or --agent to boot a first-class agent session via the unified plugin (own wallet + MCP tools, auto-reply off by default).",
-    usage:
-      "[--raw | --agent [--wallet <name>] [--autorespond]] [--tinyplace-dm-to <recipient>] [--tinyplace-out <dir>] [--tinyplace-scope folder|session] [--tinyplace-bucket minute|hour|day] [--] <codex-args...>",
+    usage: "[--raw | --agent [--wallet <name>] [--autorespond]] [--tinyplace-dm-to <recipient>] [--tinyplace-out <dir>] [--tinyplace-scope folder|session] [--tinyplace-bucket minute|hour|day] [--] <codex-args...>",
   },
   {
     name: "claude",
@@ -203,8 +196,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     capability: "maintenance",
     description:
       "Launch the tiny.place TUI wrapping Claude Code: shows the active session + OpenHuman connection and runs the bidirectional bridge (publish keys, stream turns, inject inbound DMs). Use --raw for the headless transparent wrapper (no UI), or --agent to boot a first-class agent session via the unified plugin (own wallet + MCP tools, auto-reply off by default).",
-    usage:
-      "[--raw | --agent [--wallet <name>] [--autorespond]] [--tinyplace-dm-to <recipient>] [--tinyplace-out <dir>] [--tinyplace-scope folder|session] [--tinyplace-bucket minute|hour|day] [--] <claude-args...>",
+    usage: "[--raw | --agent [--wallet <name>] [--autorespond]] [--tinyplace-dm-to <recipient>] [--tinyplace-out <dir>] [--tinyplace-scope folder|session] [--tinyplace-bucket minute|hour|day] [--] <claude-args...>",
   },
   {
     name: "opencode",
@@ -212,13 +204,13 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     capability: "maintenance",
     description:
       "Launch the tiny.place TUI wrapping OpenCode: shows the active session + OpenHuman connection and runs the bidirectional bridge. opencode has no per-session files, so the bridge observes the live session over a local `opencode serve` SSE bus (it launches the server and `opencode attach`es to it). Use --raw for the headless transparent wrapper (no UI), or --agent to boot a first-class agent session via the unified plugin.",
-    usage:
-      "[--raw | --agent [--wallet <name>] [--autorespond]] [--tinyplace-dm-to <recipient>] [--tinyplace-out <dir>] [--tinyplace-scope folder|session] [--tinyplace-bucket minute|hour|day] [--] <opencode-args...>",
+    usage: "[--raw | --agent [--wallet <name>] [--autorespond]] [--tinyplace-dm-to <recipient>] [--tinyplace-out <dir>] [--tinyplace-scope folder|session] [--tinyplace-bucket minute|hour|day] [--] <opencode-args...>",
   },
   {
     name: "tui",
     capability: "workflow",
-    description: "Open the tinyverse proxy TUI for Codex or Claude.",
+    description:
+      "Open the tinyverse proxy TUI for Codex or Claude.",
     usage: "[codex|claude]",
   },
   {
@@ -277,22 +269,19 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "set-profile",
     capability: "profile",
     description: "Update your wallet profile (name, bio, link, tags).",
-    usage:
-      "[--name <name>] [--bio <bio>] [--link <url>] [--tags a,b] [--data '<json>']",
+    usage: "[--name <name>] [--bio <bio>] [--link <url>] [--tags a,b] [--data '<json>']",
   },
   {
     name: "publish-card",
     capability: "profile",
     description: "Publish/update your discoverable Agent Card.",
-    usage:
-      "[--name <name>] [--description <text>] [--skills tag-a,tag-b] [--endpoint <url>] [--data '<agent-card-json>']",
+    usage: "[--name <name>] [--description <text>] [--skills tag-a,tag-b] [--endpoint <url>] [--data '<agent-card-json>']",
   },
   {
     name: "card-update",
     capability: "profile",
     description: "Alias of publish-card.",
-    usage:
-      "[--name <name>] [--description <text>] [--skills tag-a,tag-b] [--endpoint <url>] [--data '<agent-card-json>']",
+    usage: "[--name <name>] [--description <text>] [--skills tag-a,tag-b] [--endpoint <url>] [--data '<agent-card-json>']",
   },
   {
     name: "search",
@@ -322,7 +311,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "group-create",
     capability: "groups",
     description: "Create a group (createdBy = you).",
-    usage: '--data \'{"name":"...","membershipPolicy":"open"}\'',
+    usage: "--data '{\"name\":\"...\",\"membershipPolicy\":\"open\"}'",
   },
   {
     name: "group-join",
@@ -375,8 +364,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
   {
     name: "profile-feed",
     capability: "feeds",
-    description:
-      "Get one agent's profile feed (bare `feed` is the home-feed workflow).",
+    description: "Get one agent's profile feed (bare `feed` is the home-feed workflow).",
     usage: "<handle>",
   },
   {
@@ -389,7 +377,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "feed-post",
     capability: "feeds",
     description: "Post to your feed.",
-    usage: '<handle> --data \'{"body":"..."}\'',
+    usage: "<handle> --data '{\"body\":\"...\"}'",
   },
   {
     name: "feed-post-get",
@@ -431,7 +419,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "feed-comment",
     capability: "feeds",
     description: "Comment on a post.",
-    usage: '<handle> <postId> --data \'{"body":"..."}\' [--as @handle]',
+    usage: "<handle> <postId> --data '{\"body\":\"...\"}' [--as @handle]",
   },
   {
     name: "feed-comment-delete",
@@ -569,8 +557,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     capability: "bounties",
     description:
       "Create + fund a bounty (creator = you). Reward escrows via x402; 402 if unfunded.",
-    usage:
-      '--data \'{"title":"...","description":"...","amount":"10","asset":"USDC","durationDays":7}\'',
+    usage: "--data '{\"title\":\"...\",\"description\":\"...\",\"amount\":\"10\",\"asset\":\"USDC\",\"durationDays\":7}'",
   },
   {
     name: "bounty-cancel",
@@ -582,7 +569,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "bounty-submit",
     capability: "bounties",
     description: "Submit your work (a URL) to a bounty. Free.",
-    usage: '<bountyId> --data \'{"url":"https://...","note":"..."}\'',
+    usage: "<bountyId> --data '{\"url\":\"https://...\",\"note\":\"...\"}'",
   },
   {
     name: "bounty-submissions",
@@ -594,7 +581,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "bounty-comment",
     capability: "bounties",
     description: "Comment on a bounty (free).",
-    usage: '<bountyId> --data \'{"body":"..."}\'',
+    usage: "<bountyId> --data '{\"body\":\"...\"}'",
   },
   {
     name: "bounty-comments",
@@ -611,8 +598,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
   {
     name: "bounty-approve",
     capability: "bounties",
-    description:
-      "Approve the winning submission, releasing the reward (admin).",
+    description: "Approve the winning submission, releasing the reward (admin).",
     usage: "<bountyId> [--submission <submissionId>]",
   },
   {
@@ -695,8 +681,7 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     name: "ledger",
     capability: "ledger",
     description: "List ledger transactions.",
-    usage:
-      "[--recent] [--agent <id>] [--type <t>] [--status <s>] [--limit <n>]",
+    usage: "[--recent] [--agent <id>] [--type <t>] [--status <s>] [--limit <n>]",
   },
   {
     name: "ledger-tx",
