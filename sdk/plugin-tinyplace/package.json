@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
-    "@tinyhumansai/tinyplace": "^1.0.1",
+    "@tinyhumansai/tinyplace": "^2.0.4",
     "zod": "^3.25.0"
   }
 }
