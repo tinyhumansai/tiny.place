@@ -51,6 +51,12 @@ import {
   type SessionStatusState,
 } from "./harness-status.js";
 import { makeContext } from "./context.js";
+import { makePathLookup } from "./daemon/providers.js";
+import {
+  OpenCodeEventSource,
+  startOpenCodeServer,
+  type OpenCodeServerHandle,
+} from "./opencode-source.js";
 import type { TinyPlaceCliOptions, TinyPlaceCliResult } from "./types.js";
 import type { Writable } from "node:stream";
 
@@ -162,7 +168,7 @@ interface SessionMeta {
   sessionId: string;
 }
 
-interface SemanticMessage {
+export interface SemanticMessage {
   line: number;
   phase?: string;
   recordType: string;
@@ -229,15 +235,62 @@ export async function runHarnessCommand(
   };
   const writer = new TerminalEnvelopeWriter(config, cwd, stdio.stderr);
   const publisher = new SessionEnvelopePublisher(config, options, stdio.stderr);
-  const sessionTailer = config.captureSession
-    ? new HarnessSessionTailer(config, cwd, stdio.stderr, publisher)
-    : undefined;
   const receiver = config.receiveEnabled
     ? new InboundMessageReceiver(config, publisher, stdio.stderr)
     : undefined;
-  const launch = buildAgentLaunch(config);
 
   const usePty = config.usePty && options.spawn === undefined;
+  // opencode has no per-session transcript files — it is observed over its
+  // HTTP server's SSE bus instead of the file tailer, and only when a real TTY
+  // is present (its bridge attaches to an interactive `opencode attach` TUI).
+  const opencodeBridge =
+    provider === "opencode" && config.captureSession && usePty;
+
+  const sessionTailer =
+    config.captureSession && provider !== "opencode"
+      ? new HarnessSessionTailer(config, cwd, stdio.stderr, publisher)
+      : undefined;
+
+  let opencodeServer: OpenCodeServerHandle | undefined;
+  let opencodeSource: OpenCodeEventSource | undefined;
+  let launch = buildAgentLaunch(config);
+
+  if (opencodeBridge) {
+    if (!makePathLookup(env)(config.agentBin)) {
+      return {
+        code: 1,
+        stdout: "",
+        stderr: `${JSON.stringify(
+          {
+            error:
+              `opencode not found on PATH as \`${config.agentBin}\`. Install it ` +
+              "(https://opencode.ai) or set TINYPLACE_OPENCODE_BIN to its path.",
+          },
+          null,
+          2,
+        )}\n`,
+      };
+    }
+    opencodeServer = await startOpenCodeServer({
+      bin: config.agentBin,
+      cwd,
+      env,
+    });
+    opencodeSource = new OpenCodeEventSource(config, cwd, stdio.stderr, publisher);
+    opencodeSource.start(`${opencodeServer.url}/event`);
+    // Attach the interactive TUI to the server we observe, so the human's
+    // session and our SSE bridge share one process.
+    launch = {
+      command: config.agentBin,
+      args: ["attach", opencodeServer.url, ...config.agentArgs],
+    };
+  } else if (provider === "opencode" && config.captureSession && !usePty) {
+    stdio.stderr.write(
+      "[tinyplace] opencode's session bridge needs a TTY (it attaches to the " +
+        "interactive TUI); running opencode without the OpenHuman bridge.\n",
+    );
+  }
+
   writer.pty = usePty;
   writer.write(
     "lifecycle",
@@ -254,22 +307,33 @@ export async function runHarnessCommand(
   const onInputSink = receiver
     ? (write: (text: string) => void): void => receiver.setSink(write)
     : undefined;
-  const exitCode = usePty
-    ? await runPtyAgent(launch, config, cwd, env, writer, stdio, onInputSink)
-    : await runPipeAgent(
-        launch,
-        config,
-        cwd,
-        env,
-        writer,
-        stdio,
-        spawnFn,
-        onInputSink,
-      );
 
-  const dmFailures = (await sessionTailer?.stop()) ?? 0;
-  if (receiver) {
-    await receiver.stop();
+  let exitCode = 1;
+  let dmFailures = 0;
+  try {
+    exitCode = usePty
+      ? await runPtyAgent(launch, config, cwd, env, writer, stdio, onInputSink)
+      : await runPipeAgent(
+          launch,
+          config,
+          cwd,
+          env,
+          writer,
+          stdio,
+          spawnFn,
+          onInputSink,
+        );
+  } finally {
+    // Teardown order: stop the session observer (flushes the publisher) → stop
+    // inbound → kill the opencode server. In a `finally` so a spawn failure
+    // still tears the server down instead of leaking a `serve` process.
+    dmFailures = opencodeSource
+      ? await opencodeSource.stop().catch(() => 0)
+      : ((await sessionTailer?.stop()) ?? 0);
+    if (receiver) {
+      await receiver.stop();
+    }
+    await opencodeServer?.stop().catch(() => undefined);
   }
 
   return {
