@@ -58,6 +58,20 @@ const RESPONDER_TIMEOUT_MS =
 const { wallet, batchDir } = JSON.parse(process.argv[2] ?? "{}");
 if (!wallet || !batchDir || !existsSync(batchDir)) process.exit(0);
 
+const files = readdirSync(batchDir).filter((f) => f.endsWith(".json"));
+const failedDir = join(dirname(dirname(batchDir)), "failed");
+
+// Never silently drop a claimed message: on any non-success, move it to failed/
+// (the final cleanup only removes an EMPTY batch dir).
+function moveToFailed(file) {
+  try {
+    mkdirSync(failedDir, { recursive: true });
+    renameSync(join(batchDir, file), join(failedDir, file));
+  } catch {
+    /* best-effort */
+  }
+}
+
 // Some responders need per-batch setup (Cursor builds an isolated send-only
 // --workspace because cursor-agent sanitizes the MCP child env and runs --yolo).
 // prepare() runs ONCE; its result is merged into the ctx handed to buildArgs.
@@ -73,22 +87,23 @@ if (typeof ADAPTER.responder.prepare === "function") {
       RESPONDER_CTX,
       ADAPTER.responder.prepare(RESPONDER_CTX) || {},
     );
-  } catch {
-    /* best-effort: buildArgs falls back to no --workspace */
-  }
-}
-
-const files = readdirSync(batchDir).filter((f) => f.endsWith(".json"));
-const failedDir = join(dirname(dirname(batchDir)), "failed");
-
-// Never silently drop a claimed message: on any non-success, move it to failed/
-// (the final cleanup only removes an EMPTY batch dir).
-function moveToFailed(file) {
-  try {
-    mkdirSync(failedDir, { recursive: true });
-    renameSync(join(batchDir, file), join(failedDir, file));
-  } catch {
-    /* best-effort */
+  } catch (e) {
+    // FAIL CLOSED. prepare() builds the responder's security guardrail (e.g. the
+    // isolated --workspace that confines cursor-agent's --yolo to a scratch dir).
+    // Spawning with a degraded ctx would run --yolo unconfined against the real
+    // cwd on attacker-controlled DM text — worse than not replying. Abort the
+    // batch, preserving the claimed messages in failed/ for a later retry.
+    console.error(
+      `[respond-batch] responder.prepare failed for wallet=${wallet} ` +
+        `(${files.length} claimed) — aborting batch, no responder spawned: ${e?.message ?? e}`,
+    );
+    for (const f of files) moveToFailed(f);
+    try {
+      rmdirSync(batchDir);
+    } catch {
+      /* not empty / already gone */
+    }
+    process.exit(0);
   }
 }
 
