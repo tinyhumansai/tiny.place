@@ -27,13 +27,18 @@ import {
   SessionEnvelopePublisher,
   parseHarnessWrapperArgs,
 } from "./harness-wrapper.js";
+import {
+  OpenCodeEventSource,
+  startOpenCodeServer,
+  type OpenCodeServerHandle,
+} from "./opencode-source.js";
 import type {
   CliContext,
   TinyPlaceCliOptions,
   TinyPlaceCliResult,
 } from "./types.js";
 
-export type TinyVerseAgentKind = "claude" | "codex";
+export type TinyVerseAgentKind = "claude" | "codex" | "opencode";
 
 type TuiView = "welcome" | "settings" | "agent";
 
@@ -74,6 +79,10 @@ interface AgentProfile {
   // Set when this profile resumes a specific session (home resume pane): drives
   // the `--resume`/`resume` launch arg and a stable per-session OpenHuman scope.
   resumeSessionId?: string;
+  // opencode: this harness is observed over a local server's SSE bus rather than
+  // per-session files, so the TUI boots `opencode serve` before launch and
+  // bridges via `OpenCodeEventSource` instead of the file tailer.
+  serverMode?: boolean;
 }
 
 interface AgentSessionMeta {
@@ -93,6 +102,7 @@ type TuiAction =
   | "launch"
   | "launch-codex"
   | "launch-claude"
+  | "launch-opencode"
   | "connect"
   | "settings"
   | "quit";
@@ -106,6 +116,7 @@ const FIXED_ACTIONS: ReadonlyArray<TuiAction> = [
 const HOME_ACTIONS: ReadonlyArray<TuiAction> = [
   "launch-codex",
   "launch-claude",
+  "launch-opencode",
   "connect",
   "settings",
   "quit",
@@ -149,8 +160,11 @@ export function parseTinyVerseAgentKind(
   if (value === "claude") {
     return "claude";
   }
+  if (value === "opencode") {
+    return "opencode";
+  }
   throw new Error(
-    `unknown tinyverse agent "${value}" (expected codex or claude)`,
+    `unknown tinyverse agent "${value}" (expected codex, claude, or opencode)`,
   );
 }
 
@@ -201,6 +215,10 @@ class BlessedTinyPlaceTui {
   // Real OpenHuman bridge (replaces the mock): publisher + outbound tailer +
   // inbound receiver, reused from the harness wrapper.
   private bridgeTailer?: HarnessSessionTailer;
+  // opencode's non-file session observer (SSE bus) + the `opencode serve` we
+  // launch and attach to; both replace the file tailer for serverMode profiles.
+  private bridgeSource?: OpenCodeEventSource;
+  private opencodeServer?: OpenCodeServerHandle;
   private bridgeReceiver?: InboundMessageReceiver;
   // Home-screen resume pane: the recent sessions across both agents, loaded once
   // at start. Empty in fixed-agent mode.
@@ -502,6 +520,10 @@ class BlessedTinyPlaceTui {
         this.setProfile("claude");
         void this.startAgent();
         return;
+      case "launch-opencode":
+        this.setProfile("opencode");
+        void this.startAgent();
+        return;
       case "connect":
         this.connectOpenHuman();
         return;
@@ -715,7 +737,7 @@ class BlessedTinyPlaceTui {
    *  keys, stream the agent's turns out (tailer), and inject inbound DMs into the
    *  live agent (receiver → writeAgentInput). No-op without a configured owner. */
   private startBridge(): void {
-    if (this.bridgeTailer || this.bridgeReceiver) {
+    if (this.bridgeTailer || this.bridgeSource || this.bridgeReceiver) {
       return;
     }
     const owner = this.resolveOwner();
@@ -756,9 +778,15 @@ class BlessedTinyPlaceTui {
     // file instead so bridge failures are visible while debugging.
     const sink = createBridgeDiagSink();
     const publisher = new SessionEnvelopePublisher(config, this.options, sink);
-    this.bridgeTailer = config.captureSession
-      ? new HarnessSessionTailer(config, cwd, sink, publisher)
-      : undefined;
+    if (this.profile.serverMode && this.opencodeServer) {
+      // opencode: observe the live session over the server's SSE bus.
+      this.bridgeSource = new OpenCodeEventSource(config, cwd, sink, publisher);
+      this.bridgeSource.start(`${this.opencodeServer.url}/event`);
+    } else {
+      this.bridgeTailer = config.captureSession
+        ? new HarnessSessionTailer(config, cwd, sink, publisher)
+        : undefined;
+    }
     this.bridgeReceiver = config.receiveEnabled
       ? new InboundMessageReceiver(config, publisher, sink)
       : undefined;
@@ -793,8 +821,10 @@ class BlessedTinyPlaceTui {
 
   private stopBridge(): void {
     void this.bridgeTailer?.stop();
+    void this.bridgeSource?.stop();
     void this.bridgeReceiver?.stop();
     this.bridgeTailer = undefined;
+    this.bridgeSource = undefined;
     this.bridgeReceiver = undefined;
     this.state = { ...this.state, bridgeLive: false };
   }
@@ -865,6 +895,31 @@ class BlessedTinyPlaceTui {
     if (this.child || this.pty) {
       return;
     }
+    // opencode: boot the server we observe + attach to BEFORE anything spawns,
+    // then prepend `attach <url>` to its launch. A start failure (e.g. opencode
+    // not installed) surfaces as an agent-exit notice instead of a silent hang.
+    if (this.profile.serverMode && !this.opencodeServer) {
+      try {
+        this.opencodeServer = await startOpenCodeServer({
+          bin: this.profile.launch.command,
+          cwd: this.effectiveCwd(),
+          env: childEnv(this.ctx.env),
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.finishAgent(`opencode server failed to start: ${message}`);
+        return;
+      }
+      const attachArgs = [
+        "attach",
+        this.opencodeServer.url,
+        ...this.profile.launch.args,
+      ];
+      this.profile = {
+        ...this.profile,
+        launch: buildLaunch(this.profile.launch.command, attachArgs),
+      };
+    }
     const { launch } = this.profile;
     this.state = {
       ...this.state,
@@ -873,25 +928,29 @@ class BlessedTinyPlaceTui {
       notice: undefined,
       view: "agent",
     };
-    this.agentSessionMonitor = new AgentSessionMonitor(
-      this.ctx,
-      // Locate the resumed/fresh session against the folder it actually runs in.
-      { ...this.options, cwd: this.effectiveCwd() },
-      this.profile,
-      (meta) => {
-        this.state = {
-          ...this.state,
-          activeSessionId: meta.sessionId,
-        };
-        if (this.nativeRelayActive) {
-          this.updateNativeTerminalTitle();
-        } else {
-          this.renderFooter();
-          this.queueScreenRender();
-        }
-      },
-    );
-    this.agentSessionMonitor.start(new Date());
+    // opencode has no per-session files to monitor; its live session id arrives
+    // over the SSE bus, so the file-based AgentSessionMonitor is skipped.
+    if (!this.profile.serverMode) {
+      this.agentSessionMonitor = new AgentSessionMonitor(
+        this.ctx,
+        // Locate the resumed/fresh session against the folder it runs in.
+        { ...this.options, cwd: this.effectiveCwd() },
+        this.profile,
+        (meta) => {
+          this.state = {
+            ...this.state,
+            activeSessionId: meta.sessionId,
+          };
+          if (this.nativeRelayActive) {
+            this.updateNativeTerminalTitle();
+          } else {
+            this.renderFooter();
+            this.queueScreenRender();
+          }
+        },
+      );
+      this.agentSessionMonitor.start(new Date());
+    }
     // Start the real OpenHuman bridge; the receiver's sink reads this.pty/this.child
     // lazily, so starting before spawn is safe (first inbound poll is ~1.5s out).
     this.startBridge();
@@ -1092,10 +1151,12 @@ class BlessedTinyPlaceTui {
    */
   private usesNativeRelay(): boolean {
     const kindMode =
-      this.profile.kind === "claude"
-        ? (this.ctx.env.TINYVERSE_CLAUDE_TERMINAL_MODE ??
-          this.ctx.env.TINYPLACE_CLAUDE_TERMINAL_MODE)
-        : this.ctx.env.TINYPLACE_CODEX_TERMINAL_MODE;
+      this.ctx.env[
+        `TINYPLACE_${this.profile.kind.toUpperCase()}_TERMINAL_MODE`
+      ] ??
+      (this.profile.kind === "claude"
+        ? this.ctx.env.TINYVERSE_CLAUDE_TERMINAL_MODE
+        : undefined);
     const mode = kindMode ?? this.ctx.env.TINYPLACE_TERMINAL_MODE;
     return mode !== "blessed";
   }
@@ -1237,6 +1298,12 @@ class BlessedTinyPlaceTui {
     this.agentSessionMonitor?.stop();
     this.agentSessionMonitor = undefined;
     this.stopBridge();
+    // Tear down the opencode server we launched (best-effort) after the bridge
+    // stops reading its SSE stream.
+    if (this.opencodeServer) {
+      void this.opencodeServer.stop().catch(() => undefined);
+      this.opencodeServer = undefined;
+    }
     this.releaseSessionLockIfHeld();
     this.cleanupNativeRelay();
     this.pty = undefined;
@@ -1596,6 +1663,8 @@ function actionRow(
       return ["[ Start Codex session ]", "{green-fg}"];
     case "launch-claude":
       return ["[ Start Claude session ]", "{green-fg}"];
+    case "launch-opencode":
+      return ["[ Start OpenCode session ]", "{green-fg}"];
     case "connect":
       return [
         state.openHumanConnected
@@ -1681,6 +1750,27 @@ function buildAgentProfile(
       ...(resumeSessionId ? { resumeSessionId } : {}),
     };
   }
+  if (kind === "opencode") {
+    const command = env.TINYPLACE_OPENCODE_BIN ?? "opencode";
+    const args = splitShellWords(env.TINYPLACE_OPENCODE_ARGS ?? "");
+    // opencode has no per-session files and no resume-by-id in the TUI (its
+    // bridge attaches to a fresh server session); resume is a documented
+    // follow-up, so a resumeSessionId is ignored here. The launch args are the
+    // user's extra flags; `attach <url>` is prepended at spawn once the server
+    // is up (startAgent), so `serverMode` is the marker that triggers that.
+    return {
+      disabledPtyEnv: "TINYPLACE_OPENCODE_NO_PTY",
+      displayName: "OpenCode",
+      kind,
+      launch: buildLaunch(command, args),
+      pendingSessionId: "opencode:pending",
+      sessionPollEnv: "TINYPLACE_OPENCODE_SESSION_POLL_MS",
+      sessionsDir:
+        env.TINYPLACE_OPENCODE_SESSIONS_DIR ??
+        join(homedir(), ".local", "share", "opencode", "sessions"),
+      serverMode: true,
+    };
+  }
   const command = env.TINYPLACE_CODEX_BIN ?? "codex";
   const args = splitShellWords(env.TINYPLACE_CODEX_ARGS ?? "");
   // `codex resume <id>` is a subcommand, so it must lead the arg list.
@@ -1724,6 +1814,9 @@ function profileOverrideNames(profile: AgentProfile): Array<string> {
       "TINYPLACE_CLAUDE_ARGS",
       "TINYPLACE_CLAUDE_SESSIONS_DIR",
     ];
+  }
+  if (profile.kind === "opencode") {
+    return ["TINYPLACE_OPENCODE_BIN", "TINYPLACE_OPENCODE_ARGS"];
   }
   return [
     "TINYPLACE_CODEX_BIN",

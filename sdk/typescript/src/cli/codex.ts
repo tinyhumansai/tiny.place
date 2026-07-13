@@ -78,6 +78,19 @@ export async function runClaudeCommand(
  * caller wants to wrap a specific session, so route to the wrapper and honor
  * them; the TUI is reserved for the argument-free onboarding entry.
  */
+/**
+ * `tinyplace opencode` mirrors `tinyplace codex`/`claude` — the same three modes.
+ * opencode has no per-session transcript files, so its bridge observes the live
+ * session over the local server's SSE bus (`opencode serve` + `opencode attach`)
+ * rather than tailing files; the mode dispatch is identical.
+ */
+export async function runOpencodeCommand(
+  argv: Array<string>,
+  options: TinyPlaceCliOptions = {},
+): Promise<TinyPlaceCliResult> {
+  return runHarnessAgentCommand("opencode", argv, options);
+}
+
 async function runHarnessAgentCommand(
   harness: TinyVerseAgentKind,
   argv: Array<string>,

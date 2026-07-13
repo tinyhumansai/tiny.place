@@ -199,6 +199,14 @@ export const HARNESS_CLI_COMMANDS: Array<TinyPlaceCliCommand> = [
     usage: "[--raw | --agent [--wallet <name>] [--autorespond]] [--tinyplace-dm-to <recipient>] [--tinyplace-out <dir>] [--tinyplace-scope folder|session] [--tinyplace-bucket minute|hour|day] [--] <claude-args...>",
   },
   {
+    name: "opencode",
+    // Parity sibling of codex/claude — groups with them in help.
+    capability: "maintenance",
+    description:
+      "Launch the tiny.place TUI wrapping OpenCode: shows the active session + OpenHuman connection and runs the bidirectional bridge. opencode has no per-session files, so the bridge observes the live session over a local `opencode serve` SSE bus (it launches the server and `opencode attach`es to it). Use --raw for the headless transparent wrapper (no UI), or --agent to boot a first-class agent session via the unified plugin.",
+    usage: "[--raw | --agent [--wallet <name>] [--autorespond]] [--tinyplace-dm-to <recipient>] [--tinyplace-out <dir>] [--tinyplace-scope folder|session] [--tinyplace-bucket minute|hour|day] [--] <opencode-args...>",
+  },
+  {
     name: "tui",
     capability: "workflow",
     description:

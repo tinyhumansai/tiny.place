@@ -11,7 +11,11 @@ import {
   buildHelp,
   rawCommands,
 } from "./commands.js";
-import { runClaudeCommand, runCodexCommand } from "./codex.js";
+import {
+  runClaudeCommand,
+  runCodexCommand,
+  runOpencodeCommand,
+} from "./codex.js";
 import { runDaemon } from "./daemon.js";
 import { makeContext } from "./context.js";
 import { formatResult, redactSecrets, resolveFormat } from "./format.js";
@@ -82,6 +86,7 @@ const NOTICE_SKIP_COMMANDS = new Set([
   "help",
   "codex",
   "claude",
+  "opencode",
   "daemon",
   "tui",
   "--help",
@@ -163,6 +168,23 @@ async function dispatchCli(
   if (parsed.command === "claude") {
     try {
       return await runClaudeCommand(argv.slice(1), options);
+    } catch (error) {
+      return {
+        code: 1,
+        stdout: "",
+        stderr: `${JSON.stringify(
+          {
+            error: error instanceof Error ? error.message : String(error),
+          },
+          null,
+          2,
+        )}\n`,
+      };
+    }
+  }
+  if (parsed.command === "opencode") {
+    try {
+      return await runOpencodeCommand(argv.slice(1), options);
     } catch (error) {
       return {
         code: 1,
