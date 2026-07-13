@@ -124,6 +124,17 @@ export class EncryptionContext implements MessageCipher {
     return session.decrypt(envelope.from, senderX25519, envelope);
   }
 
+  /**
+   * Drop the persisted Double Ratchet session for `address` (an already-resolved
+   * base58 cryptoId). The next `encryptEnvelope` finds no session, re-fetches the
+   * peer's pre-key bundle, and bootstraps a fresh X3DH session — the recovery path
+   * for a poisoned/desynced ratchet that makes the relay reject sends. Pre-keys and
+   * identity are untouched; only this peer's session is cleared.
+   */
+  async resetSession(address: string): Promise<void> {
+    await this.store.removeSession(address);
+  }
+
   /** Lazily build the session — the store's identity key load is async. */
   private async getSession(): Promise<SignalSession> {
     if (!this.session) {

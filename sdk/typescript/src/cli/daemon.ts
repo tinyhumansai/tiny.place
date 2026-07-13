@@ -173,7 +173,19 @@ export async function runDaemon(
     ...(statusThrottleMs !== undefined ? { statusThrottleMs } : {}),
     ...(model ? { model } : {}),
     ...(opencodeAgent ? { agent: opencodeAgent } : {}),
-    send: (to, body) => lock(() => agent.sendMessage(to, body)).then(() => {}),
+    send: (to, body) =>
+      lock(async () => {
+        try {
+          await agent.sendMessage(to, body);
+        } catch (error) {
+          if (!isSessionError(error)) throw error;
+          // Poisoned/desynced Signal ratchet — the relay rejects the ciphertext.
+          // Drop the session so the retry re-runs X3DH from a fresh pre-key bundle.
+          log(`session error sending to ${to}, resetting: ${describe(error)}`);
+          await agent.resetSession(to).catch(() => {});
+          await agent.sendMessage(to, body);
+        }
+      }),
     log,
   });
 
@@ -263,4 +275,21 @@ async function accepterTick(
 
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * A send failure that a fresh Signal session can recover from: the relay's 400 on
+ * a not-yet-contact / stale ratchet, or an explicit session/decrypt/prekey fault.
+ * Distinguished from transport/auth errors, which resetting would not fix.
+ */
+function isSessionError(error: unknown): boolean {
+  const e = error as {
+    status?: number;
+    statusCode?: number;
+    code?: string;
+    message?: string;
+  };
+  const status = e?.status ?? e?.statusCode;
+  const text = `${e?.code ?? ""} ${e?.message ?? ""}`.toLowerCase();
+  return status === 400 || /session|ratchet|decrypt|prekey|contact/.test(text);
 }

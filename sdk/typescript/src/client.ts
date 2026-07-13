@@ -251,6 +251,15 @@ export class TinyPlaceClient {
     await this.encryptionContext.publishKeyBundle(options?.preKeyCount);
   }
 
+  /**
+   * Drop the persisted Signal session for `cryptoId` (a resolved base58 address)
+   * so the next send bootstraps a fresh X3DH session. Recovery path for a poisoned
+   * ratchet the relay rejects. No-op when encryption is not configured.
+   */
+  async resetSession(cryptoId: string): Promise<void> {
+    await this.encryptionContext?.resetSession(cryptoId);
+  }
+
   healthz(): Promise<unknown> {
     return this.http.get<unknown>("/healthz");
   }

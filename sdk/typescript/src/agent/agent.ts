@@ -41,6 +41,7 @@ import {
 import {
   publishKeys,
   readMessages,
+  resolveRecipientKey,
   sendMessage,
 } from "./messaging.js";
 import type { PublishKeysResult, ReadMessage, SendMessageResult } from "./messaging.js";
@@ -287,6 +288,17 @@ export class Agent {
   /** Send an encrypted message to a @handle, cryptoId, or messaging key. */
   sendMessage(recipient: string, text: string): Promise<SendMessageResult> {
     return sendMessage(this.client, this.signer, recipient, text);
+  }
+
+  /**
+   * Clear the persisted Signal session for `recipient` (a @handle, cryptoId, or
+   * base64 key — resolved the same way `sendMessage` resolves it) so the next send
+   * re-runs X3DH from the peer's pre-key bundle. Use to recover from a poisoned/
+   * desynced ratchet the relay rejects, then retry the send.
+   */
+  async resetSession(recipient: string): Promise<void> {
+    const to = await resolveRecipientKey(this.client, recipient);
+    await this.client.resetSession(to);
   }
 
   /** Read + decrypt + acknowledge the inbox. */

@@ -158,6 +158,7 @@ export function buildRunArgs(options: {
         "--output-format",
         "stream-json",
         "--verbose",
+        "--dangerously-skip-permissions",
         ...extra,
         prompt,
       ];
