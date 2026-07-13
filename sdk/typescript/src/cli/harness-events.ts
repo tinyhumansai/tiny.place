@@ -606,6 +606,337 @@ function openCodeOutputText(output: unknown): string {
   return safeStringify(output);
 }
 
+// ── OpenCode server bus (SSE `/event`) ───────────────────────────────────────
+//
+// The daemon path (`opencode run --format json`, above) emits a FLAT line shape
+// (`{type:"text"|"tool"|"error", part:{…}}`). The interactive wrapper instead
+// attaches to `opencode serve` and reads its `GET /event` SSE bus, whose frames
+// are NESTED (`{type:"message.part.updated", properties:{sessionID, part}}`) and
+// carry session identity out of band (no per-session file to key on). This
+// mapper folds those bus frames into the same `HarnessSemanticEvent` model,
+// returning the routing keys (`sessionID`/`directory`) alongside the events so
+// the event source can filter the global stream down to its own session.
+//
+// Verified against a live `opencode serve` OpenAPI schema (2026-07-13):
+//   message.part.updated  properties:{ sessionID, part:<Part>, time }
+//     Part union on part.type: text | reasoning | tool | step-* | file | …
+//     ToolPart: { callID, tool, state:{ status: pending|running|completed|error,
+//                 input, output } }; text/reasoning carry a growing `text` and a
+//                 { start, end? } `time`.
+//   message.updated       properties:{ sessionID, info:<UserMessage|Assistant> }
+//   session.created|updated  properties:{ info:{ id, directory } }
+//   session.error         properties:{ error? }
+
+/** Routing keys + typed events folded from one SSE bus frame. */
+export interface OpenCodeBusMapping {
+  /** The session a `message.*` frame belongs to (filter key). */
+  sessionID?: string;
+  /** A `session.*` frame's working directory (matched against the wrapper cwd). */
+  directory?: string;
+  events: Array<HarnessSemanticEvent>;
+}
+
+/** A `Part` as it rides on the SSE bus (superset of the flat `OpenCodePart`). */
+interface OpenCodeBusPart extends OpenCodePart {
+  id?: string;
+  messageID?: string;
+  time?: { start?: number; end?: number };
+}
+
+/**
+ * Stateful bus mapper. Parts arrive as repeated snapshots of the same id/callID
+ * (a tool progresses pending→running→completed; a text part's `text` grows), so
+ * a stateless fold would emit a storm of partial duplicates. This mapper dedupes:
+ *   • tool parts → exactly one `tool_call` (first pending/running snapshot) and
+ *     one `tool_result` (first terminal snapshot; a synthetic call is emitted
+ *     first if the terminal snapshot is the first we ever saw for that callID);
+ *   • text/reasoning parts → one event when the part is terminal (`time.end`)
+ *     or when its message's `message.updated` frame flushes it, whichever first.
+ * `flush()` drains any still-buffered text at stream end. Create ONE per session
+ * stream — the dedupe state must not leak across streams.
+ */
+export interface OpenCodeBusMapper {
+  next(raw: string, line: number): OpenCodeBusMapping;
+  flush(line: number): Array<HarnessSemanticEvent>;
+}
+
+interface BufferedText {
+  kind: "text" | "reasoning";
+  messageID?: string;
+  text: string;
+  line: number;
+  timestamp: Date;
+}
+
+export function createOpenCodeBusMapper(): OpenCodeBusMapper {
+  // callID → whether we've emitted its `tool_call` ("call") or `tool_result`
+  // ("result"). Absent = never seen.
+  const toolState = new Map<string, "call" | "result">();
+  // messageID → author role, learned from `message.updated`, so a buffered text
+  // part is surfaced as an owner prompt vs an agent message.
+  const messageRole = new Map<string, "user" | "assistant">();
+  // partId → latest buffered text/reasoning awaiting a terminal/flush signal.
+  const textBuffers = new Map<string, BufferedText>();
+
+  function emitBuffered(partId: string, line: number): Array<HarnessSemanticEvent> {
+    const buffered = textBuffers.get(partId);
+    if (!buffered) {
+      return [];
+    }
+    textBuffers.delete(partId);
+    const text = buffered.text.trim();
+    if (!text) {
+      return [];
+    }
+    if (buffered.kind === "reasoning") {
+      return [
+        {
+          line,
+          timestamp: buffered.timestamp,
+          recordType: "opencode:reasoning",
+          event: {
+            kind: "agent_thinking",
+            role: "agent",
+            payload: { text },
+          },
+        },
+      ];
+    }
+    const role = buffered.messageID
+      ? messageRole.get(buffered.messageID)
+      : undefined;
+    if (role === "user") {
+      return [userPromptEvent(line, buffered.timestamp, text)];
+    }
+    return [
+      {
+        line,
+        timestamp: buffered.timestamp,
+        recordType: "opencode:text",
+        event: {
+          kind: "agent_message",
+          role: "agent",
+          payload: { text },
+        },
+      },
+    ];
+  }
+
+  function mapToolPart(
+    part: OpenCodeBusPart,
+    line: number,
+    timestamp: Date,
+  ): Array<HarnessSemanticEvent> {
+    const toolName = String(part.tool);
+    const callId = asString(part.callID) ?? asString(part.id) ?? "";
+    const status = (part.state?.status ?? "").toLowerCase();
+    const output = part.state?.output;
+    const terminal =
+      OPENCODE_TERMINAL_STATES.has(status) ||
+      (output !== undefined && output !== null && output !== "");
+    const prev = toolState.get(callId);
+
+    const callEvent = (): HarnessSemanticEvent => ({
+      line,
+      timestamp,
+      recordType: "opencode:tool_call",
+      event: {
+        kind: "tool_call",
+        role: "agent",
+        payload: {
+          call_id: callId,
+          tool_name: toolName,
+          tool_kind: normalizeToolKind(toolName),
+          display: toolDisplay(toolName, part.state?.input),
+          input: boundToolInput(part.state?.input),
+        },
+      },
+    });
+
+    if (terminal) {
+      if (prev === "result") {
+        return [];
+      }
+      const outputText = openCodeOutputText(output);
+      const isError = status === "error";
+      const events: Array<HarnessSemanticEvent> = [];
+      if (prev !== "call") {
+        events.push(callEvent());
+      }
+      events.push({
+        line,
+        timestamp,
+        recordType: "opencode:tool_result",
+        event: {
+          kind: "tool_result",
+          role: "agent",
+          payload: {
+            call_id: callId,
+            ok: !isError,
+            is_error: isError,
+            output: truncate(outputText),
+            output_bytes: byteLength(outputText),
+          },
+        },
+      });
+      toolState.set(callId, "result");
+      return events;
+    }
+
+    if (prev) {
+      return [];
+    }
+    toolState.set(callId, "call");
+    return [callEvent()];
+  }
+
+  function mapPart(
+    part: OpenCodeBusPart,
+    line: number,
+    frameTime: Date,
+  ): Array<HarnessSemanticEvent> {
+    const type = asString(part.type);
+    if (type === "tool" && part.tool) {
+      return mapToolPart(part, line, frameTime);
+    }
+    if (type === "text" || type === "reasoning") {
+      const partId = asString(part.id) ?? "";
+      if (!partId || typeof part.text !== "string") {
+        return [];
+      }
+      const timestamp = part.time?.start
+        ? new Date(part.time.start)
+        : frameTime;
+      textBuffers.set(partId, {
+        kind: type,
+        ...(asString(part.messageID) ? { messageID: part.messageID } : {}),
+        text: part.text,
+        line,
+        timestamp,
+      });
+      // A part with an end time is final — surface it now.
+      if (part.time?.end !== undefined) {
+        return emitBuffered(partId, line);
+      }
+      return [];
+    }
+    return [];
+  }
+
+  return {
+    next(raw: string, line: number): OpenCodeBusMapping {
+      const record = parseJsonObject(raw);
+      if (!record) {
+        return { events: [] };
+      }
+      const type = asString(record.type);
+      const properties = asObject(record.properties) ?? {};
+      const frameTime = opencodeBusTimestamp(properties.time);
+
+      if (type === "session.created" || type === "session.updated") {
+        const info = asObject(properties.info);
+        return {
+          ...(asString(info?.id) ? { sessionID: asString(info?.id) } : {}),
+          ...(asString(info?.directory)
+            ? { directory: asString(info?.directory) }
+            : {}),
+          events: [],
+        };
+      }
+
+      if (type === "session.error") {
+        const message =
+          describeOpenCodeError(properties.error) ??
+          safeStringify(properties.error ?? record);
+        return {
+          ...(asString(properties.sessionID)
+            ? { sessionID: asString(properties.sessionID) }
+            : {}),
+          events: [
+            {
+              line,
+              timestamp: frameTime,
+              recordType: "opencode:session.error",
+              event: {
+                kind: "error",
+                role: "agent",
+                payload: { message: truncate(message), fatal: false },
+              },
+            },
+          ],
+        };
+      }
+
+      if (type === "message.updated") {
+        const info = asObject(properties.info);
+        const messageID = asString(info?.id);
+        const role = asString(info?.role);
+        if (messageID && (role === "user" || role === "assistant")) {
+          messageRole.set(messageID, role);
+        }
+        // Flush any buffered text for this message now that its role is known.
+        const events: Array<HarnessSemanticEvent> = [];
+        if (messageID) {
+          for (const [partId, buffered] of [...textBuffers.entries()]) {
+            if (buffered.messageID === messageID) {
+              events.push(...emitBuffered(partId, line));
+            }
+          }
+        }
+        return {
+          ...(asString(properties.sessionID)
+            ? { sessionID: asString(properties.sessionID) }
+            : {}),
+          events,
+        };
+      }
+
+      if (type === "message.part.updated") {
+        const part = asObject(properties.part) as OpenCodeBusPart | undefined;
+        return {
+          ...(asString(properties.sessionID)
+            ? { sessionID: asString(properties.sessionID) }
+            : {}),
+          events: part ? mapPart(part, line, frameTime) : [],
+        };
+      }
+
+      // server.connected, session.next.*, and everything else: routing no-ops.
+      return { events: [] };
+    },
+
+    flush(line: number): Array<HarnessSemanticEvent> {
+      const events: Array<HarnessSemanticEvent> = [];
+      for (const partId of [...textBuffers.keys()]) {
+        events.push(...emitBuffered(partId, line));
+      }
+      return events;
+    },
+  };
+}
+
+/**
+ * Stateless single-frame fold — routing keys + a naive event view of one bus
+ * frame (no cross-frame dedup/buffering). Handy for tests and callers that only
+ * need routing; the live wrapper uses `createOpenCodeBusMapper` for de-duped
+ * streaming. A fresh mapper per call means a text/reasoning part only surfaces
+ * when the frame is already terminal (`time.end`).
+ */
+export function opencodeEventsFromBusEvent(
+  raw: string,
+  line: number,
+): OpenCodeBusMapping {
+  return createOpenCodeBusMapper().next(raw, line);
+}
+
+/** Bus frames stamp `time` as epoch ms; fall back to receive time. */
+function opencodeBusTimestamp(value: unknown): Date {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return new Date(value);
+  }
+  return parseTimestamp(value);
+}
+
 // ── shared helpers ───────────────────────────────────────────────────────────
 
 function userPromptEvent(
