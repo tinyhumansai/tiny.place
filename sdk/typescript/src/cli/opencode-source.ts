@@ -132,6 +132,7 @@ function waitForReady(
       child.stdout?.off("data", onData);
       child.stderr?.off("data", onData);
       child.off("exit", onExit);
+      child.off("error", onError);
       if (error) {
         reject(error);
       } else {
@@ -145,6 +146,8 @@ function waitForReady(
     );
     const onExit = (code: number | null): void =>
       done(new Error(`opencode serve exited before ready (code ${code})`));
+    const onError = (error: Error): void =>
+      done(new Error(`opencode serve failed to spawn: ${error.message}`));
     const onData = (chunk: Buffer | string): void => {
       if (/listening on\s+http/i.test(String(chunk))) {
         done();
@@ -152,6 +155,7 @@ function waitForReady(
     };
 
     child.on("exit", onExit);
+    child.on("error", onError);
     child.stdout?.on("data", onData);
     child.stderr?.on("data", onData);
 
@@ -369,7 +373,13 @@ function v1FromSemantic(
 ): SemanticMessage | undefined {
   const { line, timestamp, recordType } = event;
   if (event.event.kind === "user_prompt") {
-    return { line, timestamp, recordType, role: "user", text: event.event.payload.text };
+    return {
+      line,
+      timestamp,
+      recordType,
+      role: "user",
+      text: event.event.payload.text,
+    };
   }
   if (event.event.kind === "agent_message") {
     return {

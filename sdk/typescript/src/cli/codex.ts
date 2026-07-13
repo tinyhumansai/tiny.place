@@ -119,7 +119,10 @@ export function parseCodexWrapperArgs(
 // ── Agent (TUI) mode ─────────────────────────────────────────────────────────
 
 /** Args after the first `--` are forwarded verbatim; our flags live before it. */
-function splitAtForward(argv: Array<string>): { pre: Array<string>; post: Array<string> } {
+function splitAtForward(argv: Array<string>): {
+  pre: Array<string>;
+  post: Array<string>;
+} {
   const at = argv.indexOf("--");
   if (at === -1) return { pre: argv, post: [] };
   return { pre: argv.slice(0, at), post: argv.slice(at + 1) };
@@ -139,7 +142,9 @@ export function wantsRawMode(argv: Array<string>): boolean {
 function stripFlag(argv: Array<string>, flag: string): Array<string> {
   const { pre, post } = splitAtForward(argv);
   const kept = pre.filter((a) => a !== flag);
-  return post.length > 0 || argv.includes("--") ? [...kept, "--", ...post] : kept;
+  return post.length > 0 || argv.includes("--")
+    ? [...kept, "--", ...post]
+    : kept;
 }
 
 /** The published launcher package + its bin subpath, resolved when installed. */
@@ -168,7 +173,9 @@ function resolveUnifiedLauncher(): string | null {
     dir = parent;
   }
   try {
-    return createRequire(import.meta.url).resolve(`${PLUGIN_PACKAGE}/${PLUGIN_BIN_SUBPATH}`);
+    return createRequire(import.meta.url).resolve(
+      `${PLUGIN_PACKAGE}/${PLUGIN_BIN_SUBPATH}`,
+    );
   } catch {
     return null;
   }
@@ -262,17 +269,27 @@ async function runAgentTui(
   // LLM-answers strangers should never be implicit.
   const baseEnv = options.env ?? process.env;
   const childEnv: NodeJS.ProcessEnv = { ...baseEnv };
-  if (!childEnv.TINYPLACE_API_URL) childEnv.TINYPLACE_API_URL = resolveBaseUrl(baseEnv);
+  if (!childEnv.TINYPLACE_API_URL)
+    childEnv.TINYPLACE_API_URL = resolveBaseUrl(baseEnv);
   if (!autorespond && childEnv.TINYPLACE_AUTORESPOND === undefined) {
     childEnv.TINYPLACE_AUTORESPOND = "off";
   }
 
-  const code = await spawnInteractive("node", launcherArgs, childEnv, options.spawn);
+  const code = await spawnInteractive(
+    "node",
+    launcherArgs,
+    childEnv,
+    options.spawn,
+  );
   return { code, stdout: "", stderr: "" };
 }
 
 function failure(message: string): TinyPlaceCliResult {
-  return { code: 1, stdout: "", stderr: `${JSON.stringify({ error: message }, null, 2)}\n` };
+  return {
+    code: 1,
+    stdout: "",
+    stderr: `${JSON.stringify({ error: message }, null, 2)}\n`,
+  };
 }
 
 /**

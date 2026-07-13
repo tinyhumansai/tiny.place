@@ -214,7 +214,13 @@ const PROFILES: Record<HarnessProvider, HarnessWrapperProfile> = {
     binEnv: ["TINYPLACE_OPENCODE_BIN"],
     defaultBin: "opencode",
     defaultOutDir: join(homedir(), ".tinyplace", "opencode-envelopes"),
-    defaultSessionsDir: join(homedir(), ".local", "share", "opencode", "sessions"),
+    defaultSessionsDir: join(
+      homedir(),
+      ".local",
+      "share",
+      "opencode",
+      "sessions",
+    ),
     terminalEnvelopeVersion: "tinyplace.opencode.terminal.v1",
   },
 };
@@ -276,7 +282,12 @@ export async function runHarnessCommand(
       cwd,
       env,
     });
-    opencodeSource = new OpenCodeEventSource(config, cwd, stdio.stderr, publisher);
+    opencodeSource = new OpenCodeEventSource(
+      config,
+      cwd,
+      stdio.stderr,
+      publisher,
+    );
     opencodeSource.start(`${opencodeServer.url}/event`);
     // Attach the interactive TUI to the server we observe, so the human's
     // session and our SSE bridge share one process.
@@ -1130,7 +1141,6 @@ export class HarnessSessionTailer {
     }
     return candidates[0];
   }
-
 }
 
 export class SessionEnvelopePublisher {
