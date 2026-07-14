@@ -1,5 +1,5 @@
 import {
-	agentDocResponse,
+	agentDocumentResponse,
 	notFound,
 	resolveA2aAgentCard,
 } from "@src/common/a2a-route";
@@ -18,5 +18,5 @@ export async function GET(
 ): Promise<Response> {
 	const { id } = await params;
 	const card = await resolveA2aAgentCard(id);
-	return card ? agentDocResponse(card, "swaggerJson") : notFound();
+	return card ? agentDocumentResponse(card, "swaggerJson") : notFound();
 }

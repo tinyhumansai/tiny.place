@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
 	type A2aAgentCard,
-	agentDocResponse,
-	agentDocUrl,
+	agentDocumentResponse,
+	agentDocumentUrl,
 	resolveA2aAgentCard,
 } from "./a2a-route";
 
@@ -18,17 +18,26 @@ const baseCard: A2aAgentCard = {
 
 describe("A2A route helpers", () => {
 	it("resolves @handles through the directory before fetching the agent card", async () => {
-		const fetcher = vi.fn(async (input: RequestInfo | URL) => {
-			const url = String(input);
+		const fetcher = vi.fn((input: RequestInfo | URL): Promise<Response> => {
+			const url =
+				typeof input === "string"
+					? input
+					: input instanceof URL
+						? input.toString()
+						: input.url;
 			if (url.endsWith("/directory/resolve/%40naturedesk")) {
-				return Response.json({
-					identity: { cryptoId: baseCard.agentId },
-				});
+				return Promise.resolve(
+					Response.json({
+						identity: { cryptoId: baseCard.agentId },
+					})
+				);
 			}
 			if (url.endsWith(`/directory/agents/${baseCard.agentId}`)) {
-				return Response.json(baseCard);
+				return Promise.resolve(Response.json(baseCard));
 			}
-			return Response.json({ error: "unexpected" }, { status: 500 });
+			return Promise.resolve(
+				Response.json({ error: "unexpected" }, { status: 500 })
+			);
 		});
 
 		await expect(
@@ -42,42 +51,36 @@ describe("A2A route helpers", () => {
 	});
 
 	it("derives docs from an external agent-card URL when no docs URL is advertised", () => {
-		expect(agentDocUrl(baseCard, "skillMd")).toBe(
+		expect(agentDocumentUrl(baseCard, "skillMd")).toBe(
 			"https://naturedesk.github.io/site/a2a/@naturedesk/skill.md"
 		);
 	});
 
-	it("redirects to advertised skill markdown without proxying it", async () => {
+	it("redirects to advertised skill markdown without proxying it", () => {
 		const card: A2aAgentCard = {
 			...baseCard,
 			docs: {
 				skillMdUrl: "https://docs.example.test/skill.md",
 			},
 		};
-		const fetcher = vi.fn();
-
-		const response = await agentDocResponse(card, "skillMd", fetcher as typeof fetch);
+		const response = agentDocumentResponse(card, "skillMd");
 		expect(response.status).toBe(302);
 		expect(response.headers.get("Location")).toBe(
 			"https://docs.example.test/skill.md"
 		);
-		expect(fetcher).not.toHaveBeenCalled();
 	});
 
-	it("redirects to relative advertised docs URLs", async () => {
+	it("redirects to relative advertised docs URLs", () => {
 		const card: A2aAgentCard = {
 			...baseCard,
 			docs: {
 				skillMdUrl: "/a2a/@naturedesk/skill.md",
 			},
 		};
-		const fetcher = vi.fn();
-
-		expect(agentDocUrl(card, "skillMd")).toBe("/a2a/@naturedesk/skill.md");
-		const response = await agentDocResponse(card, "skillMd", fetcher as typeof fetch);
+		expect(agentDocumentUrl(card, "skillMd")).toBe("/a2a/@naturedesk/skill.md");
+		const response = agentDocumentResponse(card, "skillMd");
 		expect(response.status).toBe(302);
 		expect(response.headers.get("Location")).toBe("/a2a/@naturedesk/skill.md");
-		expect(fetcher).not.toHaveBeenCalled();
 	});
 
 	it("serves inline skill markdown without fetching", async () => {
@@ -87,10 +90,7 @@ describe("A2A route helpers", () => {
 				skillMd: "# Inline skill\n",
 			},
 		};
-		const fetcher = vi.fn();
-
-		const response = await agentDocResponse(card, "skillMd", fetcher as typeof fetch);
+		const response = agentDocumentResponse(card, "skillMd");
 		await expect(response.text()).resolves.toBe("# Inline skill\n");
-		expect(fetcher).not.toHaveBeenCalled();
 	});
 });

@@ -1,3 +1,5 @@
+/* eslint-disable no-use-before-define -- small pure helpers are function declarations */
+
 type Fetcher = typeof fetch;
 
 export const A2A_API_BASE_URL =
@@ -24,15 +26,15 @@ type ResolveResponse = {
 	identity?: { cryptoId?: string | null } | null;
 };
 
-type DocKind = "skillMd" | "swaggerJson" | "swaggerMd";
+type DocumentKind = "skillMd" | "swaggerJson" | "swaggerMd";
 
-const DOC_FILENAMES: Record<DocKind, string> = {
+const DOCUMENT_FILENAMES: Record<DocumentKind, string> = {
 	skillMd: "skill.md",
 	swaggerJson: "swagger.json",
 	swaggerMd: "swagger.md",
 };
 
-const DOC_CONTENT_TYPES: Record<DocKind, string> = {
+const DOCUMENT_CONTENT_TYPES: Record<DocumentKind, string> = {
 	skillMd: "text/markdown; charset=utf-8",
 	swaggerJson: "application/json; charset=utf-8",
 	swaggerMd: "text/markdown; charset=utf-8",
@@ -74,22 +76,21 @@ export function agentCardResponse(card: A2aAgentCard): Response {
 	});
 }
 
-export async function agentDocResponse(
+export function agentDocumentResponse(
 	card: A2aAgentCard,
-	kind: DocKind,
-	_fetcher: Fetcher = fetch
-): Promise<Response> {
-	const inline = inlineDoc(card, kind);
+	kind: DocumentKind
+): Response {
+	const inline = inlineDocument(card, kind);
 	if (inline !== undefined) {
 		return new Response(inline, {
 			headers: {
 				"Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
-				"Content-Type": DOC_CONTENT_TYPES[kind],
+				"Content-Type": DOCUMENT_CONTENT_TYPES[kind],
 			},
 		});
 	}
 
-	const url = agentDocUrl(card, kind);
+	const url = agentDocumentUrl(card, kind);
 	if (!url) {
 		return notFound();
 	}
@@ -103,21 +104,24 @@ export async function agentDocResponse(
 	});
 }
 
-export function agentDocUrl(card: A2aAgentCard, kind: DocKind): string | null {
-	const docs = card.docs;
+export function agentDocumentUrl(
+	card: A2aAgentCard,
+	kind: DocumentKind
+): string | null {
+	const documentation = card.docs;
 	const urlField = `${kind}Url` as keyof NonNullable<A2aAgentCard["docs"]>;
-	const advertisedUrl = docs?.[urlField];
-	if (typeof advertisedUrl === "string" && isDocUrl(advertisedUrl)) {
+	const advertisedUrl = documentation?.[urlField];
+	if (typeof advertisedUrl === "string" && isDocumentUrl(advertisedUrl)) {
 		return advertisedUrl;
 	}
 
-	const advertisedValue = docs?.[kind];
-	if (typeof advertisedValue === "string" && isDocUrl(advertisedValue)) {
+	const advertisedValue = documentation?.[kind];
+	if (typeof advertisedValue === "string" && isDocumentUrl(advertisedValue)) {
 		return advertisedValue;
 	}
 
 	if (card.url && isHttpUrl(card.url)) {
-		return new URL(DOC_FILENAMES[kind], card.url).toString();
+		return new URL(DOCUMENT_FILENAMES[kind], card.url).toString();
 	}
 
 	return null;
@@ -130,9 +134,12 @@ export function notFound(): Response {
 	});
 }
 
-function inlineDoc(card: A2aAgentCard, kind: DocKind): string | undefined {
+function inlineDocument(
+	card: A2aAgentCard,
+	kind: DocumentKind
+): string | undefined {
 	const value = card.docs?.[kind];
-	if (typeof value === "string" && !isDocUrl(value)) {
+	if (typeof value === "string" && !isDocumentUrl(value)) {
 		return value;
 	}
 	return undefined;
@@ -179,7 +186,7 @@ function isHttpUrl(value: string): boolean {
 	}
 }
 
-function isDocUrl(value: string): boolean {
+function isDocumentUrl(value: string): boolean {
 	return isHttpUrl(value) || isRelativePath(value);
 }
 
