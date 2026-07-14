@@ -413,13 +413,22 @@ describe("tinyplace codex", () => {
     expect(result.code).toBe(0);
     expect(relay.contactRequests).toEqual([recipient.signer.agentId]);
     const messages = await readMessages(recipient.client, recipient.signer);
-    expect(messages).toHaveLength(2);
     const envelopes = messages.map((message) => JSON.parse(message.text) as Record<string, unknown>);
-    expect(envelopes.map((envelope) => (envelope.message as { role: string }).role)).toEqual([
+    // v2 is always emitted alongside v1 now: the v1 message stream is
+    // unchanged (one user + one agent), and typed v2 events ride with it.
+    const v1 = envelopes.filter(
+      (envelope) => envelope.envelope_version === "tinyplace.harness.session.v1",
+    );
+    const v2 = envelopes.filter(
+      (envelope) => envelope.envelope_version === "tinyplace.harness.session.v2",
+    );
+    expect(v1).toHaveLength(2);
+    expect(v2.length).toBeGreaterThan(0);
+    expect(v1.map((envelope) => (envelope.message as { role: string }).role)).toEqual([
       "user",
       "agent",
     ]);
-    expect(envelopes[0]).toMatchObject({
+    expect(v1[0]).toMatchObject({
       envelope_version: "tinyplace.harness.session.v1",
       harness: { provider: "codex" },
     });
@@ -792,8 +801,14 @@ describe("tinyplace codex", () => {
     expect(envelope).toContain('"role":"agent"');
     expect(envelope).toContain("please inspect this");
     expect(envelope).toContain("I inspected it.");
-    expect(envelope).not.toContain("not a semantic user prompt");
-    expect(envelope).not.toContain("hidden");
+    // The v1 message stream still excludes non-semantic lines; the always-on
+    // v2 typed-event stream carries them as tool_result / agent_thinking.
+    const v1Lines = envelope
+      .split("\n")
+      .filter((line) => line.includes("tinyplace.harness.session.v1"));
+    expect(v1Lines.join("\n")).not.toContain("not a semantic user prompt");
+    expect(v1Lines.join("\n")).not.toContain("hidden");
+    expect(envelope).toContain("tinyplace.harness.session.v2");
   });
 });
 

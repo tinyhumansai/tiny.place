@@ -45,6 +45,20 @@ export {
   isV2,
   parseSessionEnvelope,
 } from "../cli/harness-consumer.js";
+export {
+  HARNESS_CONTROL_VERSION,
+  encodeHarnessControlFrame,
+  parseHarnessControlFrame,
+  type EncodeHarnessControlOptions,
+  type HarnessControlFrame,
+} from "../cli/harness-control.js";
+export {
+  createMachineBus,
+  type BusSessionInfo,
+  type MachineBus,
+  type MachineBusOptions,
+  type SpooledInbound,
+} from "../cli/machine-bus.js";
 
 // Coding-agent daemon: the task protocol, provider detection/execution, and the
 // serialized mailbox that `tinyplace daemon` composes. Exposed so an embedder can

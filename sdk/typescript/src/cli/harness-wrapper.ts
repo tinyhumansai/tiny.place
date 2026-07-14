@@ -51,6 +51,8 @@ import {
   type SessionStatusState,
 } from "./harness-status.js";
 import { makeContext } from "./context.js";
+import { parseHarnessControlFrame } from "./harness-control.js";
+import { createMachineBus, type MachineBus } from "./machine-bus.js";
 import { makePathLookup } from "./daemon/providers.js";
 import {
   OpenCodeEventSource,
@@ -83,9 +85,8 @@ export interface HarnessWrapperConfig {
   captureSession: boolean;
   dmRecipient?: string;
   dryRun: boolean;
-  // Opt-in: also emit the v2 typed-event stream (tool_call/tool_result/status/
-  // thinking) alongside v1. Default off so current v1 consumers are untouched
-  // until the OpenHuman receiver understands v2.
+  // The v2 typed-event stream (tool_call/tool_result/status/thinking) is
+  // always emitted alongside v1; the field remains so tests can silence it.
   emitV2: boolean;
   outDir: string;
   provider: HarnessProvider;
@@ -234,10 +235,29 @@ export async function runHarnessCommand(
     stderr: options.stderr ?? process.stderr,
   };
   const writer = new TerminalEnvelopeWriter(config, cwd, stdio.stderr);
-  const publisher = new SessionEnvelopePublisher(config, options, stdio.stderr);
+  // The machine session bus shares this machine's ONE wallet across every
+  // concurrent wrapper session: a cross-process lock serializes Signal I/O and
+  // a spool routes inbound DMs to their addressed session. Only engaged when
+  // the wrapper actually touches the wallet (an owner is configured).
+  const bus =
+    !config.dryRun && Boolean(config.dmRecipient ?? config.receiveFrom)
+      ? createMachineBus({
+          env,
+          wrapperSessionId: config.wrapperSessionId,
+          provider,
+          cwd,
+        })
+      : undefined;
+  const publisher = new SessionEnvelopePublisher(
+    config,
+    options,
+    stdio.stderr,
+    bus,
+  );
   const receiver = config.receiveEnabled
-    ? new InboundMessageReceiver(config, publisher, stdio.stderr)
+    ? new InboundMessageReceiver(config, publisher, stdio.stderr, bus)
     : undefined;
+  bus?.registerSession();
 
   const usePty = config.usePty && options.spawn === undefined;
   // opencode has no per-session transcript files — it is observed over its
@@ -315,6 +335,9 @@ export async function runHarnessCommand(
 
   let exitCode = 1;
   let dmFailures = 0;
+  const busHeartbeat = bus
+    ? setInterval(() => bus.heartbeatSession(), 10_000)
+    : undefined;
   try {
     exitCode = usePty
       ? await runPtyAgent(launch, config, cwd, env, writer, stdio, onInputSink)
@@ -329,6 +352,10 @@ export async function runHarnessCommand(
           onInputSink,
         );
   } finally {
+    if (busHeartbeat) {
+      clearInterval(busHeartbeat);
+    }
+    bus?.endSession();
     // Teardown order: stop the session observer (flushes the publisher) → stop
     // inbound → kill the opencode server. In a `finally` so a spawn failure
     // still tears the server down instead of leaking a `serve` process.
@@ -539,11 +566,9 @@ export function parseHarnessWrapperArgs(
     captureSession: true,
     ...(owner ? { dmRecipient: owner } : {}),
     dryRun: false,
-    emitV2:
-      firstEnv(env, [
-        `TINYPLACE_${provider.toUpperCase()}_V2`,
-        "TINYPLACE_HARNESS_V2",
-      ]) === "1",
+    // v2 is the protocol: the typed-event stream is always emitted (alongside
+    // v1 for older consumers). The former TINYPLACE_*_V2 opt-in is retired.
+    emitV2: true,
     outDir,
     provider,
     statusHeartbeatMs: numberEnvOr(
@@ -1239,7 +1264,13 @@ export class SessionEnvelopePublisher {
     private readonly config: HarnessWrapperConfig,
     private readonly options: TinyPlaceCliOptions,
     private readonly stderr: Writable,
+    private readonly bus?: MachineBus,
   ) {}
+
+  /** Serialize a wallet-touching call across this machine's processes. */
+  private withWalletLock<T>(fn: () => Promise<T>): Promise<T> {
+    return this.bus ? this.bus.withLock(fn) : fn();
+  }
 
   /** Record an owner→agent injection so its echoed-back `user` line is dropped. */
   public markInjected(text: string): void {
@@ -1290,6 +1321,11 @@ export class SessionEnvelopePublisher {
       bridgeLog("publish.echoSkip", { id });
       return;
     }
+    // Record the harness's own session id on the machine registry as soon as
+    // an envelope reveals it — owners address control frames by this id.
+    this.bus?.heartbeatSession({
+      harnessSessionId: envelope.scope.harness_session_id,
+    });
     bridgeLog("publish.enqueue", {
       id,
       role: envelopeRole(envelope),
@@ -1330,12 +1366,10 @@ export class SessionEnvelopePublisher {
       throw new Error("DM forwarding requires a tiny.place signer");
     }
     const recipient = await this.ensureContact(ctx);
+    const signer = ctx.signer;
     try {
-      await sendMessage(
-        ctx.client,
-        ctx.signer,
-        recipient,
-        JSON.stringify(envelope),
+      await this.withWalletLock(() =>
+        sendMessage(ctx.client, signer, recipient, JSON.stringify(envelope)),
       );
     } catch (error) {
       if (!isNotAContactError(error)) {
@@ -1343,11 +1377,13 @@ export class SessionEnvelopePublisher {
       }
       this.contactPromise = undefined;
       const refreshedRecipient = await this.ensureContact(ctx);
-      await sendMessage(
-        ctx.client,
-        ctx.signer,
-        refreshedRecipient,
-        JSON.stringify(envelope),
+      await this.withWalletLock(() =>
+        sendMessage(
+          ctx.client,
+          signer,
+          refreshedRecipient,
+          JSON.stringify(envelope),
+        ),
       );
     }
   }
@@ -1496,7 +1532,13 @@ export class InboundMessageReceiver {
     private readonly config: HarnessWrapperConfig,
     private readonly publisher: SessionEnvelopePublisher,
     private readonly stderr: Writable,
+    private readonly bus?: MachineBus,
   ) {}
+
+  /** Serialize a wallet-touching call across this machine's processes. */
+  private withWalletLock<T>(fn: () => Promise<T>): Promise<T> {
+    return this.bus ? this.bus.withLock(fn) : fn();
+  }
 
   /** Register the agent-input writer once the child is spawned. Injection is a
    *  no-op until this is set, so the poll loop can start before the child. */
@@ -1517,8 +1559,11 @@ export class InboundMessageReceiver {
     }
     // Publish our Signal key bundle so the owner can open a session to us — the
     // wrapper never did this before, which is why it was un-messageable.
+    // Under the machine bus this is wallet-locked: prekey publication mutates
+    // the shared Signal store, and N sessions start concurrently.
+    const signer = ctx.signer;
     try {
-      await publishKeys(ctx.client, ctx.signer);
+      await this.withWalletLock(() => publishKeys(ctx.client, signer));
     } catch (error) {
       this.stderr.write(
         `tinyplace ${this.config.provider}: failed to publish Signal keys: ${describeError(error)}\n`,
@@ -1610,30 +1655,51 @@ export class InboundMessageReceiver {
       if (!ctx.signer) {
         return;
       }
-      const messages = await readMessages(ctx.client, ctx.signer, {
-        limit: 50,
-      });
+      const signer = ctx.signer;
+      this.bus?.heartbeatSession();
+      const messages = await this.withWalletLock(() =>
+        readMessages(ctx.client, signer, { limit: 50 }),
+      );
       let injected = 0;
       let dropped = 0;
       for (const message of messages) {
         const text = this.filterAndParse(message);
-        // `this.sink` is guaranteed defined here — poll() returns early when it
-        // is not. injectOne re-guards it before each write regardless.
-        if (text !== undefined) {
-          injected += 1;
-          // Record before injecting so the tailer's echoed-back `user` line
-          // (the agent logs the injected prompt as its own user turn) is dropped
-          // by the publisher instead of bouncing to the owner.
-          this.publisher.markInjected(text);
-          // Type the body now, then submit with a DISTINCT carriage return after
-          // a short debounce (see injectOne). Enqueued so batched inbound turns
-          // stay serialized (body → Enter → next body) and never interleave.
-          this.enqueueInjection(text);
-        } else {
+        if (text === undefined) {
           dropped += 1;
+          continue;
+        }
+        if (this.bus) {
+          // Machine bus: the inbox is shared by every session on this wallet,
+          // so a message we happened to read may be addressed to ANOTHER
+          // session — spool it; our own spool is drained below.
+          this.bus.routeInbound(message.from, text);
+          continue;
+        }
+        // No bus (single session, no shared wallet): inject directly. A
+        // control frame still resolves to its text so an owner can use one
+        // frame shape everywhere.
+        const frame = parseHarnessControlFrame(text);
+        const body = frame ? frame.text : text;
+        injected += 1;
+        // Record before injecting so the tailer's echoed-back `user` line
+        // (the agent logs the injected prompt as its own user turn) is dropped
+        // by the publisher instead of bouncing to the owner.
+        this.publisher.markInjected(body);
+        // Type the body now, then submit with a DISTINCT carriage return after
+        // a short debounce (see injectOne). Enqueued so batched inbound turns
+        // stay serialized (body → Enter → next body) and never interleave.
+        this.enqueueInjection(body);
+      }
+      if (this.bus) {
+        // Drain what other pollers (or this one) spooled for this session —
+        // plus the default spool when this session is the machine's primary.
+        for (const item of this.bus.consumeInbound()) {
+          injected += 1;
+          this.publisher.markInjected(item.text);
+          this.enqueueInjection(item.text);
         }
       }
-      if (messages.length > 0) {
+      if (messages.length > 0 || injected > 0) {
         bridgeLog("receiver.poll", {
           read: messages.length,
           injected,
