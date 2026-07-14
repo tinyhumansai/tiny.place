@@ -279,14 +279,25 @@ function runProviderAttempt(options: RunTaskOptions): Promise<RunTaskResult> {
       });
     }
 
-    const timer = setTimeout(() => {
-      finishError(
-        new Error(
-          `${options.provider} task timed out after ${options.timeoutMs}ms`,
-        ),
-      );
-      child.kill("SIGKILL");
-    }, options.timeoutMs);
+    // Idle watchdog, not a hard cap: kill the child only after `timeoutMs` with NO
+    // new event. `armIdle` re-arms on every parsed event (see consumeLine), so a
+    // long-but-active task (streaming tool calls / output) keeps running while a
+    // genuinely wedged one is reaped. Armed once at start to cover a child that
+    // never emits anything.
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    function armIdle(): void {
+      if (settled) return;
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        finishError(
+          new Error(
+            `${options.provider} task idle for ${options.timeoutMs}ms (no events)`,
+          ),
+        );
+        child.kill("SIGKILL");
+      }, options.timeoutMs);
+    }
+    armIdle();
 
     const onAbort = (): void => {
       child.kill("SIGTERM");
@@ -294,7 +305,7 @@ function runProviderAttempt(options: RunTaskOptions): Promise<RunTaskResult> {
     options.signal?.addEventListener("abort", onAbort, { once: true });
 
     function cleanup(): void {
-      clearTimeout(timer);
+      if (idleTimer) clearTimeout(idleTimer);
       options.signal?.removeEventListener("abort", onAbort);
     }
 
@@ -317,6 +328,7 @@ function runProviderAttempt(options: RunTaskOptions): Promise<RunTaskResult> {
       }
       for (const event of mapEventsFromLine(raw, line)) {
         events += 1;
+        armIdle(); // progress — the task is alive; push the no-event deadline out.
         options.onEvent?.(event);
         if (event.event.kind === "agent_message") {
           messages.push(event.event.payload.text);

@@ -31,6 +31,9 @@ import type { Flags } from "./types.js";
 import type { HarnessProvider } from "../types/harness.js";
 
 const DEFAULT_CONCURRENCY = 2;
+// Idle (no-event) watchdog, not a hard cap: a task is killed only after this many
+// ms with NO new event from the provider CLI; each event re-arms it. A long-but-
+// active run survives, a wedged one is reaped ~10 min after it goes silent.
 const DEFAULT_TASK_TIMEOUT_MS = 600_000;
 const DEFAULT_POLL_MS = 2_000;
 

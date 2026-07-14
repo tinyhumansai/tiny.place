@@ -125,6 +125,7 @@ describe("provider detection", () => {
       "--output-format",
       "stream-json",
       "--verbose",
+      "--dangerously-skip-permissions",
       "hi",
     ]);
     expect(buildRunArgs({ provider: "codex", prompt: "hi", model: "gpt-5" })).toEqual([
