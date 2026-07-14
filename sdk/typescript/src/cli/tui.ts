@@ -27,6 +27,7 @@ import {
   SessionEnvelopePublisher,
   parseHarnessWrapperArgs,
 } from "./harness-wrapper.js";
+import { createMachineBus, type MachineBus } from "./machine-bus.js";
 import {
   OpenCodeEventSource,
   startOpenCodeServer,
@@ -220,6 +221,8 @@ class BlessedTinyPlaceTui {
   private bridgeSource?: OpenCodeEventSource;
   private opencodeServer?: OpenCodeServerHandle;
   private bridgeReceiver?: InboundMessageReceiver;
+  private bridgeBus?: MachineBus;
+  private bridgeBusHeartbeat?: ReturnType<typeof setInterval>;
   // Home-screen resume pane: the recent sessions across both agents, loaded once
   // at start. Empty in fixed-agent mode.
   private recentSessions: Array<RecentSession> = [];
@@ -777,7 +780,27 @@ class BlessedTinyPlaceTui {
     // TINYPLACE_BRIDGE_LOG is set, `createBridgeDiagSink` tees them into the log
     // file instead so bridge failures are visible while debugging.
     const sink = createBridgeDiagSink();
-    const publisher = new SessionEnvelopePublisher(config, this.options, sink);
+    // Machine session bus: this TUI session shares the machine's ONE wallet
+    // with every other wrapper session — the bus serializes Signal I/O across
+    // processes, spools inbound DMs to their addressed session, and registers
+    // this session (live/inactive) on the machine registry.
+    this.bridgeBus = createMachineBus({
+      env: this.ctx.env,
+      wrapperSessionId: config.wrapperSessionId,
+      provider: config.provider,
+      cwd,
+    });
+    this.bridgeBus.registerSession();
+    this.bridgeBusHeartbeat = setInterval(
+      () => this.bridgeBus?.heartbeatSession(),
+      10_000,
+    );
+    const publisher = new SessionEnvelopePublisher(
+      config,
+      this.options,
+      sink,
+      this.bridgeBus,
+    );
     if (this.profile.serverMode && this.opencodeServer) {
       // opencode: observe the live session over the server's SSE bus.
       this.bridgeSource = new OpenCodeEventSource(config, cwd, sink, publisher);
@@ -788,7 +811,7 @@ class BlessedTinyPlaceTui {
         : undefined;
     }
     this.bridgeReceiver = config.receiveEnabled
-      ? new InboundMessageReceiver(config, publisher, sink)
+      ? new InboundMessageReceiver(config, publisher, sink, this.bridgeBus)
       : undefined;
     this.bridgeReceiver?.setSink((text) => {
       bridgeLog("inbound.inject", { chars: text.length });
@@ -823,6 +846,12 @@ class BlessedTinyPlaceTui {
     void this.bridgeTailer?.stop();
     void this.bridgeSource?.stop();
     void this.bridgeReceiver?.stop();
+    if (this.bridgeBusHeartbeat) {
+      clearInterval(this.bridgeBusHeartbeat);
+      this.bridgeBusHeartbeat = undefined;
+    }
+    this.bridgeBus?.endSession();
+    this.bridgeBus = undefined;
     this.bridgeTailer = undefined;
     this.bridgeSource = undefined;
     this.bridgeReceiver = undefined;
