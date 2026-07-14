@@ -10,7 +10,6 @@ import type {
   SenderKeyMessage,
 } from "../signal/index.js";
 import type { MessageEnvelope } from "../types/index.js";
-import { resolveEncryptionAddress } from "./discovery.js";
 
 /** Backend hint bodies (base64 of these markers) carry no real ciphertext. */
 const DISTRIBUTION_REQUIRED = "sender-key-distribution-required";
@@ -312,7 +311,7 @@ function nextGroupMessageId(): string {
 export async function sendGroupMessage(options: {
   walletClient: TinyPlaceClient;
   encClient: TinyPlaceClient;
-  /** The encryption identity's messaging address (encClient's signer pubkey). */
+  /** The encryption identity's messaging address — its base58 cryptoId (encClient's `signer.agentId`). */
   encAddress: string;
   groupKeys: GroupKeyManager;
   groupId: string;
@@ -343,10 +342,12 @@ export async function sendGroupMessage(options: {
     try {
       const card = await walletClient.directory.getAgent(member);
       // Transparent 1:1 encrypt: messages.send runs X3DH/ratchet under the hood.
+      // Address the handoff by the peer's base58 cryptoId (the relay routing key),
+      // matching the 1:1 DM path.
       await encClient.messages.send({
         id: `${nextGroupMessageId()}_k`,
         from: encAddress,
-        to: resolveEncryptionAddress(card),
+        to: card.cryptoId,
         timestamp: new Date().toISOString(),
         deviceId: 1,
         type: "CIPHERTEXT",

@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use crate::error::Result;
 use crate::http::HttpClient;
 use crate::types::{
-    AgentCard, AgentQueryParams, AgentSearchResponse, ExtendedAgentCard, ResolveResponse,
-    ReverseResponse,
+    AgentCard, AgentQueryParams, AgentSearchResponse, ExtendedAgentCard,
+    IdentityListingQueryParams, ResolveResponse, ReverseResponse,
 };
 use crate::util::encode;
 use crate::validation::{
@@ -136,6 +136,28 @@ impl DirectoryApi {
         self.http
             .get(&format!("/directory/reverse/{}", encode(crypto_id)), &[])
             .await
+    }
+
+    pub async fn list_identities(
+        &self,
+        params: Option<&IdentityListingQueryParams>,
+    ) -> Result<serde_json::Value> {
+        let mut query = Vec::new();
+        if let Some(p) = params {
+            if let Some(v) = &p.q {
+                query.push(("q".into(), v.clone()));
+            }
+            if let Some(v) = &p.status {
+                query.push(("status".into(), v.clone()));
+            }
+            if let Some(v) = p.limit {
+                query.push(("limit".into(), v.to_string()));
+            }
+            if let Some(v) = p.offset {
+                query.push(("offset".into(), v.to_string()));
+            }
+        }
+        self.http.get("/directory/identities", &query).await
     }
 
     pub async fn skills(

@@ -87,14 +87,56 @@ export {
 } from "./x402.js";
 export { SDK_VERSION, SDK_CLIENT, HEADER_SDK_CLIENT } from "./version.js";
 export type {
+  AgentMessagePayload,
+  AgentThinkingPayload,
+  AnySessionEnvelope,
+  ApprovalRequestPayload,
+  ErrorPayload,
   HarnessBucketUnit,
   HarnessEnvelopeScope,
+  HarnessEvent,
+  HarnessEventKind,
+  HarnessEventRole,
   HarnessMessageRole,
   HarnessProvider,
+  HarnessSessionState,
+  HarnessToolKind,
+  LifecyclePayload,
   SessionEnvelope,
   SessionEnvelopeV1,
+  SessionEnvelopeV2,
+  SessionInfoPayload,
+  StatusPayload,
+  ToolCallPayload,
+  ToolResultPayload,
+  UnknownPayload,
+  UserPromptPayload,
 } from "./types/harness.js";
-export { SESSION_ENVELOPE_VERSION_V1 } from "./types/harness.js";
+export {
+  SESSION_ENVELOPE_VERSION_V1,
+  SESSION_ENVELOPE_VERSION_V2,
+} from "./types/harness.js";
+// Harness runtime helpers (value exports) live behind the Node subpath
+// (`@tinyhumansai/tinyplace/node`), NOT this browser-facing root: `harness-hooks`
+// imports `node:process` and `harness-envelope` imports `node:crypto`, so
+// re-exporting their runtime values here would force browser bundlers
+// (Next/Webpack client builds) to resolve Node built-ins even when unused. Types
+// are erased at build time, so the type-only re-exports below stay browser-safe.
+export type {
+  HarnessLineMapper,
+  HarnessSemanticEvent,
+} from "./cli/harness-events.js";
+export type {
+  SessionStatusState,
+  StatusStep,
+} from "./cli/harness-status.js";
+export type { EnvelopeContext } from "./cli/harness-envelope.js";
+export type {
+  FeedEntry,
+  SessionView,
+  SessionViewLimits,
+  ToolActivity,
+} from "./cli/harness-consumer.js";
 
 export type {
   X402PaymentRequired,
@@ -212,6 +254,7 @@ export { ProfilesApi } from "./api/profiles.js";
 export { ExplorerApi } from "./api/explorer.js";
 export { FeedbackApi } from "./api/feedback.js";
 export { ContactsApi } from "./api/contacts.js";
+export { PresenceApi } from "./api/presence.js";
 export { FollowsApi } from "./api/follows.js";
 export { SolanaApi, formatTokenAmount } from "./api/solana.js";
 export type {

@@ -25,6 +25,13 @@ describe("TinyPlaceError self-classification", () => {
     expect(error.paymentRequired?.payment.amount).toBe("1000");
   });
 
+  it("classifies missing admin approval configuration as operator action", () => {
+    const error = new TinyPlaceError(503, "admin approval is not configured");
+    expect(error.code).toBe("admin_not_configured");
+    expect(error.retryable).toBe(false);
+    expect(error.hint).toMatch(/configure an admin signing route/i);
+  });
+
   it("parses the challenge from the standard x402 v2 accepts[] array", () => {
     const error = new TinyPlaceError(402, {
       error: "payment required",

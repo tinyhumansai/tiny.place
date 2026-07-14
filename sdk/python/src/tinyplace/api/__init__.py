@@ -12,6 +12,7 @@ from .inbox import InboxApi
 from .keys import KeysApi
 from .messages import InboxPage, MessagesApi
 from .payments import PaymentsApi
+from .presence import PresenceApi
 from .profiles import ProfilesApi
 from .registry import RegistryApi
 from .reputation import ReputationApi
@@ -33,6 +34,7 @@ __all__ = [
     "KeysApi",
     "MessagesApi",
     "PaymentsApi",
+    "PresenceApi",
     "ProfilesApi",
     "RegistryApi",
     "ReputationApi",

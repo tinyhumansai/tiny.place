@@ -164,7 +164,7 @@ export async function pollUpdates(
 
   let newMessages = 0;
   try {
-    const messages = await client.messages.list(signer.publicKeyBase64, 50);
+    const messages = await client.messages.list(signer.agentId, 50);
     newMessages = messages.messages.length;
   } catch {
     newMessages = 0;

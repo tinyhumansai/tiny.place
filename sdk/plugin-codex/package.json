@@ -1,0 +1,21 @@
+{
+  "name": "tinyplace-codex",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "OpenAI Codex CLI plugin: multi-wallet tiny.place messaging over an MCP server wrapping @tinyhumansai/tinyplace. Parity port of tinyplace-claude.",
+  "bin": {
+    "tinyplace-codex": "./bin/tinyplace-codex.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node envelope-test.mjs && node registry-test.mjs && node routing-test.mjs && node lock-test.mjs && node daemon-test.mjs && node hooks-test.mjs && node mcp-smoke.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@tinyhumansai/tinyplace": "^1.0.1",
+    "zod": "^3.25.0"
+  }
+}

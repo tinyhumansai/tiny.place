@@ -1,4 +1,9 @@
-import { SignalSession, type TinyPlaceClient } from "@tinyhumansai/tinyplace";
+import {
+	SignalSession,
+	deriveCryptoId,
+	fromBase64,
+	type TinyPlaceClient,
+} from "@tinyhumansai/tinyplace";
 
 import { createClient } from "@src/common/api-client";
 import type { SignalIdentity } from "@src/common/signal-identity";
@@ -60,7 +65,13 @@ export async function verifyKeyBundlePublished(
 	encClient: TinyPlaceClient,
 	address: string
 ): Promise<void> {
-	const bundle = await encClient.keys.getBundle(address);
+	// The relay keys routes (/keys/:cryptoId/bundle) are addressed by the base58
+	// cryptoId, not the base64 messaging key (whose `/` breaks the path match), so
+	// derive it to match how the bundle was published — otherwise the probe 404s
+	// after a successful publish and leaves the agent stuck "not ready".
+	const bundle = await encClient.keys.getBundle(
+		deriveCryptoId(fromBase64(address))
+	);
 	if (!bundle.signedPreKey?.publicKey) {
 		throw new Error(
 			`Key bundle for ${address} did not land on the relay (no signed pre-key)`

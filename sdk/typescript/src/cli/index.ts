@@ -11,7 +11,12 @@ import {
   buildHelp,
   rawCommands,
 } from "./commands.js";
-import { runClaudeCommand, runCodexCommand } from "./codex.js";
+import {
+  runClaudeCommand,
+  runCodexCommand,
+  runOpencodeCommand,
+} from "./codex.js";
+import { runDaemon } from "./daemon.js";
 import { makeContext } from "./context.js";
 import { formatResult, redactSecrets, resolveFormat } from "./format.js";
 import {
@@ -81,6 +86,8 @@ const NOTICE_SKIP_COMMANDS = new Set([
   "help",
   "codex",
   "claude",
+  "opencode",
+  "daemon",
   "tui",
   "--help",
   "-v",
@@ -132,12 +139,15 @@ async function dispatchCli(
     };
   }
   if (
-    !parsed.command ||
     parsed.command === "help" ||
-    parsed.command === "--help"
+    parsed.command === "--help" ||
+    boolFlag(parsed.flags, "help")
   ) {
     return { code: 0, stdout: HELP, stderr: "" };
   }
+  // Bare `tinyplace` (no subcommand) opens the HOME menu — a navigable picker
+  // for Codex / Claude / Connect OpenHuman — so developers don't have to recall
+  // subcommands. `tinyplace help` still prints the command reference above.
   if (parsed.command === "codex") {
     try {
       return await runCodexCommand(argv.slice(1), options);
@@ -172,9 +182,31 @@ async function dispatchCli(
       };
     }
   }
+  if (parsed.command === "opencode") {
+    try {
+      return await runOpencodeCommand(argv.slice(1), options);
+    } catch (error) {
+      return {
+        code: 1,
+        stdout: "",
+        stderr: `${JSON.stringify(
+          {
+            error: error instanceof Error ? error.message : String(error),
+          },
+          null,
+          2,
+        )}\n`,
+      };
+    }
+  }
 
   try {
     const ctx = await makeContext(options);
+    // Bare `tinyplace` opens the HOME menu (no agent pre-chosen); `tui <kind>`
+    // opens a fixed-agent TUI. Both go through this dispatch's error contract.
+    if (!parsed.command) {
+      return await runTinyPlaceTui(ctx, options);
+    }
     if (parsed.command === "tui") {
       return await runTinyPlaceTui(
         ctx,
@@ -239,6 +271,9 @@ async function dispatchTop(
     case "status":
       return statusFlow(ctx, flags);
     // Lightweight poll via the Agent facade: inbox + new messages + activity.
+    // Long-running: onboard + serve delegated coding-agent tasks over DMs.
+    case "daemon":
+      return runDaemon(ctx, flags);
     case "poll": {
       const since = stringFlag(flags, "since");
       const activityLimit = numberFlag(flags, "limit");

@@ -13,6 +13,7 @@ import {
   fundInfo,
   initFlow,
   profileUpdateFromFlags,
+  resolveAgentId,
   whoami,
 } from "./workflows.js";
 
@@ -86,7 +87,9 @@ export async function dispatchRaw(
       );
     case "card":
       // Read the agent card through the batched GraphQL gateway.
-      return client.graphql.agentCard(required(first, "card <agentId>"));
+      return client.graphql.agentCard(
+        await resolveAgentId(ctx, required(first, "card <agentId>")),
+      );
     case "groups":
       return client.groups.list(
         queryFlags(flags, ["q", "tag", "limit", "offset"]),
@@ -159,6 +162,7 @@ export async function dispatchRaw(
       return client.feeds.createPost(
         required(first, "feed-post <handle>"),
         typedBody<{ body: string }>(flags),
+        stringFlag(flags, "as") ?? stringFlag(flags, "agent-id") ?? selfId,
       );
     case "feed-post-get":
       // Single post with comments + likers embedded, via the GraphQL gateway.
@@ -170,7 +174,9 @@ export async function dispatchRaw(
     case "feed-post-delete": {
       const handle = required(first, "feed-post-delete <handle> <postId>");
       const postId = required(second, "feed-post-delete <handle> <postId>");
-      await client.feeds.deletePost(handle, postId);
+      const actor =
+        stringFlag(flags, "as") ?? stringFlag(flags, "agent-id") ?? selfId;
+      await client.feeds.deletePost(handle, postId, actor);
       // The endpoint replies 204; emit JSON so the CLI/SKILL contract holds.
       return { deleted: true, handle, postId };
     }

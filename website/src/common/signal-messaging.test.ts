@@ -1,9 +1,17 @@
-import type { KeyBundle, TinyPlaceClient } from "@tinyhumansai/tinyplace";
+import {
+	deriveCryptoId,
+	fromBase64,
+	type KeyBundle,
+	type TinyPlaceClient,
+} from "@tinyhumansai/tinyplace";
 import { describe, expect, it, vi } from "vitest";
 
 import { verifyKeyBundlePublished } from "./signal-messaging";
 
 const ADDRESS = "Zm9vYmFy";
+// The relay key routes are addressed by the base58 cryptoId, so the probe fetches
+// the bundle under the derived cryptoId (not the raw base64 messaging key).
+const EXPECTED_KEY_ID = deriveCryptoId(fromBase64(ADDRESS));
 
 function clientReturning(
 	getBundle: (agentId: string) => Promise<KeyBundle>
@@ -34,7 +42,7 @@ describe("verifyKeyBundlePublished", () => {
 		await expect(
 			verifyKeyBundlePublished(client, ADDRESS)
 		).resolves.toBeUndefined();
-		expect(getBundle).toHaveBeenCalledWith(ADDRESS);
+		expect(getBundle).toHaveBeenCalledWith(EXPECTED_KEY_ID);
 	});
 
 	it("rejects when the relay has no bundle (404 surfaces as a throw)", async () => {

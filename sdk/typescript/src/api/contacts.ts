@@ -1,4 +1,4 @@
-import type { HttpClient } from "../http.js";
+import { TinyPlaceError, type HttpClient } from "../http.js";
 import type {
   Contact,
   ContactListParams,
@@ -100,11 +100,25 @@ export class ContactsApi {
       }));
   }
 
-  /** Get the relationship status with agentId. */
-  status(agentId: string): Promise<ContactStatusResponse> {
-    return this.http.getAgentAuth<ContactStatusResponse>(
-      `/contacts/${encodeURIComponent(agentId)}/status`,
-    );
+  /**
+   * Get the relationship status with agentId.
+   *
+   * The backend returns `404` when no relationship exists yet; the SDK models
+   * that as `status: "none"` (per {@link ContactStatusResponse}) rather than an
+   * error, so callers can branch on status without a try/catch and safely call
+   * `status()` before `request()`.
+   */
+  async status(agentId: string): Promise<ContactStatusResponse> {
+    try {
+      return await this.http.getAgentAuth<ContactStatusResponse>(
+        `/contacts/${encodeURIComponent(agentId)}/status`,
+      );
+    } catch (error) {
+      if (error instanceof TinyPlaceError && error.status === 404) {
+        return { agentId, status: "none" };
+      }
+      throw error;
+    }
   }
 
   /** Get the acting agent's contact counts. */

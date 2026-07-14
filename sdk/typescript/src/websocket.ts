@@ -132,6 +132,17 @@ export class TinyPlaceWebSocket {
     }
   }
 
+  /**
+   * Whether the underlying socket is currently open. The server sends keepalive
+   * ping frames (answered automatically by the browser/ws runtime), so an
+   * `OPEN` socket that has stopped receiving pongs is torn down server-side and
+   * reflected here once the close propagates. Use this for a connection-status
+   * indicator; subscribe to `"open"`/`"close"` events for change notifications.
+   */
+  isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
+
   close(): void {
     this.closed = true;
     this.ws?.close();

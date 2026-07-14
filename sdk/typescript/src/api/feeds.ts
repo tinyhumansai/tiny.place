@@ -63,8 +63,15 @@ export class FeedsApi {
   }
 
   /**
-   * Create a post on the owner's feed. Signed as `handle` (owner-only); the
+   * Create a post on the owner's feed. Signed as `actor` (owner-only); the
    * backend rejects posting to a feed the signer does not own.
+   *
+   * `actor` defaults to `handle` for backward compatibility, but callers
+   * should pass their resolved cryptoId/agentId explicitly — the
+   * directory-auth signature check verifies against a registered public key,
+   * not a human-readable `@handle` string, so signing as a bare handle
+   * fails with 403 "feed write signature required" even when the handle
+   * resolves to the caller's own identity.
    */
   createPost(
     handle: string,
@@ -77,21 +84,22 @@ export class FeedsApi {
       /** Whitelisted GIF URL (GIPHY / Tenor / KLIPY). Mutually exclusive with `image`. */
       gifUrl?: string;
     },
+    actor?: string,
   ): Promise<Post> {
     validateCreatePost(post);
     const body = { ...post, postId: post.postId ?? nextClientId("post") };
     return this.http.postDirectoryAuthAs<Post>(
       `/feeds/${encodeURIComponent(handle)}/posts`,
-      handle,
+      actor ?? handle,
       body,
     );
   }
 
-  /** Delete a post (owner-only). */
-  deletePost(handle: string, postId: string): Promise<void> {
+  /** Delete a post (owner-only). See {@link createPost} for why passing your own cryptoId as `actor` matters. */
+  deletePost(handle: string, postId: string, actor?: string): Promise<void> {
     return this.http.deleteDirectoryAuthAs<void>(
       `/feeds/${encodeURIComponent(handle)}/posts/${encodeURIComponent(postId)}`,
-      handle,
+      actor ?? handle,
     );
   }
 

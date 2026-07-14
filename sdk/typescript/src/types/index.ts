@@ -14,6 +14,7 @@ export * from "./broadcasts.js";
 export * from "./escrow.js";
 export * from "./feedback.js";
 export * from "./contacts.js";
+export * from "./presence.js";
 export * from "./follows.js";
 export * from "./bounties.js";
 export * from "./commerce.js";

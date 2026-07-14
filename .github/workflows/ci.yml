@@ -131,6 +131,12 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     needs: [lint, typecheck]
+    # The build must not depend on a live backend. `next build` prerenders
+    # routes (e.g. app/sitemap.ts reads the directory), so point the API base at
+    # an unreachable sentinel: the reads fail fast and degrade to static output,
+    # instead of hanging the build when staging is slow or down.
+    env:
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:9999
     steps:
       - uses: actions/checkout@v4
 

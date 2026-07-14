@@ -13,6 +13,7 @@ use crate::signer::Signer;
 use crate::api::a2a::A2AApi;
 use crate::api::activity::ActivityApi;
 use crate::api::admin::AdminApi;
+use crate::api::artifacts::ArtifactsApi;
 use crate::api::bounties::BountiesApi;
 use crate::api::broadcasts::BroadcastsApi;
 use crate::api::channels::ChannelsApi;
@@ -28,12 +29,16 @@ use crate::api::follows::FollowsApi;
 use crate::api::graphql::GraphQLApi;
 use crate::api::groups::GroupsApi;
 use crate::api::inbox::InboxApi;
+use crate::api::jobs::JobsApi;
 use crate::api::keys::KeysApi;
 use crate::api::ledger::LedgerApi;
+use crate::api::marketplace::MarketplaceApi;
 use crate::api::mcp::McpApi;
 use crate::api::messages::MessagesApi;
 use crate::api::moderation::ModerationApi;
+use crate::api::onboard::OnboardApi;
 use crate::api::payments::PaymentsApi;
+use crate::api::presence::PresenceApi;
 use crate::api::pricing::PricingApi;
 use crate::api::profiles::ProfilesApi;
 use crate::api::registry::RegistryApi;
@@ -80,6 +85,8 @@ pub struct TinyPlaceClient {
     pub directory: DirectoryApi,
     pub groups: GroupsApi,
     pub graphql: GraphQLApi,
+    /// CLI-to-website onboarding handoff: stash/redeem short grant tokens.
+    pub onboard: OnboardApi,
     pub payments: PaymentsApi,
     pub pricing: PricingApi,
     pub ledger: LedgerApi,
@@ -88,6 +95,7 @@ pub struct TinyPlaceClient {
     pub inbox: InboxApi,
     pub channels: ChannelsApi,
     pub contacts: ContactsApi,
+    pub presence: PresenceApi,
     pub conversations: ConversationsApi,
     pub broadcasts: BroadcastsApi,
     pub bounties: BountiesApi,
@@ -95,6 +103,9 @@ pub struct TinyPlaceClient {
     pub search: SearchApi,
     pub profiles: ProfilesApi,
     pub users: UsersApi,
+    pub artifacts: ArtifactsApi,
+    pub jobs: JobsApi,
+    pub marketplace: MarketplaceApi,
     pub explorer: ExplorerApi,
     pub feedback: FeedbackApi,
     pub feeds: FeedsApi,
@@ -128,6 +139,7 @@ impl TinyPlaceClient {
             directory: DirectoryApi::new(http.clone()),
             groups: GroupsApi::new(http.clone()),
             graphql: GraphQLApi::new(http.clone()),
+            onboard: OnboardApi::new(http.clone()),
             payments: PaymentsApi::new(http.clone()),
             pricing: PricingApi::new(http.clone()),
             ledger: LedgerApi::new(http.clone()),
@@ -136,6 +148,7 @@ impl TinyPlaceClient {
             inbox: InboxApi::new(http.clone()),
             channels: ChannelsApi::new(http.clone()),
             contacts: ContactsApi::new(http.clone()),
+            presence: PresenceApi::new(http.clone()),
             conversations: ConversationsApi::new(http.clone()),
             broadcasts: BroadcastsApi::new(http.clone()),
             bounties: BountiesApi::new(http.clone()),
@@ -143,6 +156,9 @@ impl TinyPlaceClient {
             search: SearchApi::new(http.clone()),
             profiles: ProfilesApi::new(http.clone()),
             users: UsersApi::new(http.clone()),
+            artifacts: ArtifactsApi::new(http.clone()),
+            jobs: JobsApi::new(http.clone()),
+            marketplace: MarketplaceApi::new(http.clone()),
             explorer: ExplorerApi::new(http.clone()),
             feedback: FeedbackApi::new(http.clone()),
             feeds: FeedsApi::new(http.clone()),

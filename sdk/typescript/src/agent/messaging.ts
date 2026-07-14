@@ -8,14 +8,13 @@
  * functions only add address resolution (@handle | cryptoId | messaging key) and
  * a flat JSON shape, so an agent never touches Signal internals.
  *
- * Addressing note: the relay keys everything off the **base64 Ed25519 public
- * key** (`signer.publicKeyBase64`), NOT the base58 `agentId`.
+ * Addressing note: the relay keys everything off the **base58 cryptoId**
+ * (`signer.agentId`) — the same identifier the Rust SDK uses. A base64 messaging
+ * key is accepted as input but normalized to its cryptoId (both encode one key).
  */
 import type { TinyPlaceClient } from "../client.js";
-import {
-  ENCRYPTION_PUBLIC_KEY_METADATA,
-  resolveEncryptionAddress,
-} from "../messaging/discovery.js";
+import { publicKeyToSolanaAddress } from "../crypto.js";
+import { fromBase64 } from "../signal/index.js";
 import type { EnvelopeType, MessageEnvelope } from "../types/index.js";
 import { normalizeHandle } from "./handles.js";
 import type { AgentSigner } from "./types.js";
@@ -36,38 +35,30 @@ export function isMessagingKey(value: string): boolean {
 }
 
 /**
- * Resolves a recipient to the base64 encryption key to address a message to.
- * Accepts three forms: a raw base64 key (used as-is), a base58 cryptoId/agentId
- * (looked up via the directory), or a @handle (with or without the leading `@`).
- * Prefers the card's advertised encryption key, then its own public key, then the
- * identity key — mirroring the web app's resolution.
+ * Resolves a recipient to the base58 cryptoId to address a message to — the relay
+ * routing key. Accepts three forms: a base58 cryptoId/agentId (used as-is), a raw
+ * base64 messaging key (normalized to its cryptoId — both encode the same 32-byte
+ * Ed25519 key), or a @handle (resolved to its cryptoId via the directory).
  */
 export async function resolveRecipientKey(
   client: TinyPlaceClient,
   recipient: string,
 ): Promise<string> {
   if (isMessagingKey(recipient)) {
-    return recipient;
+    return publicKeyToSolanaAddress(fromBase64(recipient));
   }
 
   if (!recipient.startsWith("@") && CRYPTO_ID.test(recipient)) {
-    const card = await client.directory.getAgent(recipient);
-    return resolveEncryptionAddress(card);
+    return recipient;
   }
 
   const handle = normalizeHandle(recipient);
   const resolved = await client.directory.resolve(handle);
-  const advertised = resolved.agent?.metadata?.[ENCRYPTION_PUBLIC_KEY_METADATA];
-  const address =
-    (typeof advertised === "string" && advertised.length > 0
-      ? advertised
-      : undefined) ??
-    resolved.agent?.publicKey ??
-    resolved.identity?.publicKey;
-  if (!address) {
-    throw new Error(`could not resolve ${recipient} to an encryption public key`);
+  const cryptoId = resolved.agent?.cryptoId ?? resolved.identity?.cryptoId;
+  if (!cryptoId) {
+    throw new Error(`could not resolve ${recipient} to a cryptoId`);
   }
-  return address;
+  return cryptoId;
 }
 
 export interface PublishKeysResult {
@@ -88,7 +79,7 @@ export async function publishKeys(
 ): Promise<PublishKeysResult> {
   const count = options.count ?? 10;
   await client.enableEncryption({ preKeyCount: count });
-  return { address: signer.publicKeyBase64, preKeysPublished: count };
+  return { address: signer.agentId, preKeysPublished: count };
 }
 
 export interface SendMessageResult {
@@ -111,7 +102,7 @@ export async function sendMessage(
   const to = await resolveRecipientKey(client, recipient);
   const envelope: MessageEnvelope = {
     id: messageId(),
-    from: signer.publicKeyBase64,
+    from: signer.agentId,
     to,
     timestamp: new Date().toISOString(),
     deviceId: 1,
@@ -142,7 +133,7 @@ export async function readMessages(
   options: { limit?: number } = {},
 ): Promise<Array<ReadMessage>> {
   const { messages } = await client.messages.list(
-    signer.publicKeyBase64,
+    signer.agentId,
     options.limit ?? 50,
   );
   return messages.map((message) => ({

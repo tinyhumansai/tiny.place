@@ -1,6 +1,9 @@
 import { mintOnboardGrant } from "../auth.js";
 import { triageUpdates } from "../agent/attention.js";
+import { isMessagingKey } from "../agent/messaging.js";
+import { publicKeyToSolanaAddress } from "../crypto.js";
 import { errorCode, type TinyPlaceErrorCode } from "../errors.js";
+import { fromBase64 } from "../signal/index.js";
 import {
   bodyFlag,
   boolFlag,
@@ -207,7 +210,6 @@ export async function statusFlow(
     ctx.signer?.agentId,
     "status requires TINYPLACE_SECRET_KEY",
   );
-  const publicKey = ctx.signer?.publicKeyBase64;
   const limit = numberFlag(flags, "limit") ?? 5;
 
   const [counts, inbox, messages, bounties, keyHealth, balances] =
@@ -216,15 +218,11 @@ export async function statusFlow(
       settle(() => ctx.client.inbox.list(undefined, agentId)),
       // listRaw, not list: status is a non-consuming peek. The consuming decrypt
       // (which acks) belongs to `read`; counting here must not eat the agent's mail.
-      settle(() => ctx.client.messages.listRaw(publicKey ?? agentId, limit)),
+      settle(() => ctx.client.messages.listRaw(agentId, limit)),
       // Read your bounties through the batched GraphQL gateway: one request
       // hydrates each creator profile, instead of fanning out per-creator REST.
       settle(() => ctx.client.graphql.bounties({ creator: agentId, limit } as never)),
-      settle(() =>
-        publicKey
-          ? ctx.client.keys.health(publicKey)
-          : Promise.reject(new Error("no signer public key")),
-      ),
+      settle(() => ctx.client.keys.health(agentId)),
       settle(() => ctx.client.solana.balances(agentId)),
     ]);
 
@@ -554,8 +552,8 @@ export async function messageFlow(
   positionals: Array<string>,
   flags: Flags,
 ): Promise<unknown> {
-  const fromPublicKey = required(
-    ctx.signer?.publicKeyBase64,
+  const fromAgentId = required(
+    ctx.signer?.agentId,
     "message requires a wallet (re-run; the key auto-generates)",
   );
   const to = required(
@@ -573,7 +571,7 @@ export async function messageFlow(
     command,
     run: () =>
       ctx.client.messages.send({
-        from: fromPublicKey,
+        from: fromAgentId,
         to: address,
         body: text,
         ...bodyFlag(flags),
@@ -590,11 +588,10 @@ export async function readFlow(
     ctx.signer?.agentId,
     "read requires a wallet (re-run; the key auto-generates)",
   );
-  const publicKey = ctx.signer?.publicKeyBase64;
   const limit = numberFlag(flags, "limit") ?? 10;
 
   const [messages, inbox] = await Promise.all([
-    settle(() => ctx.client.messages.list(publicKey ?? agentId, limit)),
+    settle(() => ctx.client.messages.list(agentId, limit)),
     settle(() => ctx.client.inbox.list(undefined, agentId)),
   ]);
 
@@ -642,8 +639,8 @@ export async function replyFlow(
   positionals: Array<string>,
   flags: Flags,
 ): Promise<unknown> {
-  const fromPublicKey = required(
-    ctx.signer?.publicKeyBase64,
+  const fromAgentId = required(
+    ctx.signer?.agentId,
     "reply requires a wallet (re-run; the key auto-generates)",
   );
   const messageId = required(positionals[0], "reply <messageId> <text>");
@@ -656,7 +653,7 @@ export async function replyFlow(
   // listRaw so a reply never consumes/decrypts the rest of the inbox as a side
   // effect; once `read` has consumed the original, pass --to (from read's output).
   const pending = await settle(() =>
-    ctx.client.messages.listRaw(fromPublicKey, numberFlag(flags, "limit") ?? 50),
+    ctx.client.messages.listRaw(fromAgentId, numberFlag(flags, "limit") ?? 50),
   );
   const original = pending.ok
     ? (pickArray(pending.value).find((message) => idOf(message) === messageId) as
@@ -675,14 +672,14 @@ export async function replyFlow(
     command,
     run: async () => {
       const sent = await ctx.client.messages.send({
-        from: fromPublicKey,
+        from: fromAgentId,
         to: recipient,
         body: text,
         ...bodyFlag(flags),
       } as never);
       // Acknowledge the original so re-runs don't reprocess it (best-effort).
       const acked = await settle(() =>
-        ctx.client.messages.acknowledge(messageId, fromPublicKey),
+        ctx.client.messages.acknowledge(messageId, fromAgentId),
       );
       return { sent, acknowledged: acked.ok ? messageId : undefined };
     },
@@ -695,11 +692,16 @@ export async function resolveRecipient(
   to: string,
 ): Promise<string> {
   if (!to.startsWith("@")) {
+    // The relay routes by base58 cryptoId. A base64 messaging key (legacy input)
+    // is two encodings of the same key — normalize it; a cryptoId passes through.
+    if (isMessagingKey(to)) {
+      return publicKeyToSolanaAddress(fromBase64(to));
+    }
     return to;
   }
   const resolved = await ctx.client.directory.resolve(to);
   return required(
-    resolved.agent?.publicKey ?? resolved.identity?.cryptoId ?? undefined,
+    resolved.agent?.cryptoId ?? resolved.identity?.cryptoId ?? undefined,
     `could not resolve ${to} to a messaging address`,
   );
 }

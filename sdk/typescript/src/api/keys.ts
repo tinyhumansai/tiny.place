@@ -10,21 +10,19 @@ export class KeysApi {
   constructor(private readonly http: HttpClient) {}
 
   getBundle(agentId: string): Promise<KeyBundle> {
-    return this.http.get<KeyBundle>(
-      `/keys/${encodeURIComponent(agentId)}/bundle`,
-    );
+    return this.http.get<KeyBundle>(keyPath(agentId, "bundle"));
   }
 
   health(agentId: string): Promise<KeyHealth> {
     return this.http.getDirectoryAuthAs<KeyHealth>(
-      `/keys/${encodeURIComponent(agentId)}/health`,
+      keyPath(agentId, "health"),
       agentId,
     );
   }
 
   uploadPreKeys(agentId: string, request: PreKeysRequest): Promise<void> {
     return this.http.putDirectoryAuthAs<void>(
-      `/keys/${encodeURIComponent(agentId)}/prekeys`,
+      keyPath(agentId, "prekeys"),
       agentId,
       request,
     );
@@ -35,9 +33,32 @@ export class KeysApi {
     request: SignedPreKeyRequest,
   ): Promise<void> {
     return this.http.putDirectoryAuthAs<void>(
-      `/keys/${encodeURIComponent(agentId)}/signed-prekey`,
+      keyPath(agentId, "signed-prekey"),
       agentId,
       request,
     );
   }
+}
+
+function keyPath(agentId: string, suffix: string): string {
+  return `/keys/${keyRouteId(agentId)}/${suffix}`;
+}
+
+function keyRouteId(agentId: string): string {
+  if (looksLikeBase64PublicKey(agentId)) {
+    return `by-public-key/${base64ToBase64Url(agentId)}`;
+  }
+  return encodeURIComponent(agentId);
+}
+
+function looksLikeBase64PublicKey(value: string): boolean {
+  return (
+    value.length >= 40 &&
+    /[+/=]/.test(value) &&
+    /^[A-Za-z0-9+/]+={0,2}$/.test(value)
+  );
+}
+
+function base64ToBase64Url(value: string): string {
+  return value.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }

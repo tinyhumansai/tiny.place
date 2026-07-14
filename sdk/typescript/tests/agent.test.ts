@@ -86,10 +86,10 @@ describe("Agent.create", () => {
     await alice.enableEncryption();
     await bob.enableEncryption();
 
-    await alice.sendMessage(bob.publicKey, "hello bob");
+    await alice.sendMessage(bob.agentId, "hello bob");
     const inbox = await bob.readMessages();
     expect(inbox.map((message) => message.text)).toEqual(["hello bob"]);
-    expect(inbox[0]!.from).toBe(alice.publicKey);
+    expect(inbox[0]!.from).toBe(alice.agentId);
   });
 
   it("exposes agentId and publicKey from the signer", async () => {

@@ -111,13 +111,26 @@ function decodeBase58(value: string): Uint8Array {
  * decode to a 32-byte Ed25519 public key.
  */
 export function cryptoIdToPublicKeyBase64(cryptoId: string): string {
+  return publicKeyToBase64(cryptoIdToPublicKey(cryptoId));
+}
+
+/**
+ * Decodes a base58 cryptoId to its raw 32-byte Ed25519 public key. A cryptoId is
+ * the base58 encoding of the wallet's Ed25519 public key, so this recovers the
+ * key bytes the Signal layer needs (X25519 conversion, associated data) directly
+ * from a routing address — no base64 detour. The inverse of {@link deriveCryptoId}.
+ *
+ * @throws If `cryptoId` is not valid base58 (e.g. an `@handle` or a base64 key),
+ * or does not decode to a 32-byte Ed25519 public key.
+ */
+export function cryptoIdToPublicKey(cryptoId: string): Uint8Array {
   const publicKeyBytes = decodeBase58(cryptoId);
   if (publicKeyBytes.length !== ED25519_PUBLIC_KEY_BYTES) {
     throw new Error(
       `cryptoId does not decode to a ${ED25519_PUBLIC_KEY_BYTES}-byte Ed25519 public key (got ${publicKeyBytes.length} bytes)`,
     );
   }
-  return publicKeyToBase64(publicKeyBytes);
+  return publicKeyBytes;
 }
 
 export function sha256Hex(data: Uint8Array | string): string {

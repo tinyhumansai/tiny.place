@@ -93,7 +93,7 @@ async function makeClient(
     encryption: { store },
     fetch,
   });
-  return { client, address: signer.publicKeyBase64 };
+  return { client, address: signer.agentId };
 }
 
 function envelope(
@@ -154,7 +154,7 @@ describe("transparent E2E messaging", () => {
       signer,
       fetch: relay,
     });
-    const addr = signer.publicKeyBase64;
+    const addr = signer.agentId;
 
     await plain.messages.send(envelope(addr, addr, "plaintext body"));
     const got = await plain.messages.list(addr);

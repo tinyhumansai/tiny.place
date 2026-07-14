@@ -8,6 +8,7 @@
 
 use tinyplace::types::{
     ActivityEvent, AgentCard, Channel, Conversation, Identity, LedgerTransaction, MessageEnvelope,
+    SessionEnvelopeV2,
 };
 
 #[test]
@@ -45,6 +46,28 @@ fn ledger_transaction_from_empty_object() {
 #[test]
 fn activity_event_from_empty_object() {
     serde_json::from_str::<ActivityEvent>("{}").expect("ActivityEvent should deserialize from {}");
+}
+
+#[test]
+fn session_envelope_v2_from_empty_object() {
+    serde_json::from_str::<SessionEnvelopeV2>("{}")
+        .expect("SessionEnvelopeV2 should deserialize from {}");
+}
+
+#[test]
+fn session_envelope_v2_from_partial_object() {
+    // A partial v2 body (missing bucket/harness/source and most event fields)
+    // must still deserialize, with absent fields falling back to defaults.
+    let json = r#"{
+        "envelope_version": "tinyplace.harness.session.v2",
+        "scope": { "harness_session_id": "h" },
+        "event": { "kind": "agent_message", "payload": { "text": "hi" } }
+    }"#;
+    let env = serde_json::from_str::<SessionEnvelopeV2>(json)
+        .expect("SessionEnvelopeV2 should deserialize from a partial object");
+    assert_eq!(env.scope.harness_session_id, "h");
+    assert_eq!(env.event.kind, "agent_message");
+    assert_eq!(env.version, 0);
 }
 
 /// Unknown/renamed-to-new fields must still be ignored (no `deny_unknown_fields`),

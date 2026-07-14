@@ -96,59 +96,39 @@ function clientWith(overrides: Record<string, unknown>): TinyPlaceClient {
 }
 
 describe("resolveRecipientKey", () => {
-  it("returns a raw base64 messaging key unchanged", async () => {
-    const key = (await LocalSigner.generate()).publicKeyBase64;
-    const resolved = await resolveRecipientKey(clientWith({}), key);
-    expect(resolved).toBe(key);
-  });
-
-  it("resolves a base58 cryptoId via the directory card", async () => {
-    const client = clientWith({
-      directory: {
-        getAgent: async () => ({
-          agentId: "x",
-          publicKey: "cardKey",
-          metadata: { encryptionPublicKey: "advertisedKey" },
-        }),
-      },
-    });
+  it("normalizes a raw base64 messaging key to its cryptoId", async () => {
+    const signer = await LocalSigner.generate();
     const resolved = await resolveRecipientKey(
-      client,
-      "4S3656ssvbVpaD9yGMtwVj3e7qMZNuSSxuQuhXKccrQj",
+      clientWith({}),
+      signer.publicKeyBase64,
     );
-    expect(resolved).toBe("advertisedKey");
+    expect(resolved).toBe(signer.agentId);
   });
 
-  it("prefers the advertised encryption key for a @handle, then card, then identity", async () => {
-    const advertised = clientWith({
-      directory: {
-        resolve: async () => ({
-          agent: {
-            publicKey: "cardKey",
-            metadata: { encryptionPublicKey: "advertisedKey" },
-          },
-          identity: { publicKey: "idKey" },
-        }),
-      },
-    });
-    expect(await resolveRecipientKey(advertised, "@iris")).toBe("advertisedKey");
+  it("returns a base58 cryptoId unchanged without a directory lookup", async () => {
+    const cryptoId = (await LocalSigner.generate()).agentId;
+    // No directory on the client: a cryptoId must resolve to itself directly.
+    const resolved = await resolveRecipientKey(clientWith({}), cryptoId);
+    expect(resolved).toBe(cryptoId);
+  });
 
-    const cardOnly = clientWith({
+  it("resolves a @handle to the card cryptoId, falling back to the identity cryptoId", async () => {
+    const withCard = clientWith({
       directory: {
         resolve: async () => ({
-          agent: { publicKey: "cardKey" },
-          identity: { publicKey: "idKey" },
+          agent: { cryptoId: "CARDcryptoId" },
+          identity: { cryptoId: "IDcryptoId" },
         }),
       },
     });
-    expect(await resolveRecipientKey(cardOnly, "iris")).toBe("cardKey");
+    expect(await resolveRecipientKey(withCard, "@iris")).toBe("CARDcryptoId");
 
     const identityOnly = clientWith({
       directory: {
-        resolve: async () => ({ identity: { publicKey: "idKey" } }),
+        resolve: async () => ({ identity: { cryptoId: "IDcryptoId" } }),
       },
     });
-    expect(await resolveRecipientKey(identityOnly, "@iris")).toBe("idKey");
+    expect(await resolveRecipientKey(identityOnly, "iris")).toBe("IDcryptoId");
   });
 });
 
@@ -164,20 +144,20 @@ describe("sendMessage / readMessages round-trip", () => {
     const sent = await sendMessage(
       alice.client,
       alice.signer,
-      bob.signer.publicKeyBase64,
+      bob.signer.agentId,
       "hello bob",
     );
-    expect(sent.to).toBe(bob.signer.publicKeyBase64);
+    expect(sent.to).toBe(bob.signer.agentId);
 
     // Ciphertext on the wire (first message bootstraps X3DH).
-    const raw = await bob.client.messages.listRaw(bob.signer.publicKeyBase64);
+    const raw = await bob.client.messages.listRaw(bob.signer.agentId);
     expect(raw.messages[0]!.body).not.toBe("hello bob");
 
     // Facade read decrypts + acks.
     const inbox = await readMessages(bob.client, bob.signer);
     expect(inbox).toHaveLength(1);
     expect(inbox[0]!.text).toBe("hello bob");
-    expect(inbox[0]!.from).toBe(alice.signer.publicKeyBase64);
+    expect(inbox[0]!.from).toBe(alice.signer.agentId);
 
     // Consumed on read.
     expect(await readMessages(bob.client, bob.signer)).toHaveLength(0);

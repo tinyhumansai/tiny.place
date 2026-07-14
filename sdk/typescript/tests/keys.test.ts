@@ -55,4 +55,49 @@ describe("KeysApi", () => {
       "https://example.test/keys/%40agent/signed-prekey",
     );
   });
+
+  it("routes base64 public keys through the URL-safe key route", async () => {
+    const signer = await LocalSigner.fromSeed(new Uint8Array(32).fill(59));
+    const agentId = "h71YEo+jgSQJ8bG0msq/ES3I4A0K9oKRA5Eqq3yY4Q8=";
+    const requests: Array<Request> = [];
+    const client = new TinyPlaceClient({
+      baseUrl: "https://example.test",
+      signer,
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        requests.push(request);
+        if (request.method === "GET") {
+          return Response.json({
+            agentId,
+            oneTimePreKeyCount: 0,
+            lowOneTimePreKeys: true,
+          });
+        }
+        return new Response(null, { status: 204 });
+      },
+    });
+
+    await client.keys.getBundle(agentId);
+    await client.keys.health(agentId);
+    await client.keys.uploadPreKeys(agentId, {
+      identityKey: signer.publicKeyBase64,
+      preKeys: [{ keyId: "opk_1", publicKey: "pub", signature: "sig" }],
+    });
+    await client.keys.rotateSignedPreKey(agentId, {
+      identityKey: signer.publicKeyBase64,
+      signedPreKey: { keyId: "spk_1", publicKey: "pub", signature: "sig" },
+    });
+
+    expect(requests.map((request) => new URL(request.url).pathname)).toEqual([
+      "/keys/by-public-key/h71YEo-jgSQJ8bG0msq_ES3I4A0K9oKRA5Eqq3yY4Q8/bundle",
+      "/keys/by-public-key/h71YEo-jgSQJ8bG0msq_ES3I4A0K9oKRA5Eqq3yY4Q8/health",
+      "/keys/by-public-key/h71YEo-jgSQJ8bG0msq_ES3I4A0K9oKRA5Eqq3yY4Q8/prekeys",
+      "/keys/by-public-key/h71YEo-jgSQJ8bG0msq_ES3I4A0K9oKRA5Eqq3yY4Q8/signed-prekey",
+    ]);
+
+    for (const request of requests.slice(1)) {
+      expect(request.headers.get("X-Agent-ID")).toBe(agentId);
+      expect(request.headers.get("X-TinyPlace-Signature")).toBeTruthy();
+    }
+  });
 });

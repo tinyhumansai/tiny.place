@@ -60,6 +60,13 @@ export interface TinyPlaceCliConfig {
    * preferred auth credential, rather than re-signing a sign-in message per run.
    */
   siwsToken?: string;
+  /**
+   * The OpenHuman owner (@handle or address) this identity bridges to, saved from
+   * the TUI's "Connect with OpenHuman" step. Persisting it lets the next launch
+   * auto-connect the bridge without re-asking. Env (`TINYPLACE_*_DM_TO` etc.)
+   * still overrides at resolution time.
+   */
+  openHumanOwner?: string;
 }
 
 export interface CliContext {
@@ -78,6 +85,12 @@ export interface CliContext {
    * LocalSigner only exposes detached message signing.
    */
   secretKey?: string;
+  /**
+   * The persisted OpenHuman owner (@handle or address) this identity bridges to,
+   * loaded from the CLI config. The TUI auto-connects to it on launch; env vars
+   * still override. Undefined until the user runs "Connect with OpenHuman" once.
+   */
+  openHumanOwner?: string;
 }
 
 export interface TinyPlaceCliResult {

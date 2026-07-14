@@ -173,6 +173,26 @@ describe("tinyplace CLI", () => {
     });
   });
 
+  it("short-circuits command-specific help before signer-dependent writes", async () => {
+    for (const args of [
+      ["publish-card", "--help"],
+      ["raw", "publish-card", "--help"],
+    ]) {
+      const result = await runTinyPlaceCli(args, {
+        env: { TINYPLACE_ENDPOINT: "https://example.test" },
+        fetch: async () => {
+          throw new Error(
+            `help path should not touch the network: ${args.join(" ")}`,
+          );
+        },
+      });
+
+      expect(result.code, args.join(" ")).toBe(0);
+      expect(result.stderr, args.join(" ")).toBe("");
+      expect(result.stdout, args.join(" ")).toContain("publish-card");
+    }
+  });
+
   it("maps payment challenges into parseable JSON errors", async () => {
     const challenge = {
       error: "x402 payment is required",
@@ -735,8 +755,8 @@ describe("tinyplace CLI", () => {
         const url = request.url;
         if (url.includes("/directory/resolve")) {
           return Response.json({
-            identity: { cryptoId: "c1" },
-            agent: { publicKey: peerPub },
+            identity: { cryptoId: peer.agentId },
+            agent: { cryptoId: peer.agentId, publicKey: peerPub },
           });
         }
         if (url.includes("/bundle")) {
@@ -856,6 +876,55 @@ describe("tinyplace CLI", () => {
     }
   });
 
+  it("resolves @handles before raw agent-card lookup", async () => {
+    const requests: Array<Request> = [];
+    const result = await runTinyPlaceCli(["raw", "card", "@naturedesk"], {
+      env: { TINYPLACE_ENDPOINT: "https://example.test" },
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        requests.push(request);
+        const url = new URL(request.url);
+        if (url.pathname === "/directory/resolve/%40naturedesk") {
+          return Response.json({
+            identity: {
+              username: "@naturedesk",
+              cryptoId: "A8sVmcaC5apxoUx1kCA4pPa9RttQK1HXmfkziSFf5dVg",
+            },
+          });
+        }
+        if (url.pathname === "/graphql") {
+          const body = (await request.clone().json()) as {
+            variables: { id?: string };
+          };
+          return Response.json({
+            data: {
+              agentCard: {
+                agentId: body.variables.id,
+                name: "NatureDesk",
+              },
+            },
+          });
+        }
+        return Response.json({ error: "unexpected route" }, { status: 500 });
+      },
+    });
+
+    expect(result.code).toBe(0);
+    expect(requests.map((request) => new URL(request.url).pathname)).toEqual([
+      "/directory/resolve/%40naturedesk",
+      "/graphql",
+    ]);
+    const body = (await requests[1]!.clone().json()) as {
+      variables: { id?: string };
+    };
+    expect(body.variables.id).toBe(
+      "A8sVmcaC5apxoUx1kCA4pPa9RttQK1HXmfkziSFf5dVg",
+    );
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      agentId: "A8sVmcaC5apxoUx1kCA4pPa9RttQK1HXmfkziSFf5dVg",
+    });
+  });
+
   it("passes the bounties status filter as a GraphQL variable", async () => {
     const requests: Array<Request> = [];
     const result = await runTinyPlaceCli(
@@ -890,16 +959,51 @@ describe("tinyplace CLI", () => {
     expect(graphql!.body).toMatch(/batched GraphQL gateway/);
     expect(graphql!.body).toMatch(/429/);
 
-    const help = await runTinyPlaceCli([], {});
+    const help = await runTinyPlaceCli(["help"], {});
     expect(help.stdout).toContain("graphql");
   });
 
   it("help separates workflows from raw commands", async () => {
-    const help = await runTinyPlaceCli([], {});
+    const help = await runTinyPlaceCli(["help"], {});
     expect(help.code).toBe(0);
     expect(help.stdout).toContain("Workflows");
     expect(help.stdout).toContain("tinyplace raw <command>");
     expect(help.stdout).toContain("status");
+  });
+
+  it("bare `tinyplace` opens the Home picker (both agents), not the help dump", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "tinyplace-home-"));
+    const home = await runTinyPlaceCli([], {
+      env: {
+        TINYPLACE_ENDPOINT: "https://example.test",
+        // Isolate the config so a real persisted owner in ~/.tinyplace can't leak in.
+        TINYPLACE_CONFIG: join(dir, "config.json"),
+      },
+    });
+    expect(home.code).toBe(0);
+    expect(home.stdout).toContain("welcome to tiny.place");
+    expect(home.stdout).toContain("[ Start Codex session ]");
+    expect(home.stdout).toContain("[ Start Claude session ]");
+    expect(home.stdout).toContain("[ Connect with OpenHuman ]");
+    // The command reference is NOT dumped for the bare entry anymore.
+    expect(home.stdout).not.toContain("tinyplace raw <command>");
+  });
+
+  it("Home mode ignores a provider-specific recipient until an agent is picked", async () => {
+    // A Codex-only recipient must NOT be adopted before the user chooses Codex
+    // vs Claude — otherwise picking Claude would bridge to the Codex owner.
+    const dir = await mkdtemp(join(tmpdir(), "tinyplace-home-"));
+    const home = await runTinyPlaceCli([], {
+      env: {
+        TINYPLACE_ENDPOINT: "https://example.test",
+        // Isolate the config so a real persisted owner in ~/.tinyplace can't leak in.
+        TINYPLACE_CONFIG: join(dir, "config.json"),
+        TINYPLACE_CODEX_DM_TO: "@codex-only-owner",
+      },
+    });
+    expect(home.code).toBe(0);
+    expect(home.stdout).toContain("OpenHuman: disconnected");
+    expect(home.stdout).not.toContain("@codex-only-owner");
   });
 
   it("documents the full feed surface, including likes", () => {

@@ -6,7 +6,9 @@ This crate is a faithful Rust port of the TypeScript SDK at
 ## What to port and what to SKIP
 
 - **Port** every plain REST method on each API class.
-- **SKIP** Signal / end-to-end encryption (the Rust SDK has none).
+- **KEEP CURRENT** Signal / end-to-end encryption primitives under `src/signal/`.
+  Port plain REST methods independently from that layer unless the TS method is
+  explicitly part of transparent encrypted messaging.
 - **PORT** WebSocket streaming (`stream()` / `live()`, i.e. any method whose TS
   body is `this.wsFactory?.(...)`). Instead of a `wsFactory` constructor param,
   return a `crate::ws::WebSocketStream` built from `self.http` — e.g.

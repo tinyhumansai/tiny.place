@@ -78,7 +78,29 @@ export async function makeContext(
     baseUrl,
     generated,
     ...(seed ? { secretKey: seed } : {}),
+    ...(config.openHumanOwner ? { openHumanOwner: config.openHumanOwner } : {}),
   };
+}
+
+/**
+ * Persist the OpenHuman owner the user picked in the TUI so the next launch
+ * auto-connects the bridge to it. Best-effort (mode 0600); merges over the
+ * existing config so the identity key / SIWS proof are preserved. Passing an
+ * empty/undefined owner clears the stored value.
+ */
+export async function saveOpenHumanOwner(
+  env: Record<string, string | undefined>,
+  owner: string | undefined,
+): Promise<void> {
+  const config = await loadCliConfig(env);
+  const trimmed = owner?.trim();
+  const next: TinyPlaceCliConfig = { ...config };
+  if (trimmed) {
+    next.openHumanOwner = trimmed;
+  } else {
+    delete next.openHumanOwner;
+  }
+  await persistConfig(env, next);
 }
 
 /**
@@ -133,6 +155,9 @@ async function loadCliConfig(
         : {}),
       ...(typeof config.siwsToken === "string"
         ? { siwsToken: config.siwsToken }
+        : {}),
+      ...(typeof config.openHumanOwner === "string"
+        ? { openHumanOwner: config.openHumanOwner }
         : {}),
     };
   } catch (error) {
