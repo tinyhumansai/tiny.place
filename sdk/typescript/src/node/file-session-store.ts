@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fromBase64, toBase64 } from "../signal/index.js";
@@ -132,6 +132,10 @@ function deserializeSession(value: SerializedSession): SessionState {
  */
 export class FileSessionStore implements SessionStore, GroupSessionStore {
   private cache?: PersistShape;
+  /** Disk stat backing `cache`; when the file changed under us (another
+   *  process on the same wallet advanced the ratchet), the cache is stale and
+   *  `load()` re-reads. Undefined means the cache corresponds to no file. */
+  private cachedStat?: { mtimeMs: number; size: number };
 
   constructor(
     private readonly filePath: string,
@@ -268,27 +272,53 @@ export class FileSessionStore implements SessionStore, GroupSessionStore {
   }
 
   private async load(): Promise<PersistShape> {
-    if (!this.cache) {
-      try {
-        const parsed = JSON.parse(
-          await readFile(this.filePath, "utf8"),
-        ) as Partial<PersistShape>;
-        // Version-tolerant: merge over defaults so a file written by an older
-        // build (no group fields / no version) loads without wiping live state.
-        this.cache = { ...emptyState(), ...parsed, version: 1 };
-      } catch (error) {
-        if ((error as { code?: string }).code === "ENOENT") {
-          this.cache = emptyState();
-        } else {
-          throw error;
-        }
+    // Cross-process coherence: several processes can share one wallet store
+    // (the machine session bus serializes their operations, but each holds its
+    // own FileSessionStore instance). A cached copy is only valid while the
+    // file on disk still matches the stat we read/wrote it at — otherwise a
+    // sibling process advanced the ratchet and we must re-read, or our next
+    // flush would silently roll its chains back (undecryptable messages).
+    const stat = await this.statFile();
+    if (
+      this.cache &&
+      ((stat === undefined && this.cachedStat === undefined) ||
+        (stat !== undefined &&
+          this.cachedStat !== undefined &&
+          stat.mtimeMs === this.cachedStat.mtimeMs &&
+          stat.size === this.cachedStat.size))
+    ) {
+      return this.cache;
+    }
+    try {
+      const parsed = JSON.parse(
+        await readFile(this.filePath, "utf8"),
+      ) as Partial<PersistShape>;
+      // Version-tolerant: merge over defaults so a file written by an older
+      // build (no group fields / no version) loads without wiping live state.
+      this.cache = { ...emptyState(), ...parsed, version: 1 };
+    } catch (error) {
+      if ((error as { code?: string }).code === "ENOENT") {
+        this.cache = emptyState();
+      } else {
+        throw error;
       }
     }
+    this.cachedStat = stat;
     return this.cache;
   }
 
   private async flush(): Promise<void> {
     await mkdir(dirname(this.filePath), { recursive: true });
     await writeFile(this.filePath, JSON.stringify(this.cache), { mode: 0o600 });
+    this.cachedStat = await this.statFile();
+  }
+
+  private async statFile(): Promise<{ mtimeMs: number; size: number } | undefined> {
+    try {
+      const info = await stat(this.filePath);
+      return { mtimeMs: info.mtimeMs, size: info.size };
+    } catch {
+      return undefined;
+    }
   }
 }
