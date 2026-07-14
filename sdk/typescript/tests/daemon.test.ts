@@ -120,7 +120,16 @@ describe("provider detection", () => {
   });
 
   it("builds provider-specific headless argv", () => {
+    // Default: claude runs with its normal permission prompts (no bypass).
     expect(buildRunArgs({ provider: "claude", prompt: "hi" })).toEqual([
+      "-p",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "hi",
+    ]);
+    // Opt-in bypass only when explicitly requested.
+    expect(buildRunArgs({ provider: "claude", prompt: "hi", skipPermissions: true })).toEqual([
       "-p",
       "--output-format",
       "stream-json",

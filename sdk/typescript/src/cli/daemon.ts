@@ -135,6 +135,10 @@ export async function runDaemon(
     );
   }
   const model = stringFlag(flags, "model");
+  // Opt-in: run claude workers with --dangerously-skip-permissions. OFF unless the
+  // operator passes the flag, because the daemon auto-accepts contacts and executes
+  // remote task text — unattended approval bypass must be an explicit choice.
+  const skipPermissions = boolFlag(flags, "dangerously-skip-permissions");
   const opencodeAgent = stringFlag(flags, "opencode-agent");
   const handle = stringFlag(flags, "handle");
   const displayName = stringFlag(flags, "name");
@@ -175,6 +179,7 @@ export async function runDaemon(
     maxPending,
     ...(statusThrottleMs !== undefined ? { statusThrottleMs } : {}),
     ...(model ? { model } : {}),
+    ...(skipPermissions ? { skipPermissions: true } : {}),
     ...(opencodeAgent ? { agent: opencodeAgent } : {}),
     send: (to, body) =>
       lock(async () => {
@@ -184,8 +189,10 @@ export async function runDaemon(
           if (!isSessionError(error)) throw error;
           // Poisoned/desynced Signal ratchet — the relay rejects the ciphertext.
           // Drop the session so the retry re-runs X3DH from a fresh pre-key bundle.
+          // Do NOT swallow a reset failure: retrying over an uncleared ratchet just
+          // fails again and masks the cause, so let it propagate.
           log(`session error sending to ${to}, resetting: ${describe(error)}`);
-          await agent.resetSession(to).catch(() => {});
+          await agent.resetSession(to);
           await agent.sendMessage(to, body);
         }
       }),
@@ -281,18 +288,14 @@ function describe(error: unknown): string {
 }
 
 /**
- * A send failure that a fresh Signal session can recover from: the relay's 400 on
- * a not-yet-contact / stale ratchet, or an explicit session/decrypt/prekey fault.
- * Distinguished from transport/auth errors, which resetting would not fix.
+ * A send failure that dropping the Signal session can actually fix: an explicit
+ * stale-ratchet / decrypt / prekey / session fault. Deliberately NOT matched:
+ * a not-yet-contact rejection (resetting won't accept the contact, and the retry
+ * would leave an undelivered X3DH session that makes the next send undecryptable)
+ * or a bare HTTP status, which says nothing about the ratchet.
  */
 function isSessionError(error: unknown): boolean {
-  const e = error as {
-    status?: number;
-    statusCode?: number;
-    code?: string;
-    message?: string;
-  };
-  const status = e?.status ?? e?.statusCode;
+  const e = error as { code?: string; message?: string };
   const text = `${e?.code ?? ""} ${e?.message ?? ""}`.toLowerCase();
-  return status === 400 || /session|ratchet|decrypt|prekey|contact/.test(text);
+  return /ratchet|decrypt|prekey|pre-key|signal session|no session/.test(text);
 }

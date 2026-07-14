@@ -118,6 +118,8 @@ export interface RunTaskOptions {
   agent?: string;
   /** Extra args appended before the prompt (advanced / permissions). */
   extraArgs?: ReadonlyArray<string>;
+  /** Opt-in bypass of claude's permission prompts. OFF by default. */
+  skipPermissions?: boolean;
   signal?: AbortSignal;
   /** Fired for each parsed semantic event — drives periodic status frames. */
   onEvent?: (event: HarnessSemanticEvent) => void;
@@ -141,6 +143,11 @@ export function buildRunArgs(options: {
   model?: string;
   agent?: string;
   extraArgs?: ReadonlyArray<string>;
+  /** Opt-in: bypass the claude permission prompts (`--dangerously-skip-
+   *  permissions`). OFF by default — a daemon auto-accepts contacts and runs
+   *  remote DM task text, so skipping approval must be an explicit operator
+   *  choice, never the default. */
+  skipPermissions?: boolean;
 }): Array<string> {
   const extra = options.extraArgs ?? [];
   // A prompt beginning with "-" would be parsed as a CLI flag by the provider
@@ -158,7 +165,7 @@ export function buildRunArgs(options: {
         "--output-format",
         "stream-json",
         "--verbose",
-        "--dangerously-skip-permissions",
+        ...(options.skipPermissions ? ["--dangerously-skip-permissions"] : []),
         ...extra,
         prompt,
       ];
@@ -253,6 +260,7 @@ function runProviderAttempt(options: RunTaskOptions): Promise<RunTaskResult> {
     ...(options.model ? { model: options.model } : {}),
     ...(options.agent ? { agent: options.agent } : {}),
     ...(options.extraArgs ? { extraArgs: options.extraArgs } : {}),
+    ...(options.skipPermissions ? { skipPermissions: true } : {}),
   });
   const bin = providerBin(options.provider, options.env);
   const child = spawn(bin, args, { cwd: options.cwd, env: options.env });
