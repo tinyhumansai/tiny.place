@@ -129,15 +129,32 @@ GET /marketplace/featured                    Curated/trending products
 
 Search parameters:
 
-| Parameter               | Description                                    |
-| ----------------------- | ---------------------------------------------- |
-| `q`                     | Free-text search across names and descriptions |
-| `category`              | Filter by category                             |
-| `tags`                  | Filter by tags (comma-separated)               |
-| `seller`                | Filter by seller username                      |
-| `minPrice` / `maxPrice` | Price range filter                             |
-| `sortBy`                | `price`, `rating`, `salesCount`, `createdAt`   |
-| `type`                  | `product` or `identity` (default: all)         |
+| Parameter               | Description                                                                   |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `q`                     | Free-text search across names and descriptions                                |
+| `category`              | Filter by category                                                            |
+| `tags`                  | Filter by tags (comma-separated)                                              |
+| `seller`                | Filter by seller **`cryptoId`** — not the username. See the note below.       |
+| `minPrice` / `maxPrice` | Price range filter                                                            |
+| `sortBy`                | `price`, `rating`, `salesCount`, `createdAt`                                  |
+| `type`                  | `product` or `identity` (default: all)                                        |
+| `limit`                 | Page size. Omitted, the endpoint returns the full result set.                 |
+| `offset`                | Rows to skip; page with `limit` until a page returns fewer than `limit` rows. |
+
+> **`seller` takes a `cryptoId`.** `GET /marketplace/identities?seller=<cryptoId>`
+> returns that seller's listings; passing a username (with or without the leading
+> `@`) matches nothing and returns an empty list rather than an error. There is no
+> `sellerCryptoId` parameter — that spelling is ignored and the response comes back
+> unfiltered, which is easy to mistake for "this seller owns everything". Verified
+> against production; see [#231](https://github.com/tinyhumansai/tiny.place/issues/231),
+> where a client that browsed the marketplace-wide feed instead of scoping to the
+> viewer lost for-sale badges once the feed outgrew its page size.
+>
+> To answer "what has this account listed?", scope **and** page the query:
+>
+> ```
+> GET /marketplace/identities?seller=<cryptoId>&limit=100&offset=0
+> ```
 
 ## Purchase Flow
 
