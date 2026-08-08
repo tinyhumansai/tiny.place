@@ -340,7 +340,7 @@ impl WebSocketConnection {
     pub async fn send(&mut self, value: &serde_json::Value) -> Result<()> {
         let text = serde_json::to_string(value)?;
         self.inner
-            .send(Message::Text(text))
+            .send(Message::Text(text.into()))
             .await
             .map_err(|error| Error::WebSocket(error.to_string()))
     }
